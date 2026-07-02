@@ -238,7 +238,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const ld=slg?Math.max(0,slg[0]-1):0;
-    let etaR='';if(slg){const fk=slg[0]*5,tc=BX[selCar]?BX[selCar][fk]:null;if(tc!=null&&tc>=T)etaR=fmt(tc-T)+'  ETA '+(slg[0]>=maxN?'FINISH':'S/F');}
+    let etaTime=null,etaLbl='';if(slg){const fk=slg[0]*5,tc=BX[selCar]?BX[selCar][fk]:null;if(tc!=null&&tc>=T){etaTime=fmt(tc-T);etaLbl='ETA '+(slg[0]>=maxN?'FINISH':'S/F');}}
     const plines=[];
     if(p&&p>1){let ah=null;for(const st in lp)if(lp[st]===p-1)ah=st;if(ah){const e=predPass(selCar,ah,T);if(e!=null)plines.push(['▲ reducing gap to #'+ah,'#1e8f3a',32]);}}
     if(p){let be=null;for(const st in lp)if(lp[st]===p+1)be=st;if(be){const e=predPass(be,selCar,T);if(e!=null)plines.push(['▼ decreasing gap to #'+be,'#c0392b',32]);}}
@@ -249,13 +249,13 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     if(selCar){const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{},pc=DB.pits[selCar]||[],slg=activeLeg(selCar,T),curLap=slg?slg[0]:1e9;
       let lastPit=0;pc.forEach(pl=>{if(pl<curLap&&pl>lastPit)lastPit=pl;});
       let maxL=0;for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(Number(L)-1)*5+5];if(tc==null||tc>T)continue;const nL=Number(L),tt=s[0]+s[1]+s[2]+s[3]+s[4];if(nL>lastPit&&tt<flDrv)flDrv=tt;if(nL>maxL){maxL=nL;prevLap=tt;}}}
-    if(flClass<Infinity)plines.push([fmt(flClass)+'  fast lap class','#16202b',32]);
-    if(flCar<Infinity)plines.push([fmt(flCar)+'  fast lap car','#16202b',32]);
-    if(flDrv<Infinity)plines.push([fmt(flDrv)+'  fast lap driver','#16202b',32]);
-    if(prevLap!=null)plines.push([fmt(prevLap)+'  prev lap','#16202b',32]);
-    if(etaR)plines.push([etaR,'#16202b',32]);
+    if(flClass<Infinity)plines.push(['fast lap class','#16202b',32,fmt(flClass)]);
+    if(flCar<Infinity)plines.push(['fast lap car','#16202b',32,fmt(flCar)]);
+    if(flDrv<Infinity)plines.push(['fast lap driver','#16202b',32,fmt(flDrv)]);
+    if(prevLap!=null)plines.push(['prev lap','#16202b',32,fmt(prevLap)]);
+    if(etaTime)plines.push([etaLbl,'#16202b',32,etaTime]);
     while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);let pyy=1356-(plines.length-1)*42;
-    plines.forEach(l=>{const t=document.createElementNS(SVGNS,'text');t.setAttribute('x','1405');t.setAttribute('y',pyy);t.setAttribute('text-anchor','end');t.setAttribute('font-family','IBM Plex Mono,monospace');t.setAttribute('font-weight','700');t.setAttribute('font-size',(l[2]||36));t.setAttribute('fill',l[1]);t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','5');t.setAttribute('paint-order','stroke');t.textContent=l[0];predsvg.appendChild(t);pyy+=42;});
+    plines.forEach(l=>{const fs=(l[2]||36),tm=l[3];const mk=(x,anc,txt)=>{const t=document.createElementNS(SVGNS,'text');t.setAttribute('x',x);t.setAttribute('y',pyy);t.setAttribute('text-anchor',anc);t.setAttribute('font-family','IBM Plex Mono,monospace');t.setAttribute('font-weight','700');t.setAttribute('font-size',fs);t.setAttribute('fill',l[1]);t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','5');t.setAttribute('paint-order','stroke');t.textContent=txt;predsvg.appendChild(t);};if(tm!==undefined){mk('1092','end',tm);mk('1108','start',l[0]);}else mk('1392','end',l[0]);pyy+=42;});
     badge.className='carbadge sel';badge.innerHTML='<div class="row"><span class="num">#'+selCar+'</span>'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
 function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;T+=dt*parseFloat(document.getElementById('speed').value);
