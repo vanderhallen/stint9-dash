@@ -50,6 +50,15 @@
   .oncount{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
   label.chk{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
   .chartbox{padding:2px 8px}.chartbox svg{display:block;width:100%;height:auto}
+  .reelbtn{background:#1f6fff;color:#fff;border:none;border-radius:9px;width:32px;height:46px;font-size:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  .reelbtn:hover:not(:disabled){background:#1559d8}
+  .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
+  #reelview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #reelview .reelpanel svg{display:block;width:100%;height:100%}
+  .reelthumb{position:relative;flex:1 1 0;min-height:0;border:2px solid #cbb0f5;background:#faf7ff;border-radius:7px;overflow:hidden;cursor:pointer}
+  .reelthumb.active{border-color:#8b46ff;box-shadow:0 0 0 2px rgba(139,70,255,.3)}
+  #reelfilm svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .thumbcap{position:absolute;top:2px;left:3px;z-index:2;font:700 8px 'IBM Plex Mono',monospace;color:#7a2fe0;background:rgba(255,255,255,.75);padding:0 3px;border-radius:3px;letter-spacing:.4px}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -107,12 +116,23 @@
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
-    <div class="card chartbox" style="flex:1 1 56%;min-width:0"><svg id="lapchart"></svg></div>
+    <div class="card chartbox" id="reelcard" style="flex:1 1 56%;min-width:0;display:flex;align-items:stretch;gap:6px">
+      <div id="reelnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
+        <button class="reelbtn" id="reelup" title="Previous view">&#9650;</button>
+        <button class="reelbtn" id="reeldn" title="Next view">&#9660;</button>
+      </div>
+      <div id="reelview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
+        <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
+          <div class="reelpanel"><svg id="lapchart"></svg></div>
+          <div class="reelpanel"><svg id="ltgraph"></svg></div>
+        </div>
+      </div>
+      <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
+        <div class="reelthumb active" data-i="0" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="1" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
+      </div>
+    </div>
     <div class="card" style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
-  </div>
-  <div style="display:flex;flex-wrap:nowrap;gap:16px;margin-top:13px">
-    <div class="card chartbox" id="ltbox" style="flex:1 1 56%;min-width:0;display:none"><svg id="ltgraph" viewBox="0 0 1000 360" style="display:block;width:100%;height:auto"></svg></div>
-    <div style="flex:1 1 44%;min-width:0"></div>
   </div>
 </div>
 <script>
@@ -120,6 +140,11 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
+let reelIdx=0;const REELN=2;
+function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;document.querySelectorAll('.reelthumb').forEach(t=>t.classList.toggle('active',+t.dataset.i===reelIdx));}
+function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;applyReel(true);if(typeof savePrefs==='function')savePrefs();}
+function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*CH/1000).toFixed(1)+'px';applyReel(false);}
+let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const lc=document.getElementById('lapchart'),lt=document.getElementById('ltgraph'),t0=document.getElementById('thumb0'),t1=document.getElementById('thumb1');if(t0&&lc){t0.setAttribute('viewBox',lc.getAttribute('viewBox')||'0 0 1000 400');t0.innerHTML=lc.innerHTML;}if(t1&&lt){t1.setAttribute('viewBox',lt.getAttribute('viewBox')||'0 0 1000 400');t1.innerHTML=lt.innerHTML;}}
 
 /* track */
 const CUM=DB.poly.map(p=>{const c=[0];for(let i=1;i<p.length;i++)c.push(c[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));return c;});
@@ -195,8 +220,9 @@ function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.g
     for(let k=0;k<5;k++){const v=stat.lastSecs?stat.lastSecs[k]:null,rv=(ref&&ref.lastSecs)?ref.lastSecs[k]:null;c+='<td>'+cmpCell(v,ref?dOf(v,rv):null)+'</td>';}
     return '<tr>'+c+'</tr>';});
   tb.innerHTML=rows.join('');box.style.display='';}
-function renderLapTrace(T){const box=document.getElementById('ltbox'),svg=document.getElementById('ltgraph');
-  if(!selCar){box.style.display='none';return;}
+function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
+  if(!selCar){ph('select a car for the lap-time trace');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
   const sel=[],cf=[],dl=[];let mn=Infinity,mx=0,best=Infinity,dmx=0;
   for(let L=2;L<=maxN;L++){const ts=lapT(selCar,L);let m=Infinity,mc=null;
@@ -204,9 +230,8 @@ function renderLapTrace(T){const box=document.getElementById('ltbox'),svg=docume
     if(ts!=null){sel.push([L,ts]);if(ts<mn)mn=ts;if(ts>mx)mx=ts;if(ts<best)best=ts;}
     if(m<Infinity){cf.push([L,m,mc]);if(m<mn)mn=m;if(m>mx)mx=m;if(m<best)best=m;}
     if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
-  if(!sel.length){box.style.display='none';return;}
-  box.style.display='';
-  const yT2=48,yB2=326;
+  if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
+  const yT2=44,yB2=CH-26;
   const pad=Math.max(6,(mx-mn)*0.08),lo=mn-pad,hi=mx+pad,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
   const dhi=Math.max(2,dmx*1.1),YD=d=>yB2-(d/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
@@ -266,7 +291,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   if(oncount)oncount.textContent=on+' / '+DB.cars.length+' on track';
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
-  renderChart(T);renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);renderLapTrace(T);
+  renderChart(T);renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);renderLapTrace(T);updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const ld=slg?Math.max(0,slg[0]-1):0;
@@ -308,6 +333,9 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
 /* dropdown */
 const sel=document.getElementById('carsel');
 sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];fillStints(selCar);render();savePrefs();};
+document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
+document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
+document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
 
 /* ---- zoom mini-map + neighbour deltas + overtakes ---- */
 const POS={},BT={};
@@ -425,23 +453,24 @@ function buildClass(cls){
   if(!DB.cars.some(c=>String(c)===String(selCar)))selCar=DB.cars[0]||'';
   sel.value=selCar;miniEvents=selCar?computeEvents(selCar):[];
   if(!(T>=DB.tmin&&T<=DB.tmax))T=DB.tmin;scrub.value=T;}
-function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:document.getElementById('delaythr').value,pace:document.getElementById('pacethr').value,speed:document.getElementById('speed').value,car:selCar,cls:document.getElementById('classsel').value}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:document.getElementById('delaythr').value,pace:document.getElementById('pacethr').value,speed:document.getElementById('speed').value,car:selCar,cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.delay!=null){document.getElementById('delaythr').value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
 if(PREFS.pace!=null){document.getElementById('pacethr').value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
 if(PREFS.speed!=null){document.getElementById('speed').value=PREFS.speed;}
+if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();savePrefs();};
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
-render();
+render();syncReel();applyReel(false);
 function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';}}
 syncMapHeights();setTimeout(syncMapHeights,80);
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
-  syncMapHeights();if(window.__syncWx)window.__syncWx();
+  syncReel();syncMapHeights();if(window.__syncWx)window.__syncWx();
   const DW=1280,nat=w.scrollHeight;
   const s=Math.min(1,window.innerWidth/DW,(window.innerHeight-6)/nat);
   __fit=s;const tx=Math.max(0,(window.innerWidth-DW*s)/2),ty=Math.max(0,(window.innerHeight-nat*s)/2);
