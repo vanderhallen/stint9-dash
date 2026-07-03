@@ -98,6 +98,7 @@
   #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
   .card.zoomed{width:min(96vw,1400px)!important;max-width:none!important;flex:none!important;margin:0!important}
   .card.zoomed #svg,.card.zoomed #mini{width:96%!important}
+  .card.zoomed #gapgauge{display:none}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -151,7 +152,7 @@
         <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
-      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:6px;bottom:6px;width:auto;height:auto"></svg></div>
+      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
@@ -815,7 +816,7 @@ const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.cla
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
-function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';}}
+function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';const gg=document.getElementById('gapgauge');if(gg){gg.style.height=hh+'px';gg.style.width='auto';}}}
 syncMapHeights();setTimeout(syncMapHeights,80);
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
