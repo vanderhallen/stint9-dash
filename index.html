@@ -143,7 +143,7 @@
       <div class="card stage" data-focus><svg id="svg" viewBox="80 80 1340 1300"><g id="track"></g><g id="dots"></g><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
     </div>
     <div class="right">
-      <div class="card stage" data-focus style="background:#fbfbfc;display:flex;align-items:center;justify-content:center;gap:8px"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;overflow:visible;flex:0 1 auto">
+      <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;margin:0 auto;overflow:visible">
         <defs><clipPath id="miniclip"><circle cx="134" cy="134" r="134"/></clipPath></defs>
         <g clip-path="url(#miniclip)"><g id="miniG"></g></g>
         <circle cx="134" cy="134" r="133" fill="none" stroke="#d3d7dc" stroke-width="1.5"/>
@@ -151,7 +151,7 @@
         <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
-      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="flex:0 0 auto;width:auto;height:auto;margin-left:auto;margin-right:10px"></svg></div>
+      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:6px;bottom:6px;width:auto;height:auto"></svg></div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
@@ -703,8 +703,8 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   const a=(dA!=null)?Math.max(0.05,dA):null,b=(dB!=null)?Math.max(0.05,dB):null,DEF=4;
   const total=(a!=null?a:DEF)+(b!=null?b:DEF),scale=span/Math.max(total,1),selY=plotT+(a!=null?a:DEF)*scale;
   let s='<rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" fill="none" stroke="#e2e5ea" stroke-width="1" rx="8"/>';
-  const step=total>26?5:total>13?2:1;
-  for(let sc=0;sc<=total+1e-6;sc+=step){const y=plotT+sc*scale;s+='<line x1="6" x2="'+(W-6)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>'+T2(8,y-2.5,'start',sc+'s','#c2c8d0',9);}
+  const majStep=total>40?5:total>16?2:1,minStep=(scale>=7)?1:(scale>=3.5?2:majStep);
+  for(let sc=0;sc<=total+1e-6;sc+=minStep){const y=plotT+sc*scale,maj=Math.abs(sc/majStep-Math.round(sc/majStep))<1e-6;s+='<line x1="6" x2="'+(W-6)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+(maj?'#e2e5ea':'#f1f2f4')+'" stroke-width="1"/>'+(maj?T2(8,y-2.5,'start',sc+'s','#c2c8d0',9):'');}
   s+=T2(cx,15,'middle','▲ ahead','#1e8f3a',12,1)+T2(cx,33,'middle',(ah?('#'+ah+' P'+(p-1)):'LEADER'),'#16202b',12,1);
   s+=T2(cx,H-20,'middle',(be?('#'+be+' P'+(p+1)):'LAST'),'#16202b',12,1)+T2(cx,H-6,'middle','▼ behind','#c0392b',12,1);
   if(ah)s+='<rect x="'+(cx-pw/2).toFixed(1)+'" y="'+(plotT-3)+'" width="'+pw.toFixed(1)+'" height="7" rx="3" fill="#9aa1a9"/>';
@@ -815,7 +815,7 @@ const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.cla
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
-function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';const gg=document.getElementById('gapgauge');if(gg){gg.style.height=hh+'px';gg.style.width='auto';}}}
+function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';}}
 syncMapHeights();setTimeout(syncMapHeights,80);
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
