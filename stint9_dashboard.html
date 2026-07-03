@@ -29,7 +29,7 @@
   .left{flex:0 0 46%;max-width:46%}.right{flex:1 1 auto;min-width:0}
   .colhead{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);height:22px;margin-bottom:8px;white-space:nowrap;overflow:hidden}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
-  .stage{position:relative;overflow:hidden}#svg{display:block;width:80%;height:auto;margin:0 auto}
+  .stage{position:relative;overflow:hidden}#svg{display:block;width:64%;height:auto;margin:0 auto}
   .carbadge{position:absolute;pointer-events:none;display:none;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-50%)}
   .carbadge .row{display:flex;align-items:center;gap:10px}
   .carbadge .num{font-weight:700;font-size:36px;letter-spacing:-1px;color:var(--ink);line-height:1}
@@ -59,23 +59,23 @@
   .reelthumb.active{border-color:#6b7480;box-shadow:0 0 0 2px rgba(107,116,128,.3)}
   #reelfilm svg{position:absolute;inset:0;width:100%;height:100%;display:block}
   .thumbcap{position:absolute;top:2px;left:3px;z-index:2;font:700 8px 'IBM Plex Mono',monospace;color:#6b7480;background:rgba(255,255,255,.75);padding:0 3px;border-radius:3px;letter-spacing:.4px}
-  .fuelpanel{width:100%;height:100%;overflow-y:auto;padding:6px 12px;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;color:#16202b}
-  .fuelhd{font-weight:700;font-size:15px;color:#6b7480;margin-bottom:6px}
-  .fuelset{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;align-items:center;margin-bottom:7px}
-  .fuelset label{display:flex;align-items:center;gap:4px;color:#6b7480}
-  .fuelset input{width:52px;font-family:inherit;font-size:12px;padding:2px 4px;border:1px solid #cfd4da;border-radius:5px;color:#16202b}
-  .fbtn,.ftgl{font-family:inherit;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid #cfd4da;cursor:pointer}
+  .fuelpanel{width:100%;height:100%;overflow-y:auto;padding:4px 9px;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;color:#16202b}
+  .fuelhd{font-weight:700;font-size:12px;color:#6b7480;margin-bottom:3px}
+  .fuelset{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:10.5px;align-items:center;margin-bottom:4px}
+  .fuelset label{display:flex;align-items:center;gap:3px;color:#6b7480}
+  .fuelset input{width:44px;font-family:inherit;font-size:10.5px;padding:1px 3px;border:1px solid #cfd4da;border-radius:4px;color:#16202b}
+  .fbtn,.ftgl{font-family:inherit;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid #cfd4da;cursor:pointer}
   .fbtn{background:#16202b;color:#fff;border-color:#16202b}
   .ftgl{background:#eef0f3;color:#6b7480}
-  .fuelreadout{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;margin:6px 0;padding:7px 10px;background:#f7f8fa;border:1px solid #eceef1;border-radius:8px}
-  .fro{display:flex;justify-content:space-between;font-size:13px;gap:8px}
+  .fuelreadout{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin:4px 0;padding:5px 8px;background:#f7f8fa;border:1px solid #eceef1;border-radius:7px}
+  .fro{display:flex;justify-content:space-between;font-size:11.5px;gap:8px}
   .frl{color:#8a929b}.frv{font-weight:700}
-  .fnotify{background:#fff3e0;border:1px solid #e8871e;color:#b5651a;font-weight:700;font-size:13px;padding:4px 8px;border-radius:7px;margin:5px 0;text-align:center}
-  .fuellog{font-size:12px;padding-bottom:6px}
-  .flogrow{display:flex;align-items:center;gap:7px;padding:3px 2px;border-top:1px solid #eef0f3}
+  .fnotify{background:#fff3e0;border:1px solid #e8871e;color:#b5651a;font-weight:700;font-size:11.5px;padding:3px 8px;border-radius:6px;margin:3px 0;text-align:center}
+  .fuellog{font-size:10.5px;padding-bottom:4px}
+  .flogrow{display:flex;align-items:center;gap:6px;padding:1.5px 2px;border-top:1px solid #eef0f3}
   .flogrow.pit{background:#eef4ff}
-  .flogrow input{width:54px;font-family:inherit;font-size:12px;padding:1px 4px;border:1px solid #cfd4da;border-radius:5px}
-  .floglbl{color:#6b7480;min-width:104px}
+  .flogrow input{width:46px;font-family:inherit;font-size:10.5px;padding:1px 3px;border:1px solid #cfd4da;border-radius:4px}
+  .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   .agentbar .agicon{font-size:18px;line-height:1}
   #agentq{flex:1 1 auto;min-width:200px;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:8px 12px;border:1px solid #cfd4da;border-radius:9px;color:#16202b;outline:none}
@@ -90,6 +90,14 @@
   .agentsug>span{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9aa1a9}
   .sug{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3a4656;background:#f1f3f5;border:1px solid #e2e5ea;border-radius:20px;padding:3px 11px;cursor:pointer}
   .sug:hover{background:#e7eaee;border-color:#cfd4da}
+  [data-focus]{position:relative}
+  .zoombtn{position:absolute;top:6px;right:6px;z-index:7;width:30px;height:30px;border-radius:8px;border:1px solid #d3d7dc;background:rgba(255,255,255,.92);color:#16202b;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .zoombtn:hover{background:#fff}
+  #focusLayer{position:fixed;inset:0;background:rgba(18,24,34,.55);z-index:10000;display:none;align-items:center;justify-content:center;padding:2vmin;box-sizing:border-box}
+  #focusLayer.on{display:flex}
+  #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
+  .card.zoomed{width:min(96vw,1400px)!important;max-width:none!important;flex:none!important;margin:0!important}
+  .card.zoomed #svg,.card.zoomed #mini{width:96%!important}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -132,10 +140,10 @@
   </div>
   <div class="split" style="margin-top:13px">
     <div class="left">
-      <div class="card stage"><svg id="svg" viewBox="80 80 1340 1300"><g id="track"></g><g id="dots"></g><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
+      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 1340 1300"><g id="track"></g><g id="dots"></g><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
     </div>
     <div class="right">
-      <div class="card stage" style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:82%;height:auto;margin:0 auto;overflow:visible">
+      <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:82%;height:auto;margin:0 auto;overflow:visible">
         <defs><clipPath id="miniclip"><circle cx="134" cy="134" r="134"/></clipPath></defs>
         <g clip-path="url(#miniclip)"><g id="miniG"></g></g>
         <circle cx="134" cy="134" r="133" fill="none" stroke="#d3d7dc" stroke-width="1.5"/>
@@ -147,7 +155,7 @@
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
-    <div class="card chartbox" id="reelcard" style="flex:1 1 56%;min-width:0;display:flex;align-items:stretch;gap:6px">
+    <div class="card chartbox" id="reelcard" data-focus style="flex:1 1 56%;min-width:0;display:flex;align-items:stretch;gap:6px">
       <div id="reelnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
         <button class="reelbtn" id="reelup" title="Previous view">&#9650;</button>
         <button class="reelbtn" id="reeldn" title="Next view">&#9660;</button>
@@ -177,7 +185,6 @@
           </div></div>
           <div class="reelpanel"><svg id="sectorsvg"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
-          <div class="reelpanel"><svg id="gridsvg"></svg></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -186,10 +193,9 @@
         <div class="reelthumb" data-i="2" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
         <div class="reelthumb" data-i="3" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="4" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="5" title="Position board"><span class="thumbcap">BOARD</span><svg id="thumb5" preserveAspectRatio="xMidYMid meet"></svg></div>
       </div>
     </div>
-    <div class="card" style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
+    <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
   </div>
   <div class="agentbar">
     <span class="agicon">&#129302;</span>
@@ -204,7 +210,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=0;const REELN=6;
+let reelIdx=0;const REELN=5;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -213,7 +219,7 @@ function saveFuel(){try{localStorage.setItem('stint9_fuel',JSON.stringify(FUEL))
 function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;document.querySelectorAll('.reelthumb').forEach(t=>t.classList.toggle('active',+t.dataset.i===reelIdx));}
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;applyReel(true);if(typeof savePrefs==='function')savePrefs();}
 function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*CH/1000).toFixed(1)+'px';applyReel(false);}
-let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const cp=(src,dst)=>{const a=document.getElementById(src),b=document.getElementById(dst);if(a&&b){b.setAttribute('viewBox',a.getAttribute('viewBox')||'0 0 1000 400');b.innerHTML=a.innerHTML;}};cp('lapchart','thumb0');cp('ltgraph','thumb1');cp('sectorsvg','thumb3');cp('flowsvg','thumb4');cp('gridsvg','thumb5');}
+let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const cp=(src,dst)=>{const a=document.getElementById(src),b=document.getElementById(dst);if(a&&b){b.setAttribute('viewBox',a.getAttribute('viewBox')||'0 0 1000 400');b.innerHTML=a.innerHTML;}};cp('lapchart','thumb0');cp('ltgraph','thumb1');cp('sectorsvg','thumb3');cp('flowsvg','thumb4');}
 
 /* track */
 const CUM=DB.poly.map(p=>{const c=[0];for(let i=1;i<p.length;i++)c.push(c[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));return c;});
@@ -413,45 +419,24 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
     const dA=ah?commonGap(selCar,ah,tc):null,dB=be?commonGap(be,selCar,tc):null,sc=(stm[lap]||[])[seg-1];let col='#c9ced4';
     if(sc!=null){let pb=Infinity,ob=Infinity;DB.cars.forEach(st=>{const s2=DB.sectimes[st]||{},b2=BX[st]||{};for(const L in s2){const v=(s2[L]||[])[seg-1],tcx=b2[(+L-1)*5+seg];if(v==null||tcx==null||tcx>tc)continue;if(v<ob)ob=v;if(st===selCar&&v<pb)pb=v;}});
       col=(sc<=ob+1e-6)?'#8B5CF6':(sc<=pb+1e-6)?'#1e8f3a':'#f0c020';}
-    flowCache.cols.push({bkey,lap,seg,pos,dA,dB,col});});
+    flowCache.cols.push({bkey,lap,seg,pos,dA,dB,col,ah,be});});
   const vis=flowCache.cols.filter(c=>bx[c.bkey]<=T),curLap=(activeLeg(selCar,T)||[])[0]||null;
   if(vis.length===flowLastN&&curLap===flowLastLap&&svg.childNodes.length)return;flowLastN=vis.length;flowLastLap=curLap;
   if(!vis.length){ph('track-position flow — building as laps complete…');return;}
-  const cap=14,hLap=20,hSec=18,top=cap+hLap+hSec+4,rowH=(CH-top-6)/nC,colW=(1000-8-42)/Math.max(1,(maxN-1)*5),xL=42,GAP=3,colX=k=>xL+(k-6)*colW;
-  let s='<text x="'+xL+'" y="10" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW · #'+selCar+' (red) · rivals (blue) · sector purple=class best / green=PB / yellow=slower · gap above=car ahead, below=car behind</text>';
-  for(let pp=1;pp<=nC;pp++){const y=top+(pp-1)*rowH;s+='<text x="'+(xL-6)+'" y="'+(y+rowH/2+5).toFixed(1)+'" text-anchor="end" font-size="'+Math.min(15,rowH*0.5).toFixed(0)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">P'+pp+'</text>';}
+  const cap=15,hLap=20,hSec=18,top=cap+hLap+hSec+4,xL=54,colW=(1000-8-xL)/Math.max(1,(maxN-1)*5),colX=k=>xL+(k-6)*colW,GAP=3;
+  const bandH=CH-top-4,hs=bandH/6,h1=bandH*3/6,y0=top,y1=top+hs,y2=top+hs+h1,y3=top+2*hs+h1;
+  const lab=(y,t,c,fs,w)=>'<text x="'+(xL-6)+'" y="'+y.toFixed(1)+'" text-anchor="end" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'fill="'+c+'" font-family="IBM Plex Mono,monospace">'+t+'</text>';
+  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW · #'+selCar+' (red) · gap above pill = Δ car ahead, below = Δ behind · sector purple=class best/green=PB/yellow=slower</text>';
+  s+=lab(y0+hs*0.62,'ahead','#9aa1a9',12)+lab(y1+h1*0.55,'#'+selCar,'#e0301e',13,1)+lab(y2+hs*0.62,'behind','#9aa1a9',12)+lab(y3+hs*0.62,'+2','#9aa1a9',12);
   if(curLap){const x0=colX((curLap-1)*5+1),x1=colX(curLap*5)+colW;s+='<rect x="'+x0.toFixed(1)+'" y="'+cap+'" width="'+(x1-x0).toFixed(1)+'" height="'+(CH-cap)+'" fill="#eef4ff"/>';}
-  vis.forEach(c=>{const x=colX(c.bkey);
-    s+='<rect x="'+(x+0.4).toFixed(1)+'" y="'+(cap+hLap)+'" width="'+(colW-0.8).toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
+  vis.forEach(c=>{const x=colX(c.bkey),cw=colW-0.8,xx=x+0.4;
+    s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
     if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
-    [c.pos-1,c.pos+1].forEach(np=>{if(np>=1&&np<=nC){const y=top+(np-1)*rowH;s+='<rect x="'+(x+0.4).toFixed(1)+'" y="'+(y+1).toFixed(1)+'" width="'+(colW-0.8).toFixed(1)+'" height="'+(rowH-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.3"/>';}});
-    const y=top+(c.pos-1)*rowH,mg=rowH*0.42,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y+gA,ih=Math.max(rowH*0.14,rowH-gA-gB);
-    s+='<rect x="'+(x+colW*0.12).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.76).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(3,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';});
-  svg.innerHTML=s;}
-let gridLastKey='';
-function renderGrid(T){const svg=document.getElementById('gridsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){ph('select a car for the position board');return;}
-  const bx=BX[selCar]||{},vis=(flowCache.car===selCar?flowCache.cols:[]).filter(c=>bx[c.bkey]<=T);
-  if(!vis.length){ph('position board — building as sectors complete…');return;}
-  const WINDOW=10,win=vis.slice(-WINDOW),curLap=(activeLeg(selCar,T)||[])[0]||null,key=win.length+':'+win[win.length-1].bkey+':'+curLap;
-  if(key===gridLastKey&&svg.childNodes.length)return;gridLastKey=key;
-  const cap=15,hLap=24,hSec=24,top=cap+hLap+hSec,rowH=(CH-top-4)/nC,xL=6,colW=(1000-xL-4)/win.length,GAP=3,NAV='#2f39a8';
-  const showLbl=colW>34,fp=(x,y)=>x.toFixed(1)+' '+y.toFixed(1);
-  const cell=(x,y,w,h,fill,stroke,sw)=>'<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+fill+'"'+(stroke?(' stroke="'+stroke+'" stroke-width="'+(sw||1)+'"'):'')+'/>';
-  const txt=(x,y,t,c,fs,w)=>'<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'fill="'+c+'" font-family="IBM Plex Mono,monospace">'+t+'</text>';
-  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">POSITION BOARD · #'+selCar+' (P'+((win[win.length-1]||{}).pos||'?')+') · pill gap above = Δ ahead, gap below = Δ behind · last '+win.length+' sectors</text>';
-  win.forEach((c,ci)=>{const x=xL+ci*colW,pos=c.pos;
-    s+=cell(x,cap,colW,hLap,'#fff',NAV,1)+(showLbl?txt(x+colW/2,cap+hLap*0.66,'L'+c.lap,'#16202b',14):'');
-    s+=cell(x,cap+hLap,colW,hSec,c.col,NAV,1)+(showLbl?txt(x+colW/2,cap+hLap+hSec*0.66,'S'+c.seg,'#333',14,1):'');
-    for(let pp=1;pp<=nC;pp++){const y=top+(pp-1)*rowH;
-      if(pp===pos){s+=cell(x,y,colW,rowH,'#fff',NAV,1);
-        const mg=rowH*0.4,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y+gA,ih=Math.max(rowH*0.22,rowH-gA-gB);
-        s+='<rect x="'+(x+colW*0.08).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.84).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(rowH*0.42,11).toFixed(1)+'" fill="#8a8f96" stroke="'+NAV+'" stroke-width="1.5"/>';
-        if(showLbl)s+=txt(x+colW/2,iy+ih*0.62,'P'+pp,'#fff',Math.min(14,ih*0.55).toFixed(0),1);
-      }else{const nb=(pp===pos-1||pp===pos+1),fill=nb?NAV:(pp>pos?'#8f959c':'#fff'),tc=nb||pp>pos?'#fff':'#8a929b';
-        s+=cell(x,y,colW,rowH,fill,NAV,0.75)+(showLbl?txt(x+colW/2,y+rowH*0.62,'P'+pp,tc,Math.min(13,rowH*0.5).toFixed(0)):'');}
-    }});
+    if(c.pos>1)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y0+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.3"/>';
+    if(c.be)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y2+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.3"/>';
+    if(c.pos+2<=nC)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y3+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#8f959c" opacity="0.45"/>';
+    const mg=h1*0.44,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y1+gA,ih=Math.max(h1*0.12,h1-gA-gB);
+    s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';});
   svg.innerHTML=s;}
 function agentAsk(){const el=document.getElementById('agenta');if(!el)return;el.innerHTML=askAgent(document.getElementById('agentq').value);el.classList.add('show');}
 function askAgent(q){
@@ -584,7 +569,14 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   if(oncount)oncount.textContent=on+' / '+DB.cars.length+' on track';
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
-  renderChart(T);renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);renderLapTrace(T);renderFuel(T);renderSectors(T);renderFlow(T);renderGrid(T);updateThumbs();
+  renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);
+  const _tk=Date.now()-_thT>=300;
+  if(reelIdx===0||_tk)renderChart(T);
+  if(reelIdx===1||_tk)renderLapTrace(T);
+  if(reelIdx===2||_tk)renderFuel(T);
+  if(reelIdx===3||_tk)renderSectors(T);
+  if(reelIdx===4||_tk)renderFlow(T);
+  if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const ld=slg?Math.max(0,slg[0]-1):0;
@@ -654,6 +646,14 @@ document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.data
 document.getElementById('agentgo').onclick=agentAsk;
 document.getElementById('agentq').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agentAsk();}});
 document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementById('agentq').value=b.textContent;agentAsk();});
+(function initFocus(){const layer=document.createElement('div');layer.id='focusLayer';const host=document.createElement('div');host.id='focusHost';layer.appendChild(host);document.body.appendChild(layer);
+  let cur=null,ph=null;
+  const resync=()=>{try{if(window.__syncWx)window.__syncWx();}catch(e){}try{if(typeof syncReel==='function')syncReel();}catch(e){}try{if(typeof render==='function')render();}catch(e){}};
+  function close(){if(!cur)return;ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed');layer.classList.remove('on');cur=null;ph=null;resync();try{fitPage();}catch(e){}}
+  function open(card){if(cur)close();cur=card;ph=document.createComment('fph');card.parentNode.replaceChild(ph,card);card.classList.add('zoomed');host.appendChild(card);layer.classList.add('on');setTimeout(resync,40);}
+  layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+  document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();open(card);});card.appendChild(b);});})();
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart'),full=document.getElementById('ffull'),tg=document.getElementById('ftoggle');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
   const setTgl=()=>{tg.textContent=FUEL.start>0?'RESET FUEL':'ZERO LITER';};setTgl();
