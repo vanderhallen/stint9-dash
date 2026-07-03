@@ -65,7 +65,7 @@
     var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2', keyR='test_ruler_v2_'+k;
     var o1, o2, rulerOffset;
     if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); rulerOffset=load(keyR,RULER_DEFAULT_PX); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset;}
-    else{o1=sharedO1; o2=sharedO2; rulerOffset=sharedRuler; save(key1,o1); save(key2,o2); save(keyR,rulerOffset);}
+    else{o1=load(key1,sharedO1); o2=load(key2,sharedO2); rulerOffset=load(keyR,sharedRuler);}
     function ap(e,o){e.style.transform='translate(-50%,-50%) translateY('+o+'px) rotate(-90deg)';}
     function redrawMarks(){
       var old=rect.querySelectorAll('.mark');
