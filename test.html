@@ -18,6 +18,7 @@
   .set{position:absolute;display:flex;flex-direction:row;gap:6px;z-index:5}
   .setA{left:50%;transform:translateX(-50%);bottom:100%;margin-bottom:8px}
   .setB{left:50%;transform:translateX(-50%);top:100%;margin-top:8px}
+  .setR{left:100%;top:50%;transform:translateY(-50%);margin-left:8px;flex-direction:column}
   .set button{width:32px;height:32px;font-size:13px;border:1px solid #cfd4da;border-radius:8px;background:#f1f3f5;cursor:pointer;padding:0}
   .set button:hover{background:#e7eaee}
 </style>
@@ -30,32 +31,33 @@
   function carImg(){var i=el('img');i.src='topview.png';i.alt='car';return i;}
   function load(key,def){try{var v=localStorage.getItem(key);return v===null?def:parseFloat(v);}catch(e){return def;}}
   function save(key,val){try{localStorage.setItem(key,val);}catch(e){}}
-  var sharedO1=null, sharedO2=null;
+  var sharedO1=null, sharedO2=null, sharedRuler=null;
   // fixed scale: the full 500px rectangle always spans exactly 3.4s, regardless of car positions
   var RECT_H=500, FULL_SEC=3.4, PXPERSEC=RECT_H/FULL_SEC, MINOR_SEC=0.1, MAJOR_EVERY=10, PITCH=MINOR_SEC*PXPERSEC;
-  var RULER_OFFSET_SEC=-0.4, RULER_OFFSET_PX=RULER_OFFSET_SEC*PXPERSEC;
+  var RULER_OFFSET_SEC=-0.4, RULER_DEFAULT_PX=RULER_OFFSET_SEC*PXPERSEC;
   var DEMO_GAP_SEC=3.0, DEMO_HALF_PX=(DEMO_GAP_SEC/2)*PXPERSEC;
   function buildSetup(k){
     var wrap=el('div','wrap'), rect=el('div','rect');
     var c1=carImg(), c2=carImg();
     rect.appendChild(c1); rect.appendChild(c2);
-    var setA=el('div','set setA'), setB=el('div','set setB');
-    var up1=btn('&#9650;'),dn1=btn('&#9660;'),up2=btn('&#9650;'),dn2=btn('&#9660;');
+    var setA=el('div','set setA'), setB=el('div','set setB'), setR=el('div','set setR');
+    var up1=btn('&#9650;'),dn1=btn('&#9660;'),up2=btn('&#9650;'),dn2=btn('&#9660;'),upR=btn('&#9650;'),dnR=btn('&#9660;');
     setA.appendChild(up1); setA.appendChild(dn1);
     setB.appendChild(up2); setB.appendChild(dn2);
-    wrap.appendChild(rect); wrap.appendChild(setA); wrap.appendChild(setB);
-    var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2';
-    var o1, o2;
-    if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); sharedO1=o1; sharedO2=o2;}
-    else{o1=sharedO1; o2=sharedO2; save(key1,o1); save(key2,o2);}
+    setR.appendChild(upR); setR.appendChild(dnR);
+    wrap.appendChild(rect); wrap.appendChild(setA); wrap.appendChild(setB); wrap.appendChild(setR);
+    var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2', keyR='test_ruler_v2_'+k;
+    var o1, o2, rulerOffset;
+    if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); rulerOffset=load(keyR,RULER_DEFAULT_PX); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset;}
+    else{o1=sharedO1; o2=sharedO2; rulerOffset=sharedRuler; save(key1,o1); save(key2,o2); save(keyR,rulerOffset);}
     var pitch=PITCH;
     function ap(e,o){e.style.transform='translate(-50%,-50%) translateY('+o+'px) rotate(-90deg)';}
     function redrawMarks(){
       var old=rect.querySelectorAll('.mark');
       for(var j=old.length-1;j>=0;j--) rect.removeChild(old[j]);
-      var iStart=Math.ceil(-RULER_OFFSET_PX/pitch), iEnd=Math.floor((RECT_H-RULER_OFFSET_PX)/pitch);
+      var iStart=Math.ceil(-rulerOffset/pitch), iEnd=Math.floor((RECT_H-rulerOffset)/pitch);
       for(var i=iStart;i<=iEnd;i++){
-        var major=(i%MAJOR_EVERY===0), y=i*pitch+RULER_OFFSET_PX;
+        var major=(i%MAJOR_EVERY===0), y=i*pitch+rulerOffset;
         ['left','right'].forEach(function(side){var d=el('div','mark '+side+(major?' major':''));d.style.top=y.toFixed(1)+'px';rect.appendChild(d);});
       }
     }
@@ -63,6 +65,7 @@
     function recalc(){moveCars();redrawMarks();}
     up1.onclick=function(){o1-=pitch;moveCars();save(key1,o1);}; dn1.onclick=function(){o1+=pitch;moveCars();save(key1,o1);};
     up2.onclick=function(){o2-=pitch;moveCars();save(key2,o2);}; dn2.onclick=function(){o2+=pitch;moveCars();save(key2,o2);};
+    upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);}; dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);};
     moveCars(); redrawMarks();
     c1.addEventListener('load',recalc); if(c1.complete)recalc();
     return wrap;
