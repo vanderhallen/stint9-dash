@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>stint9 — car silhouette test</title>
+<style>
+  html,body{margin:0;height:100%;background:#f4f5f7;font-family:'IBM Plex Mono',ui-monospace,monospace;color:#16202b}
+  .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;box-sizing:border-box}
+  h1{font-size:15px;font-weight:700;color:#6b7480;letter-spacing:.5px;margin:0}
+  .stage{background:#fff;border:1px solid #e6e8ec;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:26px 40px;display:flex;align-items:center;justify-content:center}
+  /* portrait car (front up) rotated 90deg counter-clockwise -> front points left */
+  .rot{transform:rotate(-90deg)}
+  .car{width:100px;height:auto;display:block}
+  .car .body{fill:#fff;stroke:#1c1c1c;stroke-width:3.2;stroke-linejoin:round}
+  .car .glass{fill:#f0f1f3;stroke:#1c1c1c;stroke-width:2}
+  .car .roof{fill:#fafbfc;stroke:#c9ced4;stroke-width:1.5}
+  .car .line{fill:none;stroke:#c9ced4;stroke-width:1.5}
+  .car .mirror{fill:#fff;stroke:#1c1c1c;stroke-width:2.4;stroke-linejoin:round}
+  .cap{font-size:12px;color:#9aa1a9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CAR SILHOUETTE · rotated 90° counter-clockwise</h1>
+  <div class="stage">
+    <div class="rot">
+      <svg class="car" viewBox="0 0 200 470" aria-label="top view car">
+        <!-- body -->
+        <path class="body" d="M100 8
+          C138 8 162 30 170 78
+          C176 112 182 150 183 196
+          L183 322
+          C183 372 176 414 162 440
+          C150 460 126 466 100 466
+          C74 466 50 460 38 440
+          C24 414 17 372 17 322
+          L17 196
+          C18 150 24 112 30 78
+          C38 30 62 8 100 8 Z"/>
+        <!-- side mirrors near the front -->
+        <path class="mirror" d="M22 120 C8 118 2 126 6 134 C10 140 20 140 26 134 Z"/>
+        <path class="mirror" d="M178 120 C192 118 198 126 194 134 C190 140 180 140 174 134 Z"/>
+        <!-- front bonnet crease lines -->
+        <path class="line" d="M62 40 C66 70 66 96 64 120"/>
+        <path class="line" d="M138 40 C134 70 134 96 136 120"/>
+        <!-- windshield -->
+        <path class="glass" d="M56 128 L144 128 L134 176 L66 176 Z"/>
+        <!-- roof / cabin -->
+        <rect class="roof" x="60" y="176" width="80" height="150" rx="14"/>
+        <!-- rear window -->
+        <path class="glass" d="M66 326 L134 326 L144 372 L56 372 Z"/>
+        <!-- rear deck line -->
+        <path class="line" d="M40 404 C64 414 136 414 160 404"/>
+      </svg>
+    </div>
+  </div>
+  <div class="cap">front points left</div>
+</div>
+</body>
+</html>
