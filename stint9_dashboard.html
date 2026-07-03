@@ -76,6 +76,16 @@
   .flogrow.pit{background:#eef4ff}
   .flogrow input{width:54px;font-family:inherit;font-size:12px;padding:1px 4px;border:1px solid #cfd4da;border-radius:5px}
   .floglbl{color:#6b7480;min-width:104px}
+  .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .agentbar .agicon{font-size:18px;line-height:1}
+  #agentq{flex:1 1 auto;min-width:200px;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:8px 12px;border:1px solid #cfd4da;border-radius:9px;color:#16202b;outline:none}
+  #agentq:focus{border-color:#16202b}
+  #agentq::placeholder{color:#9aa1a9}
+  .agentgo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:8px 18px;border-radius:9px;border:none;background:#16202b;color:#fff;cursor:pointer}
+  .agentgo:hover{background:#2a3646}
+  .agenta{flex:1 1 100%;font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#16202b;line-height:1.55;padding:3px 2px 0;white-space:pre-wrap;display:none}
+  .agenta.show{display:block}
+  .agenta b{color:#e0301e}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -172,6 +182,12 @@
       </div>
     </div>
     <div class="card" style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
+  </div>
+  <div class="agentbar">
+    <span class="agicon">&#129302;</span>
+    <input id="agentq" type="text" placeholder="ask agent a question" autocomplete="off" spellcheck="false">
+    <button id="agentgo" class="agentgo">ask</button>
+    <div id="agenta" class="agenta"></div>
   </div>
 </div>
 <script>
@@ -376,6 +392,48 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
   s+='<text x="580" y="'+sy+'" font-size="21" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">to find +'+totLoss.toFixed(1)+'s</text>';
   s+='<text x="60" y="'+(sy+30)+'" font-size="16" fill="#8a929b" font-family="IBM Plex Mono,monospace">focus S'+(worst+1)+' (+'+delta[worst].toFixed(1)+'s)   ·   class ideal lap '+fmt2(cls)+'</text>';
   svg.innerHTML=s;}
+function agentAsk(){const el=document.getElementById('agenta');if(!el)return;el.innerHTML=askAgent(document.getElementById('agentq').value);el.classList.add('show');}
+function askAgent(q){
+  q=(q||'').toLowerCase().trim();
+  if(!q)return 'Ask me about the race — e.g. "what position are we?", "likely outcome?", "who pitted early?", "best class lap?"';
+  const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;
+  const nm=st=>'#'+st+(DB.name[st]?(' '+DB.name[st]):'');
+  const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
+  const fmtT=v=>{if(v==null||!isFinite(v))return '—';const m=Math.floor(v/60);return m+':'+(v-60*m).toFixed(1).padStart(4,'0');};
+  const has=(...w)=>w.some(x=>q.includes(x));
+  const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=0;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return Math.floor(mx/5)+1;};
+  const paceOf=st=>{const ts=[];for(let L=maxN;L>=2&&ts.length<3;L--){const t=lapT(st,L);if(t!=null)ts.push(t);}return ts.length?ts.reduce((a,b)=>a+b,0)/ts.length:null;};
+  let cB=Infinity,cBc=null,cBl=null,mB=Infinity,mBl=null;
+  DB.cars.forEach(st=>{for(let L=2;L<=maxN;L++){const t=lapT(st,L);if(t==null)continue;if(t<cB){cB=t;cBc=st;cBl=L;}if(st===selCar&&t<mB){mB=t;mBl=L;}}});
+  if(has('best','fastest','quickest')&&has('class','overall','anyone','field','session')&&has('lap','time'))
+    return 'Best class lap so far: <b>'+fmtT(cB)+'</b> by '+nm(cBc)+' (lap '+cBl+').';
+  if(has('pit')){const pit=DB.cars.map(st=>{const cur=curLapOf(st),done=(DB.pits[st]||[]).filter(L=>cur>L);return {st,first:done.length?done[0]:null,n:done.length};}).filter(x=>x.first!=null).sort((a,b)=>a.first-b.first);
+    if(!pit.length)return 'No pit stops in the class yet at this point in the race.';
+    return nm(pit[0].st)+' pitted earliest (lap '+pit[0].first+'). Order of first stops:\n• '+pit.slice(0,5).map(x=>nm(x.st)+' (lap '+x.first+(x.n>1?', '+x.n+' stops':'')+')').join('\n• ');}
+  if(!selCar&&has('we','our','us','position','outcome','finish','gap','fuel','lap'))return 'Select a car first (top dropdown), then ask about our position, outcome, gaps or fuel.';
+  if(has('position','where are we','what place','which pos','ranked','standing')&&!has('outcome','predict','finish','win','podium','expect')){
+    if(!p)return nm(selCar)+' is not on track right now (in the pits or not started).';
+    const ah=byPos[p-1],be=byPos[p+1];let a=nm(selCar)+' is <b>P'+p+'</b> of '+nC+' in class.';
+    if(ah){const g=commonGap(selCar,ah,T);a+='\nAhead: '+nm(ah)+(g!=null?(' (+'+g.toFixed(1)+'s)'):'');}
+    if(be){const g=commonGap(be,selCar,T);a+='\nBehind: '+nm(be)+(g!=null?(' ('+g.toFixed(1)+'s back)'):'');}return a;}
+  if(has('outcome','finish','predict','end up','result','win','podium','expect')){
+    if(!p)return nm(selCar)+' is off track (pit); hard to project until it rejoins.';
+    const rem=Math.max(0,maxN-curLapOf(selCar)),myPace=paceOf(selCar);let proj=p;const notes=[];
+    const ah=byPos[p-1];if(ah&&myPace){const ap=paceOf(ah),g=commonGap(selCar,ah,T);if(ap!=null&&g!=null){const d=ap-myPace;if(d>0.15&&rem>0&&g/d<=rem){proj--;notes.push('catching '+nm(ah)+' (+'+g.toFixed(0)+'s, ~'+d.toFixed(1)+'s/lap quicker)');}}}
+    const be=byPos[p+1];if(be&&myPace){const bp=paceOf(be),g=commonGap(be,selCar,T);if(bp!=null&&g!=null){const d=myPace-bp;if(d>0.15&&rem>0&&g/d<=rem){proj++;notes.push('under threat from '+nm(be)+' (+'+g.toFixed(0)+'s, ~'+d.toFixed(1)+'s/lap quicker)');}}}
+    proj=Math.max(1,Math.min(nC,proj));
+    return nm(selCar)+' is P'+p+' with ~'+rem+' laps to go. Likely finish: <b>P'+proj+'</b>.'+(notes.length?'\n'+notes.join('\n'):'\nTrack position looks stable at current pace.');}
+  if(has('gap','leader','p1','front','first place')){const ldr=byPos[1];if(!ldr)return 'No running order available yet.';
+    if(ldr===selCar)return nm(selCar)+' is leading the class (P1).';
+    const g=commonGap(selCar,ldr,T);return 'Leader is '+nm(ldr)+'. Our gap: '+(g!=null?('<b>+'+g.toFixed(1)+'s</b>'):'—')+' (we are P'+(p||'?')+').';}
+  if(has('best','fastest','quickest')){if(mB<Infinity)return 'Our best lap ('+nm(selCar)+'): <b>'+fmtT(mB)+'</b> on lap '+mBl+'. Class best: '+fmtT(cB)+' ('+nm(cBc)+').';
+    return 'Class best lap: '+fmtT(cB)+' by '+nm(cBc)+'.';}
+  if(has('fuel','stint','laps left','when pit')){const g=id=>{const e=document.getElementById(id);return e?e.textContent:'—';};
+    return 'Fuel — in tank: '+g('ftank')+', predicted: '+g('fpred')+', ~'+g('flaps')+' left, max '+g('fmax')+'. (see FUEL reel page)';}
+  if(has('how many lap','laps done','laps completed','what lap','which lap'))
+    return nm(selCar)+' is on lap '+curLapOf(selCar)+' of ~'+maxN+'.';
+  return 'I can answer: our <b>position</b>, likely <b>outcome</b>, <b>gap</b> to leader, <b>who pitted early</b>, <b>best class lap</b>, our best lap, <b>fuel</b> &amp; laps left. Try: "what is the likely outcome for our car?"';
+}
 function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=document.getElementById('gapchart');const p=lp[selCar];
   if(!selCar||!p){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const ref=byPos[1];if(!ref){box.style.display='none';return;}
@@ -486,6 +544,8 @@ sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
+document.getElementById('agentgo').onclick=agentAsk;
+document.getElementById('agentq').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agentAsk();}});
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart'),full=document.getElementById('ffull'),tg=document.getElementById('ftoggle');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
   const setTgl=()=>{tg.textContent=FUEL.start>0?'RESET FUEL':'ZERO LITER';};setTgl();
