@@ -50,15 +50,32 @@
   .oncount{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
   label.chk{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer}
   .chartbox{padding:2px 8px}.chartbox svg{display:block;width:100%;height:auto}
-  .reelbtn{background:#1f6fff;color:#fff;border:none;border-radius:9px;width:32px;height:46px;font-size:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
-  .reelbtn:hover:not(:disabled){background:#1559d8}
+  .reelbtn{background:#8a929b;color:#fff;border:none;border-radius:9px;width:32px;height:46px;font-size:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+  .reelbtn:hover:not(:disabled){background:#6b7480}
   .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
   #reelview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
   #reelview .reelpanel svg{display:block;width:100%;height:100%}
-  .reelthumb{position:relative;flex:1 1 0;min-height:0;border:2px solid #cbb0f5;background:#faf7ff;border-radius:7px;overflow:hidden;cursor:pointer}
-  .reelthumb.active{border-color:#8b46ff;box-shadow:0 0 0 2px rgba(139,70,255,.3)}
+  .reelthumb{position:relative;flex:1 1 0;min-height:0;border:2px solid #cdd2d8;background:#f7f8fa;border-radius:7px;overflow:hidden;cursor:pointer}
+  .reelthumb.active{border-color:#6b7480;box-shadow:0 0 0 2px rgba(107,116,128,.3)}
   #reelfilm svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-  .thumbcap{position:absolute;top:2px;left:3px;z-index:2;font:700 8px 'IBM Plex Mono',monospace;color:#7a2fe0;background:rgba(255,255,255,.75);padding:0 3px;border-radius:3px;letter-spacing:.4px}
+  .thumbcap{position:absolute;top:2px;left:3px;z-index:2;font:700 8px 'IBM Plex Mono',monospace;color:#6b7480;background:rgba(255,255,255,.75);padding:0 3px;border-radius:3px;letter-spacing:.4px}
+  .fuelpanel{width:100%;height:100%;overflow-y:auto;padding:6px 12px;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;color:#16202b}
+  .fuelhd{font-weight:700;font-size:15px;color:#6b7480;margin-bottom:6px}
+  .fuelset{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;align-items:center;margin-bottom:7px}
+  .fuelset label{display:flex;align-items:center;gap:4px;color:#6b7480}
+  .fuelset input{width:52px;font-family:inherit;font-size:12px;padding:2px 4px;border:1px solid #cfd4da;border-radius:5px;color:#16202b}
+  .fbtn,.ftgl{font-family:inherit;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid #cfd4da;cursor:pointer}
+  .fbtn{background:#16202b;color:#fff;border-color:#16202b}
+  .ftgl{background:#eef0f3;color:#6b7480}
+  .fuelreadout{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;margin:6px 0;padding:7px 10px;background:#f7f8fa;border:1px solid #eceef1;border-radius:8px}
+  .fro{display:flex;justify-content:space-between;font-size:13px;gap:8px}
+  .frl{color:#8a929b}.frv{font-weight:700}
+  .fnotify{background:#fff3e0;border:1px solid #e8871e;color:#b5651a;font-weight:700;font-size:13px;padding:4px 8px;border-radius:7px;margin:5px 0;text-align:center}
+  .fuellog{font-size:12px;padding-bottom:6px}
+  .flogrow{display:flex;align-items:center;gap:7px;padding:3px 2px;border-top:1px solid #eef0f3}
+  .flogrow.pit{background:#eef4ff}
+  .flogrow input{width:54px;font-family:inherit;font-size:12px;padding:1px 4px;border:1px solid #cfd4da;border-radius:5px}
+  .floglbl{color:#6b7480;min-width:104px}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -86,7 +103,7 @@
       <div class="clock"><span id="clock"></span></div>
       <button class="btn" id="play">&#9654; Play</button>
       <input type="range" id="scrub" step="0.1">
-      <select id="speed"><option value="1">1&times;</option><option value="10" selected>10&times;</option><option value="30">30&times;</option><option value="60">60&times;</option></select>
+      <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
       <input type="checkbox" id="lbls" checked style="display:none">
     </div>
   </div>
@@ -125,11 +142,31 @@
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="ltgraph"></svg></div>
+          <div class="reelpanel"><div id="fuelpanel" class="fuelpanel">
+            <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
+            <div class="fuelset">
+              <label>capacity <input id="fcap" type="number" step="1"> L</label>
+              <label>consumption <input id="fcons" type="number" step="0.1"> L/lap</label>
+              <label>formation <input id="fform" type="number" step="0.1"> laps</label>
+              <label>before race <input id="fstart" type="number" step="0.5"> L</label>
+              <button id="ffull" class="fbtn">FULL</button>
+              <button id="ftoggle" class="ftgl">zero liter</button>
+            </div>
+            <div class="fuelreadout">
+              <div class="fro"><span class="frl">in tank now</span><span id="ftank" class="frv">—</span></div>
+              <div class="fro"><span class="frl">predicted fuel</span><span id="fpred" class="frv">—</span></div>
+              <div class="fro"><span class="frl">laps remaining</span><span id="flaps" class="frv">— laps</span></div>
+              <div class="fro"><span class="frl">max lap</span><span id="fmax" class="frv">L— F/S</span></div>
+            </div>
+            <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
+            <div id="fuellog" class="fuellog"></div>
+          </div></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
         <div class="reelthumb active" data-i="0" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="1" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="2" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
       </div>
     </div>
     <div class="card" style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
@@ -140,7 +177,12 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=0;const REELN=2;
+let reelIdx=0;const REELN=3;
+let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
+try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
+if(!FUEL.cars)FUEL.cars={};
+if(FUEL.cons===1.5)FUEL.cons=10.5;
+function saveFuel(){try{localStorage.setItem('stint9_fuel',JSON.stringify(FUEL));}catch(e){}}
 function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;document.querySelectorAll('.reelthumb').forEach(t=>t.classList.toggle('active',+t.dataset.i===reelIdx));}
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;applyReel(true);if(typeof savePrefs==='function')savePrefs();}
 function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*CH/1000).toFixed(1)+'px';applyReel(false);}
@@ -224,30 +266,86 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for the lap-time trace');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
-  const sel=[],cf=[],dl=[];let mn=Infinity,mx=0,best=Infinity,dmx=0;
-  for(let L=2;L<=maxN;L++){const ts=lapT(selCar,L);let m=Infinity,mc=null;
-    DB.cars.forEach(st=>{const t=lapT(st,L);if(t!=null&&t<m){m=t;mc=st;}});
-    if(ts!=null){sel.push([L,ts]);if(ts<mn)mn=ts;if(ts>mx)mx=ts;if(ts<best)best=ts;}
-    if(m<Infinity){cf.push([L,m,mc]);if(m<mn)mn=m;if(m>mx)mx=m;if(m<best)best=m;}
-    if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
+  const others=[],cf=[],dl=[];let sel=[],mn=Infinity,mx=0,best=Infinity,dmx=0;
+  DB.cars.forEach(st=>{const pts=[];for(let L=2;L<=maxN;L++){const t=lapT(st,L);if(t!=null){pts.push([L,t]);if(t<mn)mn=t;if(t>mx)mx=t;if(t<best)best=t;}}
+    if(pts.length){if(st===selCar)sel=pts;else others.push(pts);}});
+  for(let L=2;L<=maxN;L++){let m=Infinity,mc=null;DB.cars.forEach(st=>{const t=lapT(st,L);if(t!=null&&t<m){m=t;mc=st;}});
+    if(m<Infinity)cf.push([L,m,mc]);
+    const ts=lapT(selCar,L);if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
   if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
   const yT2=44,yB2=CH-26;
   const pad=Math.max(6,(mx-mn)*0.08),lo=mn-pad,hi=mx+pad,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
-  const dhi=Math.max(2,dmx*1.1),YD=d=>yB2-(d/dhi)*(yB2-yT2);
+  const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="17" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+tf(v)+'</text>';}
   for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="17" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
-  s+='<text x="'+(xR+10)+'" y="'+(yT2-14)+'" font-size="16" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">Δ gain</text>';
-  s+='<polygon points="'+px(sel[0][0])+','+yB2+' '+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+' '+px(sel[sel.length-1][0])+','+yB2+'" fill="#2f5fd0" opacity="0.07"/>';
-  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YT(best).toFixed(1)+'" y2="'+YT(best).toFixed(1)+'" stroke="#1e8f3a" stroke-width="1.5" stroke-dasharray="7 6"/><text x="'+(xL+6)+'" y="'+(YT(best)-6).toFixed(1)+'" font-size="15" fill="#1e8f3a" font-family="IBM Plex Mono,monospace">best '+tf(best)+'</text>';
+  for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="16" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+  s+='<text x="'+(xR)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="start" font-size="13" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
+  others.forEach(pts=>{s+='<polyline points="'+pts.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#b6bcc3" stroke-width="1.2" stroke-linejoin="round" opacity="0.5"/>';});
+  s+='<polygon points="'+px(sel[0][0])+','+yB2+' '+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+' '+px(sel[sel.length-1][0])+','+yB2+'" fill="#1e8f3a" opacity="0.06"/>';
+  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YT(best).toFixed(1)+'" y2="'+YT(best).toFixed(1)+'" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="7 6"/><text x="'+(xL-8)+'" y="'+(YT(best)-6).toFixed(1)+'" text-anchor="end" font-size="15" fill="#c0392b" font-family="IBM Plex Mono,monospace">best '+tf(best)+'</text>';
   s+='<polyline points="'+dl.map(p=>px(p[0])+','+YD(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#e8871e" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>';
-  s+='<polyline points="'+cf.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#9aa1a9" stroke-width="2.5" stroke-linejoin="round"/>';
+  {const outsSet=new Set((DB.pits[selCar]||[]).map(pl=>pl+1));let dsum=0,dn=0;dl.forEach(p=>{if(!outsSet.has(p[0])){dsum+=p[1];dn++;}});
+   if(dn){const avgD=dsum/dn,ay=YD(avgD);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+ay.toFixed(1)+'" y2="'+ay.toFixed(1)+'" stroke="#e8871e" stroke-width="2.5"/><text x="'+(xR-6)+'" y="'+(ay-7).toFixed(1)+'" text-anchor="end" font-size="15" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">avg +'+avgD.toFixed(1)+'s</text>';}}
+  s+='<polyline points="'+cf.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round"/>';
   cf.forEach((p,i)=>{if(i===0||p[2]!==cf[i-1][2])s+='<text x="'+px(p[0])+'" y="'+(YT(p[1])-9).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#6b7480" font-family="IBM Plex Mono,monospace">#'+p[2]+'</text>';});
-  s+='<polyline points="'+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#2f5fd0" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
+  s+='<polyline points="'+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#1e8f3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
   const outs=(DB.pits[selCar]||[]).map(pl=>pl+1);sel.forEach(p=>{if(outs.indexOf(p[0])>=0)s+='<circle cx="'+px(p[0])+'" cy="'+YT(p[1]).toFixed(1)+'" r="6" fill="#fff" stroke="#e08a1e" stroke-width="2.5"/>';});
-  s+='<text x="'+xL+'" y="26" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (blue) vs class fastest (grey) · Δ gain (orange)</text>';
+  s+='<text x="'+xL+'" y="26" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
+let fuelLogCar=null,fuelS5Set=new Set(),fuelPitSet=new Set();
+function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!panel)return;
+  const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setR('fuelcar',selCar?('#'+selCar):'#—');
+  const log=document.getElementById('fuellog');
+  if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');const n=document.getElementById('fnotify');if(n)n.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Set();fuelPitSet=new Set();}return;}
+  const cap=FUEL.cap,cons=Math.max(0.01,FUEL.cons),start=FUEL.start;
+  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{}};const cs=FUEL.cars[selCar];
+  if(fuelLogCar!==selCar){log.innerHTML='';fuelLogCar=selCar;fuelS5Set=new Set();fuelPitSet=new Set();}
+  const bx=BX[selCar]||{};
+  // position on track -> fractional laps driven
+  const lg=activeLeg(selCar,T);let lapsDriven=0,inS5=false;
+  if(lg){const f=Math.max(0,Math.min(1,(T-lg[2])/((lg[3]-lg[2])||1)));lapsDriven=(lg[0]-1)+((lg[1]-1)+f)/5;inS5=(lg[1]===5);}
+  else{let mxb=0;for(const k in bx){if(bx[k]<=T&&+k>mxb)mxb=+k;}lapsDriven=mxb/5;}
+  // pit stops that have occurred by T
+  const pitLaps=(DB.pits[selCar]||[]).filter(pl=>lapsDriven>=pl).sort((a,b)=>a-b);
+  // physical fuel model: start - consumption*laps + pit additions
+  const form=FUEL.form||0;
+  let fuel=start,last=0,firstDone=false,fuelAtReset=start;
+  pitLaps.forEach(pl=>{if(!firstDone){fuel-=cons*form;firstDone=true;}fuel-=cons*(pl-last);fuel=Math.min(cap,fuel+((cs.pits[pl]&&parseFloat(cs.pits[pl].added))||0));fuelAtReset=fuel;last=pl;});
+  if(!firstDone)fuel-=cons*form;
+  fuel-=cons*(lapsDriven-last);
+  const tank=fuel;let pred=tank;
+  // adjust with latest driver S5 report in current stint
+  const stintStart=pitLaps.length?pitLaps[pitLaps.length-1]:0;let s5best=null;
+  for(const l in cs.s5){const L=+l,v=parseFloat(cs.s5[l]);if(!isNaN(v)&&L>stintStart){const b=bx[(L-1)*5+4];if(b!=null&&b<=T&&(!s5best||L>s5best.L))s5best={L,v};}}
+  if(s5best)pred=fuelAtReset-s5best.v-cons*(lapsDriven-((s5best.L-1)+4/5));
+  const rem=Math.max(0,pred/cons);
+  setR('ftank',tank.toFixed(1)+' L');setR('fpred',pred.toFixed(1)+' L');
+  setR('flaps',rem.toFixed(1)+' laps');setR('fmax','L'+Math.floor(lapsDriven+rem)+' F/S');
+  const n=document.getElementById('fnotify');if(n)n.style.display=inS5?'':'none';
+  // append new log rows (chronological, kept for documentation)
+  for(let L=1;L<=maxN;L++){
+    const b5=bx[(L-1)*5+4];
+    if(b5!=null&&b5<=T&&!fuelS5Set.has(L)){fuelS5Set.add(L);
+      const row=document.createElement('div');row.className='flogrow';
+      const lb=document.createElement('span');lb.className='floglbl';lb.textContent='L'+L+' fuel S5 used';
+      const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';if(cs.s5[L]!=null)inp.value=cs.s5[L];
+      inp.oninput=()=>{cs.s5[L]=inp.value;saveFuel();render();};
+      const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L used';
+      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);log.appendChild(row);}
+    if((DB.pits[selCar]||[]).indexOf(L)>=0&&lapsDriven>=L&&!fuelPitSet.has(L)){fuelPitSet.add(L);
+      if(!cs.pits[L])cs.pits[L]={added:'',reset:true};
+      const row=document.createElement('div');row.className='flogrow pit';
+      const lb=document.createElement('span');lb.className='floglbl';lb.textContent='⛽ PIT L'+L+' add';
+      const inp=document.createElement('input');inp.type='number';inp.step='0.5';inp.placeholder='L';if(cs.pits[L].added!=='')inp.value=cs.pits[L].added;
+      inp.oninput=()=>{cs.pits[L].added=inp.value;saveFuel();render();};
+      const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
+      const tg=document.createElement('button');tg.className='ftgl';tg.textContent='reset: '+(cs.pits[L].reset?'YES':'NO');
+      tg.onclick=()=>{cs.pits[L].reset=!cs.pits[L].reset;tg.textContent='reset: '+(cs.pits[L].reset?'YES':'NO');saveFuel();render();};
+      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(tg);log.appendChild(row);}
+  }}
 function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=document.getElementById('gapchart');const p=lp[selCar];
   if(!selCar||!p){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const ref=byPos[1];if(!ref){box.style.display='none';return;}
@@ -275,11 +373,11 @@ function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=documen
 function predPass(a,b,T){const G=commonGap(a,b,T),bi=lastCommon(a,b,T);if(G==null||G<=0||bi==null)return null;const lap=Math.floor((bi-1)/5)+1,k=((bi-1)%5)+1,ta=(DB.sectimes[a][lap]||[])[k-1],tb=(DB.sectimes[b][lap]||[])[k-1];if(ta==null||tb==null)return null;const dl=ta-tb;if(dl>=-paceThr)return null;const eta=G*tb/(-dl);return eta<5400?eta:null;}
 function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   // gather visible for declutter
-  const vis=[];
+  const vis=[];let selXY=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);
     if(!lg){E.g.style.visibility='hidden';return;}
     const f=(T-lg[2])/((lg[3]-lg[2])||1),[x,y]=ptAlong(lg[1],f);const pos=lp[st]||nC;
-    const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);
+    const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel)selXY=[x,y];
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';on++;
     E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',sel?'0.5':'1');
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');
@@ -291,7 +389,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   if(oncount)oncount.textContent=on+' / '+DB.cars.length+' on track';
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
-  renderChart(T);renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);renderLapTrace(T);updateThumbs();
+  renderChart(T);renderMini(T,lp);fillCmp(T,lp);renderGap(T,lp);renderLapTrace(T);renderFuel(T);updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const ld=slg?Math.max(0,slg[0]-1):0;
@@ -306,13 +404,35 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     if(selCar){const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{},pc=DB.pits[selCar]||[],slg=activeLeg(selCar,T),curLap=slg?slg[0]:1e9;
       let lastPit=0;pc.forEach(pl=>{if(pl<curLap&&pl>lastPit)lastPit=pl;});
       let maxL=0;for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(Number(L)-1)*5+5];if(tc==null||tc>T)continue;const nL=Number(L),tt=s[0]+s[1]+s[2]+s[3]+s[4];if(nL>lastPit&&tt<flDrv)flDrv=tt;if(nL>maxL){maxL=nL;prevLap=tt;}}}
-    if(flClass<Infinity)plines.push(['fast lap class','#16202b',32,fmt(flClass)]);
-    if(flCar<Infinity)plines.push(['fast lap car','#16202b',32,fmt(flCar)]);
-    if(flDrv<Infinity)plines.push(['fast lap driver','#16202b',32,fmt(flDrv)]);
-    if(prevLap!=null)plines.push(['prev lap','#16202b',32,fmt(prevLap)]);
+    if(flClass<Infinity)plines.push(['fast lap class','#16202b',32,fmt(flClass),flClass]);
+    if(flCar<Infinity)plines.push(['fast lap car','#16202b',32,fmt(flCar),flCar]);
+    if(flDrv<Infinity)plines.push(['fast lap driver','#16202b',32,fmt(flDrv),flDrv]);
+    if(prevLap!=null)plines.push(['prev lap','#16202b',32,fmt(prevLap),prevLap]);
     if(etaTime)plines.push([etaLbl,'#16202b',32,etaTime]);
-    while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);let pyy=1356-(plines.length-1)*42;
-    plines.forEach(l=>{const fs=(l[2]||36),tm=l[3];const mk=(x,anc,txt)=>{const t=document.createElementNS(SVGNS,'text');t.setAttribute('x',x);t.setAttribute('y',pyy);t.setAttribute('text-anchor',anc);t.setAttribute('font-family','IBM Plex Mono,monospace');t.setAttribute('font-weight','700');t.setAttribute('font-size',fs);t.setAttribute('fill',l[1]);t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','5');t.setAttribute('paint-order','stroke');t.textContent=txt;predsvg.appendChild(t);};if(tm!==undefined){mk('1092','end',tm);mk('1108','start',l[0]);}else mk('1392','end',l[0]);pyy+=42;});
+    while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);
+    const mkT=(x,y,anc,txt,col,fsz,wt)=>{const t=document.createElementNS(SVGNS,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('text-anchor',anc);t.setAttribute('font-family','IBM Plex Mono,monospace');t.setAttribute('font-weight','700');t.setAttribute('font-size',fsz||30);t.setAttribute('fill',col);if(wt!=='hdr'){t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','4');t.setAttribute('paint-order','stroke');}t.textContent=txt;predsvg.appendChild(t);};
+    const mkR=(x,y,w,h,fill,stroke,sw,rx)=>{const r=document.createElementNS(SVGNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);if(fill)r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width',sw||1);}if(rx)r.setAttribute('rx',rx);predsvg.appendChild(r);};
+    const mkL=(x1,y1,x2,y2,st,sw)=>{const l=document.createElementNS(SVGNS,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',st);l.setAttribute('stroke-width',sw||1);predsvg.appendChild(l);};
+    const preds=plines.filter(l=>l[3]===undefined),rows=plines.filter(l=>l[3]!==undefined);
+    const BX0=858,BX1=1406,TR=986,D1=1000,LX=1014,D2=1262,DTRI=1276,DNX=1298,rowH=44,fs=26,hFs=14,nR=rows.length,lastY=1350;
+    const firstY=lastY-(nR-1)*rowH,hdrY=firstY-40,hLine=hdrY+13,boxTop=hdrY-hFs-9,boxBot=lastY+13,REF=flCar;
+    if(nR){
+      mkR(BX0,boxTop,BX1-BX0,boxBot-boxTop,'rgba(255,255,255,0.94)','#c2c8d0',1.6,11);
+      mkR(BX0,boxTop,BX1-BX0,hLine-boxTop,'rgba(241,243,246,0.96)',null,0,0);
+      mkL(BX0,hLine,BX1,hLine,'#c2c8d0',1.4);mkL(D1,hLine,D1,boxBot,'#e2e5ea',1);mkL(D2,hLine,D2,boxBot,'#e2e5ea',1);
+      mkT(TR,hdrY,'end','TIME','#8a929b',hFs,'hdr');mkT(LX,hdrY,'start','REFERENCE LAP','#8a929b',hFs,'hdr');mkT(DTRI,hdrY,'start','Δ vs BEST','#8a929b',hFs,'hdr');
+      rows.forEach((l,i)=>{const y=firstY+i*rowH;
+        if(i>0)mkL(BX0,y-rowH*0.5-2,BX1,y-rowH*0.5-2,'#edeff2',1);
+        mkT(TR,y,'end',l[3],'#16202b',fs);mkT(LX,y,'start',l[0],'#16202b',fs);
+        const raw=l[4];
+        if(l[0]==='fast lap car'||raw==null||!(REF<Infinity)){mkT(DNX,y,'start','—','#9aa1a9',fs);}
+        else{const d=raw-REF;if(Math.abs(d)<0.05){mkT(DNX,y,'start','0.0s','#1e8f3a',fs);}
+          else{const up=d>0,col=up?'#c0392b':'#1e8f3a';const tri=document.createElementNS(SVGNS,'polygon');tri.setAttribute('points',up?(DTRI+','+(y-1)+' '+(DTRI+13)+','+(y-1)+' '+(DTRI+6.5)+','+(y-15)):(DTRI+','+(y-15)+' '+(DTRI+13)+','+(y-15)+' '+(DTRI+6.5)+','+(y-1)));tri.setAttribute('fill',col);tri.setAttribute('stroke','#fff');tri.setAttribute('stroke-width','1');predsvg.appendChild(tri);mkT(DNX,y,'start',(up?'+':'−')+Math.abs(d).toFixed(1)+'s',col,fs);}}
+      });
+    }
+    let yb=(nR?boxTop:lastY+13)-16;
+    for(let k=preds.length-1;k>=0;k--){mkT(BX0+4,yb,'start',preds[k][0],preds[k][1],fs);yb-=rowH;}
+    if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,boxTop-56,'middle',fr,'#e8871e',24);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',24);}
     badge.className='carbadge sel';badge.innerHTML='<div class="row"><span class="num">#'+selCar+'</span>'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
 function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;T+=dt*parseFloat(document.getElementById('speed').value);
@@ -336,6 +456,15 @@ sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
+(function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart'),full=document.getElementById('ffull'),tg=document.getElementById('ftoggle');if(!cap)return;
+  cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
+  const setTgl=()=>{tg.textContent=FUEL.start>0?'RESET FUEL':'ZERO LITER';};setTgl();
+  cap.oninput=()=>{FUEL.cap=Math.max(0,parseFloat(cap.value||'0'));saveFuel();render();};
+  cons.oninput=()=>{FUEL.cons=Math.max(0,parseFloat(cons.value||'0'));saveFuel();render();};
+  frm.oninput=()=>{FUEL.form=Math.max(0,parseFloat(frm.value||'0'));saveFuel();render();};
+  st.oninput=()=>{FUEL.start=Math.max(0,parseFloat(st.value||'0'));setTgl();saveFuel();render();};
+  full.onclick=()=>{FUEL.start=FUEL.cap;st.value=FUEL.start;setTgl();saveFuel();render();};
+  tg.onclick=()=>{FUEL.start=FUEL.start>0?0:FUEL.cap;st.value=FUEL.start;setTgl();saveFuel();render();};})();
 
 /* ---- zoom mini-map + neighbour deltas + overtakes ---- */
 const POS={},BT={};
