@@ -273,12 +273,14 @@ const clock=document.getElementById('clock'),scrub=document.getElementById('scru
 badge.style.left=((DB.cx-80)/1340*100-3)+'%';badge.style.top=((DB.cy-80)/1300*100+1)+'%';
 let T=DB.tmin,playing=false,last=0;
 function hms(x){const h=Math.floor(x/3600),m=Math.floor((x%3600)/60),s=Math.floor(x%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
-function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{};let L=lg?(lg[0]-1):0;
-  if(!lg){const ls=Object.keys(stm).map(Number).filter(l=>(stm[l]||[]).length>=5);L=ls.length?Math.max.apply(null,ls):0;}
-  let last=null,lastSecs=null,fast=null;const cur=stm[L];
-  if(L>=1&&cur&&cur.length>=5){lastSecs=cur;last=cur.reduce((a,b)=>a+b,0);}
-  for(let l=1;l<=L;l++){const s=stm[l];if(s&&s.length>=5){const t=s.reduce((a,b)=>a+b,0);if(fast==null||t<fast)fast=t;}}
-  return {L,last,lastSecs,fast};}
+function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[st]||{};let L=lg?(lg[0]-1):0;
+  const full=s=>s&&s.length>=5&&s[0]!=null&&s[1]!=null&&s[2]!=null&&s[3]!=null&&s[4]!=null;
+  if(!lg){const ls=Object.keys(stm).map(Number).filter(l=>full(stm[l]));L=ls.length?Math.max.apply(null,ls):0;}
+  let last=null,fast=null;const cur=stm[L];
+  if(L>=1&&full(cur))last=cur.reduce((a,b)=>a+b,0);
+  for(let l=1;l<=L;l++){const s=stm[l];if(full(s)){const t=s.reduce((a,b)=>a+b,0);if(fast==null||t<fast)fast=t;}}
+  const liveSecs=[null,null,null,null,null];Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(l=>{const s=stm[l];if(!s)return;for(let k=0;k<5;k++){const tc=bx[(l-1)*5+(k+1)];if(tc!=null&&tc<=T&&s[k]!=null)liveSecs[k]=s[k];}});
+  return {L,last,fast,liveSecs};}
 function cmpCell(v,dv){let s=(v==null?'—':fmt(v));if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';s+=' <span style="color:'+col+';font-weight:700">'+tri+Math.abs(dv).toFixed(1)+'</span>';}return s;}
 function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.getElementById('cmpbody');
   if(!selCar||!lp[selCar]){box.style.display='none';return;}
@@ -292,7 +294,7 @@ function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.g
     let c='<td><b>P'+pos+'</b></td><td'+(selq?' style=\"color:var(--accent);font-weight:700\"':'')+'>#'+st+' '+(DB.name[st]||'')+'</td><td>'+gtxt+'</td>';
     c+='<td>'+cmpCell(stat.fast,ref?dOf(stat.fast,ref.fast):null)+'</td>';
     c+='<td>'+cmpCell(stat.last,ref?dOf(stat.last,ref.last):null)+'</td>';
-    for(let k=0;k<5;k++){const v=stat.lastSecs?stat.lastSecs[k]:null,rv=(ref&&ref.lastSecs)?ref.lastSecs[k]:null;c+='<td>'+cmpCell(v,ref?dOf(v,rv):null)+'</td>';}
+    for(let k=0;k<5;k++){const v=stat.liveSecs?stat.liveSecs[k]:null,rv=(ref&&ref.liveSecs)?ref.liveSecs[k]:null;c+='<td>'+cmpCell(v,ref?dOf(v,rv):null)+'</td>';}
     return '<tr>'+c+'</tr>';});
   tb.innerHTML=rows.join('');box.style.display='';}
 function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
