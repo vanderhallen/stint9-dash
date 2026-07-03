@@ -436,7 +436,7 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
     s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
     if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
     [c.pos-1,c.pos+1].forEach(np=>{if(np>=rowMin&&np<=rowMax){const y=rowY(np);s+='<rect x="'+xx.toFixed(1)+'" y="'+(y+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(rowH-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.28"/>';}});
-    if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y+gA,ih=Math.max(rowH*0.14,rowH-gA-gB);
+    if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.max(0,Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg))),gB=Math.max(0,Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg))),iy=y+gA,ih=Math.max(rowH*0.14,Math.min(rowH,rowH-gA-gB));
       s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
   svg.innerHTML=s;}
 function agentAsk(){const el=document.getElementById('agenta');if(!el)return;el.innerHTML=askAgent(document.getElementById('agentq').value);el.classList.add('show');}
