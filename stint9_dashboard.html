@@ -403,14 +403,56 @@ function askAgent(q){
   const has=(...w)=>w.some(x=>q.includes(x));
   const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=0;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return Math.floor(mx/5)+1;};
   const paceOf=st=>{const ts=[];for(let L=maxN;L>=2&&ts.length<3;L--){const t=lapT(st,L);if(t!=null)ts.push(t);}return ts.length?ts.reduce((a,b)=>a+b,0)/ts.length:null;};
+  const lastLap=st=>{for(let L=maxN;L>=2;L--){const t=lapT(st,L);if(t!=null)return t;}return null;};
+  const lapsOf=st=>{const a=[];for(let L=2;L<=maxN;L++){const t=lapT(st,L);if(t!=null)a.push(t);}return a;};
+  const median=a=>{if(!a.length)return null;const b=a.slice().sort((x,y)=>x-y);return b[Math.floor(b.length/2)];};
+  const consistency=st=>{const a=lapsOf(st);if(a.length<4)return null;const b=a.slice().sort((x,y)=>x-y),cl=b.slice(0,Math.max(3,Math.round(b.length*0.7)));const m=cl.reduce((x,y)=>x+y,0)/cl.length;return Math.sqrt(cl.reduce((s,t)=>s+(t-m)*(t-m),0)/cl.length);};
+  const sectorDelta=()=>{const mb=[Infinity,Infinity,Infinity,Infinity,Infinity],cb=[Infinity,Infinity,Infinity,Infinity,Infinity],cc=[null,null,null,null,null];DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;for(let k=0;k<5;k++){const tc=bx[(+L-1)*5+(k+1)];if(tc==null||tc>T)continue;const v=s[k];if(v<cb[k]){cb[k]=v;cc[k]=st;}if(st===selCar&&v<mb[k])mb[k]=v;}}});return {mb,cb,cc};};
   let cB=Infinity,cBc=null,cBl=null,mB=Infinity,mBl=null;
   DB.cars.forEach(st=>{for(let L=2;L<=maxN;L++){const t=lapT(st,L);if(t==null)continue;if(t<cB){cB=t;cBc=st;cBl=L;}if(st===selCar&&t<mB){mB=t;mBl=L;}}});
   if(has('best','fastest','quickest')&&has('class','overall','anyone','field','session')&&has('lap','time'))
     return 'Best class lap so far: <b>'+fmtT(cB)+'</b> by '+nm(cBc)+' (lap '+cBl+').';
-  if(has('pit')){const pit=DB.cars.map(st=>{const cur=curLapOf(st),done=(DB.pits[st]||[]).filter(L=>cur>L);return {st,first:done.length?done[0]:null,n:done.length};}).filter(x=>x.first!=null).sort((a,b)=>a.first-b.first);
+  if(has('pit')&&!has('we','our','us')){const pit=DB.cars.map(st=>{const cur=curLapOf(st),done=(DB.pits[st]||[]).filter(L=>cur>L);return {st,first:done.length?done[0]:null,n:done.length};}).filter(x=>x.first!=null).sort((a,b)=>a.first-b.first);
     if(!pit.length)return 'No pit stops in the class yet at this point in the race.';
     return nm(pit[0].st)+' pitted earliest (lap '+pit[0].first+'). Order of first stops:\n• '+pit.slice(0,5).map(x=>nm(x.st)+' (lap '+x.first+(x.n>1?', '+x.n+' stops':'')+')').join('\n• ');}
   if(!selCar&&has('we','our','us','position','outcome','finish','gap','fuel','lap'))return 'Select a car first (top dropdown), then ask about our position, outcome, gaps or fuel.';
+  const rev=(q.match(/#?\b(\d{3})\b/)||[])[1];
+  if(rev&&DB.cars.indexOf(rev)>=0&&rev!==selCar&&has('gap','far','behind','ahead','catch','close','distance','where','position','versus','vs','compare')){
+    if(!selCar)return 'Select our car first, then I can compare to '+nm(rev)+'.';
+    const posR=lp[rev];
+    if(has('where','position','which pos'))return nm(rev)+' is P'+(posR||'?')+(p?(' — we are P'+p):'')+'.';
+    if(posR&&p&&posR<p){const g=commonGap(selCar,rev,T);return nm(rev)+' is ahead (P'+posR+'), '+(g!=null?('+'+g.toFixed(1)+'s up the road'):'no common reference yet')+'.';}
+    if(posR&&p){const g=commonGap(rev,selCar,T);return nm(rev)+' is behind (P'+posR+'), '+(g!=null?(g.toFixed(1)+'s back'):'no common reference yet')+'.';}
+    const g=commonGap(selCar,rev,T);return 'Gap to '+nm(rev)+': '+(g!=null?((g>=0?'+':'')+g.toFixed(1)+'s'):'no common reference yet')+'.';}
+  if((has('who')&&has('lead','leading','winning','out front','in front','first place'))||has('top 3','top three','standings','running order','podium')){
+    const t3=[1,2,3].map(pp=>byPos[pp]?('P'+pp+' '+nm(byPos[pp])):null).filter(Boolean).join('\n');
+    return t3?('Class order right now:\n'+t3):'No running order available yet.';}
+  if(has('fastest','quickest','fast')&&has('now','right now','currently','moment','lately','recent','on track','pace')){
+    let bst=Infinity,bc=null;DB.cars.forEach(st=>{const t=lastLap(st);if(t!=null&&t<bst){bst=t;bc=st;}});
+    if(bc==null)return 'No recent lap times yet.';
+    return 'Quickest last lap in class: <b>'+nm(bc)+'</b> at '+fmtT(bst)+'.'+(selCar&&bc!==selCar&&lastLap(selCar)!=null?(' Ours: '+fmtT(lastLap(selCar))+'.'):'');}
+  if(has('consistent','consistency','steady','metronomic')){
+    let bsd=Infinity,bc=null;DB.cars.forEach(st=>{const c=consistency(st);if(c!=null&&c<bsd){bsd=c;bc=st;}});
+    if(bc==null)return 'Not enough laps to judge consistency yet.';
+    let a='Most consistent car: <b>'+nm(bc)+'</b> (±'+bsd.toFixed(2)+'s lap-to-lap).';const cs=selCar?consistency(selCar):null;if(cs!=null)a+=' Ours: ±'+cs.toFixed(2)+'s.';return a;}
+  if((has('average','avg','mean','typical')&&has('lap','pace'))||(has('our','we','us')&&has('pace'))){
+    if(!selCar)return 'Select our car first.';const a=lapsOf(selCar);if(!a.length)return 'No completed laps yet.';
+    const m=a.reduce((x,y)=>x+y,0)/a.length;return 'Our pace ('+nm(selCar)+'): average '+fmtT(m)+', median '+fmtT(median(a))+' over '+a.length+' laps. Best '+fmtT(mB)+'.';}
+  if(has('sector')||(has('where')&&has('los','slow','weak','strong','gain','improve','time','find')&&!has('position','place'))){
+    if(!selCar)return 'Select our car first.';const d=sectorDelta(),dl=d.mb.map((v,k)=>isFinite(v)&&isFinite(d.cb[k])?v-d.cb[k]:0);
+    let w=0,b=0;for(let k=1;k<5;k++){if(dl[k]>dl[w])w=k;if(dl[k]<dl[b])b=k;}
+    const held=[0,1,2,3,4].filter(k=>d.cc[k]===selCar).map(k=>'S'+(k+1));
+    return 'Weakest sector: <b>S'+(w+1)+'</b> (+'+dl[w].toFixed(1)+'s to class best). Strongest: S'+(b+1)+' (+'+dl[b].toFixed(1)+'s).'+(held.length?(' We hold class best in '+held.join(', ')+'.'):'')+'\n(full breakdown on the SECT reel page)';}
+  if(has('stop','strategy')||(has('pit')&&has('we','our','us'))||(has('stint')&&!has('fuel'))){
+    if(!selCar)return 'Select our car first.';const cur=curLapOf(selCar),done=(DB.pits[selCar]||[]).filter(L=>cur>L);
+    if(!done.length)return nm(selCar)+' has not pitted yet (on lap '+cur+').';
+    return nm(selCar)+' has made <b>'+done.length+'</b> stop'+(done.length>1?'s':'')+' (laps '+done.join(', ')+'), now on lap '+cur+'.';}
+  if((has('ever','highest','best')&&has('position','place','p1','lead'))||has('best position')){
+    if(!selCar)return 'Select our car first.';let bp=99;for(let L=2;L<=maxN;L++){const tc=(BX[selCar]||{})[L*5];if(tc==null||tc>T)continue;const pos=livePos(tc)[selCar];if(pos&&pos<bp)bp=pos;}
+    if(bp===99)return 'No completed laps to check yet.';return 'Best position '+nm(selCar)+' has held so far: <b>P'+bp+'</b> (currently P'+(p||'?')+').';}
+  if(has('how long','time left','race left','time remaining','how much longer','race time','elapsed')){
+    const hm=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return (h?h+'h':'')+m+'m';};
+    return 'Race time: ~'+hm(Math.max(0,T-DB.tmin))+' elapsed, ~'+hm(Math.max(0,DB.tmax-T))+' of data left (≈'+hm(DB.tmax-DB.tmin)+' total).';}
   if(has('position','where are we','what place','which pos','ranked','standing')&&!has('outcome','predict','finish','win','podium','expect')){
     if(!p)return nm(selCar)+' is not on track right now (in the pits or not started).';
     const ah=byPos[p-1],be=byPos[p+1];let a=nm(selCar)+' is <b>P'+p+'</b> of '+nC+' in class.';
@@ -432,7 +474,7 @@ function askAgent(q){
     return 'Fuel — in tank: '+g('ftank')+', predicted: '+g('fpred')+', ~'+g('flaps')+' left, max '+g('fmax')+'. (see FUEL reel page)';}
   if(has('how many lap','laps done','laps completed','what lap','which lap'))
     return nm(selCar)+' is on lap '+curLapOf(selCar)+' of ~'+maxN+'.';
-  return 'I can answer: our <b>position</b>, likely <b>outcome</b>, <b>gap</b> to leader, <b>who pitted early</b>, <b>best class lap</b>, our best lap, <b>fuel</b> &amp; laps left. Try: "what is the likely outcome for our car?"';
+  return 'Ask me about: our <b>position</b> / likely <b>outcome</b> · <b>gap</b> to leader or a car (e.g. "gap to #679") · <b>standings</b> / who is leading ·<b>who pitted early</b> · our <b>pit stops</b> · <b>best class lap</b> / our best lap · <b>fastest right now</b> · most <b>consistent</b> car · our <b>average pace</b> · <b>which sector</b> we lose time · <b>best position</b> so far · <b>fuel</b> &amp; laps left · <b>race time</b> left.';
 }
 function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=document.getElementById('gapchart');const p=lp[selCar];
   if(!selCar||!p){box.style.display='none';return;}
