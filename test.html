@@ -32,30 +32,39 @@
   function carImg(){var i=el('img');i.src='topview.png';i.alt='car';return i;}
   function load(key,def){try{var v=localStorage.getItem(key);return v===null?def:parseFloat(v);}catch(e){return def;}}
   function save(key,val){try{localStorage.setItem(key,val);}catch(e){}}
-  var sharedO1=null, sharedO2=null, sharedRuler=null, sharedFullSec=null;
-  // fixed scale: the full 500px rectangle spans FULL_SEC seconds, regardless of car positions.
-  // FULL_SEC itself is adjustable at runtime via the left-hand button set (see setL below).
+  var sharedO1=null, sharedO2=null, sharedRuler=null;
+  // fixed scale: the full 500px rectangle spans fullSec seconds, regardless of car positions.
+  // fullSec is a single shared value controlled only by rect #1's left-hand buttons (setL);
+  // every rect's ruler redraws whenever it changes (see broadcastScaleChange).
   var RECT_H=500, FULL_SEC_DEFAULT=3.4, MINOR_SEC=0.1, MAJOR_EVERY=10, SCALE_STEP_SEC=0.2, MIN_FULL_SEC=1.0;
+  var fullSec=load('test_scale_v2',FULL_SEC_DEFAULT), pxPerSec, pitch;
+  function recomputeScale(){pxPerSec=RECT_H/fullSec; pitch=MINOR_SEC*pxPerSec;}
+  recomputeScale();
   var RULER_OFFSET_SEC=-0.4, RULER_DEFAULT_PX=RULER_OFFSET_SEC*(RECT_H/FULL_SEC_DEFAULT);
   var DEMO_GAP_SEC=3.0, DEMO_HALF_PX=(DEMO_GAP_SEC/2)*(RECT_H/FULL_SEC_DEFAULT);
+  var allRedraws=[];
+  function broadcastScaleChange(){recomputeScale(); allRedraws.forEach(function(fn){fn();}); save('test_scale_v2',fullSec);}
   function buildSetup(k){
     var wrap=el('div','wrap'), rect=el('div','rect');
     var c1=carImg(), c2=carImg();
     rect.appendChild(c1); rect.appendChild(c2);
-    var setA=el('div','set setA'), setB=el('div','set setB'), setR=el('div','set setR'), setL=el('div','set setL');
-    var up1=btn('&#9650;'),dn1=btn('&#9660;'),up2=btn('&#9650;'),dn2=btn('&#9660;'),upR=btn('&#9650;'),dnR=btn('&#9660;'),upS=btn('&#9650;'),dnS=btn('&#9660;');
+    var setA=el('div','set setA'), setB=el('div','set setB'), setR=el('div','set setR');
+    var up1=btn('&#9650;'),dn1=btn('&#9660;'),up2=btn('&#9650;'),dn2=btn('&#9660;'),upR=btn('&#9650;'),dnR=btn('&#9660;');
     setA.appendChild(up1); setA.appendChild(dn1);
     setB.appendChild(up2); setB.appendChild(dn2);
     setR.appendChild(upR); setR.appendChild(dnR);
-    setL.appendChild(upS); setL.appendChild(dnS);
-    wrap.appendChild(rect); wrap.appendChild(setA); wrap.appendChild(setB); wrap.appendChild(setR); wrap.appendChild(setL);
-    var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2', keyR='test_ruler_v2_'+k, keyS='test_scale_v2_'+k;
-    var o1, o2, rulerOffset, fullSec;
-    if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); rulerOffset=load(keyR,RULER_DEFAULT_PX); fullSec=load(keyS,FULL_SEC_DEFAULT); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset; sharedFullSec=fullSec;}
-    else{o1=sharedO1; o2=sharedO2; rulerOffset=sharedRuler; fullSec=sharedFullSec; save(key1,o1); save(key2,o2); save(keyR,rulerOffset); save(keyS,fullSec);}
-    var pxPerSec, pitch;
-    function recomputeScale(){pxPerSec=RECT_H/fullSec; pitch=MINOR_SEC*pxPerSec;}
-    recomputeScale();
+    wrap.appendChild(rect); wrap.appendChild(setA); wrap.appendChild(setB); wrap.appendChild(setR);
+    if(k===0){
+      var setL=el('div','set setL'), upS=btn('&#9650;'), dnS=btn('&#9660;');
+      setL.appendChild(upS); setL.appendChild(dnS);
+      wrap.appendChild(setL);
+      upS.onclick=function(){fullSec+=SCALE_STEP_SEC;broadcastScaleChange();};
+      dnS.onclick=function(){fullSec=Math.max(MIN_FULL_SEC,fullSec-SCALE_STEP_SEC);broadcastScaleChange();};
+    }
+    var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2', keyR='test_ruler_v2_'+k;
+    var o1, o2, rulerOffset;
+    if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); rulerOffset=load(keyR,RULER_DEFAULT_PX); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset;}
+    else{o1=sharedO1; o2=sharedO2; rulerOffset=sharedRuler; save(key1,o1); save(key2,o2); save(keyR,rulerOffset);}
     function ap(e,o){e.style.transform='translate(-50%,-50%) translateY('+o+'px) rotate(-90deg)';}
     function redrawMarks(){
       var old=rect.querySelectorAll('.mark');
@@ -66,13 +75,12 @@
         ['left','right'].forEach(function(side){var d=el('div','mark '+side+(major?' major':''));d.style.top=y.toFixed(1)+'px';rect.appendChild(d);});
       }
     }
+    allRedraws.push(redrawMarks);
     function moveCars(){ap(c1,o1);ap(c2,o2);}
     function recalc(){moveCars();redrawMarks();}
     up1.onclick=function(){o1-=pitch;moveCars();save(key1,o1);}; dn1.onclick=function(){o1+=pitch;moveCars();save(key1,o1);};
     up2.onclick=function(){o2-=pitch;moveCars();save(key2,o2);}; dn2.onclick=function(){o2+=pitch;moveCars();save(key2,o2);};
     upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);}; dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);};
-    upS.onclick=function(){fullSec+=SCALE_STEP_SEC;recomputeScale();redrawMarks();save(keyS,fullSec);};
-    dnS.onclick=function(){fullSec=Math.max(MIN_FULL_SEC,fullSec-SCALE_STEP_SEC);recomputeScale();redrawMarks();save(keyS,fullSec);};
     moveCars(); redrawMarks();
     c1.addEventListener('load',recalc); if(c1.complete)recalc();
     return wrap;
