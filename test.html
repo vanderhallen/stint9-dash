@@ -33,6 +33,7 @@
   var sharedO1=null, sharedO2=null;
   // fixed scale: the full 500px rectangle always spans exactly 3.4s, regardless of car positions
   var RECT_H=500, FULL_SEC=3.4, PXPERSEC=RECT_H/FULL_SEC, MINOR_SEC=0.1, MAJOR_EVERY=10, PITCH=MINOR_SEC*PXPERSEC;
+  var RULER_OFFSET_SEC=0.4, RULER_OFFSET_PX=RULER_OFFSET_SEC*PXPERSEC;
   var DEMO_GAP_SEC=3.0, DEMO_HALF_PX=(DEMO_GAP_SEC/2)*PXPERSEC;
   function buildSetup(k){
     var wrap=el('div','wrap'), rect=el('div','rect');
@@ -52,9 +53,9 @@
     function redrawMarks(){
       var old=rect.querySelectorAll('.mark');
       for(var j=old.length-1;j>=0;j--) rect.removeChild(old[j]);
-      var iStart=0, iEnd=Math.floor(RECT_H/pitch);
+      var iStart=Math.ceil(-RULER_OFFSET_PX/pitch), iEnd=Math.floor((RECT_H-RULER_OFFSET_PX)/pitch);
       for(var i=iStart;i<=iEnd;i++){
-        var major=(i%MAJOR_EVERY===0), y=i*pitch;
+        var major=(i%MAJOR_EVERY===0), y=i*pitch+RULER_OFFSET_PX;
         ['left','right'].forEach(function(side){var d=el('div','mark '+side+(major?' major':''));d.style.top=y.toFixed(1)+'px';rect.appendChild(d);});
       }
     }
