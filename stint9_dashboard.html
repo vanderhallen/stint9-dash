@@ -151,7 +151,7 @@
         <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
-      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="flex:0 0 auto;width:auto;height:auto"></svg></div>
+      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="flex:0 0 auto;width:auto;height:auto;margin-left:auto;margin-right:10px"></svg></div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
@@ -425,20 +425,19 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
   const vis=flowCache.cols.filter(c=>bx[c.bkey]<=T),curLap=(activeLeg(selCar,T)||[])[0]||null;
   if(vis.length===flowLastN&&curLap===flowLastLap&&svg.childNodes.length)return;flowLastN=vis.length;flowLastLap=curLap;
   if(!vis.length){ph('track-position flow — building as laps complete…');return;}
-  const cap=15,hLap=20,hSec=18,top=cap+hLap+hSec+4,xL=54,colW=(1000-8-xL)/Math.max(1,maxN*5-1),colX=k=>xL+(k-1)*colW,GAP=3;
-  const bandH=CH-top-4,hs=bandH/6,h1=bandH*3/6,y0=top,y1=top+hs,y2=top+hs+h1,y3=top+2*hs+h1;
-  const lab=(y,t,c,fs,w)=>'<text x="'+(xL-6)+'" y="'+y.toFixed(1)+'" text-anchor="end" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'fill="'+c+'" font-family="IBM Plex Mono,monospace">'+t+'</text>';
-  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW · #'+selCar+' (red) · gap above pill = Δ car ahead, below = Δ behind · sector purple=class best/green=PB/yellow=slower</text>';
-  s+=lab(y0+hs*0.62,'ahead','#9aa1a9',12)+lab(y1+h1*0.55,'#'+selCar,'#e0301e',13,1)+lab(y2+hs*0.62,'behind','#9aa1a9',12)+lab(y3+hs*0.62,'+2','#9aa1a9',12);
+  const positions=vis.map(c=>c.pos),minP=Math.min.apply(null,positions),maxP=Math.max.apply(null,positions);
+  const rowMin=Math.max(1,minP-1),rowMax=Math.min(nC,maxP+1),nR=rowMax-rowMin+1;
+  const cap=15,hLap=20,hSec=18,top=cap+hLap+hSec+4,xL=46,colW=(1000-8-xL)/Math.max(1,maxN*5-1),colX=k=>xL+(k-1)*colW,GAP=3;
+  const rowH=(CH-top-6)/nR,rowY=pp=>top+(pp-rowMin)*rowH,lblfs=Math.min(15,Math.max(9,rowH*0.42));
+  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower</text>';
+  for(let pp=rowMin;pp<=rowMax;pp++)s+='<text x="'+(xL-6)+'" y="'+(rowY(pp)+rowH/2+lblfs*0.35).toFixed(1)+'" text-anchor="end" font-size="'+lblfs.toFixed(0)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">P'+pp+'</text>';
   if(curLap){const x0=colX((curLap-1)*5+1),x1=colX(curLap*5)+colW;s+='<rect x="'+x0.toFixed(1)+'" y="'+cap+'" width="'+(x1-x0).toFixed(1)+'" height="'+(CH-cap)+'" fill="#eef4ff"/>';}
   vis.forEach(c=>{const x=colX(c.bkey),cw=colW-0.8,xx=x+0.4;
     s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
     if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
-    if(c.pos>1)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y0+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.3"/>';
-    if(c.be)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y2+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.3"/>';
-    if(c.pos+2<=nC)s+='<rect x="'+xx.toFixed(1)+'" y="'+(y3+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(hs-2).toFixed(1)+'" fill="#8f959c" opacity="0.45"/>';
-    const mg=h1*0.44,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y1+gA,ih=Math.max(h1*0.12,h1-gA-gB);
-    s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';});
+    [c.pos-1,c.pos+1].forEach(np=>{if(np>=rowMin&&np<=rowMax){const y=rowY(np);s+='<rect x="'+xx.toFixed(1)+'" y="'+(y+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(rowH-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.28"/>';}});
+    if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg)),gB=Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg)),iy=y+gA,ih=Math.max(rowH*0.14,rowH-gA-gB);
+      s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
   svg.innerHTML=s;}
 function agentAsk(){const el=document.getElementById('agenta');if(!el)return;el.innerHTML=askAgent(document.getElementById('agentq').value);el.classList.add('show');}
 function askAgent(q){
