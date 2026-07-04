@@ -614,7 +614,7 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     stints.forEach(st2=>{
       const x0=colX(st2.startLap),x1=colX(st2.endLap),w=Math.max(0,x1-x0);if(w<0.5)return;
       const col=driverColor(st2.driver);
-      s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.75)+'"/>';
+      s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
       const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
       if(w>label.length*6.2+8)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
     });
@@ -657,11 +657,11 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
   let s='';
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
     s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+(v/60).toFixed(1)+'m</text>';}
   for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · s</text>';
+  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
   series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
     s+='<path data-car="'+st+'" d="'+d+'" fill="none" stroke="'+(DB.carcol[st]||'#6b7480')+'" stroke-width="'+(st===selCar?6:2)+'" stroke-linecap="round" opacity="'+(st===selCar?1:0.85)+'"/>';});
   // legend, one row per car, in the otherwise-empty margin left of the axis
