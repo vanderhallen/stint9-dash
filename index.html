@@ -46,7 +46,6 @@
   .modebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
   .modebtn.active{background:var(--ink);color:#fff}
   .modebtn:not(.active):hover{background:#f1f3f5}
-  #livestatus{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:3px}
   .controls button:disabled,.controls select:disabled,.controls input:disabled{opacity:.4;cursor:not-allowed}
   .clock{font-weight:700;font-size:16px;color:var(--ink);min-width:0;line-height:1}
   .clock small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;font-weight:500}
@@ -150,22 +149,20 @@
       <div class="field"><label for="carsel">Select car</label><select id="carsel"><option value="">— select a car —</option></select></div>
       <div class="field"><label for="delaythr">Delay %</label><input type="number" id="delaythr" value="50" min="0" step="5"></div>
       <div class="field"><label for="pacethr">Pace &#916; s</label><input type="number" id="pacethr" value="0.2" min="0" step="0.05"></div>
-      <div class="field"><label>Mode</label>
-        <div>
-          <div class="modetoggle" id="modetoggle">
-            <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
-            <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
-          </div>
-          <div id="livestatus"></div>
-        </div>
-      </div>
     </div>
     <div class="card controls" id="controls">
-      <div class="clock"><span id="clock"></span></div>
-      <button class="btn" id="play">&#9654; Play</button>
-      <input type="range" id="scrub" step="0.1">
-      <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
-      <input type="checkbox" id="lbls" checked style="display:none">
+      <div id="simControls" style="display:flex;align-items:center;gap:5px">
+        <div class="clock"><span id="clock"></span></div>
+        <button class="btn" id="play">&#9654; Play</button>
+        <input type="range" id="scrub" step="0.1">
+        <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
+        <input type="checkbox" id="lbls" checked style="display:none">
+      </div>
+      <div id="liveMsg" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">live feed not connected</div>
+    </div>
+    <div class="modetoggle" id="modetoggle">
+      <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
+      <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:stretch;margin-top:6px">
@@ -951,13 +948,33 @@ function syncSideHeights(){
   if(h>10){gc.style.height=h+'px';if(fc)fc.style.height=h+'px';}
 }
 syncSideHeights();setTimeout(syncSideHeights,80);
+/* Grows the main track map (and, via syncMapHeights, the zoom view next to
+   it) to eat into any blank space left below the page once everything else
+   is laid out, instead of leaving it empty. Capped at 18% taller than its
+   natural size so the extra width (aspect-locked) doesn't crop too much of
+   the track off the sides of its card (.stage has overflow:hidden). */
+function growMapsToFillSlack(s){
+  const svg=document.getElementById('svg'),w=document.querySelector('.wrap');
+  if(!svg||!w)return;
+  svg.style.width='64%';svg.style.height='auto';
+  const nat=w.scrollHeight;
+  const slackScreen=window.innerHeight-nat*s;
+  if(slackScreen>20){
+    const h0=svg.getBoundingClientRect().height;
+    const slackUnscaled=slackScreen/s;
+    const grow=Math.min(slackUnscaled*0.7,h0*0.18);
+    if(grow>10){svg.style.width='auto';svg.style.height=(h0+grow)+'px';}
+  }
+}
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
-  syncReel();syncMapHeights();if(window.__syncWx)window.__syncWx();
+  syncReel();if(window.__syncWx)window.__syncWx();
   const DW=1722;
   const s=Math.min(1,window.innerWidth/DW);
   __fit=s;
+  growMapsToFillSlack(s);
+  syncMapHeights();
   const tx=Math.max(0,(window.innerWidth-DW*s)/2);
   w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,0) scale('+s+')';
   document.documentElement.style.overflow='auto';document.body.style.overflow='auto';}
@@ -1042,20 +1059,18 @@ buildStartGrid();
    live-timing endpoint into setMode('LIVE') below once auth/endpoint
    details are available. */
 (function initDataMode(){
-  const toggle=document.getElementById('modetoggle'),status=document.getElementById('livestatus');
+  const toggle=document.getElementById('modetoggle'),simControls=document.getElementById('simControls'),liveMsg=document.getElementById('liveMsg');
   if(!toggle)return;
-  const playBtn=document.getElementById('play'),scrubEl=document.getElementById('scrub'),speedEl=document.getElementById('speed');
+  const playBtn=document.getElementById('play');
   let wasPlaying=false;
   function setMode(m){
     toggle.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
     if(m==='LIVE'){
       wasPlaying=playing;
       if(playing){playing=false;playBtn.innerHTML='&#9654; Play';}
-      playBtn.disabled=true;scrubEl.disabled=true;speedEl.disabled=true;
-      status.textContent='live feed not connected';
+      simControls.style.display='none';liveMsg.style.display='flex';liveMsg.style.alignItems='center';
     }else{
-      playBtn.disabled=false;scrubEl.disabled=false;speedEl.disabled=false;
-      status.textContent='';
+      simControls.style.display='flex';liveMsg.style.display='none';
       if(wasPlaying){playing=true;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
     }
   }
