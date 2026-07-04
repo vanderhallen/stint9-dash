@@ -246,6 +246,7 @@
             <div id="fuellog" class="fuellog"></div>
           </div></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
+          <div class="reelpanel"><svg id="compsvg"></svg></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -255,6 +256,7 @@
         <div class="reelthumb" data-i="3" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="4" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
         <div class="reelthumb" data-i="5" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
+        <div class="reelthumb" data-i="6" title="Sector-1 comparison — all cars"><span class="thumbcap">COMP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 58 C20 58,22 20,32 20 S44 58,52 58 S64 34,72 34 S84 10,96 10" fill="none" stroke="#2f5fd0" stroke-width="3"/><path d="M4 62 C22 62,26 44,36 44 S50 62,60 62 S76 50,96 50" fill="none" stroke="#e0301e" stroke-width="3"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -298,7 +300,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=0;const REELN=6;
+let reelIdx=0;const REELN=7;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -602,6 +604,45 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     });
   });
   svg.innerHTML=s;}
+// Catmull-Rom -> cubic-bezier conversion (tension 1/6) — smooth curve through
+// every point instead of straight polyline segments, no external lib needed.
+function smoothPath(pts){
+  if(pts.length<2)return '';
+  if(pts.length===2)return 'M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' L'+pts[1][0].toFixed(1)+','+pts[1][1].toFixed(1);
+  let d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' ';
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
+    const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
+    const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+='C'+c1x.toFixed(1)+','+c1y.toFixed(1)+' '+c2x.toFixed(1)+','+c2y.toFixed(1)+' '+p2[0].toFixed(1)+','+p2[1].toFixed(1)+' ';
+  }
+  return d;
+}
+/* COMP reel: sector-1 time (s) per lap, one smooth line per car in the class
+   (colours from DB.carcol, same identity used on the main map/lap chart).
+   Each car's line only extends through laps it has actually completed by T
+   — "laps until now" — same build-out convention as every other reel. */
+function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
+  const series=[];let lo=Infinity,hi=-Infinity;
+  DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};const pts=[];
+    for(let L=1;L<=maxN;L++){const s=stm[L];if(!s||s[0]==null)continue;const b=bx[(L-1)*5+1];if(b==null||b>T)continue;
+      pts.push([L,s[0]]);if(s[0]<lo)lo=s[0];if(s[0]>hi)hi=s[0];}
+    if(pts.length)series.push({st,pts});});
+  if(!series.length){ph('sector 1 comparison — no completed sectors yet');return;}
+  const yT2=44,yB2=CH-26,pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
+  const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
+  let s='';
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
+    s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+  for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
+    s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
+    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">SECTOR 1 · s</text>';
+  series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
+    s+='<path d="'+d+'" fill="none" stroke="'+(DB.carcol[st]||'#6b7480')+'" stroke-width="'+(st===selCar?3.2:2)+'" stroke-linecap="round" opacity="'+(st===selCar?1:0.85)+'"/>';});
+  svg.innerHTML=s;}
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for sector performance');return;}
@@ -818,6 +859,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===3||_tk)renderLapTrace(T);
   if(reelIdx===4||_tk)renderFuel(T);
   if(reelIdx===5||_tk)renderStints(T);
+  if(reelIdx===6||_tk)renderComp(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
