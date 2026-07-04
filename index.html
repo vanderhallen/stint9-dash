@@ -1093,14 +1093,21 @@ function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg'),src=document.getElementById('gridsource'),clsSel2=document.getElementById('classsel');
   if(!host||!svg)return;
   const curCls=clsSel2?clsSel2.value:null;
-  const order=REAL_QUALI.filter(r=>r[2]===curCls).sort((a,b)=>a[3]-b[3]).map(r=>({car:r[1],classPos:r[3],fieldPos:r[0]}));
+  // Join the quali PDF (REAL_QUALI) to the selected class by CAR NUMBER, not by
+  // class string: the CSV's KLASSEKURZ (the dropdown value) is truncated to 8
+  // chars (e.g. "BMW M240" vs the PDF's "BMW M240i", "SP9 PRO-" vs "SP9 PRO-AM",
+  // "VT2-F+4W" vs "VT2-F+4WD"), so the strings don't line up — but both datasets
+  // share car numbers. Look up each quali car's authoritative class from the
+  // race data (DB.classes, keyed by the same dropdown value) and match on that.
+  const carClass={};Object.keys(DB.classes).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
+  const order=REAL_QUALI.filter(r=>carClass[String(r[1])]===curCls).sort((a,b)=>a[3]-b[3]).map(r=>({car:r[1],classPos:r[3],fieldPos:r[0]}));
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
   if(!N){
     svg.setAttribute('viewBox','0 0 '+boxW+' 120');svg.setAttribute('width',boxW);svg.setAttribute('height',120);
     svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">no qualifying data</text><text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">for class '+(curCls||'—')+'</text>';
-    if(src)src.textContent='Data: 1. ADAC Eifel-Trophy quali (20.06.2026) — no class-name match for '+(curCls||'—');
+    if(src)src.textContent='Data: 1. ADAC Eifel-Trophy quali (20.06.2026) — no quali cars for '+(curCls||'—');
     return;
   }
   /* Diagonal cascade (each next car one column right + 60% car-length lower)
