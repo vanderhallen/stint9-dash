@@ -259,6 +259,7 @@
           </div></div>
           <div class="reelpanel"><div id="gridtablewrap" style="width:100%;height:100%;overflow:auto"></div></div>
           <div class="reelpanel"><div id="snaptablewrap" style="width:100%;height:100%;overflow:auto"></div></div>
+          <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:auto"></div></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -278,6 +279,11 @@
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#F5C500"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/><rect x="35" y="10" width="8" height="14" fill="#22B14C"/><rect x="44" y="10" width="8" height="14" fill="#F5C500"/>
           <rect x="8" y="29" width="8" height="14" fill="#22B14C"/><rect x="17" y="29" width="8" height="14" fill="#22B14C"/><rect x="26" y="29" width="8" height="14" fill="#A020F0"/><rect x="35" y="29" width="8" height="14" fill="#F5C500"/><rect x="44" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="8" y="48" width="8" height="14" fill="#F5C500"/><rect x="17" y="48" width="8" height="14" fill="#A020F0"/><rect x="26" y="48" width="8" height="14" fill="#22B14C"/><rect x="35" y="48" width="8" height="14" fill="#22B14C"/><rect x="44" y="48" width="8" height="14" fill="#F5C500"/>
+        </svg></div>
+        <div class="reelthumb" data-i="9" title="Sector colours by driver — selected car only"><span class="thumbcap">DRV</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
+          <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#22B14C"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/>
+          <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
+          <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
       </div>
     </div>
@@ -322,7 +328,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=1;const REELN=9;
+let reelIdx=1;const REELN=10;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -850,6 +856,70 @@ function renderSectGridFrozen(T){
   h+='</tbody></table>';
   wrap.innerHTML=h;
 }
+/* DRV reel: same sector-colour table idea as GRID, but rows are the
+   SELECTED car's own drivers (stint order) instead of every car in the
+   class — a cell only gets coloured blocks for a lap that driver actually
+   drove; laps driven by a team-mate stay blank in this row. Colours
+   compare across all of this car's drivers (purple = fastest of any
+   driver so far, green = this driver's own best so far), recomputed from
+   final known values each render (GRID's live convention, not SNAP's
+   frozen one) — drivers only ever appear at their own, non-overlapping
+   stint laps, so "comparing across drivers" is really comparing sector
+   times set at different points in the race. */
+function renderDrvGrid(T){
+  const wrap=document.getElementById('drvtablewrap');if(!wrap)return;
+  const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
+  if(!selCar){ph('select a car');return;}
+  const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{},dl=DB.drvlap[selCar]||{};
+  const overallBest=[Infinity,Infinity,Infinity,Infinity,Infinity];
+  const driverBest={},driverOrder=[],rows={};
+  let lapsSoFar=0;
+  for(let L=1;L<=maxN;L++){
+    const s=stm[L];if(!s)continue;
+    const drv=dl[L];if(!drv)continue;
+    if(!driverBest[drv]){driverBest[drv]=[Infinity,Infinity,Infinity,Infinity,Infinity];driverOrder.push(drv);rows[drv]={};}
+    const vals=[];let any=false;
+    for(let k=0;k<5;k++){
+      const b=bx[(L-1)*5+(k+1)];
+      if(b==null||b>T||s[k]==null){vals.push(null);continue;}
+      const v=s[k];vals.push(v);any=true;
+      if(v<overallBest[k])overallBest[k]=v;
+      if(v<driverBest[drv][k])driverBest[drv][k]=v;
+    }
+    if(any){rows[drv][L]=vals;if(L>lapsSoFar)lapsSoFar=L;}
+  }
+  if(!lapsSoFar){ph('sector grid — no completed sectors yet');return;}
+  const colorOf=(k,v,drv)=>{
+    if(v==null)return null;
+    if(Math.abs(v-overallBest[k])<0.01)return '#A020F0';
+    if(Math.abs(v-driverBest[drv][k])<0.01)return '#22B14C';
+    return '#F5C500';
+  };
+  const activeD=curDrv(selCar,T);
+  let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;white-space:nowrap">';
+  h+='<thead><tr><th style="position:sticky;left:0;top:0;z-index:3;background:#fff;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec">Driver</th>';
+  for(let L=1;L<=lapsSoFar;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
+  h+='</tr></thead><tbody>';
+  driverOrder.forEach(drv=>{
+    const isActive=drv===activeD,rowBg=isActive?'#ffdca0':'#fff';
+    h+='<tr'+(isActive?' style="background:#ffdca0"':'')+'>';
+    h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+drv+'</td>';
+    for(let L=1;L<=lapsSoFar;L++){
+      const vals=rows[drv][L];
+      h+='<td style="padding:3px 4px;border-bottom:1px solid #f3f4f6">';
+      if(vals){
+        h+='<div style="display:flex;gap:1px">';
+        for(let k=0;k<5;k++){const col=colorOf(k,vals[k],drv);
+          h+='<span style="width:6px;height:14px;display:inline-block;border-radius:1px;background:'+(col||'#eceef1')+'"></span>';}
+        h+='</div>';
+      }
+      h+='</td>';
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  wrap.innerHTML=h;
+}
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for sector performance');return;}
@@ -1069,6 +1139,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===6||_tk)renderComp(T);
   if(reelIdx===7||_tk)renderSectGrid(T);
   if(reelIdx===8||_tk)renderSectGridFrozen(T);
+  if(reelIdx===9||_tk)renderDrvGrid(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
