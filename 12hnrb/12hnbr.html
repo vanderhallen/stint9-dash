@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>12H Nürburgring — Live Timing</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#141a22; --panel2:#1b2330; --line:#28323f;
+    --txt:#e6edf3; --dim:#8a97a6; --accent:#37d67a; --warn:#f7b500; --red:#ff4d4f; --blue:#3aa0ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;letter-spacing:.5px}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
+  .grid{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:1000px){.grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);
+    margin:0;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .card .body{padding:14px 16px}
+  .track img{width:100%;display:block;background:#000;border-radius:8px}
+  /* status pill */
+  .status{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+  .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+  .dot.searching{background:var(--warn);box-shadow:0 0 0 0 rgba(247,181,0,.6);animation:pulse 1.2s infinite}
+  .dot.found{background:var(--accent)}
+  .dot.error{background:var(--red)}
+  .dot.idle{background:var(--dim)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(247,181,0,.5)}70%{box-shadow:0 0 0 10px rgba(247,181,0,0)}100%{box-shadow:0 0 0 0 rgba(247,181,0,0)}}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;font-size:13px}
+  .meta div span{color:var(--dim);margin-right:6px}
+  .meta b{font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 8px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+  th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-weight:600;
+    text-transform:uppercase;font-size:11px;letter-spacing:.5px}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tbody tr:hover{background:#182230}
+  .pos{color:var(--dim);font-weight:700}
+  .nr{font-weight:700;color:var(--blue)}
+  .tablewrap{max-height:70vh;overflow:auto}
+  .empty{color:var(--dim);padding:24px 16px;text-align:center}
+  .cls{font-weight:600}
+  .st-run{color:var(--accent)} .st-pit{color:var(--warn)} .st-out{color:var(--red)} .st-none{color:var(--dim)}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:20px}
+  a{color:var(--blue)}
+  details{margin-top:12px}
+  summary{cursor:pointer;color:var(--dim);font-size:12px}
+  pre{background:#0a0d11;border:1px solid var(--line);border-radius:8px;padding:12px;
+    overflow:auto;max-height:280px;font-size:11px;color:#b9c6d3}
+  .count{background:var(--panel2);border:1px solid var(--line);border-radius:20px;
+    padding:3px 12px;font-size:12px;color:var(--dim)}
+  .flag{padding:3px 10px;border-radius:6px;font-weight:700;font-size:12px}
+  /* schedule */
+  #schedule td{border-bottom:1px solid var(--line)}
+  tr.dayhead td{background:#0a0d11;color:var(--txt);font-weight:700;letter-spacing:.5px;
+    text-transform:uppercase;font-size:12px;padding:10px 8px}
+  tr.sess-24h td{color:var(--txt)}
+  tr.sess-other td{color:var(--dim)}
+  tr.live-row td{background:#12251a}
+  tr.done-row td{opacity:.45}
+  .livebadge{background:var(--red);color:#fff;font-weight:700;font-size:10px;
+    padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+  .livebadge.now{animation:pulse 1.2s infinite}
+  .nowmark{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏁 12H NÜRBURGRING · LIVE TIMING</h1>
+  <span class="count" id="clock">--:--:--</span>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="card track">
+      <h2>Circuit · Nürburgring GP-Strecke</h2>
+      <div class="body">
+        <img src="track.png" alt="Nürburgring GP-Strecke layout" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Feed status</h2>
+      <div class="body">
+        <div class="status">
+          <span class="dot searching" id="statusDot"></span>
+          <span id="statusText">Looking for data…</span>
+        </div>
+        <div class="meta" id="meta"></div>
+        <details>
+          <summary>Show raw data found</summary>
+          <pre id="raw">—</pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>Schedule · Michelin 12H Nürburgring weekend
+      <span id="nextBadge" class="count" style="float:right"></span></h2>
+    <div class="tablewrap" style="max-height:none">
+      <table id="schedule">
+        <thead><tr>
+          <th></th><th class="num">Start</th><th class="num">End</th>
+          <th>Category</th><th>Session</th><th class="num">Dur</th>
+        </tr></thead>
+        <tbody id="schedBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>Classification <span id="carsBadge" class="count" style="float:right"></span></h2>
+    <div class="tablewrap">
+      <table id="results">
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tbody"><tr><td class="empty">Waiting for the first data update…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Source: <a href="https://livetiming.getraceresults.com/24hseries?nomobile=true#screen-tracker" target="_blank" rel="noopener">livetiming.getraceresults.com/24hseries</a>
+  · polled every 60&nbsp;s via a public CORS proxy · unofficial viewer
+</footer>
+
+<script>
+const FEED = "https://livetiming.getraceresults.com/24hseries?nomobile=true";
+const POLL_MS = 60000; // once per minute — do not lower (avoid overloading the timing server)
+const SENTINEL = "9223372036854775807"; // Long.MAX_VALUE = no value
+
+// public CORS proxies, tried in order until one returns the page
+const PROXIES = [
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(u),
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+];
+
+// column index -> nice label (fallbacks; real labels are pulled from the feed layout)
+const COL_FALLBACK = {0:"POS",2:"NR",3:"STATE",4:"DRIVER",6:"TEAM",8:"CAR",10:"CLS",
+  11:"S.CLS",13:"BEST",15:"GAP",16:"DIFF",17:"LAST",18:"LAPS",19:"S1",20:"S2",21:"S3",22:"TYRE"};
+// which columns to show, in order
+const SHOW = [0,2,3,10,11,4,6,8,18,17,13,15,19,20,21,22];
+const TIME_COLS = new Set([13,15,16,17,19,20,21]);
+const NUM_COLS  = new Set([0,13,15,16,17,18,19,20,21,22]);
+const STATE_MAP = {SNotStr:"Not started",SRun:"Running",SPit:"In pit",SPitOut:"Pit out",
+  SOut:"Out",SFin:"Finished",SDnf:"DNF",SDns:"DNS",SDsq:"DSQ",SStop:"Stopped"};
+
+let colLabels = {}; // filled from feed layout
+
+const $ = id => document.getElementById(id);
+
+function setStatus(kind, text){
+  const dot = $("statusDot");
+  dot.className = "dot " + kind;
+  $("statusText").textContent = text;
+}
+
+function fmtTime(v){
+  if(v===SENTINEL || v==="-1" || v==="" || v==null) return "—";
+  if(!/^\d+$/.test(v)) return v;                 // e.g. "1 LAP"
+  let ms = parseInt(v,10);
+  if(ms<=0) return "—";
+  const mm = Math.floor(ms/60000);
+  const ss = Math.floor((ms%60000)/1000);
+  const mmm = String(ms%1000).padStart(3,"0");
+  return mm>0 ? `${mm}:${String(ss).padStart(2,"0")}.${mmm}` : `${ss}.${mmm}`;
+}
+
+function fmtCell(col, v){
+  if(v===SENTINEL) return "—";
+  if(col===3) return STATE_MAP[v] || v.replace(/^S/,"") || "—";
+  if(TIME_COLS.has(col)) return fmtTime(v);
+  if((col===14||col===18) && v==="-1") return "—";
+  return (v===""||v==null) ? "—" : v;
+}
+function stateClass(v){
+  if(v==="SRun") return "st-run";
+  if(v==="SPit"||v==="SPitOut") return "st-pit";
+  if(v==="SOut"||v==="SDnf"||v==="SDsq") return "st-out";
+  return "st-none";
+}
+
+// pull the JS payloads embedded in the page and parse them
+function extractJSON(text, call){
+  const i = text.indexOf(call);
+  if(i<0) return null;
+  let start = text.indexOf(call.endsWith("(") ? call.slice(0,-1) : call, i);
+  start = text.indexOf("(", i)+1;
+  // balance brackets to find the argument
+  let depth=0, inStr=false, esc=false, out="";
+  for(let k=start;k<text.length;k++){
+    const c=text[k];
+    out+=c;
+    if(esc){esc=false;continue;}
+    if(c==="\\"){esc=true;continue;}
+    if(c==='"'){inStr=!inStr;continue;}
+    if(inStr) continue;
+    if(c==="("||c==="["||c==="{") depth++;
+    else if(c===")"||c==="]"||c==="}"){ if(depth===0){ out=out.slice(0,-1); break;} depth--; if(depth===0) break; }
+  }
+  try{ return JSON.parse(out); }catch(e){ return null; }
+}
+
+function parseFeed(text){
+  const heat = extractJSON(text, "heatStateViewModel.h_h(");
+  const layout = extractJSON(text, "raceResultsViewModel.r_l(");
+  const cells = extractJSON(text, "raceResultsViewModel.r_c(");
+  const stats = extractJSON(text, "statsViewModel.a_u(");
+  // labels from layout header
+  colLabels = {};
+  if(layout && layout.h) layout.h.forEach((c,i)=>{ colLabels[i] = c.c || COL_FALLBACK[i] || ("C"+i); });
+  // build rows from [row,col,value,(color)] cells
+  const rows = [];
+  if(Array.isArray(cells)){
+    for(const cell of cells){
+      const r=cell[0], c=cell[1], v=cell[2];
+      (rows[r] = rows[r] || {})[c] = v;
+    }
+  }
+  return {heat, stats, rows: rows.filter(Boolean)};
+}
+
+function renderHeat(heat, stats, nCars){
+  const meta = $("meta");
+  const name = (heat && heat.n) || (stats && stats.h) || "—";
+  const track = (heat && heat.t) || "—";
+  meta.innerHTML = "";
+  const add=(k,v)=>{const d=document.createElement("div");d.innerHTML=`<span>${k}</span><b>${v}</b>`;meta.appendChild(d);};
+  add("Session", name);
+  add("Track", track);
+  add("Cars", nCars);
+  if(stats){
+    const running = stats.g||stats.r||"0";
+    add("Finished/Running", (stats.f||"0")+" / "+(stats.g||"0"));
+  }
+  $("carsBadge").textContent = nCars ? nCars + " cars" : "";
+}
+
+function renderTable(rows){
+  const thead=$("thead"), tbody=$("tbody");
+  thead.innerHTML="";
+  SHOW.forEach(ci=>{
+    const th=document.createElement("th");
+    th.textContent = colLabels[ci] || COL_FALLBACK[ci] || ("C"+ci);
+    if(NUM_COLS.has(ci)) th.className="num";
+    thead.appendChild(th);
+  });
+  tbody.innerHTML="";
+  if(!rows.length){
+    tbody.innerHTML='<tr><td class="empty" colspan="'+SHOW.length+'">No cars in the classification yet.</td></tr>';
+    return;
+  }
+  for(const row of rows){
+    const tr=document.createElement("tr");
+    SHOW.forEach(ci=>{
+      const td=document.createElement("td");
+      const raw = row[ci];
+      td.textContent = fmtCell(ci, raw);
+      if(NUM_COLS.has(ci)) td.className="num";
+      if(ci===0) td.className=(td.className+" pos").trim();
+      if(ci===2) td.className=(td.className+" nr").trim();
+      if(ci===3){ td.className=(td.className+" "+stateClass(raw)).trim(); }
+      if(ci===10) td.className=(td.className+" cls").trim();
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+}
+
+async function fetchFeed(){
+  let lastErr;
+  for(const p of PROXIES){
+    try{
+      const res = await fetch(p(FEED), {cache:"no-store"});
+      if(!res.ok){ lastErr="HTTP "+res.status; continue; }
+      const text = await res.text();
+      if(text && text.indexOf("ViewModel")>-1) return text;
+      lastErr="unexpected response";
+    }catch(e){ lastErr=e.message; }
+  }
+  throw new Error(lastErr||"all proxies failed");
+}
+
+async function tick(win){
+  const ses = win ? win.ses : "";
+  setStatus("searching", "Session live" + (ses?" ("+ses.split(" - ")[0]+")":"") +
+    " — looking for data…");
+  try{
+    const text = await fetchFeed();
+    const {heat, stats, rows} = parseFeed(text);
+    const found = (heat || rows.length);
+    if(found){
+      const t = new Date().toLocaleTimeString();
+      setStatus("found", "Data found · " + rows.length + " cars · updated " + t);
+      renderHeat(heat, stats, rows.length);
+      renderTable(rows);
+      $("raw").textContent = JSON.stringify({session:ses, heat, stats, cars:rows.length,
+        firstCar: rows[0]||null}, null, 2);
+    }else{
+      setStatus("searching", "Connected — waiting for timing data…");
+    }
+  }catch(e){
+    setStatus("error", "No data / proxy error — retrying: " + e.message);
+  }
+}
+
+/* ---------------- Schedule (times = local Nürburgring / Europe-Berlin, CEST) ------------- */
+// [date, start, end(or null=open), category, session, is24H, hasLiveTiming, durLabel]
+const SCHEDULE_RAW = [
+  ["2026-07-03","09:00","09:45","Prototype Cup Europe","Free Practice 1",0,0,"00:45"],
+  ["2026-07-03","09:50","10:50","Radical Cup Europe","Free Practice",0,0,"01:00"],
+  ["2026-07-03","10:45",null,"Michelin 24H SERIES","Drivers Briefing",1,0,""],
+  ["2026-07-03","10:55","11:40","Prototype Cup Europe","Free Practice 2",0,0,"00:45"],
+  ["2026-07-03","11:00",null,"Michelin 24H SERIES","Fuel Mechanics Briefing",1,0,""],
+  ["2026-07-03","11:45","13:45","Michelin 24H SERIES","Free Practice",1,0,"02:00"],
+  ["2026-07-03","13:55","14:15","Radical Cup Europe","Qualifying 1",0,1,"00:20"],
+  ["2026-07-03","14:20","14:40","Radical Cup Europe","Qualifying 2",0,1,"00:20"],
+  ["2026-07-03","14:55","15:10","Prototype Cup Europe","Qualifying 1",0,1,"00:15"],
+  ["2026-07-03","15:25","15:40","Michelin 24H SERIES","Qualifying Session 1 - Classes TCE, GT4, GTX & 992",1,1,"00:15"],
+  ["2026-07-03","15:47","16:02","Michelin 24H SERIES","Qualifying Session 2 - Classes TCE, GT4, GTX & 992",1,1,"00:15"],
+  ["2026-07-03","16:09","16:24","Michelin 24H SERIES","Qualifying Session 3 - Classes TCE, GT4, GTX & 992",1,1,"00:15"],
+  ["2026-07-03","16:35","16:50","Michelin 24H SERIES","Qualifying Session 1 - Class GT3",1,1,"00:15"],
+  ["2026-07-03","16:55","17:10","Michelin 24H SERIES","Qualifying Session 2 - Class GT3",1,1,"00:15"],
+  ["2026-07-03","17:15","17:30","Michelin 24H SERIES","Qualifying Session 3 - Class GT3",1,1,"00:15"],
+  ["2026-07-03","17:45","18:00","Prototype Cup Europe","Qualifying 2",0,1,"00:15"],
+  ["2026-07-03","18:15","19:00","Street Car VIP Laps","VIP Laps",0,0,"00:45"],
+
+  ["2026-07-04","09:00","09:50","Radical Cup Europe","Race 1",0,1,"00:50"],
+  ["2026-07-04","10:15","11:10","Prototype Cup Europe","Race 1",0,1,"00:55"],
+  ["2026-07-04","11:20",null,"Michelin 24H SERIES","Start grid",1,1,"12:40"],
+  ["2026-07-04","12:00","18:00","Michelin 24H SERIES","Race part 1 - Michelin 12H NÜRBURGRING 2026",1,1,"06:00"],
+
+  ["2026-07-05","09:00","09:55","Prototype Cup Europe","Race 2",0,1,"00:55"],
+  ["2026-07-05","10:20","11:10","Radical Cup Europe","Race 2",0,1,"00:50"],
+  ["2026-07-05","11:20",null,"Michelin 24H SERIES","Start grid",1,1,"12:40"],
+  ["2026-07-05","12:00","18:00","Michelin 24H SERIES","Race part 2 - Michelin 12H NÜRBURGRING 2026",1,1,"06:00"],
+  ["2026-07-05","23:00",null,"Michelin 24H SERIES","Pit boxes and paddock must be empty",1,0,""],
+];
+const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+// build entries with an effective end (open-ended -> next same-day session, else +45min)
+const SCHEDULE = SCHEDULE_RAW.map((r,i,arr)=>{
+  const [d,s,e,cat,ses,is24,live,dur]=r;
+  let endMin;
+  if(e) endMin = toMin(e);
+  else { const nx = arr.find((o,j)=>j>i && o[0]===d && toMin(o[1])>toMin(s));
+         endMin = nx ? toMin(nx[1]) : toMin(s)+45; }
+  return {d,s,e,cat,ses,is24:!!is24,live:!!live,dur,sMin:toMin(s),eMin:endMin};
+});
+const LEAD = 2; // start polling 2 min before a session
+
+function berlinNow(){
+  const p = new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Berlin",year:"numeric",
+    month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})
+    .formatToParts(new Date());
+  const o={}; p.forEach(x=>o[x.type]=x.value);
+  return {date:`${o.year}-${o.month}-${o.day}`, min:parseInt(o.hour)*60+parseInt(o.minute),
+          label:`${o.hour}:${o.minute}`};
+}
+const DAYNAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function fullDay(d){ const [y,m,dd]=d.split("-").map(Number); const dt=new Date(y,m-1,dd);
+  return `${DAYNAMES[dt.getDay()]}, ${dd} ${["January","February","March","April","May","June","July","August","September","October","November","December"][m-1]} ${y}`; }
+function shortDay(d){ const [y,m,dd]=d.split("-").map(Number);
+  return DAYNAMES[new Date(y,m-1,dd).getDay()].slice(0,3); }
+
+function activeSession(now){
+  return SCHEDULE.find(x=> now.date===x.d && now.min>=x.sMin && now.min<x.eMin);
+}
+function pollSession(now){ // session window incl. lead time
+  return SCHEDULE.find(x=> now.date===x.d && now.min>=x.sMin-LEAD && now.min<x.eMin);
+}
+function nextSession(now){
+  return SCHEDULE.find(x=> x.d>now.date || (x.d===now.date && x.sMin>now.min));
+}
+
+function renderSchedule(now){
+  const body=$("schedBody"); body.innerHTML=""; let curDay=null;
+  SCHEDULE.forEach(x=>{
+    if(x.d!==curDay){ curDay=x.d;
+      const tr=document.createElement("tr"); tr.className="dayhead";
+      const td=document.createElement("td"); td.colSpan=6; td.textContent=fullDay(x.d);
+      tr.appendChild(td); body.appendChild(tr);
+    }
+    const isLive = now.date===x.d && now.min>=x.sMin && now.min<x.eMin;
+    const done = x.d<now.date || (x.d===now.date && now.min>=x.eMin);
+    const tr=document.createElement("tr");
+    tr.className=(x.is24?"sess-24h":"sess-other")+(isLive?" live-row":done?" done-row":"");
+    const badge = isLive ? '<span class="nowmark">● NOW</span>'
+                : x.live ? '<span class="livebadge">LIVE</span>' : "";
+    tr.innerHTML =
+      `<td>${badge}</td><td class="num">${x.s}</td><td class="num">${x.e||"—"}</td>`+
+      `<td>${x.cat}</td><td>${x.ses}</td><td class="num">${x.dur||"—"}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ---------------- Controller: poll only inside session windows ------------------------ */
+let lastFetch = 0;
+function controller(){
+  const now = berlinNow();
+  renderSchedule(now);
+  const win = pollSession(now);
+  if(win){
+    const t = Date.now();
+    if(t - lastFetch >= POLL_MS - 500){ lastFetch = t; tick(win); }
+    $("nextBadge").textContent = "● Live: " + win.ses.split(" - ")[0];
+  }else{
+    lastFetch = 0;
+    const nx = nextSession(now);
+    if(nx){
+      setStatus("idle", "Standby — no session live. Next: "+nx.ses+
+        " · "+shortDay(nx.d)+" "+nx.s+" CEST");
+      $("nextBadge").textContent = "Next: "+shortDay(nx.d)+" "+nx.s;
+    }else{
+      setStatus("idle","Event finished — no more sessions.");
+      $("nextBadge").textContent="";
+    }
+  }
+}
+
+function clock(){ $("clock").textContent = new Date().toLocaleTimeString() + " · " +
+  "Ring " + berlinNow().label + " CEST"; }
+setInterval(clock, 1000); clock();
+
+controller();
+setInterval(controller, 15000); // re-check window & schedule every 15 s; fetch gated to 60 s
+</script>
+</body>
+</html>
