@@ -152,7 +152,7 @@
         <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
-      </svg><svg id="gapgauge" viewBox="0 0 120 500" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
+      </svg><svg id="gapgauge" viewBox="0 0 150 500" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
@@ -707,13 +707,13 @@ let ggShown=null,ggTarget=null,ggFrom=0,ggT0=0,ggLastT=0,ggRAF=0,ggCar=null;
 function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)return;
   if(ggRAF){cancelAnimationFrame(ggRAF);ggRAF=0;}
   ggLastT=T;if(selCar!==ggCar){ggCar=selCar;ggTarget=null;}
-  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=33;/* HOODY: units from the car's front bumper down to the number label on the hood */
+  const W=150,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=33;/* W matches test.html's 150-wide rect so the 80-wide car keeps the same proportion; HOODY: units from the front bumper down to the hood number */
   const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
   const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
   // ruler is anchored to the top car: a MAJOR line sits exactly on the back-bumper datum (0s gap),
   // then whole-second majors run down from it so the ruler reads the gap directly.
   let ruler='';const step=PXPS*0.2,i0=Math.ceil((0-DATUM)/step),i1=Math.floor((H-DATUM)/step);
-  for(let i=i0;i<=i1;i++){const y=DATUM+i*step,maj=(((i%5)+5)%5===0),len=maj?26:15,col=maj?'#9aa1a9':'#e2e5ea';
+  for(let i=i0;i<=i1;i++){const y=DATUM+i*step,maj=(((i%5)+5)%5===0),len=maj?28:20,col=maj?'#9aa1a9':'#e2e5ea';
     ruler+='<line x1="0" x2="'+len+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/><line x1="'+(W-len)+'" x2="'+W+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
   if(!selCar){ggTarget=null;svg.innerHTML=ruler+T2(cx,H/2,'middle','—','#c9ced4',16);return;}
   const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;
