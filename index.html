@@ -152,7 +152,7 @@
         <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
-      </svg><svg id="gapgauge" viewBox="0 0 120 460" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
+      </svg><svg id="gapgauge" viewBox="0 0 120 500" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;margin-top:13px">
@@ -694,29 +694,34 @@ function setNb(el,nb,arrow,pos){while(el.firstChild)el.removeChild(el.firstChild
   if(bi!=null){const lap=Math.floor((bi-1)/5)+1,k=((bi-1)%5)+1,ts=(DB.sectimes[selCar][lap]||[])[k-1],tn=(DB.sectimes[nb][lap]||[])[k-1];if(ts!=null&&tn!=null){dl=ts-tn;sec=k;}}
   const t1=document.createElementNS(SVGNS,'tspan');t1.textContent=arrow+' #'+nb+(pos?' P'+pos:'')+' '+(DB.name[nb]||'')+(dl!=null?'   ':'');el.appendChild(t1);
   if(dl!=null){const t2=document.createElementNS(SVGNS,'tspan');t2.setAttribute('fill',dl<0?'#1e8f3a':'#c0392b');t2.setAttribute('font-weight','700');t2.textContent='S'+sec+' Δ'+(dl>=0?'+':'')+dl.toFixed(1)+'s';el.appendChild(t2);}}
-const CARBODY='M50 6 C70 6 82 24 84 60 L88 122 L88 208 C88 240 74 254 50 254 C26 254 12 240 12 208 L12 122 L16 60 C18 24 30 6 50 6 Z';
+/* Gap gauge = the test.html "track-position flow" rectangle:
+   fixed vertical ruler (minor tick 0.2s, major 1.0s, full height = 4.0s), the car AHEAD pinned so its
+   back bumper is the 0s datum (0.5s below the top), and OUR car placed so its front bumper is `gap`
+   seconds below that datum. gap > 3.5s pushes our car off the bottom edge (clipped, not visible). */
+const GG_FULLSEC=4.0, GG_TOPMARGIN=0.5, GG_CARLEN=168, GG_CARW=80;
 function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)return;
-  const W=120,H=470,cx=W/2,carW=58,carH=122,plotT=38,plotB=H-38;
-  const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
-  if(!selCar){svg.innerHTML=T2(cx,H/2,'middle','—','#c9ced4',14);return;}
+  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2;
+  const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
+  const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
+  let ruler='';
+  for(let i=0;i*(PXPS*0.2)<=H+0.1;i++){const y=i*(PXPS*0.2),maj=(i%5===0),len=maj?26:15,col=maj?'#9aa1a9':'#e2e5ea';
+    ruler+='<line x1="0" x2="'+len+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/><line x1="'+(W-len)+'" x2="'+W+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
+  if(!selCar){svg.innerHTML=ruler+T2(cx,H/2,'middle','—','#c9ced4',16);return;}
   const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;
-  if(!p){svg.innerHTML=T2(cx,H/2,'middle','pit','#b5bcc4',13);return;}
-  const ah=byPos[p-1],be=byPos[p+1];
-  let dA=ah?commonGap(selCar,ah,T):null,dB=be?commonGap(be,selCar,T):null;
-  dA=(dA!=null)?Math.max(0,dA):null;dB=(dB!=null)?Math.max(0,dB):null;
-  const hasA=dA!=null,hasB=dB!=null,DEF=6,ga=hasA?dA:DEF,gb=hasB?dB:DEF;
-  const usable=plotB-plotT-carH,scale=usable/Math.max(ga+gb,2),ourTop=plotT+ga*scale;
-  let defs='',cc=0,s='';
-  const carEl=(spriteTop,body,win,cy0,cy1)=>{const sx=carW/100,sy=carH/260,tx=cx-carW/2,id='cg'+(cc++);defs+='<clipPath id="'+id+'"><rect x="0" y="'+cy0.toFixed(1)+'" width="'+W+'" height="'+Math.max(0,cy1-cy0).toFixed(1)+'"/></clipPath>';return '<g clip-path="url(#'+id+')" transform="translate('+tx.toFixed(1)+' '+spriteTop.toFixed(1)+') scale('+sx.toFixed(3)+' '+sy.toFixed(3)+')"><path d="'+CARBODY+'" fill="'+body+'" stroke="#828892" stroke-width="3"/><rect x="28" y="88" width="44" height="94" rx="12" fill="'+win+'"/></g>';};
-  const total=ga+gb,majStep=total>26?5:total>13?2:1;
-  for(let sc=0;sc<=total+1e-6;sc+=1){const y=plotT+sc*scale;if(y>plotB+0.5)break;const maj=sc%majStep===0;s+='<line x1="6" x2="'+(W-6)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+(maj?'#dde1e6':'#f0f1f4')+'" stroke-width="1"/>'+(maj?T2(8,y-2.5,'start',sc+'s','#b8bec6',9):'');}
-  if(hasA){const rev=carH*(0.24+0.5*(1-Math.min(dA,8)/8));s+=carEl(plotT-carH,'#9aa1a9','#cfd4da',plotT-rev,plotT);}else s+=T2(cx,plotT-6,'middle','LEADER','#16202b',11,1);
-  if(hasB){const rev=carH*(0.24+0.5*(1-Math.min(dB,8)/8));s+=carEl(plotB,'#9aa1a9','#cfd4da',plotB,plotB+rev);}else s+=T2(cx,plotB+14,'middle','LAST','#16202b',11,1);
-  s+=carEl(ourTop,'#e0301e','#f6b0a8',ourTop-1,ourTop+carH+1)+T2(cx,ourTop+carH*0.52,'middle','#'+selCar,'#fff',12,1);
-  if(hasA)s+=T2(W-5,(plotT+ourTop)/2+3,'end',dA.toFixed(1)+'s','#1e8f3a',11,1);
-  if(hasB)s+=T2(W-5,(ourTop+carH+plotB)/2+3,'end',dB.toFixed(1)+'s','#c0392b',11,1);
-  s+=T2(cx,14,'middle','▲ '+(ah?('#'+ah+' P'+(p-1)):'—'),'#1e8f3a',11,1)+T2(cx,H-5,'middle','▼ '+(be?('#'+be+' P'+(p+1)):'—'),'#c0392b',11,1);
-  svg.innerHTML='<defs>'+defs+'</defs>'+s;}
+  if(!p){svg.innerHTML=ruler+T2(cx,H/2,'middle','pit','#b5bcc4',15);return;}
+  const ah=byPos[p-1];let dA=ah?commonGap(selCar,ah,T):null;dA=(dA!=null)?Math.max(0,dA):null;
+  let s=ruler;
+  if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
+    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+halfH+5,'middle','#'+selCar,'#e0301e',13,1);
+    svg.innerHTML=s;return;}
+  s+=car(DATUM-halfH); // car ahead, pinned (back bumper on the datum)
+  const selFront=DATUM+dA*PXPS;
+  s+=car(selFront+halfH); // our car, front bumper `gap` seconds below the datum
+  s+=T2(cx,16,'middle','▲ #'+ah,'#16202b',13,1);
+  s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+dA*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
+  s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+20),'middle','#'+selCar,'#e0301e',13,1)
+                 :T2(cx,H-9,'middle','#'+selCar+' ↓','#e0301e',13,1);
+  svg.innerHTML=s;}
 function renderMini(T,lp){const hint=document.getElementById('minihint');
   if(!selCar){for(const st in MEL)MEL[st].g.style.visibility='hidden';hint.style.display='';setNb(mAhead,null);setNb(mBehind,null);setEv(T);return;}
   hint.style.display='none';const sc=carXY(selCar,T);
