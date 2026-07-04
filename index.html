@@ -706,6 +706,10 @@ function renderSectGrid(T){
   const wrap=document.getElementById('gridtablewrap');if(!wrap)return;
   const oBest=[Infinity,Infinity,Infinity,Infinity,Infinity];
   const carData=[];
+  let lapsSoFar=0; // how many lap-columns actually exist yet — in a real
+  // live scenario the total race distance isn't known in advance, so the
+  // table only grows to whatever's actually happened, not the class's
+  // (SIM-only) known maxN.
   DB.cars.forEach(st=>{
     const stm=DB.sectimes[st]||{},bx=BX[st]||{};
     const pb=[Infinity,Infinity,Infinity,Infinity,Infinity];
@@ -720,14 +724,18 @@ function renderSectGrid(T){
         if(v<pb[k])pb[k]=v;
         if(v<oBest[k])oBest[k]=v;
       }
-      if(vals.some(v=>v!=null))laps[L]=vals;
+      if(vals.some(v=>v!=null)){laps[L]=vals;if(L>lapsSoFar)lapsSoFar=L;}
     }
     carData.push({st,pb,laps});
   });
-  if(!carData.some(c=>Object.keys(c.laps).length)){
+  if(!lapsSoFar){
     wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">sector grid — no completed sectors yet</div>';
     return;
   }
+  // rows ordered by current track position, same convention as STINT —
+  // cars with no position yet (not started) sort last
+  const lp=livePos(T);
+  carData.sort((a,b)=>{const pa=lp[a.st],pb2=lp[b.st];if(pa==null&&pb2==null)return 0;if(pa==null)return 1;if(pb2==null)return -1;return pa-pb2;});
   const colorOf=(k,v,pb)=>{
     if(v==null)return null;
     if(Math.abs(pb[k]-oBest[k])<0.01&&Math.abs(v-pb[k])<0.01)return '#A020F0';
@@ -736,13 +744,14 @@ function renderSectGrid(T){
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;white-space:nowrap">';
   h+='<thead><tr><th style="position:sticky;left:0;top:0;z-index:3;background:#fff;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec">Car</th>';
-  for(let L=1;L<=maxN;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
+  for(let L=1;L<=lapsSoFar;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
   h+='</tr></thead><tbody>';
   carData.forEach(({st,pb,laps})=>{
     const isSel=st===selCar,rowBg=isSel?'#fff7ec':'#fff';
+    const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
     h+='<tr'+(isSel?' style="background:#fff7ec"':'')+'>';
-    h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">#'+st+'</td>';
-    for(let L=1;L<=maxN;L++){
+    h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+posLbl+'#'+st+'</td>';
+    for(let L=1;L<=lapsSoFar;L++){
       const vals=laps[L];
       h+='<td style="padding:3px 4px;border-bottom:1px solid #f3f4f6">';
       if(vals){
