@@ -93,8 +93,8 @@
     up1.onclick=function(){o1-=pitch;moveCars();save(key1,o1);if(k===0){sharedO1=o1;broadcastRect1Change();}};
     dn1.onclick=function(){o1+=pitch;moveCars();save(key1,o1);if(k===0){sharedO1=o1;broadcastRect1Change();}};
     up2.onclick=function(){o2-=pitch;moveCars();save(key2,o2);}; dn2.onclick=function(){o2+=pitch;moveCars();save(key2,o2);};
-    upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
-    dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
+    upR.onclick=function(){rulerOffset-=pitch/2;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
+    dnR.onclick=function(){rulerOffset+=pitch/2;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
     moveCars(); redrawMarks();
     c1.addEventListener('load',recalc); if(c1.complete)recalc();
     return wrap;
