@@ -980,15 +980,17 @@ function syncSideHeights(){
 }
 syncSideHeights();setTimeout(syncSideHeights,80);
 /* Fills the blank space under the page (viewport taller than content) by
-   growing the interactive maps, splitting the freed-up height EQUALLY
-   between the top track-map row and the bottom reel/weather row — rather
-   than maxing out the top row first and dumping any leftover into the
-   bottom one, which left them badly mismatched on narrower windows (the
-   top map hits its width cap sooner there, so almost all the slack used to
-   land in the reel row alone). Works entirely in unscaled layout units
-   (clientWidth/clientHeight — unaffected by the CSS transform), so it's
-   safe to run any time after fitPage has applied the scale. Resets both
-   rows to natural size first (idempotent across repeated calls). */
+   growing the interactive maps. Priority order: the top track-map row is
+   maximized first (as large as its own card width allows — that's the
+   binding constraint, since it's aspect-locked and .stage clips overflow);
+   the bottom reel/weather row then simply follows at 80% of whatever height
+   the map row ends up at, rather than the two being independently balanced
+   to equal heights (which left both rows undersized whenever the map's
+   width cap was the limiting factor, wasting the rest of the page as blank
+   space below). Works entirely in unscaled layout units (clientWidth/
+   clientHeight — unaffected by the CSS transform), so it's safe to run any
+   time after fitPage has applied the scale. Resets both rows to natural
+   size first (idempotent across repeated calls). */
 function growMaps(){
   const w=document.querySelector('.wrap'),svg=document.getElementById('svg'),rv=document.getElementById('reelview'),wv=document.getElementById('wxview'),agent=document.querySelector('.agentbar');
   if(!w||!svg||!rv||!agent||typeof CH==='undefined')return;
@@ -997,25 +999,21 @@ function growMaps(){
   syncMapHeights();
   rv.style.height=(rv.clientWidth*CH/1000)+'px';
   if(wv)wv.style.height=rv.clientHeight+'px';
-  // weather map's minimum height is pinned to 80% of the zoom view (#mini)
-  // next to the main track map, regardless of how the reel/weather row
-  // would otherwise balance out
-  const mini=document.getElementById('mini');
-  if(mini){const minWxH=mini.clientHeight*0.8;if(rv.clientHeight<minWxH){rv.style.height=minWxH+'px';if(wv)wv.style.height=minWxH+'px';}}
   // real content bottom = the agent bar (the wrap's scrollHeight is polluted
   // by the tall grid sidebar, so we measure the visible column's end instead)
   const slack=(window.innerHeight-agent.getBoundingClientRect().bottom)/s;
-  if(slack<=20)return;
+  if(slack<=20)return; // no free space (or content already overflows) — leave natural sizes alone
   const mapH0=svg.clientHeight,reelH0=rv.clientHeight;
   const aspect=svg.clientWidth/mapH0,card=svg.closest('.stage');
   const maxMapH=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
-  const target=Math.min((mapH0+reelH0+slack)/2,maxMapH);
-  // always keep the two rows equal — even when the map's width cap kicks in
-  // well below the "fill everything" target, so a narrower window doesn't
-  // dump all the leftover slack into the reel row alone (badly mismatched)
-  const mapH=target,reelH=target;
-  if(mapH-mapH0>8){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
-  if(reelH-reelH0>8){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
+  // budget = everything currently used by both rows + whatever slack is
+  // free; split so mapH:reelH = 1:0.8, i.e. mapH*1.8 = budget, then cap by
+  // the map's own width limit (priority: map as large as it can physically
+  // be, reel/weather always 80% of that final height)
+  const budget=Math.max(0,mapH0+reelH0+slack);
+  const mapH=Math.min(budget/1.8,maxMapH),reelH=mapH*0.8;
+  if(Math.abs(mapH-mapH0)>2){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
+  if(Math.abs(reelH-reelH0)>2){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
