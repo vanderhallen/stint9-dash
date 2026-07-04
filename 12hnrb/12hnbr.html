@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>12H Nürburgring — Live Timing</title>
+<!-- Official circuit geometry (defines window.liveTiming.tracker.circuitLayoutData). Script includes bypass CORS. -->
+<script src="https://ltcircuits2.azureedge.net/GER-NUR-GP-FIM/circuitLayoutData.js"></script>
 <style>
   :root{
     --bg:#0b0e13; --panel:#141a22; --panel2:#1b2330; --line:#28323f;
@@ -23,6 +25,11 @@
     margin:0;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
   .card .body{padding:14px 16px}
   .track img{width:100%;display:block;background:#000;border-radius:8px}
+  .track canvas{width:100%;display:block;background:#000;border-radius:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #000}
+  .trknote{margin-top:8px;font-size:11px;color:var(--dim)}
   /* status pill */
   .status{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
   .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
@@ -78,9 +85,14 @@
 <div class="wrap">
   <div class="grid">
     <div class="card track">
-      <h2>Circuit · Nürburgring GP-Strecke</h2>
+      <h2>Live tracker · Nürburgring GP-Strecke
+        <span id="carsOnTrack" class="count" style="float:right"></span></h2>
       <div class="body">
-        <img src="track.png" alt="Nürburgring GP-Strecke layout" />
+        <canvas id="trackCanvas" width="1250" height="577"
+                aria-label="Nürburgring GP-Strecke live car tracker"></canvas>
+        <img id="trackImg" src="track.png" alt="Nürburgring GP-Strecke layout" style="display:none" />
+        <div class="legend" id="legend"></div>
+        <div class="trknote" id="trknote">Car positions appear here once live timing data is available.</div>
       </div>
     </div>
 
@@ -213,6 +225,8 @@ function parseFeed(text){
   const layout = extractJSON(text, "raceResultsViewModel.r_l(");
   const cells = extractJSON(text, "raceResultsViewModel.r_c(");
   const stats = extractJSON(text, "statsViewModel.a_u(");
+  const trk = extractJSON(text, "tracker.t_i(");
+  const tlen = extractJSON(text, "tracker.t_l(");
   // labels from layout header
   colLabels = {};
   if(layout && layout.h) layout.h.forEach((c,i)=>{ colLabels[i] = c.c || COL_FALLBACK[i] || ("C"+i); });
@@ -224,7 +238,23 @@ function parseFeed(text){
       (rows[r] = rows[r] || {})[c] = v;
     }
   }
-  return {heat, stats, rows: rows.filter(Boolean)};
+  return {heat, stats, rows: rows.filter(Boolean), tracker: parseTracker(trk, tlen)};
+}
+
+// tracker.t_i = { l:[[dist,isPit,?]...], d:[[idx,num,segStart,segEnd,segIdx,speed,retired,ts]...],
+//                 c:[{n,id,fc,bc}], s:{number:classId} }
+function parseTracker(trk, tlen){
+  if(!trk || !Array.isArray(trk.d)) return null;
+  const trackLen = (typeof tlen==="number" && tlen>0) ? tlen : 5137000;
+  const classes = {}; (trk.c||[]).forEach(c=>classes[c.id]=c);
+  const cars = trk.d.map(d=>{
+    const num = d[1];
+    let a = +d[2], b = +d[3];
+    if(!(b>a)) b = a + trackLen;            // wrap across start/finish
+    return { num, a, b, speed:+d[5]||0, retired: d[6]===true,
+             classId: (trk.s && trk.s[num]!=null) ? trk.s[num] : 0 };
+  }).filter(c=>!c.retired);
+  return { trackLen, cars, classes, loops: trk.l||[] };
 }
 
 function renderHeat(heat, stats, nCars){
@@ -274,6 +304,94 @@ function renderTable(rows){
   }
 }
 
+/* ---------------- Track map + live car plotting (canvas) ------------------------------ */
+const PALETTE = ["#ff5a5a","#3aa0ff","#37d67a","#f7b500","#c77dff","#00d5c8","#ff8c42","#8ce99a"];
+const TrackView = (function(){
+  const cv = $("trackCanvas");
+  let geo=null, coors=null, base=null, trackLen=5137000, SC=2, ready=false, running=false;
+  let cars=[], tr=null, lapMs=110000;
+  const DOT=18, FONT=24;
+
+  function init(){
+    geo = window.liveTiming && window.liveTiming.tracker && window.liveTiming.tracker.circuitLayoutData;
+    if(!geo || !geo.coors || !geo.coors.length){
+      cv.style.display="none"; $("trackImg").style.display="block"; return false; // fall back to PNG
+    }
+    coors = geo.coors; trackLen = geo.designerTrackLength || trackLen;
+    cv.width = geo.width*SC; cv.height = geo.height*SC;
+    base = document.createElement("canvas"); base.width=cv.width; base.height=cv.height;
+    drawBase(base.getContext("2d"));
+    const ctx=cv.getContext("2d"); ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(base,0,0);
+    ready=true; return true;
+  }
+  function stroke(c, arr, w, col){
+    c.beginPath();
+    arr.forEach((p,i)=>{ const x=p[0]*SC, y=p[1]*SC; i?c.lineTo(x,y):c.moveTo(x,y); });
+    c.lineWidth=w; c.strokeStyle=col; c.lineJoin="round"; c.lineCap="round"; c.stroke();
+  }
+  function drawBase(c){
+    c.clearRect(0,0,base.width,base.height);
+    if(geo.pitCoors) stroke(c, geo.pitCoors, 5*SC, "#343a42");
+    stroke(c, coors, 12*SC, "#464c55");
+    stroke(c, coors, 7*SC,  "#9aa3ad");
+  }
+  function coorAt(dist){
+    const d = ((dist % trackLen)+trackLen)%trackLen;
+    let idx = Math.round(d/trackLen*(coors.length-1));
+    if(idx<0) idx=0; if(idx>=coors.length) idx=coors.length-1;
+    return coors[idx];
+  }
+  const colorOf = c => PALETTE[c.classId % PALETTE.length];
+
+  function estimateLap(rows){
+    const vals=[];
+    (rows||[]).forEach(r=>{
+      [r[17], r[13]].forEach(v=>{ if(/^\d+$/.test(v)){ const n=+v; if(n>=20000 && n<=600000) vals.push(n); }});
+    });
+    if(!vals.length) return null;
+    vals.sort((a,b)=>a-b); return vals[Math.floor(vals.length/2)];
+  }
+  function renderLegend(){
+    const el=$("legend"); el.innerHTML="";
+    Object.values(tr.classes||{}).forEach(cl=>{
+      const s=document.createElement("span");
+      s.innerHTML=`<i style="background:${PALETTE[cl.id%PALETTE.length]}"></i>${cl.n}`;
+      el.appendChild(s);
+    });
+  }
+  function update(tracker, rows){
+    if(!ready && !init()) return;                 // canvas unavailable -> PNG fallback
+    tr = tracker; trackLen = tracker.trackLen || trackLen;
+    lapMs = estimateLap(rows) || lapMs;
+    const now = performance.now();
+    cars = tracker.cars.map(c=>({...c, pollT: now}));
+    $("carsOnTrack").textContent = cars.length + " cars";
+    $("trknote").textContent =
+      "Live positions from timing-loop segments, interpolated between the 60 s updates (approximate).";
+    renderLegend();
+    if(!running){ running=true; requestAnimationFrame(frame); }
+  }
+  function frame(){
+    if(!ready){ running=false; return; }
+    const ctx=cv.getContext("2d");
+    ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(base,0,0);
+    const now=performance.now();
+    ctx.font="bold "+FONT+"px Tahoma, Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    cars.forEach(c=>{
+      const segDur=Math.max(3000, lapMs*(c.b-c.a)/trackLen);
+      const frac=Math.min(1,(now-c.pollT)/segDur);
+      const p=coorAt(c.a + frac*(c.b-c.a));
+      const x=p[0]*SC, y=p[1]*SC, col=colorOf(c);
+      ctx.beginPath(); ctx.arc(x,y,DOT,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle="#0b0e13"; ctx.stroke();
+      ctx.fillStyle="#0b0e13"; ctx.fillText(c.num, x, y+1);
+    });
+    requestAnimationFrame(frame);
+  }
+  function clear(){ cars=[]; $("carsOnTrack").textContent=""; }
+  return { init, update, clear };
+})();
+
 async function fetchFeed(){
   let lastErr;
   for(const p of PROXIES){
@@ -294,15 +412,19 @@ async function tick(win){
     " — looking for data…");
   try{
     const text = await fetchFeed();
-    const {heat, stats, rows} = parseFeed(text);
+    const {heat, stats, rows, tracker} = parseFeed(text);
     const found = (heat || rows.length);
     if(found){
       const t = new Date().toLocaleTimeString();
-      setStatus("found", "Data found · " + rows.length + " cars · updated " + t);
+      const onTrack = tracker ? tracker.cars.length : 0;
+      setStatus("found", "Data found · " + rows.length + " cars" +
+        (onTrack ? " · " + onTrack + " on track" : "") + " · updated " + t);
       renderHeat(heat, stats, rows.length);
       renderTable(rows);
+      if(tracker && tracker.cars.length) TrackView.update(tracker, rows);
       $("raw").textContent = JSON.stringify({session:ses, heat, stats, cars:rows.length,
-        firstCar: rows[0]||null}, null, 2);
+        onTrack, firstCar: rows[0]||null,
+        firstTrackerCar: (tracker&&tracker.cars[0])||null}, null, 2);
     }else{
       setStatus("searching", "Connected — waiting for timing data…");
     }
@@ -353,7 +475,7 @@ const SCHEDULE = SCHEDULE_RAW.map((r,i,arr)=>{
          endMin = nx ? toMin(nx[1]) : toMin(s)+45; }
   return {d,s,e,cat,ses,is24:!!is24,live:!!live,dur,sMin:toMin(s),eMin:endMin};
 });
-const LEAD = 2; // start polling 2 min before a session
+const LEAD = 15; // start polling 15 min before a session (there is already activity beforehand)
 
 function berlinNow(){
   const p = new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Berlin",year:"numeric",
@@ -428,6 +550,7 @@ function clock(){ $("clock").textContent = new Date().toLocaleTimeString() + " �
   "Ring " + berlinNow().label + " CEST"; }
 setInterval(clock, 1000); clock();
 
+TrackView.init();               // draw the empty circuit immediately (or fall back to PNG)
 controller();
 setInterval(controller, 15000); // re-check window & schedule every 15 s; fetch gated to 60 s
 </script>
