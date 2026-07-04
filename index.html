@@ -117,7 +117,7 @@
   #gridclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}
   #gridnext{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
   .startline{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:4px;font-size:12px;padding:6px 0;margin:8px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
-  #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc}
+  #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc;margin-top:6px}
   #gridsvg{display:block}
   .fbtextarea{width:100%;min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;color:var(--ink);background:var(--card)}
   .fbtextarea::placeholder{color:#aab0b8}
@@ -187,7 +187,9 @@
       <div id="reelview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
           <div class="reelpanel"><svg id="lapchart"></svg></div>
+          <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel"><svg id="ltgraph"></svg></div>
+          <div class="reelpanel"><svg id="sectorsvg"></svg></div>
           <div class="reelpanel"><div id="fuelpanel" class="fuelpanel">
             <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
             <div class="fuelset">
@@ -207,24 +209,22 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
-          <div class="reelpanel"><svg id="sectorsvg"></svg></div>
-          <div class="reelpanel"><svg id="flowsvg"></svg></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
         <div class="reelthumb active" data-i="0" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="1" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="2" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
+        <div class="reelthumb" data-i="1" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="2" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="3" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="4" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="4" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
       <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
           <div class="reelpanel"><div id="weather" style="height:100%;width:100%"></div></div>
-          <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
+          <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center"></div></div>
         </div>
       </div>
       <div id="wxnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
@@ -618,10 +618,10 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);
   const _tk=Date.now()-_thT>=300;
   if(reelIdx===0||_tk)renderChart(T);
-  if(reelIdx===1||_tk)renderLapTrace(T);
-  if(reelIdx===2||_tk)renderFuel(T);
+  if(reelIdx===1||_tk)renderFlow(T);
+  if(reelIdx===2||_tk)renderLapTrace(T);
   if(reelIdx===3||_tk)renderSectors(T);
-  if(reelIdx===4||_tk)renderFlow(T);
+  if(reelIdx===4||_tk)renderFuel(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
@@ -959,11 +959,13 @@ T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').inne
    (quali finishes well before the race in the standard timetable). Set
    TEST_GRID to null to fall back to DB.cars (the currently selected class),
    ordered by each car's position at T=DB.tmin as a stand-in for quali order.
-   Layout: car 1 (P1) sits top-right, flush inside the sidebar's visible width.
-   Each following car is placed one car-width further right and 60% of a
-   car-length lower than the one before it — a single diagonal cascade, exactly
-   as specified. With many cars that cascade can run wider/taller than the
-   sidebar itself, so #gridwrap scrolls (both axes) to reveal the rest. */
+   Layout: a diagonal cascade (each following car one column right and 60% of
+   a car-length lower than the one before it) wrapped into bands that fit the
+   sidebar's width — once a band would run past the right edge it drops to a
+   new band and starts again from the left, so #gridwrap only ever needs
+   plain vertical scrolling to reach every car (a horizontal-scroll version
+   made most of the field invisible/undiscoverable — reported as "not
+   populated"). */
 /* [fieldPos, car, classPos] — classPos = this car's position within its own
    class; fieldPos = position across the whole 109-car field. Shown as
    "P{classPos} (P{fieldPos})" so it's obvious how many other-class cars are
@@ -980,19 +982,27 @@ function buildStartGrid(){
     const lp=livePos(DB.tmin);
     order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999)).map((car,i)=>({car,classPos:i+1,fieldPos:null}));
   }
-  const CARLEN=74,CARW=35,GAP=8,VSTEP=Math.round(CARLEN*0.6);
+  const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
-  const canvasW=(boxW-CARW)+Math.max(0,N-1)*(CARW+GAP)+CARW;
-  const canvasH=Math.max(0,N-1)*VSTEP+CARLEN+20;
+  /* Diagonal cascade (each next car one column right + 60% car-length lower)
+     wrapped into bands that fit the sidebar's width: once a band would run
+     past the right edge, drop to a new band below the previous one and
+     start again from the left. Keeps every car reachable by plain vertical
+     scrolling instead of an easy-to-miss horizontal scroll. */
+  const cols=Math.max(1,Math.floor(boxW/(CARW+GAP)));
+  const bandH=(cols-1)*VSTEP+CARLEN+GAP;
+  const canvasW=boxW;
+  const canvasH=Math.ceil(N/cols)*bandH+34;
   svg.setAttribute('viewBox','0 0 '+canvasW+' '+canvasH);
   svg.setAttribute('width',canvasW);svg.setAttribute('height',canvasH);
   const T2=(x,y,txt,fs,w)=>'<text x="'+x+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+fs+'"'+(w?' font-weight="700"':'')+' fill="#16202b" stroke="#fff" stroke-width="3" paint-order="stroke">'+txt+'</text>';
   let s='';
   order.forEach((e,i)=>{
     const car=e.car,posLbl=e.fieldPos!=null?('P'+e.classPos+' (P'+e.fieldPos+')'):('P'+e.classPos);
-    const cx=(boxW-CARW)+i*(CARW+GAP)+CARW/2;
-    const cy=i*VSTEP+CARLEN/2+8;
+    const band=Math.floor(i/cols),col=i%cols;
+    const cx=col*(CARW+GAP)+CARW/2;
+    const cy=band*bandH+col*VSTEP+CARLEN/2+22;
     s+='<g transform="translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-CARLEN/2)+'" y="'+(-CARW/2)+'" width="'+CARLEN+'" height="'+CARW+'" style="mix-blend-mode:multiply"/></g>';
     s+=T2(cx,cy-CARLEN/2-4,posLbl,8,true);
     s+=T2(cx,cy-CARLEN/2+18,'#'+car,9,false);
