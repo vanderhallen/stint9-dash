@@ -940,10 +940,11 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
   syncReel();syncMapHeights();if(window.__syncWx)window.__syncWx();
-  const DW=1722;
+  const DW=1722,nat=w.scrollHeight;
   const s=Math.min(1,window.innerWidth/DW);
   __fit=s;
-  w.style.transformOrigin='top left';w.style.transform='scale('+s+')';
+  const tx=Math.max(0,(window.innerWidth-DW*s)/2),ty=Math.max(0,(window.innerHeight-nat*s)/2);
+  w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')';
   document.documentElement.style.overflow='auto';document.body.style.overflow='auto';}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
@@ -971,8 +972,8 @@ T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').inne
    Shown as "P{classPos} (P{fieldPos})" so it's obvious how many other-class
    cars are interspersed between cars of the same class. */
 const TEST_GRID=[[1,35,'SP9 PRO',1],[2,47,'SP9 PRO',2],[3,44,'SP9 PRO',3],[4,26,'SP9 PRO-AM',1],[5,23,'SP9 PRO-AM',2],[6,48,'SP9 PRO-AM',3],[7,77,'SP9 PRO',4],[8,17,'SP9 PRO',5],[9,5,'SP9 AM',1],[10,8,'SP9 PRO-AM',4],[11,30,'SP9 PRO',6],[12,32,'SP9 PRO-AM',5],[13,6,'SP9 AM',2],[14,18,'AT 1',1],[15,786,'SP9 AM',3],[16,37,'SP9 AM',4],[17,902,'CUP2',1],[18,900,'CUP2',2],[19,915,'CUP2',3],[20,904,'CUP2',4],[21,50,'SP9 AM',5],[22,33,'SP9 AM',6],[23,901,'CUP2',5],[24,921,'CUP2',6],[25,919,'CUP2',7],[26,11,'AT 1',2],[27,910,'CUP2',8],[28,71,'SP7',1],[29,908,'CUP2',9],[30,906,'CUP2',10],[31,176,'SP10',1],[32,909,'CUP2',11],[33,962,'CUP3',1],[34,953,'CUP3',2],[35,170,'SP10',2],[36,959,'CUP3',3],[37,950,'CUP3',4],[38,961,'CUP3',5],[39,971,'CUP3',6],[40,177,'SP10',3],[41,164,'SP10',4],[42,10,'SP3T',1],[43,913,'CUP2',12],[44,944,'CUP3',7],[45,801,'TCR',1],[46,155,'SP10',5],[47,951,'CUP3',8],[48,189,'SP10',6],[49,969,'CUP3',9],[50,977,'CUP3',10],[51,949,'CUP3',11],[52,982,'CUP3',12],[53,312,'SP3T',2],[54,966,'CUP3',13],[55,941,'CUP3',14],[56,952,'CUP3',15],[57,333,'SP3T',3],[58,945,'CUP3',16],[59,396,'V6',1],[60,667,'BMW M240i',1],[61,877,'BMW M2',1],[62,651,'BMW M240i',2],[63,888,'BMW M2',2],[64,400,'V6',2],[65,870,'BMW M2',3],[66,650,'BMW M240i',3],[67,665,'BMW M240i',4],[68,470,'VT2-F+4WD',1],[69,524,'VT2-RWD',1],[70,670,'BMW M240i',5],[71,82,'SP7',2],[72,500,'VT2-RWD',2],[73,680,'BMW M240i',6],[74,480,'VT2-F+4WD',2],[75,653,'BMW M240i',7],[76,808,'SP3T',4],[77,55,'VT2-RWD',3],[78,878,'BMW M2',4],[79,520,'VT2-RWD',4],[80,898,'BMW M2',5],[81,321,'SP3T',5],[82,494,'VT2-F+4WD',3],[83,491,'VT2-F+4WD',4],[84,514,'VT2-RWD',5],[85,447,'V5',1],[86,444,'V5',2],[87,471,'VT2-F+4WD',5],[88,652,'BMW M240i',8],[89,677,'BMW M240i',9],[90,508,'VT2-RWD',6],[91,100,'BMW 325i',1],[92,505,'VT2-RWD',7],[93,492,'VT2-F+4WD',6],[94,999,'CUP3',17],[95,111,'BMW 325i',2],[96,472,'VT2-F+4WD',7],[97,507,'VT2-RWD',8],[98,250,'SP4',1],[99,300,'SP3T',6],[100,495,'VT2-F+4WD',8],[101,101,'BMW 325i',3],[102,660,'BMW M240i',10],[103,899,'BMW M2',6],[104,506,'VT2-RWD',9],[105,410,'V6',3],[106,102,'BMW 325i',4],[107,529,'V3',1],[108,477,'DNQ',1],[109,112,'DNQ',2]];
-/* This team's own class leads the grid: its cars come first (in class
-   order), then the rest of the field follows in normal qualifying order. */
+/* Only this team's own class is shown on the starting grid, in class order
+   (e.g. #667 P1 (P60), #651 P2 (P62)...) — every other class is excluded. */
 const GRID_FOCUS_CLASS='BMW M240i';
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
@@ -980,9 +981,7 @@ function buildStartGrid(){
   let order;
   if(TEST_GRID){
     const rows=TEST_GRID.map(e=>({car:e[1],className:e[2],classPos:e[3],fieldPos:e[0]}));
-    const focus=rows.filter(r=>r.className===GRID_FOCUS_CLASS).sort((a,b)=>a.classPos-b.classPos);
-    const rest=rows.filter(r=>r.className!==GRID_FOCUS_CLASS);
-    order=focus.concat(rest);
+    order=rows.filter(r=>r.className===GRID_FOCUS_CLASS).sort((a,b)=>a.classPos-b.classPos);
   }else{
     if(!DB.cars)return;
     const lp=livePos(DB.tmin);
@@ -1007,7 +1006,7 @@ function buildStartGrid(){
   order.forEach((e,i)=>{
     const car=e.car,posLbl=e.fieldPos!=null?('P'+e.classPos+' (P'+e.fieldPos+')'):('P'+e.classPos);
     const band=Math.floor(i/cols),col=i%cols;
-    const cx=col*(CARW+GAP)+CARW/2;
+    const cx=boxW*(col+1)/(cols+1);
     const cy=band*bandH+col*VSTEP+CARLEN/2+22;
     s+='<g transform="translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-CARLEN/2)+'" y="'+(-CARW/2)+'" width="'+CARLEN+'" height="'+CARW+'" style="mix-blend-mode:multiply"/></g>';
     s+=T2(cx,cy-CARLEN/2-4,posLbl,8,true);
