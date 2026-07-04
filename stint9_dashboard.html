@@ -703,8 +703,10 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2;
   const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
   const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
-  let ruler='';
-  for(let i=0;i*(PXPS*0.2)<=H+0.1;i++){const y=i*(PXPS*0.2),maj=(i%5===0),len=maj?26:15,col=maj?'#9aa1a9':'#e2e5ea';
+  // ruler is anchored to the top car: a MAJOR line sits exactly on the back-bumper datum (0s gap),
+  // then whole-second majors run down from it so the ruler reads the gap directly.
+  let ruler='';const step=PXPS*0.2,i0=Math.ceil((0-DATUM)/step),i1=Math.floor((H-DATUM)/step);
+  for(let i=i0;i<=i1;i++){const y=DATUM+i*step,maj=(((i%5)+5)%5===0),len=maj?26:15,col=maj?'#9aa1a9':'#e2e5ea';
     ruler+='<line x1="0" x2="'+len+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/><line x1="'+(W-len)+'" x2="'+W+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
   if(!selCar){svg.innerHTML=ruler+T2(cx,H/2,'middle','—','#c9ced4',16);return;}
   const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;

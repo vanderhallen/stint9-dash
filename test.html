@@ -46,7 +46,7 @@
   var fullSec=load('test_scale_v3',FULL_SEC_DEFAULT), pxPerSec, pitch;
   function recomputeScale(){pxPerSec=RECT_H/fullSec; pitch=MINOR_SEC*pxPerSec;}
   recomputeScale();
-  var RULER_DEFAULT_PX=0; // ruler ticks start clean at the top of the rectangle (0,1,2,3,4s)
+  var RULER_DEFAULT_PX=TOP_MARGIN_SEC*(RECT_H/FULL_SEC_DEFAULT); // anchor a major line on the datum (top car's back bumper)
   // convert a bumper position (seconds below top of ruler) into the img-center translateY offset o.
   // a car image (rotated) is 2*halfH tall; front bumper = top edge (center-halfH), back = bottom edge (center+halfH).
   function offsetForFrontBumper(S,halfH){return S*pxPerSec + halfH - RECT_H/2;}
@@ -71,7 +71,7 @@
       upS.onclick=function(){fullSec+=SCALE_STEP_SEC;broadcastScaleChange();};
       dnS.onclick=function(){fullSec=Math.max(MIN_FULL_SEC,fullSec-SCALE_STEP_SEC);broadcastScaleChange();};
     }
-    var key1='test_car_v3_'+k+'_1', key2='test_car_v3_'+k+'_2', keyR='test_ruler_v3_'+k;
+    var key1='test_car_v3_'+k+'_1', key2='test_car_v3_'+k+'_2', keyR='test_ruler_v4_'+k;
     // defaults: top car back bumper at the datum (0.5s from top), bottom car front bumper 3s below it
     var o1def=offsetForBackBumper(TOP_MARGIN_SEC,CAR_HALF_PX), o2def=offsetForFrontBumper(TOP_MARGIN_SEC+DEMO_GAP_SEC,CAR_HALF_PX);
     var o1, o2, rulerOffset;
