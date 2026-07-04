@@ -717,7 +717,7 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   s+=car(DATUM-halfH); // car ahead, pinned (back bumper on the datum)
   const selFront=DATUM+dA*PXPS;
   s+=car(selFront+halfH); // our car, front bumper `gap` seconds below the datum
-  s+=T2(cx,16,'middle','▲ #'+ah,'#16202b',13,1);
+  s+=T2(cx,16,'middle','#'+ah,'#16202b',13,1);
   s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+dA*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
   s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+20),'middle','#'+selCar,'#e0301e',13,1)
                  :T2(cx,H-9,'middle','#'+selCar+' ↓','#e0301e',13,1);
