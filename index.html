@@ -422,12 +422,12 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
     if(m<Infinity)cf.push([L,m,mc]);
     const ts=lapT(selCar,L);if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
   if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
-  const yT2=44,yB2=CH-26;
-  // Fixed +/-60s window around the class best (not a min/max autoscale) — a
-  // single pit-affected outlier lap used to stretch the whole axis so far
+  const yT2=58,yB2=CH-26;
+  // Fixed +/-120s window around the class best (not a min/max autoscale) —
+  // a single pit-affected outlier lap used to stretch the whole axis so far
   // that every real lap-time difference got squashed into a sliver at the
   // bottom; outlier laps now simply run off the top of the chart instead.
-  const lo=Math.max(0,best-60),hi=best+60,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
+  const lo=Math.max(0,best-120),hi=best+120,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
   const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
@@ -445,7 +445,7 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   cf.forEach((p,i)=>{if(i===0||p[2]!==cf[i-1][2])s+='<text x="'+px(p[0])+'" y="'+(YT(p[1])-9).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#6b7480" font-family="IBM Plex Mono,monospace">#'+p[2]+'</text>';});
   s+='<polyline points="'+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#1e8f3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
   const outs=(DB.pits[selCar]||[]).map(pl=>pl+1);sel.forEach(p=>{if(outs.indexOf(p[0])>=0)s+='<circle cx="'+px(p[0])+'" cy="'+YT(p[1]).toFixed(1)+'" r="6" fill="#fff" stroke="#e08a1e" stroke-width="2.5"/>';});
-  s+='<text x="'+xL+'" y="26" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
+  s+='<text x="'+xL+'" y="22" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
 let fuelLogCar=null,fuelS5Set=new Map(),fuelPitSet=new Map(),fuelTankNow=0;
 let stintDrvColor={};
