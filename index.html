@@ -966,17 +966,23 @@ T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').inne
    plain vertical scrolling to reach every car (a horizontal-scroll version
    made most of the field invisible/undiscoverable — reported as "not
    populated"). */
-/* [fieldPos, car, classPos] — classPos = this car's position within its own
-   class; fieldPos = position across the whole 109-car field. Shown as
-   "P{classPos} (P{fieldPos})" so it's obvious how many other-class cars are
-   interspersed between cars of the same class. */
-const TEST_GRID=[[1,35,1],[2,47,2],[3,44,3],[4,26,1],[5,23,2],[6,48,3],[7,77,4],[8,17,5],[9,5,1],[10,8,4],[11,30,6],[12,32,5],[13,6,2],[14,18,1],[15,786,3],[16,37,4],[17,902,1],[18,900,2],[19,915,3],[20,904,4],[21,50,5],[22,33,6],[23,901,5],[24,921,6],[25,919,7],[26,11,2],[27,910,8],[28,71,1],[29,908,9],[30,906,10],[31,176,1],[32,909,11],[33,962,1],[34,953,2],[35,170,2],[36,959,3],[37,950,4],[38,961,5],[39,971,6],[40,177,3],[41,164,4],[42,10,1],[43,913,12],[44,944,7],[45,801,1],[46,155,5],[47,951,8],[48,189,6],[49,969,9],[50,977,10],[51,949,11],[52,982,12],[53,312,2],[54,966,13],[55,941,14],[56,952,15],[57,333,3],[58,945,16],[59,396,1],[60,667,1],[61,877,1],[62,651,2],[63,888,2],[64,400,2],[65,870,3],[66,650,3],[67,665,4],[68,470,1],[69,524,1],[70,670,5],[71,82,2],[72,500,2],[73,680,6],[74,480,2],[75,653,7],[76,808,4],[77,55,3],[78,878,4],[79,520,4],[80,898,5],[81,321,5],[82,494,3],[83,491,4],[84,514,5],[85,447,1],[86,444,2],[87,471,5],[88,652,8],[89,677,9],[90,508,6],[91,100,1],[92,505,7],[93,492,6],[94,999,17],[95,111,2],[96,472,7],[97,507,8],[98,250,1],[99,300,6],[100,495,8],[101,101,3],[102,660,10],[103,899,6],[104,506,9],[105,410,3],[106,102,4],[107,529,1],[108,477,1],[109,112,2]];
+/* [fieldPos, car, className, classPos] — classPos = this car's position
+   within its own class; fieldPos = position across the whole 109-car field.
+   Shown as "P{classPos} (P{fieldPos})" so it's obvious how many other-class
+   cars are interspersed between cars of the same class. */
+const TEST_GRID=[[1,35,'SP9 PRO',1],[2,47,'SP9 PRO',2],[3,44,'SP9 PRO',3],[4,26,'SP9 PRO-AM',1],[5,23,'SP9 PRO-AM',2],[6,48,'SP9 PRO-AM',3],[7,77,'SP9 PRO',4],[8,17,'SP9 PRO',5],[9,5,'SP9 AM',1],[10,8,'SP9 PRO-AM',4],[11,30,'SP9 PRO',6],[12,32,'SP9 PRO-AM',5],[13,6,'SP9 AM',2],[14,18,'AT 1',1],[15,786,'SP9 AM',3],[16,37,'SP9 AM',4],[17,902,'CUP2',1],[18,900,'CUP2',2],[19,915,'CUP2',3],[20,904,'CUP2',4],[21,50,'SP9 AM',5],[22,33,'SP9 AM',6],[23,901,'CUP2',5],[24,921,'CUP2',6],[25,919,'CUP2',7],[26,11,'AT 1',2],[27,910,'CUP2',8],[28,71,'SP7',1],[29,908,'CUP2',9],[30,906,'CUP2',10],[31,176,'SP10',1],[32,909,'CUP2',11],[33,962,'CUP3',1],[34,953,'CUP3',2],[35,170,'SP10',2],[36,959,'CUP3',3],[37,950,'CUP3',4],[38,961,'CUP3',5],[39,971,'CUP3',6],[40,177,'SP10',3],[41,164,'SP10',4],[42,10,'SP3T',1],[43,913,'CUP2',12],[44,944,'CUP3',7],[45,801,'TCR',1],[46,155,'SP10',5],[47,951,'CUP3',8],[48,189,'SP10',6],[49,969,'CUP3',9],[50,977,'CUP3',10],[51,949,'CUP3',11],[52,982,'CUP3',12],[53,312,'SP3T',2],[54,966,'CUP3',13],[55,941,'CUP3',14],[56,952,'CUP3',15],[57,333,'SP3T',3],[58,945,'CUP3',16],[59,396,'V6',1],[60,667,'BMW M240i',1],[61,877,'BMW M2',1],[62,651,'BMW M240i',2],[63,888,'BMW M2',2],[64,400,'V6',2],[65,870,'BMW M2',3],[66,650,'BMW M240i',3],[67,665,'BMW M240i',4],[68,470,'VT2-F+4WD',1],[69,524,'VT2-RWD',1],[70,670,'BMW M240i',5],[71,82,'SP7',2],[72,500,'VT2-RWD',2],[73,680,'BMW M240i',6],[74,480,'VT2-F+4WD',2],[75,653,'BMW M240i',7],[76,808,'SP3T',4],[77,55,'VT2-RWD',3],[78,878,'BMW M2',4],[79,520,'VT2-RWD',4],[80,898,'BMW M2',5],[81,321,'SP3T',5],[82,494,'VT2-F+4WD',3],[83,491,'VT2-F+4WD',4],[84,514,'VT2-RWD',5],[85,447,'V5',1],[86,444,'V5',2],[87,471,'VT2-F+4WD',5],[88,652,'BMW M240i',8],[89,677,'BMW M240i',9],[90,508,'VT2-RWD',6],[91,100,'BMW 325i',1],[92,505,'VT2-RWD',7],[93,492,'VT2-F+4WD',6],[94,999,'CUP3',17],[95,111,'BMW 325i',2],[96,472,'VT2-F+4WD',7],[97,507,'VT2-RWD',8],[98,250,'SP4',1],[99,300,'SP3T',6],[100,495,'VT2-F+4WD',8],[101,101,'BMW 325i',3],[102,660,'BMW M240i',10],[103,899,'BMW M2',6],[104,506,'VT2-RWD',9],[105,410,'V6',3],[106,102,'BMW 325i',4],[107,529,'V3',1],[108,477,'DNQ',1],[109,112,'DNQ',2]];
+/* This team's own class leads the grid: its cars come first (in class
+   order), then the rest of the field follows in normal qualifying order. */
+const GRID_FOCUS_CLASS='BMW M240i';
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
   if(!host||!svg)return;
   let order;
   if(TEST_GRID){
-    order=TEST_GRID.map(e=>({car:e[1],classPos:e[2],fieldPos:e[0]}));
+    const rows=TEST_GRID.map(e=>({car:e[1],className:e[2],classPos:e[3],fieldPos:e[0]}));
+    const focus=rows.filter(r=>r.className===GRID_FOCUS_CLASS).sort((a,b)=>a.classPos-b.classPos);
+    const rest=rows.filter(r=>r.className!==GRID_FOCUS_CLASS);
+    order=focus.concat(rest);
   }else{
     if(!DB.cars)return;
     const lp=livePos(DB.tmin);
@@ -986,11 +992,11 @@ function buildStartGrid(){
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
   /* Diagonal cascade (each next car one column right + 60% car-length lower)
-     wrapped into bands that fit the sidebar's width: once a band would run
-     past the right edge, drop to a new band below the previous one and
-     start again from the left. Keeps every car reachable by plain vertical
-     scrolling instead of an easy-to-miss horizontal scroll. */
-  const cols=Math.max(1,Math.floor(boxW/(CARW+GAP)));
+     wrapped into bands that fit the sidebar width: once a band reaches 2
+     cars, drop to a new band below and start again from the left. Keeps
+     every car reachable by plain vertical scrolling instead of an
+     easy-to-miss horizontal scroll. */
+  const cols=2;
   const bandH=(cols-1)*VSTEP+CARLEN+GAP;
   const canvasW=boxW;
   const canvasH=Math.ceil(N/cols)*bandH+34;
