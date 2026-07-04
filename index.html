@@ -598,9 +598,15 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   for(let L=0;L<=maxN;L++){if(L!==0&&L!==maxN&&L%5!==0)continue;const gx=colX(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+(axY-2)+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(axY+13)+'" text-anchor="middle" font-size="12" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  DB.cars.forEach((st,i)=>{
+  // Rows are ordered by current track position (not car number) and re-sort
+  // live as positions change, so the row order always mirrors the running
+  // order — a car's "(Px)" label and its row both move together over time.
+  const lp=livePos(T);
+  const ordered=DB.cars.slice().sort((a,b)=>{const pa=lp[a],pb=lp[b];if(pa==null&&pb==null)return 0;if(pa==null)return 1;if(pb==null)return -1;return pa-pb;});
+  ordered.forEach((st,i)=>{
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
-    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text>';
+    const posLbl=lp[st]!=null?(' (P'+lp[st]+')'):'';
+    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+posLbl+'</text>';
     const lg=activeLeg(st,T);const bx=BX[st]||{};let lapsDriven=0;
     if(lg){const f=Math.max(0,Math.min(1,(T-lg[2])/((lg[3]-lg[2])||1)));lapsDriven=(lg[0]-1)+((lg[1]-1)+f)/5;}
     else{let mxb=0;for(const k in bx){if(bx[k]<=T&&+k>mxb)mxb=+k;}lapsDriven=mxb/5;}
