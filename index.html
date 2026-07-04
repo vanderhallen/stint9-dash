@@ -655,7 +655,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
   function open(card){if(cur)close();cur=card;ph=document.createComment('fph');card.parentNode.replaceChild(ph,card);card.classList.add('zoomed');host.appendChild(card);layer.classList.add('on');setTimeout(resync,40);}
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-  document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();open(card);});card.appendChild(b);});})();
+  document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart'),full=document.getElementById('ffull'),tg=document.getElementById('ftoggle');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
   const setTgl=()=>{tg.textContent=FUEL.start>0?'RESET FUEL':'ZERO LITER';};setTgl();
@@ -700,7 +700,7 @@ function setNb(el,nb,arrow,pos){while(el.firstChild)el.removeChild(el.firstChild
    seconds below that datum. gap > 3.5s pushes our car off the bottom edge (clipped, not visible). */
 const GG_FULLSEC=4.0, GG_TOPMARGIN=0.5, GG_CARLEN=168, GG_CARW=80;
 function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)return;
-  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=47;/* HOODY: units from the car's front bumper down to the middle of the hood, for the number label */
+  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=33;/* HOODY: units from the car's front bumper down to the number label on the hood */
   const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
   const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
   // ruler is anchored to the top car: a MAJOR line sits exactly on the back-bumper datum (0s gap),
@@ -714,15 +714,15 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   const ah=byPos[p-1];let dA=ah?commonGap(selCar,ah,T):null;dA=(dA!=null)?Math.max(0,dA):null;
   let s=ruler;
   if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
-    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#e0301e',13,1);
+    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1);
     svg.innerHTML=s;return;}
   s+=car(DATUM-halfH); // car ahead, pinned (back bumper on the datum)
   const selFront=DATUM+dA*PXPS;
   s+=car(selFront+halfH); // our car, front bumper `gap` seconds below the datum
   s+=T2(cx,16,'middle','#'+ah,'#16202b',13,1);
   s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+dA*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
-  s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+HOODY),'middle','#'+selCar,'#e0301e',13,1)
-                 :T2(cx,H-9,'middle','#'+selCar+' ↓','#e0301e',13,1);
+  s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+HOODY),'middle','#'+selCar,'#16202b',13,1)
+                 :T2(cx,H-9,'middle','#'+selCar+' ↓','#16202b',13,1);
   svg.innerHTML=s;}
 function renderMini(T,lp){const hint=document.getElementById('minihint');
   if(!selCar){for(const st in MEL)MEL[st].g.style.visibility='hidden';hint.style.display='';setNb(mAhead,null);setNb(mBehind,null);setEv(T);return;}
