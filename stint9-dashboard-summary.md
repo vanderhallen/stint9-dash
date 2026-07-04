@@ -61,8 +61,36 @@ guarantees the full page width is always used and content starts flush at the
 top; a right/bottom margin can still show when the natural (unscaled) design
 is smaller than the window, since we don't upscale past 100% (would blur).
 
+## Message board (added 2026-07-04)
+Right column, bottom ~50% (under Feedback), table `public.stint9_messages`
+(same Supabase project as feedback: `esvvzgxqnfszhttdkuzc`). Filtered by
+selected race class (null class = shown for all classes); dismiss (×) is
+permanent per-browser via localStorage. If a message names the currently
+selected car, that car gets a pulsing orange ring on the main track map
+(`#msgHighlightRing`, driven by `window.msgHighlightActive` inside `render()`).
+
+**Live-timing source:** https://livetiming.wige.de/vln.html → iframe
+`https://livetiming.azurewebsites.net/events/{eventId}/results`. That page is
+a JS SPA (`leaderboard.*.bundle.js`) that pulls data over a **WebSocket**, not
+a plain scrapable HTTP endpoint — found channel numbers in the bundle
+(`messages`=`[3]`, `trackState`/`results`=`[0,4]`, `statistics`=`[9002]`) but
+couldn't find the actual socket URL/protocol in static analysis, and there
+was no live event running to inspect the real traffic against. **No scraper
+is wired up.** Table + UI are ready for real data; currently falls back to 3
+hardcoded test placeholders (test1/test2/test3) when the table is empty.
+
+**⚠️ REMINDER: verify the message-board scraper during the next live NLS
+event.** Open livetiming.wige.de while an event is actually running, use
+browser devtools → Network → WS to capture the real socket handshake/URL and
+message-channel payload shape, then build the actual scraper (a Supabase Edge
+Function + `pg_cron` every 5 min, gated on the event being live) against that.
+Next scheduled NLS round per the archive: 01.08.2026 (KW 6h ADAC
+Ruhr-Pokal-Rennen) — check nuerburgring-langstrecken-serie.de closer to the
+date since the archive listing shifts.
+
 ## Open / possible next steps
 - Add per-car **pit-loss estimate** (out-lap minus green-lap baseline).
 - Optional **PIT ×N** indicator for selected car on the maps.
 - Multi-class support if sector data for another class (e.g. M240i) is provided → wire Race-class dropdown to filter.
 - S4/S5 (Döttinger Höhe) labelling correction on the static `NLS 5 sectors.png` (deferred).
+- Finish the message-board scraper (see reminder above).

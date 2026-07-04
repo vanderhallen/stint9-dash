@@ -30,7 +30,7 @@
   .colhead{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);height:22px;margin-bottom:8px;white-space:nowrap;overflow:hidden}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
   .stage{position:relative;overflow:hidden}#svg{display:block;width:64%;height:auto;margin:0 auto}
-  .carbadge{position:absolute;pointer-events:none;display:none;flex-direction:column;align-items:center;white-space:nowrap;transform:translate(-50%,-50%)}
+  .carbadge{position:absolute;top:12px;right:12px;pointer-events:none;display:none;flex-direction:column;align-items:flex-end;white-space:nowrap}
   .carbadge .row{display:flex;align-items:center;gap:10px}
   .carbadge .num{font-weight:700;font-size:29px;letter-spacing:-1px;color:var(--ink);line-height:1}
   .carbadge.sel .num{color:var(--ink)}
@@ -42,7 +42,7 @@
     .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
   .controls input[type=range]{flex:1 1 50px;min-width:40px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
-  .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:44px}
+  .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:50px}
   .modebtn{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
   .modebtn.active{background:var(--ink);color:#fff}
   .modebtn:not(.active):hover{background:#f1f3f5}
@@ -67,11 +67,10 @@
   .fuelpanel{width:100%;height:100%;overflow-y:auto;padding:4px 9px;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;color:#16202b}
   .fuelhd{font-weight:700;font-size:12px;color:#6b7480;margin-bottom:3px}
   .fuelset{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:10.5px;align-items:center;margin-bottom:4px}
+  .fuelset .fkeytxt{display:inline-block;min-width:66px}
   .fuelset label{display:flex;align-items:center;gap:3px;color:#6b7480}
   .fuelset input{width:44px;font-family:inherit;font-size:10.5px;padding:1px 3px;border:1px solid #cfd4da;border-radius:4px;color:#16202b}
-  .fbtn,.ftgl{font-family:inherit;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid #cfd4da;cursor:pointer}
-  .fbtn{background:#16202b;color:#fff;border-color:#16202b}
-  .ftgl{background:#eef0f3;color:#6b7480}
+  .fbtn{font-family:inherit;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid #cfd4da;cursor:pointer;background:#16202b;color:#fff;border-color:#16202b}
   .fuelreadout{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin:4px 0;padding:5px 8px;background:#f7f8fa;border:1px solid #eceef1;border-radius:7px}
   .fro{display:flex;justify-content:space-between;font-size:11.5px;gap:8px}
   .frl{color:#8a929b}.frv{font-weight:700}
@@ -122,18 +121,26 @@
   #gridclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}
   #gridnext{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
   .startline{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:4px;font-size:12px;padding:6px 0;margin:8px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
-  #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc;margin-top:6px}
+  #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc;margin-top:6px;display:flex;flex-direction:column;justify-content:center}
   #gridsvg{display:block}
   .fbtextarea{width:100%;min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;color:var(--ink);background:var(--card)}
   .fbtextarea::placeholder{color:#aab0b8}
   .fbsubmit{margin-top:6px;align-self:flex-end}
-  .fblist{margin-top:10px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
+  .fblist{margin-top:10px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}
   .fbitem{border-top:1px solid var(--border);padding-top:6px;padding-right:18px;position:relative}
   .fbitem .fbtime{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px}
   .fbitem .fbmsg{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:pre-wrap;margin-top:2px;word-break:break-word}
   .fbdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
   .fbdel:hover{color:#fff;background:var(--accent)}
   .fbstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px;min-height:12px}
+  .msglist{margin-top:8px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
+  .msgitem{border-top:1px solid var(--border);padding-top:6px;padding-right:18px;position:relative}
+  .msgitem .msgmeta{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+  .msgitem .msgtxt{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:pre-wrap;margin-top:2px;word-break:break-word}
+  .msgitem.ours{background:#fff3e0}
+  .msgitem.ours .msgtxt{color:#b5651a;font-weight:700}
+  .msgdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
+  .msgdel:hover{color:#fff;background:var(--accent)}
 </style></head>
 <body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
@@ -159,7 +166,7 @@
         <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
         <input type="checkbox" id="lbls" checked style="display:none">
       </div>
-      <div id="liveMsg" style="display:none;height:26px;align-items:center;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">live feed not connected</div>
+      <div id="liveMsg" style="display:none;height:32px;align-items:center;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">live feed not connected</div>
     </div>
     <div class="modetoggle" id="modetoggle">
       <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
@@ -177,7 +184,7 @@
   </div>
   <div class="split" style="margin-top:13px">
     <div class="left">
-      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="dots"></g><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
+      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
     </div>
     <div class="right">
       <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;margin:0 auto;overflow:visible">
@@ -201,17 +208,17 @@
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
-          <div class="reelpanel"><svg id="ltgraph"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg"></svg></div>
+          <div class="reelpanel"><svg id="ltgraph"></svg></div>
           <div class="reelpanel"><div id="fuelpanel" class="fuelpanel">
             <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
             <div class="fuelset">
-              <label>capacity <input id="fcap" type="number" step="1"> L</label>
-              <label>consumption <input id="fcons" type="number" step="0.1"> L/lap</label>
-              <label>formation <input id="fform" type="number" step="0.1"> laps</label>
-              <label>before race <input id="fstart" type="number" step="0.5"> L</label>
-              <button id="ffull" class="fbtn">FULL</button>
-              <button id="ftoggle" class="ftgl">zero liter</button>
+              <label><span class="fkeytxt">capacity</span> <input id="fcap" type="number" step="1"> L</label>
+              <label><span class="fkeytxt">at start</span> <input id="fstart" type="number" step="0.5"> L</label>
+            </div>
+            <div class="fuelset">
+              <label><span class="fkeytxt">consumption</span> <input id="fcons" type="number" step="0.1"> L/lap</label>
+              <label><span class="fkeytxt">formation</span> <input id="fform" type="number" step="0.1"> laps</label>
             </div>
             <div class="fuelreadout">
               <div class="fro"><span class="frl">in tank now</span><span id="ftank" class="frv">—</span></div>
@@ -227,8 +234,8 @@
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
         <div class="reelthumb active" data-i="0" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="1" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="2" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="3" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="2" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="3" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="4" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
       </div>
     </div>
@@ -250,16 +257,22 @@
     <span class="agicon">&#129302;</span>
     <input id="agentq" type="text" placeholder="ask agent a question" autocomplete="off" spellcheck="false">
     <button id="agentgo" class="agentgo">ask</button>
-    <div class="agentsug"><span>Try:</span><button class="sug">What's the likely outcome for our car?</button><button class="sug">Who pitted early?</button><button class="sug">Which sector are we losing time?</button></div>
+    <div class="agentsug"><span>Try:</span><button class="sug">What's the likely outcome for our car?</button><button class="sug">Who pitted early?</button><button class="sug">Which sector are we losing time?</button><button class="sug">What's the gap ahead?</button><button class="sug">What is the average speed over full lap?</button></div>
     <div id="agenta" class="agenta"></div>
   </div>
   </div><!-- /.maincol -->
-  <div id="fbcard" class="card sidecard" style="flex:0 0 220px;width:220px">
-    <div class="colhead">Feedback please!</div>
-    <textarea id="fbtext" class="fbtextarea" placeholder="report error or request new feature..."></textarea>
-    <button id="fbsubmit" class="btn fbsubmit">Submit</button>
-    <div id="fbstatus" class="fbstatus"></div>
-    <div id="fblist" class="fblist"></div>
+  <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column;gap:16px">
+    <div id="fbcard" class="card sidecard" style="flex:1 1 0;min-height:0">
+      <div class="colhead">Feedback please!</div>
+      <textarea id="fbtext" class="fbtextarea" placeholder="report error or request new feature..."></textarea>
+      <button id="fbsubmit" class="btn fbsubmit">Submit</button>
+      <div id="fbstatus" class="fbstatus"></div>
+      <div id="fblist" class="fblist"></div>
+    </div>
+    <div id="msgcard" class="card sidecard" style="flex:1 1 0;min-height:0">
+      <div class="colhead">Message board</div>
+      <div id="msglist" class="msglist"></div>
+    </div>
   </div>
 </div>
 <script>
@@ -329,7 +342,6 @@ function renderChart(T){const shown=[];const oBest=[Infinity,Infinity,Infinity,I
 
 /* controls / render */
 const clock=document.getElementById('clock'),scrub=document.getElementById('scrub'),oncount=document.getElementById('oncount'),lbls=document.getElementById('lbls'),badge=document.getElementById('carbadge'),predsvg=document.getElementById('predsvg');
-badge.style.left=((DB.cx-80)/2000*100-3)+'%';badge.style.top=((DB.cy-80)/1300*100+1)+'%';
 let T=DB.tmin,playing=false,last=0;
 function hms(x){const h=Math.floor(x/3600),m=Math.floor((x%3600)/60),s=Math.floor(x%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[st]||{};let L=lg?(lg[0]-1):0;
@@ -407,7 +419,9 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   // physical fuel model: start - consumption*laps + pit additions
   const form=FUEL.form||0;
   let fuel=start,last=0,firstDone=false,fuelAtReset=start;
-  pitLaps.forEach(pl=>{if(!firstDone){fuel-=cons*form;firstDone=true;}fuel-=cons*(pl-last);fuel=Math.min(cap,fuel+((cs.pits[pl]&&parseFloat(cs.pits[pl].added))||0));fuelAtReset=fuel;last=pl;});
+  pitLaps.forEach(pl=>{if(!firstDone){fuel-=cons*form;firstDone=true;}fuel-=cons*(pl-last);
+    fuel=(cs.pits[pl]&&cs.pits[pl].full)?cap:Math.min(cap,fuel+((cs.pits[pl]&&parseFloat(cs.pits[pl].added))||0));
+    fuelAtReset=fuel;last=pl;});
   if(!firstDone)fuel-=cons*form;
   fuel-=cons*(lapsDriven-last);
   const tank=fuel;let pred=tank;
@@ -419,7 +433,8 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   setR('ftank',tank.toFixed(1)+' L');setR('fpred',pred.toFixed(1)+' L');
   setR('flaps',rem.toFixed(1)+' laps');setR('fmax','L'+Math.floor(lapsDriven+rem)+' F/S');
   const n=document.getElementById('fnotify');if(n)n.style.display=inS5?'':'none';
-  // append new log rows (chronological, kept for documentation)
+  // new log rows are inserted at the top, so the most recent lap ends up
+  // first and L1 sinks to the bottom as more laps complete
   for(let L=1;L<=maxN;L++){
     const b5=bx[(L-1)*5+4];
     if(b5!=null&&b5<=T&&!fuelS5Set.has(L)){fuelS5Set.add(L);
@@ -428,17 +443,17 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
       const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';if(cs.s5[L]!=null)inp.value=cs.s5[L];
       inp.oninput=()=>{cs.s5[L]=inp.value;saveFuel();render();};
       const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L used';
-      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);log.appendChild(row);}
+      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);log.insertBefore(row,log.firstChild);}
     if((DB.pits[selCar]||[]).indexOf(L)>=0&&lapsDriven>=L&&!fuelPitSet.has(L)){fuelPitSet.add(L);
-      if(!cs.pits[L])cs.pits[L]={added:'',reset:true};
+      if(!cs.pits[L])cs.pits[L]={added:'',full:false};
       const row=document.createElement('div');row.className='flogrow pit';
       const lb=document.createElement('span');lb.className='floglbl';lb.textContent='⛽ PIT L'+L+' add';
-      const inp=document.createElement('input');inp.type='number';inp.step='0.5';inp.placeholder='L';if(cs.pits[L].added!=='')inp.value=cs.pits[L].added;
+      const inp=document.createElement('input');inp.type='number';inp.step='0.5';inp.placeholder='L';if(cs.pits[L].added!=='')inp.value=cs.pits[L].added;inp.disabled=!!cs.pits[L].full;
       inp.oninput=()=>{cs.pits[L].added=inp.value;saveFuel();render();};
       const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
-      const tg=document.createElement('button');tg.className='ftgl';tg.textContent='reset: '+(cs.pits[L].reset?'YES':'NO');
-      tg.onclick=()=>{cs.pits[L].reset=!cs.pits[L].reset;tg.textContent='reset: '+(cs.pits[L].reset?'YES':'NO');saveFuel();render();};
-      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(tg);log.appendChild(row);}
+      const tg=document.createElement('button');tg.className='fbtn';tg.style.opacity=cs.pits[L].full?'1':'.45';tg.textContent='FULL in PIT';
+      tg.onclick=()=>{cs.pits[L].full=!cs.pits[L].full;saveFuel();render();};
+      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(tg);log.insertBefore(row,log.firstChild);}
   }}
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
@@ -544,7 +559,7 @@ function askAgent(q){
     let bsd=Infinity,bc=null;DB.cars.forEach(st=>{const c=consistency(st);if(c!=null&&c<bsd){bsd=c;bc=st;}});
     if(bc==null)return 'Not enough laps to judge consistency yet.';
     let a='Most consistent car: <b>'+nm(bc)+'</b> (±'+bsd.toFixed(2)+'s lap-to-lap).';const cs=selCar?consistency(selCar):null;if(cs!=null)a+=' Ours: ±'+cs.toFixed(2)+'s.';return a;}
-  if((has('average','avg','mean','typical')&&has('lap','pace'))||(has('our','we','us')&&has('pace'))){
+  if(!has('speed')&&((has('average','avg','mean','typical')&&has('lap','pace'))||(has('our','we','us')&&has('pace')))){
     if(!selCar)return 'Select our car first.';const a=lapsOf(selCar);if(!a.length)return 'No completed laps yet.';
     const m=a.reduce((x,y)=>x+y,0)/a.length;return 'Our pace ('+nm(selCar)+'): average '+fmtT(m)+', median '+fmtT(median(a))+' over '+a.length+' laps. Best '+fmtT(mB)+'.';}
   if(has('sector')||(has('where')&&has('los','slow','weak','strong','gain','improve','time','find')&&!has('position','place'))){
@@ -574,6 +589,15 @@ function askAgent(q){
     const be=byPos[p+1];if(be&&myPace){const bp=paceOf(be),g=commonGap(be,selCar,T);if(bp!=null&&g!=null){const d=myPace-bp;if(d>0.15&&rem>0&&g/d<=rem){proj++;notes.push('under threat from '+nm(be)+' (+'+g.toFixed(0)+'s, ~'+d.toFixed(1)+'s/lap quicker)');}}}
     proj=Math.max(1,Math.min(nC,proj));
     return nm(selCar)+' is P'+p+' with ~'+rem+' laps to go. Likely finish: <b>P'+proj+'</b>.'+(notes.length?'\n'+notes.join('\n'):'\nTrack position looks stable at current pace.');}
+  if(has('ahead')&&!rev){
+    if(!p)return nm(selCar)+' is off track (pit) — no gap to report.';
+    const ah=byPos[p-1];if(!ah)return nm(selCar)+' is P'+p+' — no car ahead (leading the class).';
+    const g=commonGap(selCar,ah,T);return 'Gap to '+nm(ah)+' ahead (P'+(p-1)+'): '+(g!=null?('<b>+'+g.toFixed(1)+'s</b>'):'no common reference yet')+'.';}
+  if(has('speed')&&has('average','avg','mean')){
+    if(!selCar)return 'Select our car first.';const a=lapsOf(selCar);if(!a.length)return 'No completed laps yet.';
+    const NLS_LAP_KM=24.358; // Nürburgring Nordschleife+GP-Strecke combined lap length per the official NLS timing sheets
+    const m=a.reduce((x,y)=>x+y,0)/a.length,kmh=NLS_LAP_KM/(m/3600);
+    return 'Our average speed ('+nm(selCar)+'): <b>'+kmh.toFixed(1)+' km/h</b> over '+a.length+' laps (avg lap '+fmtT(m)+', '+NLS_LAP_KM+' km/lap).';}
   if(has('gap','leader','p1','front','first place')){const ldr=byPos[1];if(!ldr)return 'No running order available yet.';
     if(ldr===selCar)return nm(selCar)+' is leading the class (P1).';
     const g=commonGap(selCar,ldr,T);return 'Leader is '+nm(ldr)+'. Our gap: '+(g!=null?('<b>+'+g.toFixed(1)+'s</b>'):'—')+' (we are P'+(p||'?')+').';}
@@ -612,16 +636,20 @@ function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=documen
 function predPass(a,b,T){const G=commonGap(a,b,T),bi=lastCommon(a,b,T);if(G==null||G<=0||bi==null)return null;const lap=Math.floor((bi-1)/5)+1,k=((bi-1)%5)+1,ta=(DB.sectimes[a][lap]||[])[k-1],tb=(DB.sectimes[b][lap]||[])[k-1];if(ta==null||tb==null)return null;const dl=ta-tb;if(dl>=-paceThr)return null;const eta=G*tb/(-dl);return eta<5400?eta:null;}
 function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   // gather visible for declutter
-  const vis=[];let selXY=null;
+  const vis=[];let selXY=null,selR=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);
     if(!lg){E.g.style.visibility='hidden';return;}
     const f=(T-lg[2])/((lg[3]-lg[2])||1),[x,y]=ptAlong(lg[1],f);const pos=lp[st]||nC;
-    const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel)selXY=[x,y];
+    const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';on++;
     E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',sel?'0.5':'1');
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');
     const dur=lg[3]-lg[2],avg=DB.avgseg[lg[1]];E.dl.style.display=(dur>avg*(1+thr))?'':'none';
     vis.push({st,x,y,fs,E});});
+  // message-board highlight: pulsing ring around our car if an active,
+  // undismissed message targets it (see initMessages() below)
+  {const ring=document.getElementById('msgHighlightRing');
+    if(ring){if(window.msgHighlightActive&&selXY){ring.setAttribute('cx',selXY[0].toFixed(1));ring.setAttribute('cy',selXY[1].toFixed(1));ring.setAttribute('r',(selR*1.5+8).toFixed(1));ring.style.display='';}else ring.style.display='none';}}
   // declutter labels vertically
   vis.sort((a,b)=>a.y-b.y);const placed=[];
   vis.forEach(v=>{let ly=v.y-16;for(const q of placed){if(Math.abs(v.x-q.x)<165&&Math.abs(ly-q.ly)<34)ly=q.ly+34;}placed.push({x:v.x,ly});v.E.t.setAttribute('y',(ly-v.y).toFixed(1));});
@@ -632,8 +660,8 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
   const _tk=Date.now()-_thT>=300;
   if(reelIdx===0||_tk)renderChart(T);
   if(reelIdx===1||_tk)renderFlow(T);
-  if(reelIdx===2||_tk)renderLapTrace(T);
-  if(reelIdx===3||_tk)renderSectors(T);
+  if(reelIdx===2||_tk)renderSectors(T);
+  if(reelIdx===3||_tk)renderLapTrace(T);
   if(reelIdx===4||_tk)renderFuel(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
@@ -678,8 +706,8 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     }
     let yb=(nR?boxTop:lastY+26)-32;
     for(let k=preds.length-1;k>=0;k--){mkT((BX0+BX1)/2,yb,'middle',preds[k][0],preds[k][1],fs);yb-=rowH;}
-    if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,boxTop-56,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
-    badge.className='carbadge sel';badge.innerHTML='<div class="row"><span class="num">#'+selCar+'</span>'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
+    if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,yb-16,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
+    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
 function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;T+=dt*parseFloat(document.getElementById('speed').value);
   if(T>=DB.tmax){T=DB.tmin;last=ts;}scrub.value=T;render();if(playing)requestAnimationFrame(loop);}
@@ -698,7 +726,7 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
 
 /* dropdown */
 const sel=document.getElementById('carsel');
-sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];fillStints(selCar);render();savePrefs();};
+sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();};
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
@@ -713,15 +741,12 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
-(function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart'),full=document.getElementById('ffull'),tg=document.getElementById('ftoggle');if(!cap)return;
+(function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
-  const setTgl=()=>{tg.textContent=FUEL.start>0?'RESET FUEL':'ZERO LITER';};setTgl();
   cap.oninput=()=>{FUEL.cap=Math.max(0,parseFloat(cap.value||'0'));saveFuel();render();};
   cons.oninput=()=>{FUEL.cons=Math.max(0,parseFloat(cons.value||'0'));saveFuel();render();};
   frm.oninput=()=>{FUEL.form=Math.max(0,parseFloat(frm.value||'0'));saveFuel();render();};
-  st.oninput=()=>{FUEL.start=Math.max(0,parseFloat(st.value||'0'));setTgl();saveFuel();render();};
-  full.onclick=()=>{FUEL.start=FUEL.cap;st.value=FUEL.start;setTgl();saveFuel();render();};
-  tg.onclick=()=>{FUEL.start=FUEL.start>0?0:FUEL.cap;st.value=FUEL.start;setTgl();saveFuel();render();};})();
+  st.oninput=()=>{FUEL.start=Math.max(0,parseFloat(st.value||'0'));saveFuel();render();};})();
 
 /* ---- zoom mini-map + neighbour deltas + overtakes ---- */
 const POS={},BT={};
@@ -931,7 +956,7 @@ if(PREFS.speed!=null){document.getElementById('speed').value=PREFS.speed;}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();};
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
@@ -943,46 +968,49 @@ syncMapHeights();setTimeout(syncMapHeights,80);
    they read as full-height sidebars and their own overflow:auto areas actually
    clip/scroll instead of inflating the whole page. */
 function syncSideHeights(){
-  const mc=document.querySelector('.maincol'),gc=document.getElementById('gridcard'),fc=document.getElementById('fbcard');
+  const mc=document.querySelector('.maincol'),gc=document.getElementById('gridcard'),fc=document.getElementById('rightcol');
   if(!mc||!gc)return;
   const h=mc.getBoundingClientRect().height/(__fit||1);
   if(h>10){gc.style.height=h+'px';if(fc)fc.style.height=h+'px';}
 }
 syncSideHeights();setTimeout(syncSideHeights,80);
-/* Grows the main track map (and, via syncMapHeights, the zoom view next to
-   it) to eat into any blank space left below the page once everything else
-   is laid out, instead of leaving it empty. It grows to fill the whole
-   slack, but is capped by the width of its own card so the aspect-locked
-   width never overflows and crops the track (.stage has overflow:hidden). */
 /* Fills the blank space under the page (viewport taller than content) by
-   growing the interactive maps. Works entirely in unscaled layout units
-   (clientWidth/clientHeight/scrollHeight — unaffected by the CSS transform),
-   so it's safe to run any time after fitPage has applied the scale. Resets
-   the maps to natural first (idempotent across repeated calls), then:
-     1) grows the top track map, capped by its own card width so the
-        aspect-locked width never overflows and crops the track sideways;
-     2) pours any remaining slack into the reel/weather row, which are
-        charts/maps that just scale — no cropping. */
+   growing the interactive maps, splitting the freed-up height EQUALLY
+   between the top track-map row and the bottom reel/weather row — rather
+   than maxing out the top row first and dumping any leftover into the
+   bottom one, which left them badly mismatched on narrower windows (the
+   top map hits its width cap sooner there, so almost all the slack used to
+   land in the reel row alone). Works entirely in unscaled layout units
+   (clientWidth/clientHeight — unaffected by the CSS transform), so it's
+   safe to run any time after fitPage has applied the scale. Resets both
+   rows to natural size first (idempotent across repeated calls). */
 function growMaps(){
   const w=document.querySelector('.wrap'),svg=document.getElementById('svg'),rv=document.getElementById('reelview'),wv=document.getElementById('wxview'),agent=document.querySelector('.agentbar');
-  if(!w||!svg||!agent||typeof CH==='undefined')return;
+  if(!w||!svg||!rv||!agent||typeof CH==='undefined')return;
   const s=__fit||1;
-  // reset to natural (idempotent across repeated calls)
   svg.style.width='64%';svg.style.height='auto';
-  if(rv){rv.style.height=(rv.clientWidth*CH/1000)+'px';if(wv)wv.style.height=rv.clientHeight+'px';}
   syncMapHeights();
+  rv.style.height=(rv.clientWidth*CH/1000)+'px';
+  if(wv)wv.style.height=rv.clientHeight+'px';
+  // weather map's minimum height is pinned to 80% of the zoom view (#mini)
+  // next to the main track map, regardless of how the reel/weather row
+  // would otherwise balance out
+  const mini=document.getElementById('mini');
+  if(mini){const minWxH=mini.clientHeight*0.8;if(rv.clientHeight<minWxH){rv.style.height=minWxH+'px';if(wv)wv.style.height=minWxH+'px';}}
   // real content bottom = the agent bar (the wrap's scrollHeight is polluted
   // by the tall grid sidebar, so we measure the visible column's end instead)
-  const slackU=()=>(window.innerHeight-agent.getBoundingClientRect().bottom)/s;
-  if(slackU()<=20)return;
-  // 1) grow the top track map, capped by its card width (no sideways crop)
-  const h0=svg.clientHeight,aspect=svg.clientWidth/h0,card=svg.closest('.stage');
-  const maxByWidth=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
-  const topH=Math.min(h0+slackU(),maxByWidth);
-  if(topH-h0>8){svg.style.width='auto';svg.style.height=topH+'px';syncMapHeights();}
-  // 2) remaining slack into the reel/weather row (charts scale, no crop)
-  const rem=slackU();
-  if(rv&&rem>20){const rh=rv.clientHeight+rem;rv.style.height=rh+'px';if(wv)wv.style.height=rh+'px';}
+  const slack=(window.innerHeight-agent.getBoundingClientRect().bottom)/s;
+  if(slack<=20)return;
+  const mapH0=svg.clientHeight,reelH0=rv.clientHeight;
+  const aspect=svg.clientWidth/mapH0,card=svg.closest('.stage');
+  const maxMapH=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
+  const target=Math.min((mapH0+reelH0+slack)/2,maxMapH);
+  // always keep the two rows equal — even when the map's width cap kicks in
+  // well below the "fill everything" target, so a narrower window doesn't
+  // dump all the leftover slack into the reel row alone (badly mismatched)
+  const mapH=target,reelH=target;
+  if(mapH-mapH0>8){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
+  if(reelH-reelH0>8){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
@@ -1001,15 +1029,6 @@ fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
 T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);
 
 /* ---- starting grid ----
-   One-time test data: latest released NLS qualifying results at the time this
-   was built — 1. ADAC Eifel-Trophy, Nürburgring (20.06.2026), Zeittraining
-   classification (107 classified + 2 unclassified/DNQ = 109 cars), from
-   nuerburgring-langstrecken-serie.de/wp-content/uploads/ergebnisse/2026-06-20t.pdf
-   Production use: replace TEST_GRID with whichever qualifying PDF is the
-   LATEST released at the time, re-checked on the morning of race day itself
-   (quali finishes well before the race in the standard timetable). Set
-   TEST_GRID to null to fall back to DB.cars (the currently selected class),
-   ordered by each car's position at T=DB.tmin as a stand-in for quali order.
    Layout: a diagonal cascade (each following car one column right and 60% of
    a car-length lower than the one before it) wrapped into bands that fit the
    sidebar's width — once a band would run past the right edge it drops to a
@@ -1017,27 +1036,17 @@ T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').inne
    plain vertical scrolling to reach every car (a horizontal-scroll version
    made most of the field invisible/undiscoverable — reported as "not
    populated"). */
-/* [fieldPos, car, className, classPos] — classPos = this car's position
-   within its own class; fieldPos = position across the whole 109-car field.
-   Shown as "P{classPos} (P{fieldPos})" so it's obvious how many other-class
-   cars are interspersed between cars of the same class. */
-const TEST_GRID=[[1,35,'SP9 PRO',1],[2,47,'SP9 PRO',2],[3,44,'SP9 PRO',3],[4,26,'SP9 PRO-AM',1],[5,23,'SP9 PRO-AM',2],[6,48,'SP9 PRO-AM',3],[7,77,'SP9 PRO',4],[8,17,'SP9 PRO',5],[9,5,'SP9 AM',1],[10,8,'SP9 PRO-AM',4],[11,30,'SP9 PRO',6],[12,32,'SP9 PRO-AM',5],[13,6,'SP9 AM',2],[14,18,'AT 1',1],[15,786,'SP9 AM',3],[16,37,'SP9 AM',4],[17,902,'CUP2',1],[18,900,'CUP2',2],[19,915,'CUP2',3],[20,904,'CUP2',4],[21,50,'SP9 AM',5],[22,33,'SP9 AM',6],[23,901,'CUP2',5],[24,921,'CUP2',6],[25,919,'CUP2',7],[26,11,'AT 1',2],[27,910,'CUP2',8],[28,71,'SP7',1],[29,908,'CUP2',9],[30,906,'CUP2',10],[31,176,'SP10',1],[32,909,'CUP2',11],[33,962,'CUP3',1],[34,953,'CUP3',2],[35,170,'SP10',2],[36,959,'CUP3',3],[37,950,'CUP3',4],[38,961,'CUP3',5],[39,971,'CUP3',6],[40,177,'SP10',3],[41,164,'SP10',4],[42,10,'SP3T',1],[43,913,'CUP2',12],[44,944,'CUP3',7],[45,801,'TCR',1],[46,155,'SP10',5],[47,951,'CUP3',8],[48,189,'SP10',6],[49,969,'CUP3',9],[50,977,'CUP3',10],[51,949,'CUP3',11],[52,982,'CUP3',12],[53,312,'SP3T',2],[54,966,'CUP3',13],[55,941,'CUP3',14],[56,952,'CUP3',15],[57,333,'SP3T',3],[58,945,'CUP3',16],[59,396,'V6',1],[60,667,'BMW M240i',1],[61,877,'BMW M2',1],[62,651,'BMW M240i',2],[63,888,'BMW M2',2],[64,400,'V6',2],[65,870,'BMW M2',3],[66,650,'BMW M240i',3],[67,665,'BMW M240i',4],[68,470,'VT2-F+4WD',1],[69,524,'VT2-RWD',1],[70,670,'BMW M240i',5],[71,82,'SP7',2],[72,500,'VT2-RWD',2],[73,680,'BMW M240i',6],[74,480,'VT2-F+4WD',2],[75,653,'BMW M240i',7],[76,808,'SP3T',4],[77,55,'VT2-RWD',3],[78,878,'BMW M2',4],[79,520,'VT2-RWD',4],[80,898,'BMW M2',5],[81,321,'SP3T',5],[82,494,'VT2-F+4WD',3],[83,491,'VT2-F+4WD',4],[84,514,'VT2-RWD',5],[85,447,'V5',1],[86,444,'V5',2],[87,471,'VT2-F+4WD',5],[88,652,'BMW M240i',8],[89,677,'BMW M240i',9],[90,508,'VT2-RWD',6],[91,100,'BMW 325i',1],[92,505,'VT2-RWD',7],[93,492,'VT2-F+4WD',6],[94,999,'CUP3',17],[95,111,'BMW 325i',2],[96,472,'VT2-F+4WD',7],[97,507,'VT2-RWD',8],[98,250,'SP4',1],[99,300,'SP3T',6],[100,495,'VT2-F+4WD',8],[101,101,'BMW 325i',3],[102,660,'BMW M240i',10],[103,899,'BMW M2',6],[104,506,'VT2-RWD',9],[105,410,'V6',3],[106,102,'BMW 325i',4],[107,529,'V3',1],[108,477,'DNQ',1],[109,112,'DNQ',2]];
-/* Only this team's own class is shown on the starting grid, in class order
-   (e.g. #667 P1 (P60), #651 P2 (P62)...) — every other class is excluded. */
-const GRID_FOCUS_CLASS='BMW M240i';
-const GRID_SOURCE='1. ADAC Eifel-Trophy · quali 20.06.2026';
+/* The dashboard now carries real per-car data for all 27 NLS classes (see
+   the "NOW ALL CLASSES" note up top), so the starting grid follows whichever
+   class is selected in Race class (DB.cars, rebuilt by buildClass() on
+   every change) instead of a single hardcoded one-time test field. Grid
+   order = each car's position at T=DB.tmin as a stand-in for the qualifying
+   order, since that's the only ordering this dataset carries per car. */
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
-  if(!host||!svg)return;
-  let order;
-  if(TEST_GRID){
-    const rows=TEST_GRID.map(e=>({car:e[1],className:e[2],classPos:e[3],fieldPos:e[0]}));
-    order=rows.filter(r=>r.className===GRID_FOCUS_CLASS).sort((a,b)=>a.classPos-b.classPos);
-  }else{
-    if(!DB.cars)return;
-    const lp=livePos(DB.tmin);
-    order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999)).map((car,i)=>({car,classPos:i+1,fieldPos:null}));
-  }
+  if(!host||!svg||!DB.cars)return;
+  const lp=livePos(DB.tmin);
+  const order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999)).map((car,i)=>({car,classPos:i+1,fieldPos:null}));
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
@@ -1065,8 +1074,8 @@ function buildStartGrid(){
   });
   svg.innerHTML=s;
   host.scrollLeft=0;host.scrollTop=0;
-  const src=document.getElementById('gridsource');
-  if(src)src.textContent=TEST_GRID?('Data: '+GRID_SOURCE):'Data: current session';
+  const src=document.getElementById('gridsource'),clsSel2=document.getElementById('classsel');
+  if(src)src.textContent='Data: '+(clsSel2?clsSel2.value:'current')+' · '+order.length+' cars, current session';
 }
 buildStartGrid();
 
@@ -1207,5 +1216,55 @@ applyWxReel(false);
       .catch(()=>{status.textContent='failed to send, try again';btn.disabled=false;});
   };
   loadFeedback();
+})();
+
+/* ---- message board (race-control items: penalties, incidents etc) ----
+   Meant to be filled by a scraper of livetiming.wige.de for the active NLS
+   event (table public.stint9_messages, same Supabase project as feedback).
+   No scraper is wired up yet — see stint9-dashboard-summary.md for why
+   (the live feed is pushed over a WebSocket, not a plain scrapable HTTP
+   endpoint; needs reverse-engineering against a *live* event to finish).
+   Until real rows exist, falls back to 3 test placeholders so the UI can be
+   exercised. Messages are filtered to the selected race class (null class =
+   shown for all); dismissing one (×) hides it permanently for this browser
+   (localStorage) until real data arrives and supersedes it. If a message
+   names the currently selected car, that car gets a pulsing highlight ring
+   on the main track map (see render() in the main script). */
+(function initMessages(){
+  const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+  const list=document.getElementById('msglist');
+  if(!list)return;
+  const TEST_MESSAGES=[
+    {id:'test1',race_class:null,car:null,message:'Yellow flag sector 3 — debris on track.',created_at:new Date(Date.now()-9*60000).toISOString()},
+    {id:'test2',race_class:null,car:'666',message:'#666 under investigation — track limits T13, lap 4.',created_at:new Date(Date.now()-4*60000).toISOString()},
+    {id:'test3',race_class:'CUP5',message:'CUP5: 10s time penalty for #675 — unsafe release.',car:'675',created_at:new Date(Date.now()-60000).toISOString()}
+  ];
+  let dismissed;try{dismissed=new Set(JSON.parse(localStorage.getItem('stint9_msg_dismissed')||'[]'));}catch(e){dismissed=new Set();}
+  function saveDismissed(){try{localStorage.setItem('stint9_msg_dismissed',JSON.stringify(Array.from(dismissed)));}catch(e){}}
+  let MESSAGES=TEST_MESSAGES;
+  function fmtTime(iso){const d=new Date(iso);const pad=n=>String(n).padStart(2,'0');return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
+  window.renderMessages=function renderMessages(){
+    const clsSel=document.getElementById('classsel'),curCls=clsSel?clsSel.value:null;
+    const rows=MESSAGES.filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls));
+    list.innerHTML='';
+    let highlight=false;
+    rows.forEach(m=>{
+      const isOurs=!!(selCar&&m.car&&String(m.car)===String(selCar));if(isOurs)highlight=true;
+      const item=document.createElement('div');item.className='msgitem'+(isOurs?' ours':'');
+      const del=document.createElement('span');del.className='msgdel';del.textContent='×';del.title='dismiss';
+      del.onclick=()=>{dismissed.add(String(m.id));saveDismissed();renderMessages();};
+      const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=fmtTime(m.created_at)+(m.car?(' · #'+m.car):'')+(m.race_class?(' · '+m.race_class):'');
+      const txt=document.createElement('div');txt.className='msgtxt';txt.textContent=m.message;
+      item.appendChild(del);item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
+    });
+    window.msgHighlightActive=highlight;
+  };
+  function loadMessages(){
+    fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+      .then(r=>r.ok?r.json():[])
+      .then(rows=>{MESSAGES=(rows&&rows.length)?rows:TEST_MESSAGES;renderMessages();})
+      .catch(()=>{MESSAGES=TEST_MESSAGES;renderMessages();});
+  }
+  loadMessages();setInterval(loadMessages,5*60*1000);
 })();
 </script></body></html>
