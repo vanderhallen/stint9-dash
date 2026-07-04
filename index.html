@@ -720,9 +720,10 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   if(!p){ggTarget=null;svg.innerHTML=ruler+T2(cx,H/2,'middle','pit','#b5bcc4',15);return;}
   const ah=byPos[p-1];let dA=ah?commonGap(selCar,ah,T):null;dA=(dA!=null)?Math.max(0,dA):null;
   let s=ruler;
-  if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
+  if(dA==null){ // no common gap computed yet (e.g. lap 0 before a shared sector), or we lead the class
     ggTarget=null;
-    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1)+T2(cx,DATUM+halfH+24,'middle','P'+p,'#16202b',24,1);
+    if(ah)s+=car(DATUM-halfH)+T2(cx,16,'middle','#'+ah,'#16202b',13,1); // pin the car ahead at the datum where it belongs
+    s+=car(DATUM+halfH)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1)+T2(cx,DATUM+halfH+24,'middle','P'+p,'#16202b',24,1);
     svg.innerHTML=s;return;}
   // ease our shown gap toward the new data value (snap on first sight / after a reset)
   if(ggTarget===null){ggShown=ggTarget=dA;}
