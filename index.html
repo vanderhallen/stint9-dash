@@ -1015,7 +1015,7 @@ if(PREFS.delay!=null){document.getElementById('delaythr').value=PREFS.delay;thr=
 if(PREFS.pace!=null){document.getElementById('pacethr').value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
 if(PREFS.speed!=null){document.getElementById('speed').value=PREFS.speed;}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
-(function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.name+' · '+DB.event.date;})();
+(function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
 clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();};
@@ -1198,11 +1198,11 @@ buildStartGrid();
       wasPlaying=playing;
       if(playing){playing=false;playBtn.innerHTML='&#9654; Play';}
       simControls.style.display='none';liveMsg.style.display='flex';liveMsg.style.alignItems='center';
-      if(evdateEl){const d=new Date();const pad=n=>String(n).padStart(2,'0');evdateEl.textContent='LIVE · '+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+      if(evdateEl){const d=new Date();const pad=n=>String(n).padStart(2,'0');evdateEl.textContent=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
     }else{
       simControls.style.display='flex';liveMsg.style.display='none';
       if(wasPlaying){playing=true;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
-      if(evdateEl&&DB.event)evdateEl.textContent=DB.event.name+' · '+DB.event.date;
+      if(evdateEl&&DB.event)evdateEl.textContent=DB.event.date;
     }
   }
   toggle.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
