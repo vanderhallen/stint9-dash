@@ -722,7 +722,7 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   let s=ruler;
   if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
     ggTarget=null;
-    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1)+T2(cx,DATUM+halfH+30,'middle','P'+p,'#16202b',24,1);
+    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1)+T2(cx,DATUM+halfH+24,'middle','P'+p,'#16202b',24,1);
     svg.innerHTML=s;return;}
   // ease our shown gap toward the new data value (snap on first sight / after a reset)
   if(ggTarget===null){ggShown=ggTarget=dA;}
@@ -735,7 +735,7 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   if(selFront<H){ // our car is on screen: gap label at the midpoint, our number on the hood
     s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+g*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
     s+=T2(cx,Math.min(H-8,selFront+HOODY),'middle','#'+selCar,'#16202b',13,1); // number on the hood
-    if(selFront+halfH<H-10)s+=T2(cx,selFront+halfH+30,'middle','P'+p,'#16202b',24,1); // position, 2x, on the roof
+    if(selFront+halfH<H-10)s+=T2(cx,selFront+halfH+24,'middle','P'+p,'#16202b',24,1); // position, 2x, on the roof
   }else{ // our car is off the bottom: stack the tag and the gap so they don't overlap
     s+=T2(cx,H-26,'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1)+T2(cx,H-8,'middle','#'+selCar+' ↓','#16202b',13,1);
   }
