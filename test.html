@@ -43,8 +43,9 @@
   recomputeScale();
   var RULER_OFFSET_SEC=-0.4, RULER_DEFAULT_PX=RULER_OFFSET_SEC*(RECT_H/FULL_SEC_DEFAULT);
   var DEMO_GAP_SEC=3.0, DEMO_HALF_PX=(DEMO_GAP_SEC/2)*(RECT_H/FULL_SEC_DEFAULT);
-  var allRedraws=[];
+  var allRedraws=[], rect1Followers=[];
   function broadcastScaleChange(){recomputeScale(); allRedraws.forEach(function(fn){fn();}); save('test_scale_v2',fullSec);}
+  function broadcastRect1Change(){rect1Followers.forEach(function(fn){fn();});}
   function buildSetup(k){
     var wrap=el('div','wrap'), rect=el('div','rect');
     var c1=carImg(), c2=carImg();
@@ -79,9 +80,11 @@
     allRedraws.push(redrawMarks);
     function moveCars(){ap(c1,o1);ap(c2,o2);}
     function recalc(){moveCars();redrawMarks();}
-    up1.onclick=function(){o1-=pitch;moveCars();save(key1,o1);}; dn1.onclick=function(){o1+=pitch;moveCars();save(key1,o1);};
+    up1.onclick=function(){o1-=pitch;moveCars();save(key1,o1);if(k===0){sharedO1=o1;broadcastRect1Change();}};
+    dn1.onclick=function(){o1+=pitch;moveCars();save(key1,o1);if(k===0){sharedO1=o1;broadcastRect1Change();}};
     up2.onclick=function(){o2-=pitch;moveCars();save(key2,o2);}; dn2.onclick=function(){o2+=pitch;moveCars();save(key2,o2);};
-    upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);}; dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);};
+    upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
+    dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);if(k===0){sharedRuler=rulerOffset;broadcastRect1Change();}};
     moveCars(); redrawMarks();
     c1.addEventListener('load',recalc); if(c1.complete)recalc();
     return wrap;
@@ -115,34 +118,31 @@
 
   function buildAnimated(){
     var wrap=el('div','wrap'), rect=el('div','rect');
-    var c1=carImg(), c2=carImg(); // c1 = ahead car (fixed), c2 = SELF_CAR (moves with the real gap)
+    var c1=carImg(), c2=carImg(); // c1 = ahead car (fixed, mirrors rect #1's top car), c2 = SELF_CAR (moves with the real gap)
     rect.appendChild(c1); rect.appendChild(c2);
-    var setR=el('div','set setR'), upR=btn('&#9650;'), dnR=btn('&#9660;');
-    setR.appendChild(upR); setR.appendChild(dnR);
     var label=el('div'); label.style.cssText='position:absolute;left:100%;top:0;margin-left:8px;font-size:11px;line-height:1.5;color:#6b7480;white-space:pre;font-family:ui-monospace,monospace';
-    wrap.appendChild(rect); wrap.appendChild(setR); wrap.appendChild(label);
+    wrap.appendChild(rect); wrap.appendChild(label);
 
-    var keyR='test_ruler_v2_3', rulerOffset=load(keyR,sharedRuler!=null?sharedRuler:RULER_DEFAULT_PX);
-    var O1_FIXED=-DEMO_HALF_PX; // the ahead car never moves
     var halfH=84, lastGap=0, lastAh=null;
 
     function ap(e,o){e.style.transform='translate(-50%,-50%) translateY('+o+'px) rotate(-90deg)';}
+    // ruler and top-car position always mirror rect #1 live (no independent state here)
     function redrawMarks(){
       var old=rect.querySelectorAll('.mark');
       for(var j=old.length-1;j>=0;j--) rect.removeChild(old[j]);
-      var iStart=Math.ceil(-rulerOffset/pitch), iEnd=Math.floor((RECT_H-rulerOffset)/pitch);
+      var iStart=Math.ceil(-sharedRuler/pitch), iEnd=Math.floor((RECT_H-sharedRuler)/pitch);
       for(var i=iStart;i<=iEnd;i++){
-        var major=(i%MAJOR_EVERY===0), y=i*pitch+rulerOffset;
+        var major=(i%MAJOR_EVERY===0), y=i*pitch+sharedRuler;
         ['left','right'].forEach(function(side){var d=el('div','mark '+side+(major?' major':''));d.style.top=y.toFixed(1)+'px';rect.appendChild(d);});
       }
     }
-    allRedraws.push(redrawMarks);
-    upR.onclick=function(){rulerOffset-=pitch;redrawMarks();save(keyR,rulerOffset);}; dnR.onclick=function(){rulerOffset+=pitch;redrawMarks();save(keyR,rulerOffset);};
+    allRedraws.push(function(){positionCars();redrawMarks();});
+    rect1Followers.push(function(){positionCars();redrawMarks();});
 
     // front bumper of c2 (SELF_CAR) tracks back bumper of c1 (ahead car), gapSeconds apart at the current fixed scale
     function positionCars(){
-      var topBack=RECT_H/2+O1_FIXED+halfH, botFront=topBack+lastGap*pxPerSec, o2=botFront-halfH-RECT_H/2;
-      ap(c1,O1_FIXED); ap(c2,o2);
+      var topBack=RECT_H/2+sharedO1+halfH, botFront=topBack+lastGap*pxPerSec, o2=botFront-halfH-RECT_H/2;
+      ap(c1,sharedO1); ap(c2,o2);
     }
     function recalc(){var hh=c1.getBoundingClientRect().height;if(hh>10)halfH=hh/2;positionCars();redrawMarks();}
 
