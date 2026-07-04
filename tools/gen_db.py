@@ -6,6 +6,9 @@ import csv, json, re, bisect, collections, sys
 
 CSV = "source/vln-2026-06-20-sektorzeiten.CSV"
 GEOM = "tools/geom.json"   # track geometry (poly/cx/cy/gps/W/H) extracted once from data.js
+EVENT_NAME = "1. ADAC Eifel-Trophy"   # not present in the CSV itself -> set per event
+_m = re.search(r'(\d{4}-\d{2}-\d{2})', CSV)
+EVENT_DATE = _m.group(1) if _m else ""   # derived from the CSV filename (onb/<date>/...)
 
 PALETTE = ['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990',
            '#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878',
@@ -131,6 +134,7 @@ geom=json.load(open(GEOM))
 DB=dict(
     W=geom['W'], H=geom['H'], poly=geom['poly'],
     cx=geom['cx'], cy=geom['cy'], gps=geom['gps'],
+    event=dict(name=EVENT_NAME, date=EVENT_DATE),
     classes=classes, classMaxN=classMaxN, classAvg=classAvg,
     name=name, carcol=carcol, drvtable={},
     legs=legs, chart=chart, sectimes=sectimes, lappos=lappos, pits=pits,
