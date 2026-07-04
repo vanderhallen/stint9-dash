@@ -51,6 +51,16 @@ Fixed **1280px design width** (never reflows), scaled by JS (`fitPage`) to fit *
 ## Theme
 Light background, navy ink `#16202b`, red accent `#e0301e`, fonts **Space Grotesk** + **IBM Plex Mono**, white cards. Removed over time: metabar/eyebrow/subline, all section headings, footer, nav links, driver-stints table.
 
+## Layout goal: no empty top/bottom margin (2026-07-04)
+`fitPage()` used to scale the whole `.wrap` to fit *both* window width and
+height, then centre it — on any viewport whose aspect ratio didn't match the
+design's, that left dead blank strips above and below (or left/right) the
+content. Changed to: scale by **width only**, anchor top-left (`x:0,y:0`), and
+let the page scroll vertically if content is taller than the window. This
+guarantees the full page width is always used and content starts flush at the
+top; a right/bottom margin can still show when the natural (unscaled) design
+is smaller than the window, since we don't upscale past 100% (would blur).
+
 ## Open / possible next steps
 - Add per-car **pit-loss estimate** (out-lap minus green-lap baseline).
 - Optional **PIT ×N** indicator for selected car on the maps.
