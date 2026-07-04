@@ -246,7 +246,17 @@
             <div id="fuellog" class="fuellog"></div>
           </div></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
-          <div class="reelpanel"><svg id="compsvg"></svg></div>
+          <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
+            <select id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 6px">
+              <option value="lap">Lap</option>
+              <option value="s1" selected>S1</option>
+              <option value="s2">S2</option>
+              <option value="s3">S3</option>
+              <option value="s4">S4</option>
+              <option value="s5">S5</option>
+            </select>
+            <svg id="compsvg" style="flex:1 1 auto;min-height:0"></svg>
+          </div></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -423,11 +433,13 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
     const ts=lapT(selCar,L);if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
   if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
   const yT2=158,yB2=CH-26;
-  // Fixed +/-120s window around the class best (not a min/max autoscale) —
-  // a single pit-affected outlier lap used to stretch the whole axis so far
-  // that every real lap-time difference got squashed into a sliver at the
-  // bottom; outlier laps now simply run off the top of the chart instead.
-  const lo=Math.max(0,best-120),hi=best+120,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
+  // Fixed, asymmetric window around the class best (not a min/max autoscale)
+  // — a single pit-affected outlier lap used to stretch the whole axis so
+  // far that every real lap-time difference got squashed into a sliver at
+  // the bottom; outlier laps now simply run off the top of the chart
+  // instead. -60s/+180s since nothing can beat "best" by much, but traffic
+  // /pit issues can cost a lot more than they can ever gain.
+  const lo=Math.max(0,best-60),hi=best+180,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
   const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
@@ -628,12 +640,18 @@ function smoothPath(pts){
    — "laps until now" — same build-out convention as every other reel. */
 function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
+  const metricSel=document.getElementById('compmetric'),metric=metricSel?metricSel.value:'s1';
+  const sIdx=metric.charAt(0)==='s'?(+metric.charAt(1)-1):null; // null = full lap time
   const series=[];let lo=Infinity,hi=-Infinity;
   DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};const pts=[];
-    for(let L=1;L<=maxN;L++){const s=stm[L];if(!s||s[0]==null)continue;const b=bx[(L-1)*5+1];if(b==null||b>T)continue;
-      pts.push([L,s[0]]);if(s[0]<lo)lo=s[0];if(s[0]>hi)hi=s[0];}
+    for(let L=1;L<=maxN;L++){const s=stm[L];if(!s)continue;
+      let v,bkey;
+      if(sIdx==null){if(s[0]==null||s[1]==null||s[2]==null||s[3]==null||s[4]==null)continue;v=s[0]+s[1]+s[2]+s[3]+s[4];bkey=(L-1)*5+5;}
+      else{if(s[sIdx]==null)continue;v=s[sIdx];bkey=(L-1)*5+(sIdx+1);}
+      const b=bx[bkey];if(b==null||b>T)continue;
+      pts.push([L,v]);if(v<lo)lo=v;if(v>hi)hi=v;}
     if(pts.length)series.push({st,pts});});
-  if(!series.length){ph('sector 1 comparison — no completed sectors yet');return;}
+  if(!series.length){ph((sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet');return;}
   const yT2=44,yB2=CH-26,pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
   const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
   let s='';
@@ -643,7 +661,7 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
   for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">SECTOR 1 · s</text>';
+  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · s</text>';
   series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
     s+='<path data-car="'+st+'" d="'+d+'" fill="none" stroke="'+(DB.carcol[st]||'#6b7480')+'" stroke-width="'+(st===selCar?6:2)+'" stroke-linecap="round" opacity="'+(st===selCar?1:0.85)+'"/>';});
   // legend, one row per car, in the otherwise-empty margin left of the axis
@@ -945,6 +963,7 @@ sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
+const compMetricSel=document.getElementById('compmetric');if(compMetricSel)compMetricSel.onchange=()=>renderComp(T);
 document.getElementById('agentgo').onclick=agentAsk;
 document.getElementById('agentq').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agentAsk();}});
 document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementById('agentq').value=b.textContent;agentAsk();});
