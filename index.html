@@ -699,7 +699,14 @@ function setNb(el,nb,arrow,pos){while(el.firstChild)el.removeChild(el.firstChild
    back bumper is the 0s datum (0.5s below the top), and OUR car placed so its front bumper is `gap`
    seconds below that datum. gap > 3.5s pushes our car off the bottom edge (clipped, not visible). */
 const GG_FULLSEC=4.0, GG_TOPMARGIN=0.5, GG_CARLEN=168, GG_CARW=80;
+/* our car glides between sector positions instead of jumping: `ggShown` eases toward the data gap
+   `ggTarget` over GG_TRANS_MS, driven by the render loop plus a self-scheduled rAF so an in-flight
+   glide still completes when playback is paused. selCar change / pit / leader snap instead of gliding. */
+const GG_TRANS_MS=1000, ggEase=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+let ggShown=null,ggTarget=null,ggFrom=0,ggT0=0,ggLastT=0,ggRAF=0,ggCar=null;
 function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)return;
+  if(ggRAF){cancelAnimationFrame(ggRAF);ggRAF=0;}
+  ggLastT=T;if(selCar!==ggCar){ggCar=selCar;ggTarget=null;}
   const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=33;/* HOODY: units from the car's front bumper down to the number label on the hood */
   const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
   const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
@@ -708,22 +715,28 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   let ruler='';const step=PXPS*0.2,i0=Math.ceil((0-DATUM)/step),i1=Math.floor((H-DATUM)/step);
   for(let i=i0;i<=i1;i++){const y=DATUM+i*step,maj=(((i%5)+5)%5===0),len=maj?26:15,col=maj?'#9aa1a9':'#e2e5ea';
     ruler+='<line x1="0" x2="'+len+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/><line x1="'+(W-len)+'" x2="'+W+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
-  if(!selCar){svg.innerHTML=ruler+T2(cx,H/2,'middle','—','#c9ced4',16);return;}
+  if(!selCar){ggTarget=null;svg.innerHTML=ruler+T2(cx,H/2,'middle','—','#c9ced4',16);return;}
   const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;
-  if(!p){svg.innerHTML=ruler+T2(cx,H/2,'middle','pit','#b5bcc4',15);return;}
+  if(!p){ggTarget=null;svg.innerHTML=ruler+T2(cx,H/2,'middle','pit','#b5bcc4',15);return;}
   const ah=byPos[p-1];let dA=ah?commonGap(selCar,ah,T):null;dA=(dA!=null)?Math.max(0,dA):null;
   let s=ruler;
   if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
+    ggTarget=null;
     s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#16202b',13,1);
     svg.innerHTML=s;return;}
+  // ease our shown gap toward the new data value (snap on first sight / after a reset)
+  if(ggTarget===null){ggShown=ggTarget=dA;}
+  else if(dA!==ggTarget){ggFrom=ggShown;ggTarget=dA;ggT0=performance.now();}
+  if(ggShown!==ggTarget){const pr=Math.min(1,(performance.now()-ggT0)/GG_TRANS_MS);ggShown=(pr>=1)?ggTarget:ggFrom+(ggTarget-ggFrom)*ggEase(pr);}
+  const g=ggShown,selFront=DATUM+g*PXPS; // position off the eased gap, but show the exact data value in the label
   s+=car(DATUM-halfH); // car ahead, pinned (back bumper on the datum)
-  const selFront=DATUM+dA*PXPS;
   s+=car(selFront+halfH); // our car, front bumper `gap` seconds below the datum
   s+=T2(cx,16,'middle','#'+ah,'#16202b',13,1);
-  s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+dA*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
+  s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+g*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
   s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+HOODY),'middle','#'+selCar,'#16202b',13,1)
                  :T2(cx,H-9,'middle','#'+selCar+' ↓','#16202b',13,1);
-  svg.innerHTML=s;}
+  svg.innerHTML=s;
+  if(ggShown!==ggTarget)ggRAF=requestAnimationFrame(()=>renderGauge(ggLastT));}
 function renderMini(T,lp){const hint=document.getElementById('minihint');
   if(!selCar){for(const st in MEL)MEL[st].g.style.visibility='hidden';hint.style.display='';setNb(mAhead,null);setNb(mBehind,null);setEv(T);return;}
   hint.style.display='none';const sc=carXY(selCar,T);
