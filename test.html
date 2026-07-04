@@ -34,17 +34,25 @@
   function load(key,def){try{var v=localStorage.getItem(key);return v===null?def:parseFloat(v);}catch(e){return def;}}
   function save(key,val){try{localStorage.setItem(key,val);}catch(e){}}
   var sharedO1=null, sharedO2=null, sharedRuler=null;
-  // fixed scale: the full 500px rectangle spans fullSec seconds, regardless of car positions.
-  // fullSec is a single shared value controlled only by rect #1's left-hand buttons (setL);
-  // every rect's ruler redraws whenever it changes (see broadcastScaleChange).
-  var RECT_H=500, FULL_SEC_DEFAULT=3.4, MINOR_SEC=0.1, MAJOR_EVERY=10, SCALE_STEP_SEC=0.2, MIN_FULL_SEC=1.0;
-  var fullSec=load('test_scale_v2',FULL_SEC_DEFAULT), pxPerSec, pitch;
+  // fixed scale: the full 500px rectangle spans fullSec seconds (default 4s), controlled only
+  // by rect #1's left-hand buttons (setL); every rect's ruler redraws on change.
+  // ruler: small line every 0.2s, large line every 1.0s.
+  // reference geometry: the top car's BACK bumper is the 0s datum, sitting TOP_MARGIN_SEC below
+  // the top of the ruler; the bottom car's FRONT bumper sits `gap` seconds below that datum.
+  // with a 4s ruler + 0.5s margins, rect #1's demo gap of 3s puts the front bumper 0.5s from the
+  // bottom; a gap > 3.5s pushes the bottom car off the bottom edge (clipped, not visible).
+  var RECT_H=500, FULL_SEC_DEFAULT=4.0, MINOR_SEC=0.2, MAJOR_EVERY=5, SCALE_STEP_SEC=0.2, MIN_FULL_SEC=1.0;
+  var TOP_MARGIN_SEC=0.5, DEMO_GAP_SEC=3.0, CAR_HALF_PX=84;
+  var fullSec=load('test_scale_v3',FULL_SEC_DEFAULT), pxPerSec, pitch;
   function recomputeScale(){pxPerSec=RECT_H/fullSec; pitch=MINOR_SEC*pxPerSec;}
   recomputeScale();
-  var RULER_OFFSET_SEC=-0.4, RULER_DEFAULT_PX=RULER_OFFSET_SEC*(RECT_H/FULL_SEC_DEFAULT);
-  var DEMO_GAP_SEC=3.0, DEMO_HALF_PX=(DEMO_GAP_SEC/2)*(RECT_H/FULL_SEC_DEFAULT);
+  var RULER_DEFAULT_PX=0; // ruler ticks start clean at the top of the rectangle (0,1,2,3,4s)
+  // convert a bumper position (seconds below top of ruler) into the img-center translateY offset o.
+  // a car image (rotated) is 2*halfH tall; front bumper = top edge (center-halfH), back = bottom edge (center+halfH).
+  function offsetForFrontBumper(S,halfH){return S*pxPerSec + halfH - RECT_H/2;}
+  function offsetForBackBumper(S,halfH){return S*pxPerSec - halfH - RECT_H/2;}
   var allRedraws=[], rect1Followers=[];
-  function broadcastScaleChange(){recomputeScale(); allRedraws.forEach(function(fn){fn();}); save('test_scale_v2',fullSec);}
+  function broadcastScaleChange(){recomputeScale(); allRedraws.forEach(function(fn){fn();}); save('test_scale_v3',fullSec);}
   function broadcastRect1Change(){rect1Followers.forEach(function(fn){fn();});}
   function buildSetup(k){
     var wrap=el('div','wrap'), rect=el('div','rect');
@@ -63,9 +71,11 @@
       upS.onclick=function(){fullSec+=SCALE_STEP_SEC;broadcastScaleChange();};
       dnS.onclick=function(){fullSec=Math.max(MIN_FULL_SEC,fullSec-SCALE_STEP_SEC);broadcastScaleChange();};
     }
-    var key1='test_car_v2_'+k+'_1', key2='test_car_v2_'+k+'_2', keyR='test_ruler_v2_'+k;
+    var key1='test_car_v3_'+k+'_1', key2='test_car_v3_'+k+'_2', keyR='test_ruler_v3_'+k;
+    // defaults: top car back bumper at the datum (0.5s from top), bottom car front bumper 3s below it
+    var o1def=offsetForBackBumper(TOP_MARGIN_SEC,CAR_HALF_PX), o2def=offsetForFrontBumper(TOP_MARGIN_SEC+DEMO_GAP_SEC,CAR_HALF_PX);
     var o1, o2, rulerOffset;
-    if(k===0){o1=load(key1,-DEMO_HALF_PX); o2=load(key2,DEMO_HALF_PX); rulerOffset=load(keyR,RULER_DEFAULT_PX); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset;}
+    if(k===0){o1=load(key1,o1def); o2=load(key2,o2def); rulerOffset=load(keyR,RULER_DEFAULT_PX); sharedO1=o1; sharedO2=o2; sharedRuler=rulerOffset;}
     else{o1=load(key1,sharedO1); o2=load(key2,sharedO2); rulerOffset=load(keyR,sharedRuler);}
     function ap(e,o){e.style.transform='translate(-50%,-50%) translateY('+o+'px) rotate(-90deg)';}
     function redrawMarks(){
@@ -139,9 +149,11 @@
     allRedraws.push(function(){positionCars();redrawMarks();});
     rect1Followers.push(function(){positionCars();redrawMarks();});
 
-    // front bumper of c2 (SELF_CAR) tracks back bumper of c1 (ahead car), gapSeconds apart at the current fixed scale
+    // top car fixed (mirrors rect #1); its BACK bumper is the 0s datum. c2 (SELF_CAR) is placed so its
+    // FRONT bumper sits lastGap seconds below that datum. gap > (fullSec - datum) pushes it off the bottom (clipped).
     function positionCars(){
-      var topBack=RECT_H/2+sharedO1+halfH, botFront=topBack+lastGap*pxPerSec, o2=botFront-halfH-RECT_H/2;
+      var datumSec=RECT_H/2/pxPerSec+sharedO1/pxPerSec+halfH/pxPerSec; // top car back bumper, in seconds from top of ruler
+      var o2=offsetForFrontBumper(datumSec+lastGap,halfH);
       ap(c1,sharedO1); ap(c2,o2);
     }
     function recalc(){var hh=c1.getBoundingClientRect().height;if(hh>10)halfH=hh/2;positionCars();redrawMarks();}
