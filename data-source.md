@@ -44,5 +44,29 @@ SP9 PRO, SP9 PRO-, SP9 AM, SP7, SP4, SP3T, SP10, AT 1, VT2-RWD, VT2-F+4W,
 V6, V5, V3, TCR, CUP2, CUP3, BMW M2, BMW M240, BMW 325i.
 
 > Note: these are the **real** class short-names for this event and differ from the
-> older synthetic 27-class set. When this CSV becomes the main data source, the
-> Race-class dropdown + starting-grid class-name matching should key off these.
+> older synthetic 27-class set. The Race-class dropdown + starting-grid class-name
+> matching key off these.
+
+## Regenerating the DB from a CSV (`tools/gen_db.py`)
+
+The dashboard's `const DB = {…}` (embedded in `index.html` line ~289 **and** mirrored
+in `data.js`) is generated from the CSV by `tools/gen_db.py`:
+
+1. Download the newest event CSV to `source/` (see URL scheme above).
+2. Point `CSV = …` at it in `tools/gen_db.py`.
+3. `python3 tools/gen_db.py` → writes `tools/newDB.json` and prints a per-class report.
+4. Inject that JSON as `const DB = <json>;` into `index.html` line 289 and overwrite
+   `data.js` with the same line.
+
+What the generator does:
+- **Reuses the Nordschleife track geometry** (`poly/cx/cy/gps/W/H`) from `tools/geom.json`
+  (extracted once from the original `data.js`) — the circuit shape is race-independent.
+- Rebuilds everything else from the CSV: `legs` (per-lap 5-sector segments with absolute
+  second-of-day boundaries; `TAGESZEIT` = lap-END time, so lap L spans
+  `[TAGESZEIT(L-1), TAGESZEIT(L)]`), `sectimes`, `pits` (laps where `INPIT='J'`),
+  within-class track `positions`/`chart`/`lappos` (ranked per sector boundary),
+  `classes`/`classMaxN` (max laps)/`classAvg` (mean green-lap sector times),
+  `name` (FAHRER1 surname), `carcol` (16-colour palette cycled within each class).
+- **Encoding is cp1252** and **only sectors 1–5** of the 9-sector schema are populated.
+
+Current DB = **2026-06-20 event · 106 cars · 19 classes · ~4h21m**.
