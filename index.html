@@ -9,7 +9,7 @@
   *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
   :root{--bg:#f4f5f7;--card:#fff;--border:#e3e6ea;--ink:#16202b;--muted:#6b7480;--accent:#e0301e}
   body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-  .wrap{width:1280px;box-sizing:border-box;margin:0;padding:10px 26px 28px}
+  .wrap{width:1722px;box-sizing:border-box;margin:0;padding:10px 26px 28px}
   .metabar{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:20px}
   .pill{border:1px solid var(--border);border-radius:6px;padding:4px 10px;letter-spacing:1px;color:var(--ink);background:var(--card)}
   .metabar .right{margin-left:auto;font-weight:600;color:var(--ink)}.metabar .right b{color:var(--accent)}
@@ -53,7 +53,7 @@
   .reelbtn{background:#8a929b;color:#fff;border:none;border-radius:9px;width:32px;height:46px;font-size:14px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
   .reelbtn:hover:not(:disabled){background:#6b7480}
   .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
-  #reelview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #reelview .reelpanel,#wxview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
   #reelview .reelpanel svg{display:block;width:100%;height:100%}
   .reelthumb{position:relative;flex:1 1 0;min-height:0;border:2px solid #cdd2d8;background:#f7f8fa;border-radius:7px;overflow:hidden;cursor:pointer}
   .reelthumb.active{border-color:#6b7480;box-shadow:0 0 0 2px rgba(107,116,128,.3)}
@@ -112,8 +112,31 @@
   table.stints .g{color:#1e8f3a;font-weight:600}table.stints .d{color:#c0392b;font-weight:600}
   table.stints.cmp{font-size:10px}table.stints.cmp th,table.stints.cmp td{padding:4px 4px;white-space:nowrap}
   .footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#aab0b8}
+  .sidecard{display:flex;flex-direction:column;padding:12px 10px;box-sizing:border-box;min-height:0}
+  .sidehd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  #gridclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}
+  #gridnext{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
+  .startline{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:4px;font-size:12px;padding:6px 0;margin:8px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+  #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc}
+  #gridsvg{display:block}
+  .fbtextarea{width:100%;min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;color:var(--ink);background:var(--card)}
+  .fbtextarea::placeholder{color:#aab0b8}
+  .fbsubmit{margin-top:6px;align-self:flex-end}
+  .fblist{margin-top:10px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
+  .fbitem{border-top:1px solid var(--border);padding-top:6px;padding-right:18px;position:relative}
+  .fbitem .fbtime{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px}
+  .fbitem .fbmsg{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:pre-wrap;margin-top:2px;word-break:break-word}
+  .fbdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
+  .fbdel:hover{color:#fff;background:var(--accent)}
+  .fbstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px;min-height:12px}
 </style></head>
-<body><div class="wrap">
+<body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
+  <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
+    <div class="sidehd"><span id="gridclock">&mdash;</span><span id="gridnext">&mdash;</span></div>
+    <div class="startline">START</div>
+    <div id="gridwrap"><svg id="gridsvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  </div>
+  <div class="maincol" style="flex:1 1 auto;min-width:0">
   <div class="headrow">
     <div style="display:flex;flex-direction:column"><h1 style="margin:0">stint<b>9</b></h1><div class="evdate">2025 · NLS 6</div></div>
     <div class="toolrow" style="margin:0">
@@ -196,7 +219,18 @@
         <div class="reelthumb" data-i="4" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
       </div>
     </div>
-    <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px"><div id="weather" style="height:340px;width:100%"></div></div>
+    <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
+      <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
+        <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
+          <div class="reelpanel"><div id="weather" style="height:100%;width:100%"></div></div>
+          <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto"></div></div>
+        </div>
+      </div>
+      <div id="wxnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
+        <button class="reelbtn" id="wxup" title="Previous view">&#9650;</button>
+        <button class="reelbtn" id="wxdn" title="Next view">&#9660;</button>
+      </div>
+    </div>
   </div>
   <div class="agentbar">
     <span class="agicon">&#129302;</span>
@@ -204,6 +238,14 @@
     <button id="agentgo" class="agentgo">ask</button>
     <div class="agentsug"><span>Try:</span><button class="sug">What's the likely outcome for our car?</button><button class="sug">Who pitted early?</button><button class="sug">Which sector are we losing time?</button></div>
     <div id="agenta" class="agenta"></div>
+  </div>
+  </div><!-- /.maincol -->
+  <div id="fbcard" class="card sidecard" style="flex:0 0 220px;width:220px">
+    <div class="colhead">Feedback please!</div>
+    <textarea id="fbtext" class="fbtextarea" placeholder="report error or request new feature..."></textarea>
+    <button id="fbsubmit" class="btn fbsubmit">Submit</button>
+    <div id="fbstatus" class="fbstatus"></div>
+    <div id="fblist" class="fblist"></div>
   </div>
 </div>
 <script>
@@ -219,7 +261,9 @@ if(FUEL.cons===1.5)FUEL.cons=10.5;
 function saveFuel(){try{localStorage.setItem('stint9_fuel',JSON.stringify(FUEL));}catch(e){}}
 function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;document.querySelectorAll('.reelthumb').forEach(t=>t.classList.toggle('active',+t.dataset.i===reelIdx));}
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;applyReel(true);if(typeof savePrefs==='function')savePrefs();}
-function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*CH/1000).toFixed(1)+'px';applyReel(false);}
+function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*CH/1000).toFixed(1)+'px';applyReel(false);
+  /* right (weather/timetable) reel always follows the left reel's rendered height */
+  const wv=document.getElementById('wxview');if(wv){const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';}}
 let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const cp=(src,dst)=>{const a=document.getElementById(src),b=document.getElementById(dst);if(a&&b){b.setAttribute('viewBox',a.getAttribute('viewBox')||'0 0 1000 400');b.innerHTML=a.innerHTML;}};cp('lapchart','thumb0');cp('ltgraph','thumb1');cp('sectorsvg','thumb3');cp('flowsvg','thumb4');}
 
 /* track */
@@ -784,7 +828,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   const circ=L.circle([lat,lon],{radius:10000,color:'#e0301e',weight:1.5,fill:false}).addTo(map);
   L.circleMarker([lat,lon],{radius:5,color:'#e0301e',fillColor:'#e0301e',fillOpacity:1}).addTo(map);
   function frame(){map.fitBounds(circ.getBounds(),{padding:[22,22]});}
-  function syncWx(){const lc=document.getElementById('lapchart'),wd=document.getElementById('weather');if(lc&&wd){const hh=lc.getBoundingClientRect().height/__fit;if(hh>10){wd.style.height=hh+'px';map.invalidateSize();frame();}}}
+  function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
   window.__syncWx=syncWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);frame();});return b;}});map.addControl(new Rc());
   fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()).then(d=>{const past=d.radar&&d.radar.past,fr=past&&past[past.length-1];
@@ -838,17 +882,29 @@ if(PREFS.speed!=null){document.getElementById('speed').value=PREFS.speed;}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();};
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
 function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';const gg=document.getElementById('gapgauge');if(gg){gg.style.height=hh+'px';gg.style.width='auto';}}}
 syncMapHeights();setTimeout(syncMapHeights,80);
+/* gridcard/fbcard have no natural height of their own (their content is either
+   huge — the car cascade — or short); pin both to .maincol's real height so
+   they read as full-height sidebars and their own overflow:auto areas actually
+   clip/scroll instead of inflating the whole page. */
+function syncSideHeights(){
+  const mc=document.querySelector('.maincol'),gc=document.getElementById('gridcard'),fc=document.getElementById('fbcard');
+  if(!mc||!gc)return;
+  const h=mc.getBoundingClientRect().height/(__fit||1);
+  if(h>10){gc.style.height=h+'px';if(fc)fc.style.height=h+'px';}
+}
+syncSideHeights();setTimeout(syncSideHeights,80);
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
+  syncSideHeights();
   syncReel();syncMapHeights();if(window.__syncWx)window.__syncWx();
-  const DW=1280,nat=w.scrollHeight;
+  const DW=1722,nat=w.scrollHeight;
   const s=Math.min(1,window.innerWidth/DW,(window.innerHeight-6)/nat);
   __fit=s;const tx=Math.max(0,(window.innerWidth-DW*s)/2),ty=Math.max(0,(window.innerHeight-nat*s)/2);
   w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')';
@@ -856,4 +912,153 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
 T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);
+
+/* ---- starting grid ----
+   Only the cars in the currently selected race class (DB.cars, same list the
+   lap chart/car-picker use) are shown — grid order is each car's position at
+   T=DB.tmin (start of the session) as a stand-in for the qualifying order,
+   since that's the only ordering this dataset actually carries per car.
+   Layout: car 1 (P1) sits top-right, flush inside the sidebar's visible width.
+   Each following car is placed one car-width further right and 60% of a
+   car-length lower than the one before it — a single diagonal cascade, exactly
+   as specified. With many cars that cascade can run wider/taller than the
+   sidebar itself, so #gridwrap scrolls (both axes) to reveal the rest. */
+function buildStartGrid(){
+  const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
+  if(!host||!svg||!DB.cars)return;
+  const lp=livePos(DB.tmin);
+  const order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999));
+  const CARLEN=74,CARW=35,GAP=8,VSTEP=Math.round(CARLEN*0.6);
+  const boxW=Math.max(CARW+20,host.clientWidth||170);
+  const N=order.length;
+  const canvasW=(boxW-CARW)+Math.max(0,N-1)*(CARW+GAP)+CARW;
+  const canvasH=Math.max(0,N-1)*VSTEP+CARLEN+20;
+  svg.setAttribute('viewBox','0 0 '+canvasW+' '+canvasH);
+  svg.setAttribute('width',canvasW);svg.setAttribute('height',canvasH);
+  const T2=(x,y,txt,fs,w)=>'<text x="'+x+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+fs+'"'+(w?' font-weight="700"':'')+' fill="#16202b" stroke="#fff" stroke-width="3" paint-order="stroke">'+txt+'</text>';
+  let s='';
+  order.forEach((car,i)=>{
+    const pos=i+1;
+    const cx=(boxW-CARW)+i*(CARW+GAP)+CARW/2;
+    const cy=i*VSTEP+CARLEN/2+8;
+    s+='<g transform="translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-CARLEN/2)+'" y="'+(-CARW/2)+'" width="'+CARLEN+'" height="'+CARW+'" style="mix-blend-mode:multiply"/></g>';
+    s+=T2(cx,cy-CARLEN/2-4,'P'+pos,9,true);
+    s+=T2(cx,cy-CARLEN/2+18,'#'+car,9,false);
+  });
+  svg.innerHTML=s;
+  host.scrollLeft=0;host.scrollTop=0;
+}
+buildStartGrid();
+
+/* ---- race-day timetable & countdown ----
+   Standard NLS race-day timetable for a 4h round, as supplied. eventDate is
+   the next scheduled NLS round per nuerburgring-langstrecken-serie.de's
+   archive (KW 6h ADAC Ruhr-Pokal-Rennen, 01.08.2026) — no official Zeitplan
+   was published for it yet (it's a 6h round, so timings will differ from the
+   4h template below). Treat every time here as provisional: reconfirm the
+   real Zeitplan, including pitlane-open, once it's published / on raceday. */
+const SCHEDULE={
+  eventDate:'2026-08-01',
+  pitlaneOpen:'08:00',
+  sessions:[
+    {name:'quali',start:'08:30',end:'10:00'},
+    {name:'pitwalk',start:'10:30',end:'11:30'},
+    {name:'lineup',start:'11:10',end:'11:30'},
+    {name:'formation',start:'11:40',end:null},
+    {name:'race',start:'12:00',end:'16:00'}
+  ]
+};
+function scheduleBoundaries(){
+  const mk=t=>new Date(SCHEDULE.eventDate+'T'+t+':00');
+  const b=[{t:mk(SCHEDULE.pitlaneOpen),label:'pitlane'}];
+  SCHEDULE.sessions.forEach(s=>b.push({t:mk(s.start),label:s.name}));
+  const race=SCHEDULE.sessions.find(s=>s.name==='race');
+  if(race&&race.end)b.push({t:mk(race.end),label:'end',isEnd:true});
+  return b.sort((a,c)=>a.t-c.t);
+}
+const GRIDBOUNDS=scheduleBoundaries();
+function fmtCountdown(ms,neg){
+  let sec=Math.max(0,Math.floor(Math.abs(ms)/1000));
+  const days=Math.floor(sec/86400);sec-=days*86400;
+  const hh=Math.floor(sec/3600);sec-=hh*3600;
+  const mm=Math.floor(sec/60);sec-=mm*60;
+  const pad=n=>String(n).padStart(2,'0');
+  return (neg?'-':'')+(days>0?days+'d ':'')+pad(hh)+':'+pad(mm)+':'+pad(sec);
+}
+function tickGridClock(){
+  const now=new Date(),clockEl=document.getElementById('gridclock'),nextEl=document.getElementById('gridnext');
+  if(!clockEl||!nextEl)return;
+  const next=GRIDBOUNDS.find(b=>b.t.getTime()>now.getTime());
+  if(!next){clockEl.textContent='00:00:00';nextEl.textContent='event over';return;}
+  const diff=next.t.getTime()-now.getTime();
+  if(next.isEnd){clockEl.textContent=fmtCountdown(diff,false);nextEl.textContent='to end';}
+  else{clockEl.textContent=fmtCountdown(diff,true);nextEl.textContent='to '+next.label;}
+}
+tickGridClock();setInterval(tickGridClock,1000);
+function renderTimetable(){
+  const el=document.getElementById('timetable');if(!el)return;
+  const rows=[['Pitlane open',SCHEDULE.pitlaneOpen,'']].concat(SCHEDULE.sessions.map(s=>[s.name.charAt(0).toUpperCase()+s.name.slice(1),s.start,s.end||'']));
+  let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:6px 4px">';
+  h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;font-size:10px">Race day timetable &middot; '+SCHEDULE.eventDate+'</div>';
+  rows.forEach(r=>{h+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border)"><span>'+r[0]+'</span><span style="font-weight:600">'+r[1]+(r[2]?('&ndash;'+r[2]):'')+'</span></div>';});
+  h+='<div style="margin-top:8px;color:var(--muted);font-size:10px;line-height:1.4">Provisional schedule (4h template) &mdash; always confirm exact times, including pitlane-open, against the official Zeitplan on raceday.</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+renderTimetable();
+
+/* ---- weather / timetable reel (2 panels) ---- */
+let wxReelIdx=0;const WXN=2;
+function applyWxReel(anim){
+  const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
+  if(!strip)return;
+  strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';
+  strip.style.transform='translateY(-'+(wxReelIdx*100)+'%)';
+  if(up)up.disabled=wxReelIdx<=0;if(dn)dn.disabled=wxReelIdx>=WXN-1;
+  if(wxReelIdx===0&&window.__syncWx)setTimeout(window.__syncWx,520);
+}
+function setWxReel(i){i=Math.max(0,Math.min(WXN-1,i));if(i===wxReelIdx)return;wxReelIdx=i;applyWxReel(true);}
+const wxUpBtn=document.getElementById('wxup'),wxDnBtn=document.getElementById('wxdn');
+if(wxUpBtn)wxUpBtn.onclick=()=>setWxReel(wxReelIdx-1);
+if(wxDnBtn)wxDnBtn.onclick=()=>setWxReel(wxReelIdx+1);
+applyWxReel(false);
+
+/* ---- feedback widget (Supabase table public.stint9_feedback, RLS: anon insert + anon select + anon delete) ---- */
+(function initFeedback(){
+  const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+  const ADMIN_CODE='nls';
+  const ta=document.getElementById('fbtext'),btn=document.getElementById('fbsubmit'),status=document.getElementById('fbstatus'),list=document.getElementById('fblist');
+  if(!ta||!btn||!list)return;
+  function fmtTime(iso){const d=new Date(iso);const pad=n=>String(n).padStart(2,'0');return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
+  function deleteFeedback(id,item){
+    const code=window.prompt('Admin code to delete this message:');
+    if(code===null||code.trim()!==ADMIN_CODE)return; // wrong/cancelled code: just close, nothing happens
+    fetch(SB_URL+'/rest/v1/stint9_feedback?id=eq.'+id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+      .then(r=>{if(r.ok)item.remove();});
+  }
+  function renderList(rows){
+    list.innerHTML='';
+    rows.forEach(r=>{
+      const item=document.createElement('div');item.className='fbitem';
+      const del=document.createElement('span');del.className='fbdel';del.textContent='×';del.title='delete';
+      const time=document.createElement('div');time.className='fbtime';time.textContent=fmtTime(r.created_at);
+      const msg=document.createElement('div');msg.className='fbmsg';msg.textContent=r.message;
+      del.onclick=()=>deleteFeedback(r.id,item);
+      item.appendChild(del);item.appendChild(time);item.appendChild(msg);list.appendChild(item);
+    });
+  }
+  function loadFeedback(){
+    fetch(SB_URL+'/rest/v1/stint9_feedback?select=id,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+      .then(r=>r.ok?r.json():[]).then(renderList).catch(()=>{});
+  }
+  btn.onclick=()=>{
+    const msg=ta.value.trim();
+    if(!msg){status.textContent='write a message first';return;}
+    btn.disabled=true;status.textContent='sending…';
+    fetch(SB_URL+'/rest/v1/stint9_feedback',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({message:msg})})
+      .then(r=>{if(!r.ok)throw new Error(r.status);ta.value='';status.textContent='thanks — sent';btn.disabled=false;loadFeedback();})
+      .catch(()=>{status.textContent='failed to send, try again';btn.disabled=false;});
+  };
+  loadFeedback();
+})();
 </script></body></html>
