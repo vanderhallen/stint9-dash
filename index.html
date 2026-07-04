@@ -18,7 +18,7 @@
   .subline{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);margin-top:10px}
   a.link{color:var(--muted);text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:12px}a.link:hover{color:var(--accent)}
   .toolrow{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:20px 0 0}
-  .headrow{display:flex;align-items:flex-start;justify-content:flex-start;gap:24px;flex-wrap:wrap;margin-top:4px}
+  .headrow{display:flex;align-items:flex-start;justify-content:flex-start;gap:14px;flex-wrap:nowrap;margin-top:4px}
   .evdate{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);margin-top:2px}
   .field{display:flex;flex-direction:column-reverse;gap:5px}
   .field label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
@@ -39,9 +39,15 @@
   .carbadge .gaps{display:inline-flex;flex-direction:column;justify-content:center;height:29px;line-height:1;font-family:'IBM Plex Mono',monospace;font-weight:600}
   .carbadge .ga{font-size:14px;color:#c0392b}.carbadge .gb{font-size:14px;color:#1e8f3a}
   .carbadge .drv{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-top:4px}
-    .controls{display:flex;flex-direction:row;align-items:center;gap:7px;padding:8px 10px;margin-left:auto}
+    .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
-  .controls input[type=range]{flex:1 1 90px;min-width:70px}.controls .btn{width:auto}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
+  .controls input[type=range]{flex:1 1 50px;min-width:40px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
+  .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:44px}
+  .modebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
+  .modebtn.active{background:var(--ink);color:#fff}
+  .modebtn:not(.active):hover{background:#f1f3f5}
+  #livestatus{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:3px}
+  .controls button:disabled,.controls select:disabled,.controls input:disabled{opacity:.4;cursor:not-allowed}
   .clock{font-weight:700;font-size:16px;color:var(--ink);min-width:0;line-height:1}
   .clock small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;font-weight:500}
   input[type=range]{flex:1;min-width:150px;accent-color:var(--accent)}
@@ -144,6 +150,15 @@
       <div class="field"><label for="carsel">Select car</label><select id="carsel"><option value="">— select a car —</option></select></div>
       <div class="field"><label for="delaythr">Delay %</label><input type="number" id="delaythr" value="50" min="0" step="5"></div>
       <div class="field"><label for="pacethr">Pace &#916; s</label><input type="number" id="pacethr" value="0.2" min="0" step="0.05"></div>
+      <div class="field"><label>Mode</label>
+        <div>
+          <div class="modetoggle" id="modetoggle">
+            <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
+            <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
+          </div>
+          <div id="livestatus"></div>
+        </div>
+      </div>
     </div>
     <div class="card controls" id="controls">
       <div class="clock"><span id="clock"></span></div>
@@ -647,7 +662,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     const mkR=(x,y,w,h,fill,stroke,sw,rx)=>{const r=document.createElementNS(SVGNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);if(fill)r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width',sw||1);}if(rx)r.setAttribute('rx',rx);predsvg.appendChild(r);};
     const mkL=(x1,y1,x2,y2,st,sw)=>{const l=document.createElementNS(SVGNS,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',st);l.setAttribute('stroke-width',sw||1);predsvg.appendChild(l);};
     const preds=plines.filter(l=>l[3]===undefined),rows=plines.filter(l=>l[3]!==undefined);
-    const BX0=1108,BX1=2030,TR=1236,D1=1250,LX=1264,D2=1712,DTRI=1726,DNX=1760,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1350;
+    const BX0=1026,BX1=2030,TR=1236,D1=1250,LX=1264,D2=1712,DTRI=1726,DNX=1760,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1350;
     const firstY=lastY-(nR-1)*rowH,hdrY=firstY-80,hLine=hdrY+26,boxTop=hdrY-hFs-18,boxBot=lastY+26,REF=flCar;
     if(nR){
       mkR(BX0,boxTop,BX1-BX0,boxBot-boxTop,'rgba(255,255,255,0.94)','#c2c8d0',1.6,11);
@@ -940,11 +955,11 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
   syncReel();syncMapHeights();if(window.__syncWx)window.__syncWx();
-  const DW=1722,nat=w.scrollHeight;
+  const DW=1722;
   const s=Math.min(1,window.innerWidth/DW);
   __fit=s;
-  const tx=Math.max(0,(window.innerWidth-DW*s)/2),ty=Math.max(0,(window.innerHeight-nat*s)/2);
-  w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')';
+  const tx=Math.max(0,(window.innerWidth-DW*s)/2);
+  w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,0) scale('+s+')';
   document.documentElement.style.overflow='auto';document.body.style.overflow='auto';}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
@@ -1017,6 +1032,36 @@ function buildStartGrid(){
 }
 buildStartGrid();
 
+/* ---- LIVE/SIM data-source toggle ----
+   SIM (default) = existing behaviour, the embedded CSV replay via DB — no
+   change. LIVE is meant to mirror stint9.com/app/livetiming, but that page
+   sits behind Clerk auth with no public/documented API — there is nothing
+   this static page can legitimately fetch without real session credentials.
+   Rather than fake data, LIVE just pauses playback and disables the
+   transport controls with an honest "not connected" status. Wire the real
+   live-timing endpoint into setMode('LIVE') below once auth/endpoint
+   details are available. */
+(function initDataMode(){
+  const toggle=document.getElementById('modetoggle'),status=document.getElementById('livestatus');
+  if(!toggle)return;
+  const playBtn=document.getElementById('play'),scrubEl=document.getElementById('scrub'),speedEl=document.getElementById('speed');
+  let wasPlaying=false;
+  function setMode(m){
+    toggle.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+    if(m==='LIVE'){
+      wasPlaying=playing;
+      if(playing){playing=false;playBtn.innerHTML='&#9654; Play';}
+      playBtn.disabled=true;scrubEl.disabled=true;speedEl.disabled=true;
+      status.textContent='live feed not connected';
+    }else{
+      playBtn.disabled=false;scrubEl.disabled=false;speedEl.disabled=false;
+      status.textContent='';
+      if(wasPlaying){playing=true;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
+    }
+  }
+  toggle.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+})();
+
 /* ---- race-day timetable & countdown ----
    Standard NLS race-day timetable for a 4h round, as supplied. eventDate is
    the next scheduled NLS round per nuerburgring-langstrecken-serie.de's
@@ -1067,7 +1112,7 @@ function renderTimetable(){
   const rows=[['Pitlane open',SCHEDULE.pitlaneOpen,'']].concat(SCHEDULE.sessions.map(s=>[s.name.charAt(0).toUpperCase()+s.name.slice(1),s.start,s.end||'']));
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:6px 4px">';
   h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;font-size:10px">Race day timetable &middot; '+SCHEDULE.eventDate+'</div>';
-  rows.forEach(r=>{h+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border)"><span>'+r[0]+'</span><span style="font-weight:600">'+r[1]+(r[2]?('&ndash;'+r[2]):'')+'</span></div>';});
+  rows.forEach(r=>{h+='<div style="display:flex;justify-content:flex-start;padding:4px 0;border-top:1px solid var(--border)"><span style="min-width:100px">'+r[0]+'</span><span style="font-weight:600;text-align:left">'+r[1]+(r[2]?('&ndash;'+r[2]):'')+'</span></div>';});
   h+='</div>';
   el.innerHTML=h;
 }
