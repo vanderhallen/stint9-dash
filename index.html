@@ -116,8 +116,7 @@
   #focusLayer.on{display:flex}
   #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
   .card.zoomed{width:min(96vw,1400px)!important;max-width:none!important;flex:none!important;margin:0!important}
-  .card.zoomed #svg{width:96%!important}
-  .card.zoomed #mini{width:58%!important}
+  .card.zoomed.fexact{width:auto!important;overflow:visible!important}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
@@ -808,20 +807,33 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
 (function initFocus(){const layer=document.createElement('div');layer.id='focusLayer';const host=document.createElement('div');host.id='focusHost';layer.appendChild(host);document.body.appendChild(layer);
   let cur=null,ph=null;
   const resync=()=>{try{if(window.__syncWx)window.__syncWx();}catch(e){}try{if(typeof syncReel==='function')syncReel();}catch(e){}try{if(typeof render==='function')render();}catch(e){}};
-  // #mini is a square viewBox; the CSS zoom rule only grows its WIDTH (96%),
-  // so without this its height (and thus the visible circle) stayed pinned to
-  // whatever syncMapHeights() last set from the (unrelated, unzoomed) main
-  // map — the zoom view never actually got bigger. Height = new width keeps
-  // it square; #gapgauge (the gap ruler, viewBox 150x500) is resized to match
-  // instead of being hidden.
+  // #mini is a square viewBox; height is set to match the (explicitly
+  // pinned) width so the circle grows proportionally instead of just
+  // stretching sideways. #gapgauge (the gap ruler, viewBox 150x500) is
+  // resized to match instead of being hidden.
   function sizeZoomedMini(card){
     const miniEl=card.querySelector('#mini');if(!miniEl)return;
     const w=miniEl.getBoundingClientRect().width;if(w<10)return;
     miniEl.style.height=w+'px';
     const gg=card.querySelector('#gapgauge');if(gg){gg.style.height=w+'px';gg.style.width='auto';}
   }
-  function close(){if(!cur)return;ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed');layer.classList.remove('on');cur=null;ph=null;resync();try{fitPage();}catch(e){}}
-  function open(card){if(cur)close();cur=card;ph=document.createComment('fph');card.parentNode.replaceChild(ph,card);card.classList.add('zoomed');host.appendChild(card);layer.classList.add('on');setTimeout(()=>{resync();sizeZoomedMini(card);},40);}
+  function close(){if(!cur)return;ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed','fexact');cur=null;ph=null;resync();try{fitPage();}catch(e){}layer.classList.remove('on');}
+  function open(card){if(cur)close();
+    // Pin the zoomed size to exactly 2x whatever the map/zoom-view animation
+    // was rendering at right before opening — not an arbitrary percentage of
+    // the modal — by capturing its pre-zoom width while it's still in place.
+    const svgEl=card.querySelector('#svg'),miniEl=card.querySelector('#mini');
+    const origSvgW=svgEl?svgEl.getBoundingClientRect().width:0;
+    const origMiniW=miniEl?miniEl.getBoundingClientRect().width:0;
+    if(svgEl||miniEl)card.classList.add('fexact');
+    cur=card;ph=document.createComment('fph');card.parentNode.replaceChild(ph,card);card.classList.add('zoomed');host.appendChild(card);layer.classList.add('on');
+    setTimeout(()=>{
+      resync();
+      if(svgEl&&origSvgW>10){svgEl.style.width=(origSvgW*2)+'px';svgEl.style.height='auto';}
+      if(miniEl&&origMiniW>10)miniEl.style.width=(origMiniW*2)+'px';
+      sizeZoomedMini(card);
+    },40);
+  }
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
