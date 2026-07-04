@@ -88,6 +88,8 @@
   .flogrow.pit{background:#eef4ff}
   .flogrow input{width:46px;font-family:inherit;font-size:10.5px;padding:1px 3px;border:1px solid #cfd4da;border-radius:4px}
   .flogrow input.flognote{width:auto;flex:1 1 70px;min-width:60px;color:#16202b}
+  .flogrow input:disabled{background:#f1f3f5;color:#b5bcc4;cursor:not-allowed}
+  .flogrow .funlock{padding:2px 6px;font-size:9px;flex:0 0 auto}
   .flogrow input.flognote::placeholder{color:#9aa1a9}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
@@ -411,7 +413,7 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   const outs=(DB.pits[selCar]||[]).map(pl=>pl+1);sel.forEach(p=>{if(outs.indexOf(p[0])>=0)s+='<circle cx="'+px(p[0])+'" cy="'+YT(p[1]).toFixed(1)+'" r="6" fill="#fff" stroke="#e08a1e" stroke-width="2.5"/>';});
   s+='<text x="'+xL+'" y="26" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
-let fuelLogCar=null,fuelS5Set=new Map(),fuelPitSet=new Map();
+let fuelLogCar=null,fuelS5Set=new Map(),fuelPitSet=new Map(),fuelTankNow=0;
 function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!panel)return;
   const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   setR('fuelcar',selCar?('#'+selCar):'#—');
@@ -435,7 +437,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
     fuelAtReset=fuel;last=pl;});
   if(!firstDone)fuel-=cons*form;
   fuel-=cons*(lapsDriven-last);
-  const tank=fuel;let pred=tank;
+  const tank=fuel;let pred=tank;fuelTankNow=tank;
   // adjust with latest driver S5 report in current stint
   const stintStart=pitLaps.length?pitLaps[pitLaps.length-1]:0;let s5best=null;
   for(const l in cs.s5){const L=+l,v=parseFloat(cs.s5[l]);if(!isNaN(v)&&L>stintStart){const b=bx[(L-1)*5+4];if(b!=null&&b<=T&&(!s5best||L>s5best.L))s5best={L,v};}}
@@ -458,15 +460,28 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
     if(s5ok&&!fuelS5Set.has(L)){
       const row=document.createElement('div');row.className='flogrow';
       const lb=document.createElement('span');lb.className='floglbl';lb.textContent='L'+L+' fuel S5';
-      const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';if(cs.s5[L]!=null)inp.value=cs.s5[L];
+      const unlockBtn=document.createElement('button');unlockBtn.type='button';unlockBtn.className='fbtn funlock';unlockBtn.textContent='UNLOCK';
+      const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';inp.disabled=true;if(cs.s5[L]!=null)inp.value=cs.s5[L];
       inp.oninput=()=>{cs.s5[L]=inp.value;saveFuel();render();};
+      unlockBtn.onclick=()=>{
+        row._unlocked=true;unlockBtn.style.display='none';inp.disabled=false;
+        if(cs.s5[L]==null||cs.s5[L]===''){inp.value=fuelTankNow.toFixed(1);cs.s5[L]=inp.value;saveFuel();}
+        inp.focus();
+      };
       const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
       const nt=document.createElement('input');nt.type='text';nt.className='flognote';nt.placeholder='notes per lap';if(cs.notes[L]!=null)nt.value=cs.notes[L];
       nt.oninput=()=>{cs.notes[L]=nt.value;saveFuel();};
-      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(nt);log.insertBefore(row,log.firstChild);
+      row.appendChild(lb);row.appendChild(unlockBtn);row.appendChild(inp);row.appendChild(u);row.appendChild(nt);log.insertBefore(row,log.firstChild);
+      row._unlocked=false;row._unlockBtn=unlockBtn;row._inp=inp;
       fuelS5Set.set(L,row);
     }else if(!s5ok&&fuelS5Set.has(L)){
       const row=fuelS5Set.get(L);if(row.parentNode)row.parentNode.removeChild(row);fuelS5Set.delete(L);
+    }
+    if(fuelS5Set.has(L)){
+      // re-lock once the car has moved into S1 of the FOLLOWING lap — the
+      // fuel-reading window (radio call at S5) has closed
+      const row=fuelS5Set.get(L),s1n=bx[L*5+1];
+      if(row._unlocked&&s1n!=null&&s1n<=T){row._unlocked=false;row._unlockBtn.style.display='';row._inp.disabled=true;}
     }
     const pitOk=(DB.pits[selCar]||[]).indexOf(L)>=0&&lapsDriven>=L;
     if(pitOk&&!fuelPitSet.has(L)){
