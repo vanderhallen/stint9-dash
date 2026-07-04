@@ -271,7 +271,7 @@
     <div id="agenta" class="agenta"></div>
   </div>
   </div><!-- /.maincol -->
-  <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column;gap:16px">
+  <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column">
     <div id="msgcard" class="card sidecard" style="flex:0 0 auto;min-height:0">
       <div class="colhead">Message board</div>
       <div id="msglist" class="msglist"></div>
@@ -993,16 +993,23 @@ function syncSideHeights(){
   if(h>10){gc.style.height=h+'px';if(fc)fc.style.height=h+'px';}
 }
 syncSideHeights();setTimeout(syncSideHeights,80);
-/* Pins the message-board/feedback split in the right column so the boundary
-   between them lands exactly level with the top of the reel/weather row —
-   msgcard sits next to the map rows above, fbcard next to the reel row. */
+/* Pins the message-board/feedback split in the right column so its two edges
+   land exactly level with the two edges of the left-hand split: msgcard's
+   bottom matches the mini/zoom card's bottom, and fbcard's top (msgcard's
+   bottom + the gap) matches the reel row's top — rather than assuming rightcol's
+   own gap matches the left column's (they don't: 13px margin-top vs whatever
+   flex gap rightcol used), the exact left-side gap is measured and reapplied. */
 function syncRightSplit(){
   const rc=document.getElementById('rightcol'),mcard=document.getElementById('msgcard'),row=document.getElementById('reelrow');
-  if(!rc||!mcard||!row)return;
+  const miniEl=document.getElementById('mini');
+  const miniCard=miniEl?miniEl.closest('.card'):null;
+  if(!rc||!mcard||!row||!miniCard)return;
   const s=__fit||1;
-  const rowTop=row.getBoundingClientRect().top/s,rcTop=rc.getBoundingClientRect().top/s;
-  const h=rowTop-rcTop-8;
-  if(h>10)mcard.style.height=h+'px';
+  const rcTop=rc.getBoundingClientRect().top/s;
+  const miniBottom=miniCard.getBoundingClientRect().bottom/s;
+  const rowTop=row.getBoundingClientRect().top/s;
+  const h=miniBottom-rcTop,gap=rowTop-miniBottom;
+  if(h>10){mcard.style.height=h+'px';mcard.style.marginBottom=Math.max(0,gap)+'px';}
 }
 /* Fills the blank space under the page (viewport taller than content) by
    growing the interactive maps. Priority order: the top track-map row is
