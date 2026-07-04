@@ -415,15 +415,19 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for the lap-time trace');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
-  const others=[],cf=[],dl=[];let sel=[],mn=Infinity,mx=0,best=Infinity,dmx=0;
-  DB.cars.forEach(st=>{const pts=[];for(let L=1;L<=maxN;L++){const t=lapT(st,L);if(t!=null){pts.push([L,t]);if(t<mn)mn=t;if(t>mx)mx=t;if(t<best)best=t;}}
+  const others=[],cf=[],dl=[];let sel=[],best=Infinity,dmx=0;
+  DB.cars.forEach(st=>{const pts=[];for(let L=1;L<=maxN;L++){const t=lapT(st,L);if(t!=null){pts.push([L,t]);if(t<best)best=t;}}
     if(pts.length){if(st===selCar)sel=pts;else others.push(pts);}});
   for(let L=1;L<=maxN;L++){let m=Infinity,mc=null;DB.cars.forEach(st=>{const t=lapT(st,L);if(t!=null&&t<m){m=t;mc=st;}});
     if(m<Infinity)cf.push([L,m,mc]);
     const ts=lapT(selCar,L);if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
   if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
   const yT2=44,yB2=CH-26;
-  const pad=Math.max(6,(mx-mn)*0.08),lo=mn-pad,hi=mx+pad,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
+  // Fixed +/-60s window around the class best (not a min/max autoscale) — a
+  // single pit-affected outlier lap used to stretch the whole axis so far
+  // that every real lap-time difference got squashed into a sliver at the
+  // bottom; outlier laps now simply run off the top of the chart instead.
+  const lo=Math.max(0,best-60),hi=best+60,YT=t=>yB2-(t-lo)/((hi-lo)||1)*(yB2-yT2);
   const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
