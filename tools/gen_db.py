@@ -47,6 +47,12 @@ with open(CSV, encoding='cp1252') as f:
         # NB: pit-IN laps (INPIT='J') legitimately have no S5 (nls-sector-layout.md:
         # the car diverts into the pits instead of crossing the S5 timing point) —
         # S1-S4 are still real, valid on-track driving and must not be discarded.
+        # FAHRER_NR says which of the (up to 8) listed drivers is actually
+        # driving THIS lap — cars swap drivers at pit stops mid-race, so this
+        # must be read per-row, not hardcoded to FAHRER1 (the entry list's
+        # first-named driver, often not who's currently in the car).
+        drv_nr=row['FAHRER_NR'].strip()
+        drv=row.get('FAHRER%s_NAME'%drv_nr, row['FAHRER1_NAME']).strip() or row['FAHRER1_NAME'].strip()
         rows.append(dict(
             car=car, lap=lap,
             klass=row['KLASSEKURZ'].strip(),
@@ -55,7 +61,7 @@ with open(CSV, encoding='cp1252') as f:
             rt=numde(row['RUNDENZEIT_IN_SEKUNDEN']),
             inpit=row['INPIT'].strip(),
             fast=row['DIESCHNELLSTE'].strip()=='J',
-            drv=row['FAHRER1_NAME'].strip(),
+            drv=drv,
             veh=row['FAHRZEUG'].strip(),
         ))
 
@@ -67,10 +73,10 @@ for c in bycar: bycar[c].sort(key=lambda r:r['lap'])
 cars=sorted(bycar.keys(), key=lambda c:(len(c),c))
 
 # ---- per-car derived ----
-legs={}; sectimes={}; pits={}; name={}; carclass={}; veh={}
+legs={}; sectimes={}; pits={}; name={}; carclass={}; veh={}; drvlap={}
 boundtimes={}          # car -> sorted list of (time, lap, sector)
 for c in cars:
-    lg=[]; st={}; pit=[]; bt=[]
+    lg=[]; st={}; pit=[]; bt=[]; dl={}
     for r in bycar[c]:
         L=r['lap']; s=r['secs']
         known=sum(x for x in s if x is not None)
@@ -85,8 +91,9 @@ for c in cars:
             bt.append((round(cum,2), L, k+1))
         st[str(L)]=[(round(x,3) if x is not None else None) for x in s]
         if r['inpit']=='J': pit.append(L)
-        name[c]=r['drv']; carclass[c]=r['klass']; veh[c]=r['veh']
-    legs[c]=lg; sectimes[c]=st; pits[c]=sorted(pit)
+        dl[str(L)]=r['drv']; carclass[c]=r['klass']; veh[c]=r['veh']
+    legs[c]=lg; sectimes[c]=st; pits[c]=sorted(pit); drvlap[c]=dl
+    name[c]=bycar[c][0]['drv'] if bycar[c] else ''   # fallback: lap-1 driver
     bt.sort()
     boundtimes[c]=bt
 
@@ -142,7 +149,7 @@ DB=dict(
     cx=geom['cx'], cy=geom['cy'], gps=geom['gps'],
     event=dict(name=EVENT_NAME, date=EVENT_DATE),
     classes=classes, classMaxN=classMaxN, classAvg=classAvg,
-    name=name, carcol=carcol, drvtable={},
+    name=name, carcol=carcol, drvtable={}, drvlap=drvlap,
     legs=legs, chart=chart, sectimes=sectimes, lappos=lappos, pits=pits,
 )
 

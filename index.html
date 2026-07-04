@@ -337,6 +337,15 @@ const LEG={};
 function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
 function progress(lg,T){return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);}
 function livePos(T){const a=[];DB.cars.forEach(st=>{const lg=activeLeg(st,T);if(lg)a.push([progress(lg,T),st]);});a.sort((x,y)=>y[0]-x[0]);const m={};a.forEach((e,i)=>m[e[1]]=i+1);return m;}
+// Endurance-race cars swap drivers at pit stops; DB.drvlap[car][lap] holds
+// the real per-lap driver (from FAHRER_NR), DB.name[car] is just a fallback
+// (lap-1 driver) for before the car has any lap data at all.
+function curDrv(st,T){
+  const lg=activeLeg(st,T);let L=lg?lg[0]:null;
+  if(L==null){const bx=BX[st]||{};let mxk=0;for(const k in bx){if(bx[k]<=T&&+k>mxk)mxk=+k;}L=mxk?Math.ceil(mxk/5):1;}
+  const dl=DB.drvlap&&DB.drvlap[st];
+  return (dl&&dl[L])||DB.name[st]||'';
+}
 const BX={},BKEYS={};
 function commonGap(ref,other,T){const ks=BKEYS[ref];for(let i=ks.length-1;i>=0;i--){const bi=ks[i],tr=BX[ref][bi];if(tr>T)continue;const to=BX[other][bi];if(to!=null&&to<=T)return tr-to;}return null;}
 function gaps(T,lp){const r={ahead:null,behind:null},p=lp[selCar];if(!p)return r;let ah=null,be=null;
@@ -362,7 +371,7 @@ function renderChart(T){const shown=[];const oBest=[Infinity,Infinity,Infinity,I
   pl.setAttribute('points',done.map(pt=>X(pt[0])+','+Y(pt[1])).join(' '));
   const last=done[done.length-1];const finished=last[0]>=maxN-0.001;
   if(finished){const fp=last[1];const prev=(DB.lappos[st][maxN-1]!=null?DB.lappos[st][maxN-1]:fp);
-    rt.setAttribute('x',X(maxN)+14);rt.innerHTML='<tspan font-weight="700">P'+fp+'</tspan>  #'+st+' '+(DB.name[st]||'')+tri(prev-fp);
+    rt.setAttribute('x',X(maxN)+14);rt.innerHTML='<tspan font-weight="700">P'+fp+'</tspan>  #'+st+' '+curDrv(st,T)+tri(prev-fp);
     rt.style.display='';tp.style.display='none';shown.push({el:rt,y:Y(fp)});
   }else{const pv=posAt(done,last[0]-1);tp.setAttribute('x',X(last[0])+10);tp.innerHTML='#'+st+(pv!=null?tri(pv-last[1]):'');tp.style.display=document.getElementById('lbls').checked?'':'none';rt.style.display='none';shown.push({el:tp,y:Y(last[1])});}
   {const secs=CSEC[st],lat=secLatest[st],pb=secPB[st],yb=(Y(last[1])-8);for(let k=0;k<5;k++){const r=secs[k],v=lat[k];if(v==null){r.style.display='none';continue;}r.setAttribute('x',50+k*12);r.setAttribute('y',yb.toFixed(1));r.setAttribute('fill',Math.abs(pb[k]-oBest[k])<0.01?'#A020F0':Math.abs(v-pb[k])<0.01?'#22B14C':'#F5C500');r.style.display='';}const ptx=CPIT[st];if(ptx){const curL=(last[0]>=maxN-0.001)?maxN:Math.floor(last[0]);let np=0;const pa=DB.pits[st]||[];for(const l of pa)if(l<=curL)np++;ptx.textContent=np>0?('PIT '+np):'';ptx.setAttribute('y',(Y(last[1])+5).toFixed(1));}}
@@ -392,7 +401,7 @@ function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.g
   const A=carStats(leader,T),dOf=(v,rv)=>(v!=null&&rv!=null)?(v-rv):null;
   const rows=order.map(st=>{const stat=carStats(st,T),isRef=(st===leader),ref=isRef?null:A,selq=(st===selCar);
     const pos=lp[st]||'—',g=isRef?null:commonGap(st,leader,T),gtxt=(g==null)?'—':((g>=0?'+':'')+g.toFixed(1)+'s');
-    let c='<td><b>P'+pos+'</b></td><td'+(selq?' style=\"color:var(--accent);font-weight:700\"':'')+'>#'+st+' '+(DB.name[st]||'')+'</td><td>'+gtxt+'</td>';
+    let c='<td><b>P'+pos+'</b></td><td'+(selq?' style=\"color:var(--accent);font-weight:700\"':'')+'>#'+st+' '+curDrv(st,T)+'</td><td>'+gtxt+'</td>';
     c+='<td>'+cmpCell(stat.fast,ref?dOf(stat.fast,ref.fast):null)+'</td>';
     c+='<td>'+cmpCell(stat.last,ref?dOf(stat.last,ref.last):null)+'</td>';
     for(let k=0;k<5;k++){const v=stat.liveSecs?stat.liveSecs[k]:null,rv=(ref&&ref.liveSecs)?ref.liveSecs[k]:null;c+='<td>'+cmpCell(v,ref?dOf(v,rv):null)+'</td>';}
@@ -606,7 +615,7 @@ function askAgent(q){
   q=(q||'').toLowerCase().trim();
   if(!q)return 'Ask me about the race — e.g. "what position are we?", "likely outcome?", "who pitted early?", "best class lap?"';
   const lp=livePos(T),p=lp[selCar],byPos={};for(const st in lp)byPos[lp[st]]=st;
-  const nm=st=>'#'+st+(DB.name[st]?(' '+DB.name[st]):'');
+  const nm=st=>'#'+st+(curDrv(st,T)?(' '+curDrv(st,T)):'');
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
   const fmtT=v=>{if(v==null||!isFinite(v))return '—';const m=Math.floor(v/60);return m+':'+(v-60*m).toFixed(1).padStart(4,'0');};
   const has=(...w)=>w.some(x=>q.includes(x));
@@ -723,7 +732,14 @@ function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=documen
   lbls.forEach(l=>{const useLeft=l.x>800,lx=useLeft?(l.x-8):(l.x+8);s+='<text x="'+lx.toFixed(1)+'" y="'+(l.y-8).toFixed(1)+'" text-anchor="'+(useLeft?'end':'start')+'" font-size="'+(l.sel?26:22)+'" font-weight="700" fill="'+col(l.st)+'" font-family="IBM Plex Mono,monospace">#'+l.st+' P'+(lp[l.st]||'')+' '+(l.v>=0?'+':'')+l.v.toFixed(1)+'s</text>';});
   svg.innerHTML=s;box.style.display='';}
 function predPass(a,b,T){const G=commonGap(a,b,T),bi=lastCommon(a,b,T);if(G==null||G<=0||bi==null)return null;const lap=Math.floor((bi-1)/5)+1,k=((bi-1)%5)+1,ta=(DB.sectimes[a][lap]||[])[k-1],tb=(DB.sectimes[b][lap]||[])[k-1];if(ta==null||tb==null)return null;const dl=ta-tb;if(dl>=-paceThr)return null;const eta=G*tb/(-dl);return eta<5400?eta:null;}
-function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
+let lastDrvRefresh=0;
+function refreshCarDropdown(T){
+  // throttled: driver swaps are rare (pit stops), no need to touch the DOM every frame
+  const now=Date.now();if(now-lastDrvRefresh<1000)return;lastDrvRefresh=now;
+  const sel=document.getElementById('carsel');if(!sel)return;
+  for(const o of sel.options){if(!o.value)continue;o.textContent='#'+o.value+'  '+curDrv(o.value,T);}
+}
+function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);
@@ -796,7 +812,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     let yb=(nR?boxTop:lastY+26)-32;
     for(let k=preds.length-1;k>=0;k--){mkT((BX0+BX1)/2,yb,'middle',preds[k][0],preds[k][1],fs);yb-=rowH;}
     if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,yb-16,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
-    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
+    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
 function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;T+=dt*parseFloat(document.getElementById('speed').value);
   if(T>=DB.tmax){T=DB.tmin;last=ts;}scrub.value=T;render();if(playing)requestAnimationFrame(loop);}
@@ -888,7 +904,7 @@ function setEv(T){while(mEv.firstChild)mEv.removeChild(mEv.firstChild);if(!selCa
 function setNb(el,nb,arrow,pos){while(el.firstChild)el.removeChild(el.firstChild);if(!nb)return;
   let dl=null,sec=null;const bi=lastCommon(selCar,nb,T);
   if(bi!=null){const lap=Math.floor((bi-1)/5)+1,k=((bi-1)%5)+1,ts=(DB.sectimes[selCar][lap]||[])[k-1],tn=(DB.sectimes[nb][lap]||[])[k-1];if(ts!=null&&tn!=null){dl=ts-tn;sec=k;}}
-  const t1=document.createElementNS(SVGNS,'tspan');t1.textContent=arrow+' #'+nb+(pos?' P'+pos:'')+' '+(DB.name[nb]||'')+(dl!=null?'   ':'');el.appendChild(t1);
+  const t1=document.createElementNS(SVGNS,'tspan');t1.textContent=arrow+' #'+nb+(pos?' P'+pos:'')+' '+curDrv(nb,T)+(dl!=null?'   ':'');el.appendChild(t1);
   if(dl!=null){const t2=document.createElementNS(SVGNS,'tspan');t2.setAttribute('fill',dl<0?'#1e8f3a':'#c0392b');t2.setAttribute('font-weight','700');t2.textContent='S'+sec+' Δ'+(dl>=0?'+':'')+dl.toFixed(1)+'s';el.appendChild(t2);}}
 /* Gap gauge = the test.html "track-position flow" rectangle:
    fixed vertical ruler (minor tick 0.2s, major 1.0s, full height = 4.0s), the car AHEAD pinned so its
