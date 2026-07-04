@@ -42,8 +42,11 @@ with open(CSV, encoding='cp1252') as f:
         car=row['STNR'].strip()
         lap=int(row['RUNDE_NR'])
         secs=[sec(row['SEKTOR%d_ZEIT'%k]) for k in range(1,6)]
-        if any(x is None for x in secs):
-            continue  # incomplete lap
+        if all(x is None for x in secs):
+            continue  # nothing usable at all
+        # NB: pit-IN laps (INPIT='J') legitimately have no S5 (nls-sector-layout.md:
+        # the car diverts into the pits instead of crossing the S5 timing point) —
+        # S1-S4 are still real, valid on-track driving and must not be discarded.
         rows.append(dict(
             car=car, lap=lap,
             klass=row['KLASSEKURZ'].strip(),
@@ -70,14 +73,17 @@ for c in cars:
     lg=[]; st={}; pit=[]; bt=[]
     for r in bycar[c]:
         L=r['lap']; s=r['secs']
-        rt=r['rt'] if r['rt'] else sum(s)
+        known=sum(x for x in s if x is not None)
+        rt=r['rt'] if r['rt'] else known
         t0=r['tend']-rt
         cum=t0
         for k in range(5):
+            if s[k] is None:
+                continue  # e.g. S5 on a pit-in lap: no boundary, don't advance cum
             a=cum; cum=cum+s[k]
             lg.append([L, k+1, round(a,2), round(cum,2)])
             bt.append((round(cum,2), L, k+1))
-        st[str(L)]=[round(x,3) for x in s]
+        st[str(L)]=[(round(x,3) if x is not None else None) for x in s]
         if r['inpit']=='J': pit.append(L)
         name[c]=r['drv']; carclass[c]=r['klass']; veh[c]=r['veh']
     legs[c]=lg; sectimes[c]=st; pits[c]=sorted(pit)
