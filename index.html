@@ -448,12 +448,17 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
       if(!cs.pits[L])cs.pits[L]={added:'',full:false};
       const row=document.createElement('div');row.className='flogrow pit';
       const lb=document.createElement('span');lb.className='floglbl';lb.textContent='⛽ PIT L'+L+' add';
-      const inp=document.createElement('input');inp.type='number';inp.step='0.5';inp.placeholder='L';if(cs.pits[L].added!=='')inp.value=cs.pits[L].added;inp.disabled=!!cs.pits[L].full;
+      const tg=document.createElement('button');tg.className='fbtn';tg.textContent='FULL in PIT';
+      const inp=document.createElement('input');inp.type='number';inp.step='0.5';inp.placeholder='splash and dash';if(cs.pits[L].added!=='')inp.value=cs.pits[L].added;
+      const paintFull=()=>{
+        if(cs.pits[L].full){tg.style.background='#1e8f3a';tg.style.borderColor='#1e8f3a';tg.style.opacity='1';}else{tg.style.background='';tg.style.borderColor='';tg.style.opacity='.45';}
+        inp.disabled=!!cs.pits[L].full;
+      };
+      paintFull();
+      tg.onclick=()=>{cs.pits[L].full=!cs.pits[L].full;paintFull();saveFuel();render();};
       inp.oninput=()=>{cs.pits[L].added=inp.value;saveFuel();render();};
       const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
-      const tg=document.createElement('button');tg.className='fbtn';tg.style.opacity=cs.pits[L].full?'1':'.45';tg.textContent='FULL in PIT';
-      tg.onclick=()=>{cs.pits[L].full=!cs.pits[L].full;saveFuel();render();};
-      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(tg);log.insertBefore(row,log.firstChild);}
+      row.appendChild(lb);row.appendChild(tg);row.appendChild(inp);row.appendChild(u);log.insertBefore(row,log.firstChild);}
   }}
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
@@ -1042,11 +1047,30 @@ T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').inne
    every change) instead of a single hardcoded one-time test field. Grid
    order = each car's position at T=DB.tmin as a stand-in for the qualifying
    order, since that's the only ordering this dataset carries per car. */
+/* Cross-class version of livePos(): DB.legs holds every car in the whole
+   149-car field regardless of which class is currently loaded (LEG only
+   holds the active class), so this gives each car's position across the
+   FULL field at T=DB.tmin — used for the "(P{overall})" bracket next to
+   each car's in-class position on the starting grid. */
+function fullFieldPos(T){
+  const arr=[];
+  for(const st in DB.legs){
+    const legs=(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]);
+    let lo=0,hi=legs.length-1,res=-1;
+    while(lo<=hi){const m=(lo+hi)>>1;if(legs[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}
+    if(res<0)continue;
+    const g=legs[res];if(!(T<g[3]))continue;
+    arr.push([g[0]*5+(g[1]-1)+(T-g[2])/((g[3]-g[2])||1),st]);
+  }
+  arr.sort((a,b)=>b[0]-a[0]);
+  const map={};arr.forEach((e,i)=>map[e[1]]=i+1);
+  return map;
+}
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
   if(!host||!svg||!DB.cars)return;
-  const lp=livePos(DB.tmin);
-  const order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999)).map((car,i)=>({car,classPos:i+1,fieldPos:null}));
+  const lp=livePos(DB.tmin),fp=fullFieldPos(DB.tmin);
+  const order=DB.cars.slice().sort((a,b)=>(lp[a]||999)-(lp[b]||999)).map((car,i)=>({car,classPos:i+1,fieldPos:fp[car]||null}));
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
