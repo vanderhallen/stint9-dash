@@ -43,7 +43,7 @@
   .controls select{font-size:12px;height:32px;padding:4px 8px}
   .controls input[type=range]{flex:1 1 50px;min-width:40px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
   .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:44px}
-  .modebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
+  .modebtn{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
   .modebtn.active{background:var(--ink);color:#fff}
   .modebtn:not(.active):hover{background:#f1f3f5}
   .controls button:disabled,.controls select:disabled,.controls input:disabled{opacity:.4;cursor:not-allowed}
@@ -88,8 +88,8 @@
   #agentq::placeholder{color:#9aa1a9}
   .agentgo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:8px 18px;border-radius:9px;border:none;background:#16202b;color:#fff;cursor:pointer}
   .agentgo:hover{background:#2a3646}
-  .agenta{flex:1 1 100%;font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#16202b;line-height:1.55;padding:3px 2px 0;white-space:pre-wrap;display:none}
-  .agenta.show{display:block}
+  .agenta{flex:1 1 100%;font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#16202b;line-height:1.55;padding:3px 2px 0;white-space:pre-wrap;height:90px;overflow-y:auto;visibility:hidden}
+  .agenta.show{visibility:visible}
   .agenta b{color:#e0301e}
   .agentsug{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .agentsug>span{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9aa1a9}
@@ -140,6 +140,7 @@
     <div class="sidehd"><span id="gridclock">&mdash;</span><span id="gridnext">&mdash;</span></div>
     <div class="startline">START</div>
     <div id="gridwrap"><svg id="gridsvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div id="gridsource" style="flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-align:center;padding-top:5px;line-height:1.3"></div>
   </div>
   <div class="maincol" style="flex:1 1 auto;min-width:0">
   <div class="headrow">
@@ -158,7 +159,7 @@
         <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
         <input type="checkbox" id="lbls" checked style="display:none">
       </div>
-      <div id="liveMsg" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">live feed not connected</div>
+      <div id="liveMsg" style="display:none;height:26px;align-items:center;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">live feed not connected</div>
     </div>
     <div class="modetoggle" id="modetoggle">
       <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
@@ -183,8 +184,8 @@
         <defs><clipPath id="miniclip"><circle cx="134" cy="134" r="134"/></clipPath></defs>
         <g clip-path="url(#miniclip)"><g id="miniG"></g></g>
         <circle cx="134" cy="134" r="133" fill="none" stroke="#d3d7dc" stroke-width="1.5"/>
-        <text id="miniAhead" x="134" y="17" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
-        <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="18" font-weight="600" fill="#16202b"></text>
+        <text id="miniAhead" x="134" y="17" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="#16202b"></text>
+        <text id="miniBehind" x="134" y="260" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="#16202b"></text>
         <g id="miniEv"></g>
         <text id="minihint" x="134" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#9aa1a9">select a car</text>
       </svg><svg id="gapgauge" viewBox="0 0 150 500" preserveAspectRatio="xMidYMid meet" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:auto;height:auto"></svg></div>
@@ -328,7 +329,7 @@ function renderChart(T){const shown=[];const oBest=[Infinity,Infinity,Infinity,I
 
 /* controls / render */
 const clock=document.getElementById('clock'),scrub=document.getElementById('scrub'),oncount=document.getElementById('oncount'),lbls=document.getElementById('lbls'),badge=document.getElementById('carbadge'),predsvg=document.getElementById('predsvg');
-badge.style.left=((DB.cx-80)/1340*100-3)+'%';badge.style.top=((DB.cy-80)/1300*100+1)+'%';
+badge.style.left=((DB.cx-80)/2000*100-3)+'%';badge.style.top=((DB.cy-80)/1300*100+1)+'%';
 let T=DB.tmin,playing=false,last=0;
 function hms(x){const h=Math.floor(x/3600),m=Math.floor((x%3600)/60),s=Math.floor(x%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[st]||{};let L=lg?(lg[0]-1):0;
@@ -659,7 +660,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     const mkR=(x,y,w,h,fill,stroke,sw,rx)=>{const r=document.createElementNS(SVGNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);if(fill)r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width',sw||1);}if(rx)r.setAttribute('rx',rx);predsvg.appendChild(r);};
     const mkL=(x1,y1,x2,y2,st,sw)=>{const l=document.createElementNS(SVGNS,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',st);l.setAttribute('stroke-width',sw||1);predsvg.appendChild(l);};
     const preds=plines.filter(l=>l[3]===undefined),rows=plines.filter(l=>l[3]!==undefined);
-    const BX0=1026,BX1=2030,TR=1236,D1=1250,LX=1264,D2=1712,DTRI=1726,DNX=1760,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1350;
+    const BX0=1034,BX1=2074,TR=1338,D1=1354,LX=1368,D2=1804,DTRI=1818,DNX=1852,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1350;
     const firstY=lastY-(nR-1)*rowH,hdrY=firstY-80,hLine=hdrY+26,boxTop=hdrY-hFs-18,boxBot=lastY+26,REF=flCar;
     if(nR){
       mkR(BX0,boxTop,BX1-BX0,boxBot-boxTop,'rgba(255,255,255,0.94)','#c2c8d0',1.6,11);
@@ -676,7 +677,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
       });
     }
     let yb=(nR?boxTop:lastY+26)-32;
-    for(let k=preds.length-1;k>=0;k--){mkT(BX0+4,yb,'start',preds[k][0],preds[k][1],fs);yb-=rowH;}
+    for(let k=preds.length-1;k>=0;k--){mkT((BX0+BX1)/2,yb,'middle',preds[k][0],preds[k][1],fs);yb-=rowH;}
     if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,boxTop-56,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
     badge.className='carbadge sel';badge.innerHTML='<div class="row"><span class="num">#'+selCar+'</span>'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+(DB.name[selCar]||'')+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
@@ -950,21 +951,38 @@ function syncSideHeights(){
 syncSideHeights();setTimeout(syncSideHeights,80);
 /* Grows the main track map (and, via syncMapHeights, the zoom view next to
    it) to eat into any blank space left below the page once everything else
-   is laid out, instead of leaving it empty. Capped at 18% taller than its
-   natural size so the extra width (aspect-locked) doesn't crop too much of
-   the track off the sides of its card (.stage has overflow:hidden). */
-function growMapsToFillSlack(s){
-  const svg=document.getElementById('svg'),w=document.querySelector('.wrap');
-  if(!svg||!w)return;
+   is laid out, instead of leaving it empty. It grows to fill the whole
+   slack, but is capped by the width of its own card so the aspect-locked
+   width never overflows and crops the track (.stage has overflow:hidden). */
+/* Fills the blank space under the page (viewport taller than content) by
+   growing the interactive maps. Works entirely in unscaled layout units
+   (clientWidth/clientHeight/scrollHeight — unaffected by the CSS transform),
+   so it's safe to run any time after fitPage has applied the scale. Resets
+   the maps to natural first (idempotent across repeated calls), then:
+     1) grows the top track map, capped by its own card width so the
+        aspect-locked width never overflows and crops the track sideways;
+     2) pours any remaining slack into the reel/weather row, which are
+        charts/maps that just scale — no cropping. */
+function growMaps(){
+  const w=document.querySelector('.wrap'),svg=document.getElementById('svg'),rv=document.getElementById('reelview'),wv=document.getElementById('wxview'),agent=document.querySelector('.agentbar');
+  if(!w||!svg||!agent||typeof CH==='undefined')return;
+  const s=__fit||1;
+  // reset to natural (idempotent across repeated calls)
   svg.style.width='64%';svg.style.height='auto';
-  const nat=w.scrollHeight;
-  const slackScreen=window.innerHeight-nat*s;
-  if(slackScreen>20){
-    const h0=svg.getBoundingClientRect().height;
-    const slackUnscaled=slackScreen/s;
-    const grow=Math.min(slackUnscaled*0.7,h0*0.18);
-    if(grow>10){svg.style.width='auto';svg.style.height=(h0+grow)+'px';}
-  }
+  if(rv){rv.style.height=(rv.clientWidth*CH/1000)+'px';if(wv)wv.style.height=rv.clientHeight+'px';}
+  syncMapHeights();
+  // real content bottom = the agent bar (the wrap's scrollHeight is polluted
+  // by the tall grid sidebar, so we measure the visible column's end instead)
+  const slackU=()=>(window.innerHeight-agent.getBoundingClientRect().bottom)/s;
+  if(slackU()<=20)return;
+  // 1) grow the top track map, capped by its card width (no sideways crop)
+  const h0=svg.clientHeight,aspect=svg.clientWidth/h0,card=svg.closest('.stage');
+  const maxByWidth=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
+  const topH=Math.min(h0+slackU(),maxByWidth);
+  if(topH-h0>8){svg.style.width='auto';svg.style.height=topH+'px';syncMapHeights();}
+  // 2) remaining slack into the reel/weather row (charts scale, no crop)
+  const rem=slackU();
+  if(rv&&rem>20){const rh=rv.clientHeight+rem;rv.style.height=rh+'px';if(wv)wv.style.height=rh+'px';}
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
@@ -973,11 +991,11 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   const DW=1722;
   const s=Math.min(1,window.innerWidth/DW);
   __fit=s;
-  growMapsToFillSlack(s);
   syncMapHeights();
   const tx=Math.max(0,(window.innerWidth-DW*s)/2);
   w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,0) scale('+s+')';
-  document.documentElement.style.overflow='auto';document.body.style.overflow='auto';}
+  document.documentElement.style.overflow='auto';document.body.style.overflow='auto';
+  growMaps();}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
 T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);
@@ -1007,6 +1025,7 @@ const TEST_GRID=[[1,35,'SP9 PRO',1],[2,47,'SP9 PRO',2],[3,44,'SP9 PRO',3],[4,26,
 /* Only this team's own class is shown on the starting grid, in class order
    (e.g. #667 P1 (P60), #651 P2 (P62)...) — every other class is excluded. */
 const GRID_FOCUS_CLASS='BMW M240i';
+const GRID_SOURCE='1. ADAC Eifel-Trophy · quali 20.06.2026';
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg');
   if(!host||!svg)return;
@@ -1046,6 +1065,8 @@ function buildStartGrid(){
   });
   svg.innerHTML=s;
   host.scrollLeft=0;host.scrollTop=0;
+  const src=document.getElementById('gridsource');
+  if(src)src.textContent=TEST_GRID?('Data: '+GRID_SOURCE):'Data: current session';
 }
 buildStartGrid();
 
