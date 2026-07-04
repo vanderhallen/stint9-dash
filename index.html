@@ -423,7 +423,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   const log=document.getElementById('fuellog');
   if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');setR('fpredused','—');setR('factused','—');const n=document.getElementById('fnotify');if(n)n.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Map();fuelPitSet=new Map();}return;}
   const cap=FUEL.cap,cons=Math.max(0.01,FUEL.cons),start=FUEL.start;
-  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};
+  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{},s5adj:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};if(!cs.s5adj)cs.s5adj={};
   if(fuelLogCar!==selCar){log.innerHTML='';fuelLogCar=selCar;fuelS5Set=new Map();fuelPitSet=new Map();}
   const bx=BX[selCar]||{};
   // position on track -> fractional laps driven
@@ -462,13 +462,15 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   // S5/next-lap-S1 boundary, i.e. crossing the line): unlocking greys the
   // button out (doesn't hide it) and opens the input; once the car enters
   // S1 of the next lap the window closes and the button becomes a terminal
-  // OK (a value was captured) or MISS (it wasn't) status, locking the input.
+  // OK (the driver's reading was actually typed in — cs.s5adj[L]) or MISS
+  // (unlocked or not, the value was never adjusted from the auto-filled
+  // estimate) status, locking the input.
   const paintFuelRow=(row,closed)=>{
     const btn=row._unlockBtn,inp=row._inp,L=row._L;
     if(closed){
-      const hasVal=cs.s5[L]!=null&&cs.s5[L]!=='';
-      btn.textContent=hasVal?'OK':'MISS';
-      btn.className='fbtn funlock '+(hasVal?'fok':'fmiss');
+      const adjusted=!!cs.s5adj[L];
+      btn.textContent=adjusted?'OK':'MISS';
+      btn.className='fbtn funlock '+(adjusted?'fok':'fmiss');
       btn.disabled=true;inp.disabled=true;
     }else{
       inp.disabled=!row._unlocked;
@@ -485,7 +487,9 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
       const lb=document.createElement('span');lb.className='floglbl';lb.textContent='L'+L+' fuel S5';
       const unlockBtn=document.createElement('button');unlockBtn.type='button';unlockBtn.className='fbtn funlock';unlockBtn.textContent='UNLOCK';
       const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';inp.disabled=true;if(cs.s5[L]!=null)inp.value=cs.s5[L];
-      inp.oninput=()=>{cs.s5[L]=inp.value;saveFuel();render();};
+      // a real user edit (not the programmatic auto-fill on unlock) is what
+      // counts as "adjusted" for the OK/MISS verdict
+      inp.oninput=()=>{cs.s5[L]=inp.value;cs.s5adj[L]=true;saveFuel();render();};
       unlockBtn.onclick=()=>{
         if(row._closed)return;
         row._unlocked=true;
