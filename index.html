@@ -762,9 +762,9 @@ function renderSectGrid(T){
   for(let L=1;L<=lapsSoFar;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
   h+='</tr></thead><tbody>';
   carData.forEach(({st,pb,laps})=>{
-    const isSel=st===selCar,rowBg=isSel?'#fff7ec':'#fff';
+    const isSel=st===selCar,rowBg=isSel?'#ffdca0':'#fff';
     const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
-    h+='<tr'+(isSel?' style="background:#fff7ec"':'')+'>';
+    h+='<tr'+(isSel?' style="background:#ffdca0"':'')+'>';
     h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+posLbl+'#'+st+'</td>';
     for(let L=1;L<=lapsSoFar;L++){
       const vals=laps[L];
@@ -831,9 +831,9 @@ function renderSectGridFrozen(T){
   for(let L=1;L<=lapsSoFar;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
   h+='</tr></thead><tbody>';
   order.forEach(st=>{
-    const isSel=st===selCar,rowBg=isSel?'#fff7ec':'#fff',posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
+    const isSel=st===selCar,rowBg=isSel?'#ffdca0':'#fff',posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
     const d=gridFreeze.done[st]||{};
-    h+='<tr'+(isSel?' style="background:#fff7ec"':'')+'>';
+    h+='<tr'+(isSel?' style="background:#ffdca0"':'')+'>';
     h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+posLbl+'#'+st+'</td>';
     for(let L=1;L<=lapsSoFar;L++){
       const cols=d[L];
