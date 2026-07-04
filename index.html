@@ -707,7 +707,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);
     const mkR=(x,y,w,h,fill,stroke,sw,rx)=>{const r=document.createElementNS(SVGNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);if(fill)r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width',sw||1);}if(rx)r.setAttribute('rx',rx);predsvg.appendChild(r);};
     const mkL=(x1,y1,x2,y2,st,sw)=>{const l=document.createElementNS(SVGNS,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',st);l.setAttribute('stroke-width',sw||1);predsvg.appendChild(l);};
     const preds=plines.filter(l=>l[3]===undefined),rows=plines.filter(l=>l[3]!==undefined);
-    const BX0=1034,BX1=2074,TR=1338,D1=1354,LX=1368,D2=1804,DTRI=1818,DNX=1852,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1350;
+    const BX0=1034,BX1=2080,TR=1338,D1=1354,LX=1368,D2=1804,DTRI=1818,DNX=1852,rowH=88,fs=52,hFs=28,nR=rows.length,lastY=1354;
     const firstY=lastY-(nR-1)*rowH,hdrY=firstY-80,hLine=hdrY+26,boxTop=hdrY-hFs-18,boxBot=lastY+26,REF=flCar;
     if(nR){
       mkR(BX0,boxTop,BX1-BX0,boxBot-boxTop,'rgba(255,255,255,0.94)','#c2c8d0',1.6,11);
