@@ -447,15 +447,15 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="17" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
   for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="16" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   s+='<text x="'+(xR)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="start" font-size="13" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
-  others.forEach(pts=>{s+='<polyline points="'+pts.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#b6bcc3" stroke-width="1.2" stroke-linejoin="round" opacity="0.5"/>';});
-  s+='<polygon points="'+px(sel[0][0])+','+yB2+' '+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+' '+px(sel[sel.length-1][0])+','+yB2+'" fill="#1e8f3a" opacity="0.06"/>';
+  others.forEach(pts=>{s+='<path d="'+smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#b6bcc3" stroke-width="1.2" stroke-linejoin="round" opacity="0.5"/>';});
+  s+='<path d="'+smoothPath(sel.map(p=>[X(p[0]),YT(p[1])]))+' L'+px(sel[sel.length-1][0])+','+yB2+' L'+px(sel[0][0])+','+yB2+' Z" fill="#1e8f3a" opacity="0.06"/>';
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YT(best).toFixed(1)+'" y2="'+YT(best).toFixed(1)+'" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="7 6"/><text x="'+(xL-8)+'" y="'+(YT(best)-6).toFixed(1)+'" text-anchor="end" font-size="15" fill="#c0392b" font-family="IBM Plex Mono,monospace">best '+tf(best)+'</text>';
-  s+='<polyline points="'+dl.map(p=>px(p[0])+','+YD(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#e8871e" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>';
+  s+='<path d="'+smoothPath(dl.map(p=>[X(p[0]),YD(p[1])]))+'" fill="none" stroke="#e8871e" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>';
   {const outsSet=new Set((DB.pits[selCar]||[]).map(pl=>pl+1));let dsum=0,dn=0;dl.forEach(p=>{if(!outsSet.has(p[0])){dsum+=p[1];dn++;}});
    if(dn){const avgD=dsum/dn,ay=YD(avgD);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+ay.toFixed(1)+'" y2="'+ay.toFixed(1)+'" stroke="#e8871e" stroke-width="2.5"/><text x="'+(xR-6)+'" y="'+(ay-7).toFixed(1)+'" text-anchor="end" font-size="15" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">avg +'+avgD.toFixed(1)+'s</text>';}}
-  s+='<polyline points="'+cf.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round"/>';
+  s+='<path d="'+smoothPath(cf.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round"/>';
   cf.forEach((p,i)=>{if(i===0||p[2]!==cf[i-1][2])s+='<text x="'+px(p[0])+'" y="'+(YT(p[1])-9).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#6b7480" font-family="IBM Plex Mono,monospace">#'+p[2]+'</text>';});
-  s+='<polyline points="'+sel.map(p=>px(p[0])+','+YT(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#1e8f3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
+  s+='<path d="'+smoothPath(sel.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#1e8f3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
   const outs=(DB.pits[selCar]||[]).map(pl=>pl+1);sel.forEach(p=>{if(outs.indexOf(p[0])>=0)s+='<circle cx="'+px(p[0])+'" cy="'+YT(p[1]).toFixed(1)+'" r="6" fill="#fff" stroke="#e08a1e" stroke-width="2.5"/>';});
   s+='<text x="'+xL+'" y="22" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
