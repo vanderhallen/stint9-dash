@@ -220,10 +220,6 @@
       </div>
       <div id="reelview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
-          <div class="reelpanel"><svg id="lapchart"></svg></div>
-          <div class="reelpanel"><svg id="flowsvg"></svg></div>
-          <div class="reelpanel"><svg id="sectorsvg"></svg></div>
-          <div class="reelpanel"><svg id="ltgraph"></svg></div>
           <div class="reelpanel"><div id="fuelpanel" class="fuelpanel">
             <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
             <div class="fuelset">
@@ -245,6 +241,10 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
+          <div class="reelpanel"><svg id="lapchart"></svg></div>
+          <div class="reelpanel"><svg id="flowsvg"></svg></div>
+          <div class="reelpanel"><svg id="sectorsvg"></svg></div>
+          <div class="reelpanel"><svg id="ltgraph"></svg></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
             <select id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 6px">
@@ -261,11 +261,11 @@
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
-        <div class="reelthumb active" data-i="0" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="1" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="2" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="3" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="4" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
+        <div class="reelthumb" data-i="0" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
+        <div class="reelthumb active" data-i="1" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="2" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="3" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="4" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="5" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
         <div class="reelthumb" data-i="6" title="Sector-1 comparison — all cars"><span class="thumbcap">COMP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 58 C20 58,22 20,32 20 S44 58,52 58 S64 34,72 34 S84 10,96 10" fill="none" stroke="#2f5fd0" stroke-width="3"/><path d="M4 62 C22 62,26 44,36 44 S50 62,60 62 S76 50,96 50" fill="none" stroke="#e0301e" stroke-width="3"/></svg></div>
         <div class="reelthumb" data-i="7" title="Sector colours grid — all cars, all laps"><span class="thumbcap">GRID</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
@@ -316,7 +316,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=0;const REELN=8;
+let reelIdx=1;const REELN=8;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -611,8 +611,8 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   const ordered=DB.cars.slice().sort((a,b)=>{const pa=lp[a],pb=lp[b];if(pa==null&&pb==null)return 0;if(pa==null)return 1;if(pb==null)return -1;return pa-pb;});
   ordered.forEach((st,i)=>{
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
-    const posLbl=lp[st]!=null?(' (P'+lp[st]+')'):'';
-    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+posLbl+'</text>';
+    const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
+    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
     const lg=activeLeg(st,T);const bx=BX[st]||{};let lapsDriven=0;
     if(lg){const f=Math.max(0,Math.min(1,(T-lg[2])/((lg[3]-lg[2])||1)));lapsDriven=(lg[0]-1)+((lg[1]-1)+f)/5;}
     else{let mxb=0;for(const k in bx){if(bx[k]<=T&&+k>mxb)mxb=+k;}lapsDriven=mxb/5;}
@@ -968,11 +968,11 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);
   const _tk=Date.now()-_thT>=300;
-  if(reelIdx===0||_tk)renderChart(T);
-  if(reelIdx===1||_tk)renderFlow(T);
-  if(reelIdx===2||_tk)renderSectors(T);
-  if(reelIdx===3||_tk)renderLapTrace(T);
-  if(reelIdx===4||_tk)renderFuel(T);
+  if(reelIdx===0||_tk)renderFuel(T);
+  if(reelIdx===1||_tk)renderChart(T);
+  if(reelIdx===2||_tk)renderFlow(T);
+  if(reelIdx===3||_tk)renderSectors(T);
+  if(reelIdx===4||_tk)renderLapTrace(T);
   if(reelIdx===5||_tk)renderStints(T);
   if(reelIdx===6||_tk)renderComp(T);
   if(reelIdx===7||_tk)renderSectGrid(T);
