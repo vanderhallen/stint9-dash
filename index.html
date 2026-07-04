@@ -87,6 +87,8 @@
   .flogrow{display:flex;align-items:center;gap:6px;padding:1.5px 2px;border-top:1px solid #eef0f3}
   .flogrow.pit{background:#eef4ff}
   .flogrow input{width:46px;font-family:inherit;font-size:10.5px;padding:1px 3px;border:1px solid #cfd4da;border-radius:4px}
+  .flogrow input.flognote{width:auto;flex:1 1 70px;min-width:60px;color:#16202b}
+  .flogrow input.flognote::placeholder{color:#9aa1a9}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   .agentbar .agicon{font-size:18px;line-height:1}
@@ -417,7 +419,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   const log=document.getElementById('fuellog');
   if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');setR('fpredused','—');setR('factused','—');const n=document.getElementById('fnotify');if(n)n.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Set();fuelPitSet=new Set();}return;}
   const cap=FUEL.cap,cons=Math.max(0.01,FUEL.cons),start=FUEL.start;
-  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{}};const cs=FUEL.cars[selCar];
+  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};
   if(fuelLogCar!==selCar){log.innerHTML='';fuelLogCar=selCar;fuelS5Set=new Set();fuelPitSet=new Set();}
   const bx=BX[selCar]||{};
   // position on track -> fractional laps driven
@@ -453,11 +455,13 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
     const b5=bx[(L-1)*5+4];
     if(b5!=null&&b5<=T&&!fuelS5Set.has(L)){fuelS5Set.add(L);
       const row=document.createElement('div');row.className='flogrow';
-      const lb=document.createElement('span');lb.className='floglbl';lb.textContent='L'+L+' fuel S5 used';
+      const lb=document.createElement('span');lb.className='floglbl';lb.textContent='L'+L+' fuel S5';
       const inp=document.createElement('input');inp.type='number';inp.step='0.1';inp.placeholder='L';if(cs.s5[L]!=null)inp.value=cs.s5[L];
       inp.oninput=()=>{cs.s5[L]=inp.value;saveFuel();render();};
-      const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L used';
-      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);log.insertBefore(row,log.firstChild);}
+      const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
+      const nt=document.createElement('input');nt.type='text';nt.className='flognote';nt.placeholder='notes per lap';if(cs.notes[L]!=null)nt.value=cs.notes[L];
+      nt.oninput=()=>{cs.notes[L]=nt.value;saveFuel();};
+      row.appendChild(lb);row.appendChild(inp);row.appendChild(u);row.appendChild(nt);log.insertBefore(row,log.firstChild);}
     if((DB.pits[selCar]||[]).indexOf(L)>=0&&lapsDriven>=L&&!fuelPitSet.has(L)){fuelPitSet.add(L);
       if(!cs.pits[L])cs.pits[L]={added:'',full:false};
       const row=document.createElement('div');row.className='flogrow pit';
