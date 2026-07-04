@@ -700,7 +700,7 @@ function setNb(el,nb,arrow,pos){while(el.firstChild)el.removeChild(el.firstChild
    seconds below that datum. gap > 3.5s pushes our car off the bottom edge (clipped, not visible). */
 const GG_FULLSEC=4.0, GG_TOPMARGIN=0.5, GG_CARLEN=168, GG_CARW=80;
 function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)return;
-  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2;
+  const W=120,H=500,cx=W/2,PXPS=H/GG_FULLSEC,DATUM=GG_TOPMARGIN*PXPS,halfH=GG_CARLEN/2,HOODY=47;/* HOODY: units from the car's front bumper down to the middle of the hood, for the number label */
   const T2=(x,y,anc,txt,col,fs,w)=>'<text x="'+x+'" y="'+(+y).toFixed(1)+'" text-anchor="'+anc+'" font-size="'+fs+'" '+(w?'font-weight="700" ':'')+'stroke="#fff" stroke-width="3" paint-order="stroke" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+txt+'</text>';
   const car=cy=>'<g transform="translate('+cx+' '+cy.toFixed(1)+') rotate(-90)"><image href="topview.png" x="'+(-GG_CARLEN/2)+'" y="'+(-GG_CARW/2)+'" width="'+GG_CARLEN+'" height="'+GG_CARW+'" style="mix-blend-mode:multiply"/></g>';
   // ruler is anchored to the top car: a MAJOR line sits exactly on the back-bumper datum (0s gap),
@@ -714,14 +714,14 @@ function renderGauge(T){const svg=document.getElementById('gapgauge');if(!svg)re
   const ah=byPos[p-1];let dA=ah?commonGap(selCar,ah,T):null;dA=(dA!=null)?Math.max(0,dA):null;
   let s=ruler;
   if(dA==null){ // leader, or no common reference yet: show our car at the datum with a LEADER tag
-    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+halfH+5,'middle','#'+selCar,'#e0301e',13,1);
+    s+=car(DATUM+halfH)+T2(cx,16,'middle','LEADER','#16202b',13,1)+T2(cx,DATUM+HOODY,'middle','#'+selCar,'#e0301e',13,1);
     svg.innerHTML=s;return;}
   s+=car(DATUM-halfH); // car ahead, pinned (back bumper on the datum)
   const selFront=DATUM+dA*PXPS;
   s+=car(selFront+halfH); // our car, front bumper `gap` seconds below the datum
   s+=T2(cx,16,'middle','#'+ah,'#16202b',13,1);
   s+=T2(cx,Math.min(H-9,Math.max(DATUM+16,DATUM+dA*PXPS/2)),'middle','Δ'+dA.toFixed(1)+'s','#c0392b',14,1);
-  s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+20),'middle','#'+selCar,'#e0301e',13,1)
+  s+=(selFront<H)?T2(cx,Math.min(H-8,selFront+HOODY),'middle','#'+selCar,'#e0301e',13,1)
                  :T2(cx,H-9,'middle','#'+selCar+' ↓','#e0301e',13,1);
   svg.innerHTML=s;}
 function renderMini(T,lp){const hint=document.getElementById('minihint');
