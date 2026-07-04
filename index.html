@@ -245,6 +245,7 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
+          <div class="reelpanel"><svg id="stintsvg"></svg></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -253,6 +254,7 @@
         <div class="reelthumb" data-i="2" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="3" title="Lap-time trace"><span class="thumbcap">TIME</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="4" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
+        <div class="reelthumb" data-i="5" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -296,7 +298,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=0;const REELN=5;
+let reelIdx=0;const REELN=6;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -440,6 +442,12 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   s+='<text x="'+xL+'" y="26" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
 let fuelLogCar=null,fuelS5Set=new Map(),fuelPitSet=new Map(),fuelTankNow=0;
+let stintDrvColor={};
+const STINT_PALETTE=['#2f5fd0','#e0301e','#1e8f3a','#c9971e','#7b2fbe','#17a2a2','#d6336c','#495057','#0d9488','#b45309','#4338ca','#be123c','#15803d','#a16207','#6d28d9','#0369a1'];
+function driverColor(name){
+  if(!stintDrvColor[name]){const n=Object.keys(stintDrvColor).length;stintDrvColor[name]=STINT_PALETTE[n%STINT_PALETTE.length];}
+  return stintDrvColor[name];
+}
 function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!panel)return;
   const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   setR('fuelcar',selCar?('#'+selCar):'#—');
@@ -553,6 +561,47 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
       const row=fuelPitSet.get(L);if(row.parentNode)row.parentNode.removeChild(row);fuelPitSet.delete(L);
     }
   }}
+/* Driver-stint Gantt: one row per car in the class, one coloured segment per
+   driver stint (DB.drvlap[car][lap] groups consecutive laps by driver).
+   Segments only exist for laps whose CSV row has already appeared (a driver
+   swap is only knowable once the finished lap reveals FAHRER_NR), so the
+   in-progress lap is drawn as a smooth fractional extension of the last
+   known driver — it "snaps" to a new segment/colour the moment that lap
+   actually completes with a different driver, same idea as every other
+   reel only drawing what's actually happened by T. */
+function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)return;
+  const rowH2=30,xL=92,xR=980,yT2=18;
+  const CH2=yT2+Math.max(1,DB.cars.length)*rowH2+10;
+  svg.setAttribute('viewBox','0 0 1000 '+CH2);
+  const colX=L=>xL+(maxN<=0?0:(L/maxN)*(xR-xL));
+  let s='';
+  // lap-axis gridlines/ticks along the bottom, same spacing convention as the POS reel
+  const axY=yT2+DB.cars.length*rowH2+2;
+  for(let L=0;L<=maxN;L++){if(L!==0&&L!==maxN&&L%5!==0)continue;const gx=colX(L);
+    s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+(axY-2)+'" stroke="#f3f4f6" stroke-width="1"/>';
+    s+='<text x="'+gx.toFixed(1)+'" y="'+(axY+13)+'" text-anchor="middle" font-size="12" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+  DB.cars.forEach((st,i)=>{
+    const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
+    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text>';
+    const lg=activeLeg(st,T);const bx=BX[st]||{};let lapsDriven=0;
+    if(lg){const f=Math.max(0,Math.min(1,(T-lg[2])/((lg[3]-lg[2])||1)));lapsDriven=(lg[0]-1)+((lg[1]-1)+f)/5;}
+    else{let mxb=0;for(const k in bx){if(bx[k]<=T&&+k>mxb)mxb=+k;}lapsDriven=mxb/5;}
+    const doneLaps=Math.floor(lapsDriven+1e-6);
+    const dl=DB.drvlap[st]||{};
+    const laps=Object.keys(dl).map(Number).filter(L=>L<=doneLaps).sort((a,b)=>a-b);
+    const stints=[];
+    laps.forEach(L=>{const d=dl[L];const prev=stints[stints.length-1];
+      if(prev&&prev.driver===d){prev.endLap=L;prev.count++;}else stints.push({driver:d,startLap:L-1,endLap:L,count:1});});
+    if(stints.length)stints[stints.length-1].endLap=Math.max(stints[stints.length-1].endLap,lapsDriven);
+    stints.forEach(st2=>{
+      const x0=colX(st2.startLap),x1=colX(st2.endLap),w=Math.max(0,x1-x0);if(w<0.5)return;
+      const col=driverColor(st2.driver);
+      s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'"/>';
+      const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
+      if(w>label.length*6.2+8)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
+    });
+  });
+  svg.innerHTML=s;}
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for sector performance');return;}
@@ -768,6 +817,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===2||_tk)renderSectors(T);
   if(reelIdx===3||_tk)renderLapTrace(T);
   if(reelIdx===4||_tk)renderFuel(T);
+  if(reelIdx===5||_tk)renderStints(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
@@ -1041,6 +1091,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
 /* default: pre-select first car in the list, then auto-play from the start (user can pause / change) */
 function buildClass(cls){
   DB.cars=DB.classes[cls]||[];maxN=DB.maxN=DB.classMaxN[cls]||1;DB.avgseg=[0].concat(DB.classAvg[cls]||[0,0,0,0,0]);nC=DB.cars.length;CH=yT+nC*rowH+4;
+  stintDrvColor={};
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
   DB.cars.forEach((st,i)=>{DB.carcol[st]=SAFE[i%SAFE.length];});
   for(const k in LEG)delete LEG[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
