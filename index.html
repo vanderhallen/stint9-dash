@@ -1053,7 +1053,7 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   document.documentElement.style.overflow='auto';document.body.style.overflow='auto';
   growMaps();syncRightSplit();}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
-fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);
+fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);setTimeout(fitPage,1500);
 T=DB.tmin;scrub.value=T;playing=true;last=0;document.getElementById('play').innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);
 
 /* ---- starting grid ----
@@ -1299,6 +1299,7 @@ applyWxReel(false);
       item.appendChild(del);item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
     });
     window.msgHighlightActive=highlight;
+    try{syncRightSplit();}catch(e){}
   };
   function loadMessages(){
     fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
