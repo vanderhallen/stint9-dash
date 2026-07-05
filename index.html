@@ -1001,8 +1001,8 @@ function renderP1Comp(T){
   s+='<text x="450" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">— cumulative Δ (left, s)</text>';
   const cumPts=pts.map(p=>[X(p.L),YL(p.cum)]);
   const zeroY=YL(0).toFixed(1);
-  s+='<path d="'+smoothPath(cumPts)+' L'+cumPts[cumPts.length-1][0].toFixed(1)+','+zeroY+' L'+cumPts[0][0].toFixed(1)+','+zeroY+' Z" fill="#c0392b" opacity="0.25" stroke="none"/>';
-  s+='<path d="'+smoothPath(cumPts)+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<path d="'+smoothPath(cumPts)+' L'+cumPts[cumPts.length-1][0].toFixed(1)+','+zeroY+' L'+cumPts[0][0].toFixed(1)+','+zeroY+' Z" fill="#c0392b" opacity="0.175" stroke="none"/>';
+  s+='<path d="'+smoothPath(cumPts)+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 8"/>';
   s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YL(p.delta)]))+'" fill="none" stroke="#e8871e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YR(p.mine)]))+'" fill="none" stroke="#2f5fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
   svg.innerHTML=s;
