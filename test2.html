@@ -192,7 +192,12 @@ const stackCenterX=stackX+BW/2;
    (over the car) / PIT (over the right stack) share the row above. ---- */
 makeItem(20, 300, '<div class="txt" style="background:#c9ccd1">&#9664; STINT</div>', null, 'stint1');
 makeItem(stackX+BW+90, 300, '<div class="txt" style="background:#c9ccd1">STOCK &#9654;</div>', null, 'stock');
-makeItem(390, 30, '<div class="txt" style="background:#c9ccd1">TRACK</div>', null, 'track');
+const trackEl=makeItem(0, 30, '<div class="txt" style="background:#c9ccd1">TRACK</div>', null, 'track');
+/* centre TRACK horizontally in the gap between the two band groups: the car
+   composition on the left (centre = compX+TVW/2) and the right stack
+   (centre = stackCenterX). translateX(-50%) keeps it centred whatever its width. */
+trackEl.style.left=((compX+TVW/2+stackCenterX)/2)+'px';
+trackEl.style.transform='translateX(-50%)';
 makeItem(stackCenterX-38, 30, '<div class="txt" style="background:#c9ccd1">PIT</div>', null, 'pit');
 
 /* blank space at the bottom of the page, below everything else */
