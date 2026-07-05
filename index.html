@@ -261,6 +261,7 @@
           <div class="reelpanel"><div id="snaptablewrap" style="width:100%;height:100%;overflow:auto"></div></div>
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:auto"></div></div>
           <div class="reelpanel"><svg id="p1compsvg"></svg></div>
+          <div class="reelpanel"><svg id="p1barsvg"></svg></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -287,6 +288,7 @@
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
         <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="11" title="Selected car vs class P1 — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -330,7 +332,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=1;const REELN=11;
+let reelIdx=1;const REELN=12;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -922,12 +924,20 @@ function renderDrvGrid(T){
   h+='</tbody></table>';
   wrap.innerHTML=h;
 }
-/* VSP1 reel: selected car vs the class's fastest time for each lap ("P1"
-   for that lap, same class-fastest convention as PACE's red reference
-   line) — laptime on the right axis, per-lap delta and its running
-   cumulative sum sharing the left axis (both are "difference", same
-   unit). Builds out lap by lap as both the selected car and the class
-   leader complete each one. */
+/* leaderAtLap: the car actually running in P1 (real running order) the
+   moment it crosses the line to complete lap L — from DB.lappos, which
+   records each car's own position at each of its own lap completions.
+   Shared by the DIFF and BARS reels so "vs P1" means the real race
+   leader, not a synthetic best-of-field time. */
+function leaderAtLap(L){
+  for(let i=0;i<DB.cars.length;i++){const st=DB.cars[i],lp=DB.lappos[st];if(lp&&lp[L]===1)return st;}
+  return null;
+}
+/* DIFF reel: selected car vs whichever car actually holds race position 1
+   the moment it completes each lap — laptime on the right axis, per-lap
+   delta and its running cumulative sum sharing the left axis (both are
+   "difference", same unit). Builds out lap by lap as both the selected
+   car and that lap's leader complete it. */
 function renderP1Comp(T){
   const svg=document.getElementById('p1compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
@@ -935,10 +945,10 @@ function renderP1Comp(T){
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
   const pts=[];let cum=0;
   for(let L=1;L<=maxN;L++){
-    let m=Infinity;
-    DB.cars.forEach(st=>{const t=lapT(st,L);if(t!=null&&t<m)m=t;});
+    const leader=leaderAtLap(L);if(!leader)continue;
+    const m=lapT(leader,L);
     const mine=lapT(selCar,L);
-    if(mine==null||!isFinite(m))continue;
+    if(mine==null||m==null)continue;
     const delta=mine-m;cum+=delta;
     pts.push({L,mine,delta,cum});
   }
@@ -972,6 +982,50 @@ function renderP1Comp(T){
   s+='<path d="'+smoothPath(cumPts)+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YL(p.delta)]))+'" fill="none" stroke="#e8871e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YR(p.mine)]))+'" fill="none" stroke="#2f5fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  svg.innerHTML=s;
+}
+/* BARS reel: same selected-car-vs-race-leader delta as DIFF, but as a bar
+   per lap (green = faster than that lap's leader, red = slower) sharing
+   one axis with a grey cumulative-delta line, matching a single-scale
+   bar+line reference layout rather than DIFF's dual-axis line chart. */
+function renderP1Bar(T){
+  const svg=document.getElementById('p1barsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
+  if(!selCar){ph('select a car');return;}
+  const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
+  const pts=[];let cum=0;
+  for(let L=1;L<=maxN;L++){
+    const leader=leaderAtLap(L);if(!leader)continue;
+    const m=lapT(leader,L);
+    const mine=lapT(selCar,L);
+    if(mine==null||m==null)continue;
+    const delta=mine-m;cum+=delta;
+    pts.push({L,delta,cum});
+  }
+  if(!pts.length){ph('vs class P1 — no completed laps yet');return;}
+  const yT2=64,yB2=CH-30;
+  let lo=0,hi=0;
+  pts.forEach(p=>{if(p.delta<lo)lo=p.delta;if(p.delta>hi)hi=p.delta;if(p.cum<lo)lo=p.cum;if(p.cum>hi)hi=p.cum;});
+  const pad=Math.max(2,(hi-lo)*0.1);lo-=pad;hi+=pad;
+  const Yv=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
+  let s='';
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Yv(v);
+    s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+  for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
+    s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
+    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+  const zeroY=Yv(0);
+  const barW=Math.max(3,(maxN<=1?40:(xR-xL)/(maxN-1))*0.55);
+  pts.forEach(p=>{
+    const bx2=X(p.L)-barW/2,y1=Yv(Math.max(0,p.delta)),y2=Yv(Math.min(0,p.delta)),h=Math.max(1,y2-y1);
+    s+='<rect x="'+bx2.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+(p.delta<0?'#1e8f3a':'#c0392b')+'"/>';
+  });
+  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+zeroY.toFixed(1)+'" y2="'+zeroY.toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs class P1 — per-lap Δ (bars) + cumulative Δ (line)</text>';
+  const cumPts=pts.map(p=>[X(p.L),Yv(p.cum)]);
+  s+='<path d="'+cumPts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#9aa1a9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  cumPts.forEach(p=>{s+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.5" fill="#9aa1a9"/>';});
   svg.innerHTML=s;
 }
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
@@ -1195,6 +1249,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===8||_tk)renderSectGridFrozen(T);
   if(reelIdx===9||_tk)renderDrvGrid(T);
   if(reelIdx===10||_tk)renderP1Comp(T);
+  if(reelIdx===11||_tk)renderP1Bar(T);
   if(_tk)updateThumbs();
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
