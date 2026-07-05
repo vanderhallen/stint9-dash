@@ -173,7 +173,7 @@ const BW=(5*104+20)*BAND_SCALE, BH=(3*92+20)*BAND_SCALE;
 /* ---- centre composition: the topview car with a band boxed at each of its
    four corners (top-left, top-right, bottom-left, bottom-right). ---- */
 const compX=460, compY=300, TVW=110, TVH=140;
-makeItem(compX,compY,'<img src="topview.png" alt="car" style="width:100px;height:auto;display:block">','bg-layer','topview-ref',-270);
+makeItem(compX,compY,'<img src="topview.png" alt="car" style="width:200px;height:auto;display:block">','bg-layer','topview-ref',-180);
 makeBand(compX-BW-16, compY-BH-16, 'tl', BAND_SCALE);
 makeBand(compX+TVW+16, compY-BH-16, 'tr', BAND_SCALE);
 makeBand(compX-BW-16, compY+TVH+16, 'bl', BAND_SCALE);
