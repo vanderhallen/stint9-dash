@@ -711,7 +711,8 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
     let s='';
     for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
       s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+(v/60).toFixed(1)+'m</text>';}
+      const tsec=Math.round(v),lbl=Math.floor(tsec/60)+':'+String(tsec%60).padStart(2,'0');
+      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
     for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
       s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
       s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
