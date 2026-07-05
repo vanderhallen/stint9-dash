@@ -679,16 +679,22 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   const metricSel=document.getElementById('compmetric'),metric=metricSel?metricSel.value:'s1';
   const sIdx=metric.charAt(0)==='s'?(+metric.charAt(1)-1):null; // null = full lap time
-  const series=[];let lo=Infinity,hi=-Infinity;
+  const series=[];
   DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};const pts=[];
     for(let L=1;L<=maxN;L++){const s=stm[L];if(!s)continue;
       let v,bkey;
       if(sIdx==null){if(s[0]==null||s[1]==null||s[2]==null||s[3]==null||s[4]==null)continue;v=s[0]+s[1]+s[2]+s[3]+s[4];bkey=(L-1)*5+5;}
       else{if(s[sIdx]==null)continue;v=s[sIdx];bkey=(L-1)*5+(sIdx+1);}
       const b=bx[bkey];if(b==null||b>T)continue;
-      pts.push([L,v]);if(v<lo)lo=v;if(v>hi)hi=v;}
+      pts.push([L,v]);}
     if(pts.length)series.push({st,pts});});
   if(!series.length){ph((sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet');return;}
+  // y-axis range: when a single car is highlighted (selected), scale to that
+  // car alone so its line fills the chart instead of being flattened by another
+  // car's outlier (e.g. a pit/slow lap). Otherwise span every car's data.
+  let lo=Infinity,hi=-Infinity;
+  const scaleSeries=(selCar!=null&&series.some(x=>x.st===selCar))?series.filter(x=>x.st===selCar):series;
+  scaleSeries.forEach(({pts})=>pts.forEach(p=>{if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];}));
   const yT2=44,yB2=CH-26,pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
   const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
   let s='';
