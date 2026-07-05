@@ -1075,7 +1075,7 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
   const sy=CH-64;s+='<line x1="60" x2="940" y1="'+(CH-90)+'" y2="'+(CH-90)+'" stroke="#e2e5ea" stroke-width="1.5"/>';
   s+='<text x="60" y="'+sy+'" font-size="21" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">best lap '+fmt2(actual)+'</text>';
   s+='<text x="330" y="'+sy+'" font-size="21" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">ideal '+(ok?fmt2(theo):'—')+'</text>';
-  s+='<text x="580" y="'+sy+'" font-size="21" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">to find +'+totLoss.toFixed(1)+'s</text>';
+  s+='<text x="580" y="'+sy+'" font-size="21" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">to find +'+totLoss.toFixed(1)+'s</text>';
   s+='<text x="60" y="'+(sy+30)+'" font-size="16" fill="#8a929b" font-family="IBM Plex Mono,monospace">focus S'+(worst+1)+' (+'+delta[worst].toFixed(1)+'s)   ·   class ideal lap '+fmt2(cls)+'</text>';
   svg.innerHTML=s;}
 let flowCache={car:null,cols:[]},flowLastLap=null,flowLastN=-1;
@@ -1377,14 +1377,14 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){close();return;}
-    // while a reel is zoomed/focused, Up/Down arrows step through the reels
-    // (but not while typing in an input/number field inside the fuel reel).
-    if(cur&&cur.id==='reelcard'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
-      const t=e.target;
-      if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
-      e.preventDefault();
-      setReel(reelIdx+(e.key==='ArrowDown'?1:-1));
-    }
+    // while a reel is zoomed/focused, Up/Down arrows step through its reels
+    // (but not while typing in an input/number field inside a reel).
+    if(!cur||(e.key!=='ArrowUp'&&e.key!=='ArrowDown'))return;
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+    const step=e.key==='ArrowDown'?1:-1;
+    if(cur.id==='reelcard'){e.preventDefault();setReel(reelIdx+step);}
+    else if(cur.querySelector&&cur.querySelector('#wxview')){e.preventDefault();setWxReel(wxReelIdx+step);}
   });
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
