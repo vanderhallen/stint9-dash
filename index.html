@@ -1375,7 +1375,17 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     },40);
   }
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){close();return;}
+    // while a reel is zoomed/focused, Up/Down arrows step through the reels
+    // (but not while typing in an input/number field inside the fuel reel).
+    if(cur&&cur.id==='reelcard'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
+      const t=e.target;
+      if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+      e.preventDefault();
+      setReel(reelIdx+(e.key==='ArrowDown'?1:-1));
+    }
+  });
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
