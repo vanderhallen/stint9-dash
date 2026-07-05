@@ -286,7 +286,7 @@
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">VSP1</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -955,7 +955,7 @@ function renderP1Comp(T){
   let s='';
   for(let i=0;i<=4;i++){const v=loL+(hiL-loL)*i/4,y=YL(v);
     s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#e8871e" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let i=0;i<=4;i++){const v=loR+(hiR-loR)*i/4,y=YR(v);
     s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="15" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
