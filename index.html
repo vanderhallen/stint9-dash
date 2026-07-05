@@ -394,7 +394,10 @@ const gd=document.getElementById('dots'),EL={};
 
 /* lap chart (per section, building over time) */
 const lc=document.getElementById('lapchart');
-const xL=160,xR=1000-235,yT=18,rowH=30;let nC=0,maxN=1,CH=0;
+// rowH sized so CH (=yT+nC*rowH+4) lands near the reel panel's ~2:1 aspect
+// ratio for a typical field, minimising letterboxing so the content fills the
+// available space instead of scaling to width with empty bands top/bottom.
+const xL=160,xR=1000-235,yT=18,rowH=44;let nC=0,maxN=1,CH=0;
 const X=fx=>xL+(maxN<=1?0:(fx-1)/(maxN-1))*(xR-xL),Y=p=>yT+(p-1)*rowH+rowH/2;
 const CLINE={},CTIP={},CRT={},CSEC={},CPIT={};
 
