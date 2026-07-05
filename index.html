@@ -675,6 +675,10 @@ function smoothPath(pts){
    (colours from DB.carcol, same identity used on the main map/lap chart).
    Each car's line only extends through laps it has actually completed by T
    — "laps until now" — same build-out convention as every other reel. */
+// which legend car is currently hovered — kept outside renderComp so it
+// survives the per-frame re-render during playback (otherwise every frame
+// would wipe the hover highlight).
+let compHoverCar=null;
 function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   const metricSel=document.getElementById('compmetric'),metric=metricSel?metricSel.value:'s1';
@@ -724,11 +728,13 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
          '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="12" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
     svg.innerHTML=s;
     svg.querySelectorAll('.complegrow').forEach(g=>{
-      g.addEventListener('mouseenter',()=>draw(g.dataset.car,true));
-      g.addEventListener('mouseleave',()=>draw(selCar,false));
+      g.addEventListener('mouseenter',()=>{compHoverCar=g.dataset.car;draw(compHoverCar,true);});
+      g.addEventListener('mouseleave',()=>{compHoverCar=null;draw(selCar,false);});
     });
   };
-  draw(selCar,false);}
+  // focus the hovered car if one is hovered (survives re-render), else the
+  // selected car
+  if(compHoverCar!=null)draw(compHoverCar,true);else draw(selCar,false);}
 /* GRID reel: cars x laps table, each cell = 5 tiny sector-colour blocks —
    purple = fastest overall so far, green = that car's personal best so
    far, yellow = neither (the same purple/green/yellow convention already
