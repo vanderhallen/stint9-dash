@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>test2</title>
+<style>
+  html,body{margin:0;min-height:100%;background:#f4f5f7;font-family:'IBM Plex Mono',ui-monospace,monospace}
+  #hint{position:fixed;top:10px;left:10px;font-size:12px;color:#6b7480;background:#fff;border:1px solid #e0e3e8;border-radius:8px;padding:8px 12px;z-index:9999}
+  .item{position:absolute;cursor:pointer;user-select:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:6px;border:2px solid transparent;border-radius:10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08);z-index:1}
+  .item.bg-layer{z-index:0}
+  .item{cursor:default}
+  .item svg{display:block}
+  .item .lbl{font-size:10px;color:#6b7480;letter-spacing:.5px}
+  .txt{font-size:20px;font-weight:700;color:#16202b;background:#fff;padding:6px 12px;border-radius:8px}
+  .btn{font-size:16px;font-weight:700;color:#fff;background:#16202b;padding:10px 18px;border-radius:8px;border:none}
+  .arrowwrap{padding:0;background:none;box-shadow:none}
+</style>
+</head>
+<body>
+<div id="hint">double-click an icon to rotate it 90&deg;</div>
+<div id="stage" style="position:relative;width:100%;height:100vh"></div>
+
+<script>
+function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+const stage=document.getElementById('stage');
+
+/* ---- scale/rotation persistence across refresh ---- */
+function loadState(key){try{return JSON.parse(localStorage.getItem('test2_v1_'+key));}catch(e){return null;}}
+function saveState(key,x,y,scale,rot){try{localStorage.setItem('test2_v1_'+key,JSON.stringify({x,y,scale,rot}));}catch(e){}}
+
+/* one-time reset: this version bakes the final layout into the code below,
+   so wipe any saved positions/flags from the earlier drag-era experiments
+   and let the code define everything. Runs once (guarded by a version key). */
+try{
+  if(localStorage.getItem('test2_layout_v2')!=='1'){
+    Object.keys(localStorage).filter(k=>k.indexOf('test2_')===0).forEach(k=>localStorage.removeItem(k));
+    localStorage.setItem('test2_layout_v2','1');
+  }
+}catch(e){}
+
+function makeItem(x,y,innerHTML,extraCls,key,initialRot){
+  const saved=key?loadState(key):null;
+  const d=el('div','item'+(extraCls?(' '+extraCls):''));
+  const sx=saved?saved.x:x, sy=saved?saved.y:y, sscale=saved&&saved.scale?saved.scale:1;
+  const srot=saved&&saved.rot!=null?saved.rot:(initialRot||0);
+  d.style.left=sx+'px';d.style.top=sy+'px';
+  d.dataset.scale=sscale;
+  if(sscale!==1)d.style.transform='scale('+sscale+')';
+  if(key)d.dataset.key=key;
+  d.innerHTML=innerHTML;
+  const graphic=d.querySelector('svg,img');
+  d.dataset.rot=srot;
+  if(graphic&&srot)graphic.style.transform='rotate('+srot+'deg)';
+  d.addEventListener('dblclick',e=>{
+    e.stopPropagation();
+    if(!graphic)return;
+    let r=parseFloat(d.dataset.rot||'0')-90;
+    d.dataset.rot=r;
+    graphic.style.transform='rotate('+r+'deg)';
+    if(key)saveState(key,parseFloat(d.style.left),parseFloat(d.style.top),parseFloat(d.dataset.scale||'1'),r);
+  });
+  stage.appendChild(d);
+  return d;
+}
+
+/* ---- icons (inline SVG, styled to match the reference set) ---- */
+const ICONS={
+  hot:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <g stroke="#e0301e" stroke-width="3" fill="none" stroke-linecap="round">
+      <line x1="4" y1="18" x2="16" y2="18"/><line x1="4" y1="26" x2="16" y2="26"/><line x1="4" y1="34" x2="14" y2="34"/>
+      <path d="M28 10 v26 a8 8 0 1 0 8 0 V10 a4 4 0 0 0 -8 0 Z"/>
+      <circle cx="32" cy="46" r="4" fill="#e0301e"/>
+    </g>
+    <path d="M46 24 C40 32 42 38 47 40 C44 34 48 32 48 28 C52 32 52 40 46 46 C56 44 58 30 46 24 Z" fill="#f3a6a0" opacity=".85"/>
+  </svg>`,
+  cold:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <g stroke="#2f5fd0" stroke-width="3" fill="none" stroke-linecap="round">
+      <line x1="4" y1="18" x2="16" y2="18"/><line x1="4" y1="26" x2="16" y2="26"/><line x1="4" y1="34" x2="14" y2="34"/>
+      <path d="M28 10 v26 a8 8 0 1 0 8 0 V10 a4 4 0 0 0 -8 0 Z"/>
+      <circle cx="32" cy="46" r="4" fill="#2f5fd0"/>
+    </g>
+    <g stroke="#2f5fd0" stroke-width="2.5" stroke-linecap="round">
+      <line x1="46" y1="18" x2="46" y2="38"/><line x1="38" y1="28" x2="54" y2="28"/>
+      <line x1="40" y1="21" x2="52" y2="35"/><line x1="52" y1="21" x2="40" y2="35"/>
+    </g>
+  </svg>`,
+  new:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <path fill="none" stroke="#16202b" stroke-width="3" stroke-linejoin="round"
+      d="M32 3 L37 11 L46 6 L46 16 L56 17 L51 26 L59 32 L51 38 L56 47 L46 48 L46 58 L37 53 L32 61 L27 53 L18 58 L18 48 L8 47 L13 38 L5 32 L13 26 L8 17 L18 16 L18 6 L27 11 Z"/>
+    <text x="32" y="37" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="13" fill="#16202b">NEW</text>
+  </svg>`,
+  used:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <g fill="#16202b">
+      <path d="M8 22 h34 v-8 l16 12 -16 12 v-8 h-34 z"/>
+      <path d="M56 42 h-34 v8 l-16 -12 16 -12 v8 h34 z"/>
+    </g>
+  </svg>`,
+  km:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <g fill="#16202b">
+      <path d="M14 6 a9 9 0 0 1 9 9 c0 7 -9 17 -9 17 s-9 -10 -9 -17 a9 9 0 0 1 9 -9 z"/>
+      <circle cx="14" cy="15" r="4" fill="#fff"/>
+      <path d="M50 6 a9 9 0 0 1 9 9 c0 7 -9 17 -9 17 s-9 -10 -9 -17 a9 9 0 0 1 9 -9 z"/>
+      <circle cx="50" cy="15" r="4" fill="#fff"/>
+    </g>
+    <line x1="6" y1="50" x2="58" y2="50" stroke="#16202b" stroke-width="3"/>
+    <text x="32" y="46" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="14" fill="#16202b">KM</text>
+  </svg>`,
+  cycle:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <g stroke="#e0301e" stroke-width="3" fill="none" stroke-linecap="round">
+      <path d="M12 22 a20 20 0 0 1 34 -8"/>
+      <polygon points="46,6 46,16 56,11" fill="#e0301e" stroke="none"/>
+      <path d="M52 42 a20 20 0 0 1 -34 8"/>
+      <polygon points="18,58 18,48 8,53" fill="#e0301e" stroke="none"/>
+      <path d="M24 26 q4 -6 8 0 q4 6 8 0" stroke-width="2.5"/>
+    </g>
+  </svg>`,
+  wet:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#16202b" stroke-width="3"/>
+    <path d="M20 26 a8 8 0 0 1 6 -13 a10 10 0 0 1 19 3 a7 7 0 0 1 -2 14 h-21 a6 6 0 0 1 -2 -4 z" fill="#16202b"/>
+    <g stroke="#16202b" stroke-width="2.5" stroke-linecap="round">
+      <line x1="22" y1="38" x2="19" y2="46"/><line x1="32" y1="38" x2="29" y2="46"/><line x1="42" y1="38" x2="39" y2="46"/>
+    </g>
+  </svg>`,
+  dry:`<svg width="64" height="64" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#16202b" stroke-width="3"/>
+    <circle cx="32" cy="32" r="10" fill="none" stroke="#16202b" stroke-width="3"/>
+    <g stroke="#16202b" stroke-width="3" stroke-linecap="round">
+      <line x1="32" y1="10" x2="32" y2="16"/><line x1="32" y1="48" x2="32" y2="54"/>
+      <line x1="10" y1="32" x2="16" y2="32"/><line x1="48" y1="32" x2="54" y2="32"/>
+      <line x1="16" y1="16" x2="20" y2="20"/><line x1="44" y1="44" x2="48" y2="48"/>
+      <line x1="48" y1="16" x2="44" y2="20"/><line x1="20" y1="44" x2="16" y2="48"/>
+    </g>
+  </svg>`
+};
+
+/* ---- "band": the VL/VR/HL/HR/XXXX + weather icons + numbers group, laid out
+   as an aligned 5x3 grid, boxed with a border, cells edge-to-edge. ---- */
+function makeBand(x0,y0,bandKey,scale){
+  scale=scale||1;
+  const baseCellW=104, baseCellH=92, cols=5, rows=3, basePad=10;
+  const cellW=baseCellW*scale, cellH=baseCellH*scale, pad=basePad*scale;
+  const boxW=cols*cellW+pad*2, boxH=rows*cellH+pad*2;
+  const box=el('div');
+  box.style.cssText='position:absolute;left:'+x0+'px;top:'+y0+'px;width:'+boxW+'px;height:'+boxH+'px;'+
+    'border:2px solid #16202b;border-radius:'+(14*scale)+'px;box-sizing:border-box;z-index:0;pointer-events:none';
+  stage.appendChild(box);
+  const grid=[
+    ['vl','VL','txt'],['vr','VR','txt'],['hl','HL','txt'],['hr','HR','txt'],['xxxx','XXXX','txt'],
+    ['dry','DRY','icon'],['new','NEW','icon'],['cold','COLD','icon'],['km','KM','icon'],['n1234','1234','txt'],
+    ['wet','WET','icon'],['used','USED','icon'],['hot','HOT','icon'],['cycle','CYCLE','icon'],['n12','12','txt']
+  ];
+  grid.forEach((it,i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    const px=x0+pad+col*cellW, py=y0+pad+row*cellH;
+    const [baseKey,label,type]=it;
+    const txtSize=(baseKey==='xxxx'||baseKey==='n1234'||baseKey==='n12')?32:40;
+    const html=type==='icon'?(ICONS[baseKey]+'<div class="lbl">'+label+'</div>'):('<div class="txt" style="font-size:'+txtSize+'px">'+label+'</div>');
+    const cellItem=makeItem(px,py,html,null,baseKey+'-band-'+bandKey);
+    if(!cellItem)return;
+    cellItem.style.width=baseCellW+'px';
+    cellItem.style.height=baseCellH+'px';
+    cellItem.style.boxSizing='border-box';
+    cellItem.style.justifyContent='center';
+    cellItem.style.borderRadius='0';
+    cellItem.style.transformOrigin='top left';
+    cellItem.dataset.scale=scale;
+    cellItem.style.transform='scale('+scale+')';
+  });
+}
+const BAND_SCALE=0.4;
+const BW=(5*104+20)*BAND_SCALE, BH=(3*92+20)*BAND_SCALE;
+
+/* ---- centre composition: the topview car with a band boxed at each of its
+   four corners (top-left, top-right, bottom-left, bottom-right). ---- */
+const compX=460, compY=300, TVW=110, TVH=140;
+makeItem(compX,compY,'<img src="topview.png" alt="car" style="width:100px;height:auto;display:block">','bg-layer','topview-ref',-270);
+makeBand(compX-BW-16, compY-BH-16, 'tl', BAND_SCALE);
+makeBand(compX+TVW+16, compY-BH-16, 'tr', BAND_SCALE);
+makeBand(compX-BW-16, compY+TVH+16, 'bl', BAND_SCALE);
+makeBand(compX+TVW+16, compY+TVH+16, 'br', BAND_SCALE);
+
+/* ---- right column: 4 bands stacked vertically ---- */
+const stackX=900, stackGap=16;
+let stackY=90;
+for(let i=1;i<=4;i++){
+  makeBand(stackX, stackY, 'v'+i, BAND_SCALE);
+  stackY+=BH+stackGap;
+}
+const stackCenterX=stackX+BW/2;
+
+/* ---- labels: STINT (far left) / STOCK (far right) share one row; TRACK
+   (over the car) / PIT (over the right stack) share the row above. ---- */
+makeItem(20, 300, '<div class="txt" style="background:#c9ccd1">&#9664; STINT</div>', null, 'stint1');
+makeItem(stackX+BW+90, 300, '<div class="txt" style="background:#c9ccd1">STOCK &#9654;</div>', null, 'stock');
+makeItem(390, 30, '<div class="txt" style="background:#c9ccd1">TRACK</div>', null, 'track');
+makeItem(stackCenterX-38, 30, '<div class="txt" style="background:#c9ccd1">PIT</div>', null, 'pit');
+
+/* blank space at the bottom of the page, below everything else */
+const bottomSpacer=el('div');
+bottomSpacer.style.cssText='position:absolute;left:0;top:640px;width:1px;height:120px;';
+stage.appendChild(bottomSpacer);
+
+</script>
+</body>
+</html>
