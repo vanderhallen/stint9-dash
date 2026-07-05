@@ -286,7 +286,7 @@
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">VSP1</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#1e8f3a" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">VSP1</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -957,18 +957,21 @@ function renderP1Comp(T){
     s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
     s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let i=0;i<=4;i++){const v=loR+(hiR-loR)*i/4,y=YR(v);
-    s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="15" fill="#1e8f3a" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+    s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="15" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YL(0).toFixed(1)+'" y2="'+YL(0).toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
   s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs class P1</text>';
-  s+='<text x="10" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#1e8f3a" font-family="IBM Plex Mono,monospace">— laptime (right, s)</text>';
+  s+='<text x="10" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">— laptime (right, s)</text>';
   s+='<text x="230" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">— Δ per lap (left, s)</text>';
-  s+='<text x="450" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">— cumulative Δ (left, s)</text>';
-  s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YL(p.cum)]))+'" fill="none" stroke="#2f5fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<text x="450" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">— cumulative Δ (left, s)</text>';
+  const cumPts=pts.map(p=>[X(p.L),YL(p.cum)]);
+  const zeroY=YL(0).toFixed(1);
+  s+='<path d="'+smoothPath(cumPts)+' L'+cumPts[cumPts.length-1][0].toFixed(1)+','+zeroY+' L'+cumPts[0][0].toFixed(1)+','+zeroY+' Z" fill="#c0392b" opacity="0.25" stroke="none"/>';
+  s+='<path d="'+smoothPath(cumPts)+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
   s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YL(p.delta)]))+'" fill="none" stroke="#e8871e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
-  s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YR(p.mine)]))+'" fill="none" stroke="#1e8f3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YR(p.mine)]))+'" fill="none" stroke="#2f5fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
   svg.innerHTML=s;
 }
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
