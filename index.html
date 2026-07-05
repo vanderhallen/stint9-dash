@@ -506,7 +506,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   const log=document.getElementById('fuellog');
   if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');setR('fpredused','—');setR('factused','—');const n=document.getElementById('fnotify');if(n)n.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Map();fuelPitSet=new Map();}return;}
   const cap=FUEL.cap,cons=Math.max(0.01,FUEL.cons),start=FUEL.start;
-  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{},s5adj:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};if(!cs.s5adj)cs.s5adj={};
+  if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{},s5adj:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};if(!cs.s5adj)cs.s5adj={};if(!cs.notesx)cs.notesx={};
   if(fuelLogCar!==selCar){log.innerHTML='';fuelLogCar=selCar;fuelS5Set=new Map();fuelPitSet=new Map();}
   const bx=BX[selCar]||{};
   // position on track -> fractional laps driven
@@ -582,7 +582,25 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
       const u=document.createElement('span');u.style.color='#8a929b';u.textContent='L';
       const nt=document.createElement('input');nt.type='text';nt.className='flognote';nt.placeholder='notes per lap';if(cs.notes[L]!=null)nt.value=cs.notes[L];
       nt.oninput=()=>{cs.notes[L]=nt.value;saveFuel();syncFuelNoteIfLive(selCar,L,nt.value);};
+      // extra note rows: pressing Enter in a filled note field appends another
+      // note-input row below it (persisted per lap in cs.notesx[L]).
+      const collectNotex=()=>{cs.notesx[L]=[...log.querySelectorAll('input.flognotex[data-nl="'+L+'"]')].map(i=>i.value);saveFuel();};
+      const makeNotexRow=(val)=>{
+        const r=document.createElement('div');r.className='flogrow';
+        const sp=document.createElement('span');sp.className='floglbl';sp.style.visibility='hidden';sp.textContent='L'+L+' fuel S5';
+        const s2=document.createElement('span');s2.style.cssText='width:44px;flex:0 0 auto';
+        const s3=document.createElement('span');s3.style.cssText='width:46px;flex:0 0 auto';
+        const s4=document.createElement('span');s4.style.color='#8a929b';s4.textContent='L';s4.style.visibility='hidden';
+        const ni=document.createElement('input');ni.type='text';ni.className='flognote flognotex';ni.dataset.nl=L;ni.placeholder='notes per lap';ni.value=val||'';
+        ni.oninput=collectNotex;
+        ni.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ni.value.trim()){ev.preventDefault();const nr=makeNotexRow('');r.parentNode.insertBefore(nr,r.nextSibling);collectNotex();nr.querySelector('input').focus();}});
+        r.appendChild(sp);r.appendChild(s2);r.appendChild(s3);r.appendChild(s4);r.appendChild(ni);
+        return r;
+      };
+      nt.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&nt.value.trim()){ev.preventDefault();const nr=makeNotexRow('');row.parentNode.insertBefore(nr,row.nextSibling);collectNotex();nr.querySelector('input').focus();}});
       row.appendChild(lb);row.appendChild(unlockBtn);row.appendChild(inp);row.appendChild(u);row.appendChild(nt);log.insertBefore(row,log.firstChild);
+      // restore any saved extra note rows for this lap
+      if(Array.isArray(cs.notesx[L])){let after=row;cs.notesx[L].forEach(v=>{const nr=makeNotexRow(v);after.parentNode.insertBefore(nr,after.nextSibling);after=nr;});}
       row._unlocked=false;row._closed=false;row._unlockBtn=unlockBtn;row._inp=inp;row._L=L;
       fuelS5Set.set(L,row);
     }else if(!s5ok&&fuelS5Set.has(L)){
