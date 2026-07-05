@@ -689,39 +689,46 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
       pts.push([L,v]);}
     if(pts.length)series.push({st,pts});});
   if(!series.length){ph((sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet');return;}
-  // y-axis range: when a single car is highlighted (selected), scale to that
-  // car alone so its line fills the chart instead of being flattened by another
-  // car's outlier (e.g. a pit/slow lap). Otherwise span every car's data.
-  let lo=Infinity,hi=-Infinity;
-  const scaleSeries=(selCar!=null&&series.some(x=>x.st===selCar))?series.filter(x=>x.st===selCar):series;
-  scaleSeries.forEach(({pts})=>pts.forEach(p=>{if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];}));
-  const yT2=44,yB2=CH-26,pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
-  const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
-  let s='';
-  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
-    s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+(v/60).toFixed(1)+'m</text>';}
-  for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
-    s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
-    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
-  series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
-    s+='<path data-car="'+st+'" d="'+d+'" fill="none" stroke="'+(DB.carcol[st]||'#6b7480')+'" stroke-width="'+(st===selCar?6:2)+'" stroke-linecap="round" opacity="'+(st===selCar?1:0.85)+'"/>';});
-  // legend, one row per car, in the otherwise-empty margin left of the axis
+  const yT2=44,yB2=CH-26;
   const legRowH=(yB2-yT2)/Math.max(1,DB.cars.length);
-  DB.cars.forEach((st,i)=>{const ly=yT2+i*legRowH+legRowH/2,col=DB.carcol[st]||'#6b7480';
-    s+='<g class="complegrow" data-car="'+st+'" style="cursor:pointer">'+
-       '<rect x="2" y="'+(ly-legRowH/2).toFixed(1)+'" width="'+(xL-14)+'" height="'+legRowH.toFixed(1)+'" fill="transparent"/>'+
-       '<line x1="6" x2="24" y1="'+ly.toFixed(1)+'" y2="'+ly.toFixed(1)+'" stroke="'+col+'" stroke-width="4" stroke-linecap="round"/>'+
-       '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="12" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
-  svg.innerHTML=s;
-  const paths=svg.querySelectorAll('path[data-car]');
-  const resetPaths=()=>paths.forEach(p=>{const isSel=p.dataset.car===String(selCar);p.setAttribute('stroke-width',isSel?6:2);p.setAttribute('opacity',isSel?1:0.85);});
-  svg.querySelectorAll('.complegrow').forEach(g=>{
-    g.addEventListener('mouseenter',()=>{const st=g.dataset.car;
-      paths.forEach(p=>{if(p.dataset.car===st){p.setAttribute('stroke-width',p.dataset.car===String(selCar)?9:5);p.setAttribute('opacity','1');}else p.setAttribute('opacity','0.12');});});
-    g.addEventListener('mouseleave',resetPaths);
-  });}
+  // (Re)draw the whole reel focused on one car: the y-axis is scaled to that
+  // car alone so its line fills the chart instead of being flattened by another
+  // car's outlier (e.g. a pit/slow lap), and it's drawn bold. `focusCar` is the
+  // selected car by default, or the legend row currently hovered. `isHover`
+  // dims every other line right down (isolate mode); without it the non-focus
+  // lines stay lightly visible for context.
+  const draw=(focusCar,isHover)=>{
+    let lo=Infinity,hi=-Infinity;
+    const fc=focusCar==null?null:String(focusCar);
+    const scaleSeries=(fc!=null&&series.some(x=>String(x.st)===fc))?series.filter(x=>String(x.st)===fc):series;
+    scaleSeries.forEach(({pts})=>pts.forEach(p=>{if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];}));
+    const pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
+    const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
+    let s='';
+    for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
+      s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
+      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+(v/60).toFixed(1)+'m</text>';}
+    for(let L=1;L<=maxN;L++){if(L!==1&&L%5!==0)continue;const gx=X(L);
+      s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
+      s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+    s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
+    series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
+      const isFocus=fc!=null&&String(st)===fc;
+      const w=isFocus?6:2,op=isFocus?1:(isHover?0.12:(String(st)===String(selCar)?1:0.85));
+      s+='<path data-car="'+st+'" d="'+d+'" fill="none" stroke="'+(DB.carcol[st]||'#6b7480')+'" stroke-width="'+w+'" stroke-linecap="round" opacity="'+op+'"/>';});
+    // legend, one row per car, in the otherwise-empty margin left of the axis
+    DB.cars.forEach((st,i)=>{const ly=yT2+i*legRowH+legRowH/2,col=DB.carcol[st]||'#6b7480';
+      s+='<g class="complegrow" data-car="'+st+'" style="cursor:pointer">'+
+         '<rect x="2" y="'+(ly-legRowH/2).toFixed(1)+'" width="'+(xL-14)+'" height="'+legRowH.toFixed(1)+'" fill="transparent"/>'+
+         '<line x1="6" x2="24" y1="'+ly.toFixed(1)+'" y2="'+ly.toFixed(1)+'" stroke="'+col+'" stroke-width="4" stroke-linecap="round"/>'+
+         '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="12" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
+    svg.innerHTML=s;
+    svg.querySelectorAll('.complegrow').forEach(g=>{
+      g.addEventListener('mouseenter',()=>draw(g.dataset.car,true));
+      g.addEventListener('mouseleave',()=>draw(selCar,false));
+    });
+  };
+  draw(selCar,false);}
 /* GRID reel: cars x laps table, each cell = 5 tiny sector-colour blocks —
    purple = fastest overall so far, green = that car's personal best so
    far, yellow = neither (the same purple/green/yellow convention already
