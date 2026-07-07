@@ -408,7 +408,20 @@ DB.poly.forEach((p,i)=>{const pl=document.createElementNS(SVGNS,'polyline');pl.s
 const LEG={};
 function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
 function progress(lg,T){return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);}
-function livePos(T){const a=[];DB.cars.forEach(st=>{const lg=activeLeg(st,T);if(lg)a.push([progress(lg,T),st]);});a.sort((x,y)=>y[0]-x[0]);const m={};a.forEach((e,i)=>m[e[1]]=i+1);return m;}
+// progress used for ranking: on-track cars use their live leg progress; a car
+// with no active leg is either not started (excluded) or FINISHED. A finished
+// car keeps the progress of its last completed sector boundary, so once it
+// crosses its final S5 it STAYS ranked ahead of cars still on track — it must
+// not drop out of the order just because it has no S1 time for a lap it will
+// never run (which previously let P2 wrongly inherit P1 at the finish).
+// returns {p:progress, t:time-of-that-progress}. on-track cars have fractional
+// progress (t=T); a finished car uses its last completed boundary (p integer,
+// t=that boundary's time) so it stays ahead of on-track cars.
+function carProgress(st,T){const lg=activeLeg(st,T);if(lg)return {p:progress(lg,T),t:T};const a=LEG[st];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T)return {p:a[i][0]*5+a[i][1],t:a[i][3]};}return null;}
+function livePos(T){const a=[];DB.cars.forEach(st=>{const r=carProgress(st,T);if(r!=null)a.push([r.p,r.t,st]);});
+  // most progress first; on a tie (e.g. cars finished on the same lap+sector),
+  // whoever reached that boundary EARLIER ranks ahead — so the real winner keeps P1.
+  a.sort((x,y)=>y[0]-x[0]||x[1]-y[1]);const m={};a.forEach((e,i)=>m[e[2]]=i+1);return m;}
 // Endurance-race cars swap drivers at pit stops; DB.drvlap[car][lap] holds
 // the real per-lap driver (from FAHRER_NR), DB.name[car] is just a fallback
 // (lap-1 driver) for before the car has any lap data at all.
@@ -1374,7 +1387,8 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
     badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>')+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}}
 function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;T+=dt*parseFloat(document.getElementById('speed').value);
-  if(T>=DB.tmax){T=DB.tmin;last=ts;}scrub.value=T;render();if(playing)requestAnimationFrame(loop);}
+  if(T>=DB.tmax){T=DB.tmax;playing=false;const pb=document.getElementById('play');if(pb)pb.innerHTML='&#9654; Play';scrub.value=T;render();return;}
+  scrub.value=T;render();if(playing)requestAnimationFrame(loop);}
 document.getElementById('play').onclick=e=>{playing=!playing;if(playing){if(T>=DB.tmax)T=DB.tmin;last=0;e.target.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}else e.target.innerHTML='&#9654; Play';};
 scrub.oninput=e=>{T=parseFloat(e.target.value);render();};lbls.onchange=render;
 document.getElementById('delaythr').oninput=e=>{thr=Math.max(0,parseFloat(e.target.value||'0'))/100;render();savePrefs();};
@@ -1632,6 +1646,16 @@ function buildClass(cls){
   DB.cars.forEach(st=>{LEG[st]=(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]);
     const m={};(DB.legs[st]||[]).forEach(g=>m[(g[0]-1)*5+g[1]]=g[3]);BX[st]=m;BKEYS[st]=Object.keys(m).map(Number).sort((a,b)=>a-b);
     const mp={},mt={};(DB.chart[st]||[]).forEach(pt=>{const b=Math.round(pt[0]*5);mp[b]=pt[1];mt[b]=pt[2];});POS[st]=mp;BT[st]=mt;});
+  // Reconcile lap-chart positions with the live ranking (livePos) so every
+  // source agrees. The chart's precomputed positions counted actual timing
+  // boundaries (which penalises cars that pitted and skipped an S5), disagreeing
+  // with the leaderboard/map track-position ranking. Recompute each chart point
+  // (and per-lap position) from livePos at its own time — now that LEG is set
+  // for all cars in the class.
+  DB.cars.forEach(st=>{
+    (DB.chart[st]||[]).forEach(pt=>{const p=livePos(pt[2])[st];if(p!=null){pt[1]=p;POS[st][Math.round(pt[0]*5)]=p;}});
+    const lp=DB.lappos[st];if(lp)Object.keys(lp).forEach(L=>{const t=(BX[st]||{})[(+L)*5];if(t!=null){const p=livePos(t)[st];if(p!=null)lp[L]=p;}});
+  });
   gd.innerHTML='';for(const k in EL)delete EL[k];
   DB.cars.forEach(st=>{const g=document.createElementNS(SVGNS,'g');g.style.visibility='hidden';
     const c=document.createElementNS(SVGNS,'circle');c.setAttribute('fill',DB.carcol[st]);c.setAttribute('stroke','#111');c.setAttribute('stroke-width','2');
