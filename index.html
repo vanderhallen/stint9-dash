@@ -262,6 +262,7 @@
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="p1compsvg"></svg></div>
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
+          <div class="reelpanel"><iframe id="boardframe" src="test2.html" title="Setup board" style="width:100%;height:100%;border:0;display:block"></iframe></div>
         </div>
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
@@ -289,6 +290,7 @@
         </svg></div>
         <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
         <div class="reelthumb" data-i="11" title="Selected car vs class P1 — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
+        <div class="reelthumb" data-i="12" title="Setup board (test2.html)"><span class="thumbcap">BOARD</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="8" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="8" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="43" y="22" width="14" height="28" rx="6" fill="none" stroke="#9aa1a9" stroke-width="3"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -332,7 +334,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=1;const REELN=12;
+let reelIdx=1;const REELN=13;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 try{const f=JSON.parse(localStorage.getItem('stint9_fuel')||'null');if(f)FUEL=Object.assign(FUEL,f);}catch(e){}
 if(!FUEL.cars)FUEL.cars={};
@@ -1405,6 +1407,20 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     else if(cur.querySelector&&cur.querySelector('#wxview')){e.preventDefault();setWxReel(wxReelIdx+step);}
   });
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
+/* BOARD reel: scale the embedded test2.html board (logical ~1340x700) to fit
+   its reel panel, re-fitting whenever the panel resizes (incl. on zoom). */
+(function initBoardFrame(){
+  const f=document.getElementById('boardframe');if(!f)return;
+  const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
+  const LW=1340,LH=700;
+  function fit(){const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
+    const s=Math.min(pw/LW,ph/LH);
+    f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.left='50%';f.style.top='50%';
+    f.style.transform='translate(-50%,-50%) scale('+s+')';}
+  f.addEventListener('load',fit);
+  try{new ResizeObserver(fit).observe(panel);}catch(e){window.addEventListener('resize',fit);}
+  fit();
+})();
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
   cap.oninput=()=>{FUEL.cap=Math.max(0,parseFloat(cap.value||'0'));saveFuel();render();};
