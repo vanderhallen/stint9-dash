@@ -137,6 +137,20 @@
   .startline{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:4px;font-size:12px;padding:6px 0;margin:8px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
   #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc;margin-top:6px;display:flex;flex-direction:column;justify-content:flex-start}
   #gridsvg{display:block}
+  /* bottom-left mini fuel: remaining bar + escalating pit call (ported from
+     index_alternative.html, minus the capacity/at-start/L-per-lap inputs). */
+  #fuelmini{flex:0 0 auto;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  #fuelmini .fmhd{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  #fuelmini .fmhd b{color:var(--ink);font-weight:700}
+  .fmeter{height:9px;border-radius:5px;background:#eef0f3;overflow:hidden}
+  .fmeter i{display:block;height:100%;width:100%;border-radius:5px;background:#1e8f3a;transition:width .3s,background .3s}
+  .fmeter i.warn{background:#e8871e}.fmeter i.crit{background:var(--accent)}
+  .fmrow{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px}
+  .fmrow b{color:var(--ink);font-weight:700}
+  .fboxcall{margin-top:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:12px;letter-spacing:1px;border-radius:8px;padding:8px 4px;background:#f1f3f5;color:var(--muted)}
+  .fboxcall.soon{background:#fff3e0;color:#e8871e}
+  .fboxcall.now{background:var(--accent);color:#fff;animation:fpulse 1.2s infinite}
+  @keyframes fpulse{50%{opacity:.55}}
   .fbtextarea{width:100%;min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;color:var(--ink);background:var(--card)}
   .fbtextarea::placeholder{color:#aab0b8}
   .fbsubmit{margin-top:6px;align-self:flex-end}
@@ -155,6 +169,16 @@
   .msgitem.ours .msgtxt{color:#b5651a;font-weight:700}
   .msgdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
   .msgdel:hover{color:#fff;background:var(--accent)}
+  /* race-control popup: fired once per session when a message names the
+     selected car. OK closes it; the board row stays highlighted (.ours). */
+  #msgModal{position:fixed;inset:0;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:1000}
+  #msgModal.show{display:flex}
+  #msgModal .mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:390px;width:calc(100% - 40px);padding:22px 22px 18px;box-shadow:0 24px 64px rgba(0,0,0,.32)}
+  #msgModal .mhd{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:12px}
+  #msgModal .mmeta{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  #msgModal .mtxt{font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.45;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:18px}
+  #msgModal .mok{display:block;margin-left:auto;font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:9px 24px;border-radius:8px;cursor:pointer}
+  #msgModal .mok:hover{background:var(--accent);border-color:var(--accent)}
 </style></head>
 <body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
@@ -162,6 +186,12 @@
     <div class="startline">START</div>
     <div id="gridwrap"><svg id="gridsvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
     <div id="gridsource" style="flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-align:center;padding-top:5px;line-height:1.3"></div>
+    <div id="fuelmini" style="display:none">
+      <div class="fmhd">FUEL <b id="fmini_car">#&mdash;</b></div>
+      <div class="fmeter"><i id="fmini_bar"></i></div>
+      <div class="fmrow"><span>in tank <b id="fmini_tank">&mdash;</b></span><span><b id="fmini_laps">&mdash;</b> left</span></div>
+      <div class="fboxcall" id="fmini_box">&mdash;</div>
+    </div>
   </div>
   <div class="maincol" style="flex:1 1 auto;min-width:0">
   <div class="headrow">
@@ -320,6 +350,12 @@
       <div class="colhead">Message board</div>
       <div id="msglist" class="msglist"></div>
     </div>
+    <div id="msgModal"><div class="mbox">
+      <div class="mhd">&#9888; Race control &middot; your car</div>
+      <div class="mmeta" id="msgModalMeta"></div>
+      <div class="mtxt" id="msgModalText"></div>
+      <button type="button" class="mok" id="msgModalOk">OK</button>
+    </div></div>
     <div id="fbcard" class="card sidecard" style="flex:1 1 auto;min-height:0">
       <div class="colhead">Feedback please!</div>
       <textarea id="fbtext" class="fbtextarea" placeholder="report error or request new feature..."></textarea>
@@ -553,7 +589,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   setR('fuelcar',selCar?('#'+selCar):'#—');
   const log=document.getElementById('fuellog');
-  if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');setR('fpredused','—');setR('factused','—');const n=document.getElementById('fnotify');if(n)n.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Map();fuelPitSet=new Map();}return;}
+  if(!selCar){setR('ftank','—');setR('fpred','—');setR('flaps','— laps');setR('fmax','L— F/S');setR('fpredused','—');setR('factused','—');const n=document.getElementById('fnotify');if(n)n.style.display='none';const fm=document.getElementById('fuelmini');if(fm)fm.style.display='none';if(fuelLogCar!==null){log.innerHTML='';fuelLogCar=null;fuelS5Set=new Map();fuelPitSet=new Map();}return;}
   const cap=FUEL.cap,cons=Math.max(0.01,FUEL.cons),start=FUEL.start;
   if(!FUEL.cars[selCar])FUEL.cars[selCar]={s5:{},pits:{},notes:{},s5adj:{}};const cs=FUEL.cars[selCar];if(!cs.notes)cs.notes={};if(!cs.s5adj)cs.s5adj={};if(!cs.notesx)cs.notesx={};
   if(fuelLogCar!==selCar){log.innerHTML='';fuelLogCar=selCar;fuelS5Set=new Map();fuelPitSet=new Map();}
@@ -584,6 +620,23 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
   // one from the driver's own last S5 report (only available once reported)
   setR('fpredused',(fuelAtReset-pred).toFixed(1)+' L');
   setR('factused',s5best?((fuelAtReset-s5best.v).toFixed(1)+' L'):'—');
+  // bottom-left mini fuel: remaining bar + escalating box call, driven by the
+  // same tank/pred/rem numbers the fuel reel already computed above.
+  {const fm=document.getElementById('fuelmini');if(fm){fm.style.display='';
+    setR('fmini_car','#'+selCar);
+    const pct=Math.max(0,Math.min(100,tank/cap*100));
+    const bar=document.getElementById('fmini_bar');if(bar){bar.style.width=pct.toFixed(1)+'%';bar.className=pct<12?'crit':pct<30?'warn':'';}
+    setR('fmini_tank',Math.max(0,tank).toFixed(1)+' L');
+    setR('fmini_laps',rem.toFixed(1)+' laps');
+    const call=document.getElementById('fmini_box');
+    if(call){
+      if(!lg){call.textContent='—';call.className='fboxcall';}
+      else{const curLap=lg[0],boxLap=Math.floor(lapsDriven+rem),inLaps=boxLap-curLap;
+        if(inLaps<=0){call.textContent='BOX BOX BOX';call.className='fboxcall now';}
+        else if(inLaps<=2){call.textContent='BOX IN '+inLaps+' LAP'+(inLaps>1?'S':'');call.className='fboxcall soon';}
+        else{call.textContent='BOX IN '+inLaps+' LAPS';call.className='fboxcall';}}
+    }
+  }}
   const n=document.getElementById('fnotify');if(n)n.style.display=inS5?'':'none';
   // new log rows are inserted at the top, so the most recent lap ends up
   // first and L1 sinks to the bottom as more laps complete. Rows are also
@@ -2037,6 +2090,15 @@ applyWxReel(false);
   function saveDismissed(){try{localStorage.setItem('stint9_msg_dismissed',JSON.stringify(Array.from(dismissed)));}catch(e){}}
   let MESSAGES=TEST_MESSAGES;
   function fmtTime(iso){const d=new Date(iso);const pad=n=>String(n).padStart(2,'0');return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
+  const metaOf=m=>fmtTime(m.created_at)+(m.car?(' · #'+m.car):'')+(m.race_class?(' · '+m.race_class):'');
+  // popup: shown once per session when a message names the selected car.
+  const modal=document.getElementById('msgModal'),mOk=document.getElementById('msgModalOk'),
+        mMeta=document.getElementById('msgModalMeta'),mText=document.getElementById('msgModalText');
+  const alerted=new Set();
+  function closeModal(){if(modal)modal.classList.remove('show');}
+  function showModal(m){if(!modal)return;mMeta.textContent=metaOf(m);mText.textContent=m.message;modal.classList.add('show');}
+  if(mOk)mOk.onclick=closeModal;                                   // OK dismisses the popup (row stays highlighted)
+  if(modal)modal.onclick=e=>{if(e.target===modal)closeModal();};   // click backdrop also closes
   window.renderMessages=function renderMessages(){
     const clsSel=document.getElementById('classsel'),curCls=clsSel?clsSel.value:null;
     const rows=MESSAGES.filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls));
@@ -2045,13 +2107,21 @@ applyWxReel(false);
     rows.forEach(m=>{
       const isOurs=!!(selCar&&m.car&&String(m.car)===String(selCar));if(isOurs)highlight=true;
       const item=document.createElement('div');item.className='msgitem'+(isOurs?' ours':'');
-      const del=document.createElement('span');del.className='msgdel';del.textContent='×';del.title='dismiss';
-      del.onclick=()=>{dismissed.add(String(m.id));saveDismissed();renderMessages();};
-      const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=fmtTime(m.created_at)+(m.car?(' · #'+m.car):'')+(m.race_class?(' · '+m.race_class):'');
+      const del=document.createElement('span');del.className='msgdel';del.textContent='×';del.title='delete (password protected)';
+      del.onclick=()=>{
+        const pw=window.prompt('Password to delete this message:');
+        if(pw===null)return;                                        // cancelled
+        if(pw!=='nls'){window.alert('Wrong password — message not deleted.');return;}
+        dismissed.add(String(m.id));saveDismissed();renderMessages();
+      };
+      const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=metaOf(m);
       const txt=document.createElement('div');txt.className='msgtxt';txt.textContent=m.message;
       item.appendChild(del);item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
     });
     window.msgHighlightActive=highlight;
+    // pop up the first not-yet-acknowledged message about the selected car
+    const toAlert=rows.find(m=>selCar&&m.car&&String(m.car)===String(selCar)&&!alerted.has(String(m.id)));
+    if(toAlert){alerted.add(String(toAlert.id));showModal(toAlert);}
     try{syncRightSplit();}catch(e){}
   };
   function loadMessages(){
