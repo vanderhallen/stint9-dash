@@ -386,6 +386,7 @@ const TrackView = (function(){
     stroke(c, coors, 7*SC,  "#9aa3ad");
   }
   function coorAt(dist){
+    if(!Number.isFinite(dist)) return null;
     const d = ((dist % trackLen)+trackLen)%trackLen;
     let idx = Math.round(d/trackLen*(coors.length-1));
     if(idx<0) idx=0; if(idx>=coors.length) idx=coors.length-1;
