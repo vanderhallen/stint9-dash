@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STINT9 &middot; alternative layout</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#f4f5f7;--card:#fff;--border:#e3e6ea;--ink:#16202b;--muted:#6b7480;--accent:#e0301e;--green:#1e8f3a;--amber:#e8871e}
+  body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+  .colhead{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+
+  /* ---- responsive app grid: no transform-scaling, no height-sync JS ---- */
+  .app{display:grid;grid-template-columns:270px minmax(0,1fr) 330px;grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"hdr hdr hdr" "standings centre strategy";
+    gap:14px;padding:14px 18px;height:100vh;max-width:1900px;margin:0 auto}
+  @media (max-width:1280px){.app{grid-template-columns:250px minmax(0,1fr);grid-template-areas:"hdr hdr" "standings centre" "strategy strategy";height:auto}}
+  @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr);grid-template-areas:"hdr" "centre" "standings" "strategy";height:auto}}
+
+  /* ---- header ---- */
+  header{grid-area:hdr;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 16px}
+  h1{font-weight:700;font-size:30px;letter-spacing:-1px;line-height:1}h1 b{color:var(--accent)}
+  .evdate{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted)}
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  select,input[type=number]{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 9px}
+  select:focus,input:focus{outline:none;border-color:var(--accent)}
+  .transport{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .clock{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+  .clock small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;font-weight:500}
+  .btn{font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .btn:hover{background:var(--accent);border-color:var(--accent)}
+  input[type=range]{width:220px;accent-color:var(--accent)}
+  .simtag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:2px;background:var(--ink);color:#fff;border-radius:6px;padding:5px 9px}
+  a.backlink{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:1px}
+  a.backlink:hover{color:var(--accent)}
+
+  /* ---- standings (always visible) ---- */
+  .standings{grid-area:standings;display:flex;flex-direction:column;min-height:0;padding:12px}
+  #stlist{flex:1 1 auto;min-height:0;overflow-y:auto;margin-top:8px}
+  .strow{display:grid;grid-template-columns:26px 44px minmax(0,1fr) 52px;gap:6px;align-items:baseline;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 6px;border-top:1px solid #f0f2f4;cursor:pointer;border-radius:6px}
+  .strow:hover{background:#f4f6f8}
+  .strow.sel{background:#eef1f4;outline:1px solid #d5d9de}
+  .strow .p{font-weight:700}.strow .car{font-weight:700}
+  .strow .drv{color:var(--muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .strow .gap{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .strow.finished .p::after{content:"\2691";margin-left:3px;color:var(--ink)}
+  .strow .pit{grid-column:2/5;font-size:9px;color:var(--amber);letter-spacing:1px}
+
+  /* ---- centre ---- */
+  .centre{grid-area:centre;display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0}
+  .trackcard{flex:1.15 1 0;min-height:0;position:relative;overflow:hidden;padding:6px}
+  #trk{display:block;width:100%;height:100%}
+  .badge{position:absolute;top:10px;right:14px;text-align:right;pointer-events:none}
+  .badge .num{font-weight:700;font-size:26px;letter-spacing:-1px}
+  .badge .sub{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .badge .sub .neg{color:var(--green)}.badge .sub .pos{color:var(--accent)}
+  .tabs{display:flex;gap:6px;align-items:center}
+  .tab{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:8px;padding:6px 13px;cursor:pointer}
+  .tab.active{background:var(--ink);border-color:var(--ink);color:#fff}
+  .tab:hover:not(.active){border-color:#c6ccd2}
+  .analysis{flex:1 1 0;min-height:150px;padding:8px;position:relative}
+  .analysis svg{display:block;width:100%;height:100%}
+
+  /* ---- strategy column ---- */
+  .strategy{grid-area:strategy;display:flex;flex-direction:column;gap:14px;min-height:0;overflow-y:auto}
+  .scard{padding:12px 14px;flex:0 0 auto}
+  .kv{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:2.5px 0}
+  .kv .k{color:var(--muted)}.kv .v{font-weight:700;font-variant-numeric:tabular-nums}
+  .fuelin{display:flex;gap:8px;margin:8px 0 6px;flex-wrap:wrap}
+  .fuelin label{display:flex;flex-direction:column;gap:2px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .fuelin input{width:64px;font-size:11px;padding:4px 6px}
+  .meter{height:8px;border-radius:4px;background:#eef0f3;overflow:hidden;margin:6px 0 2px}
+  .meter i{display:block;height:100%;border-radius:4px;background:var(--green);transition:width .3s}
+  .meter i.warn{background:var(--amber)}.meter i.crit{background:var(--accent)}
+
+  /* tyres */
+  .tyrewrap{display:flex;gap:10px;align-items:center;margin-top:6px}
+  .tyrecar{position:relative;flex:0 0 128px;height:216px}
+  .tyrecar img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:96px;height:auto}
+  .tcorner{position:absolute;width:46px;text-align:center;font-family:'IBM Plex Mono',monospace}
+  .tcorner .tl{font-size:9px;letter-spacing:1px;color:var(--muted)}
+  .tcorner .tv{font-size:13px;font-weight:700}
+  .tcorner.vl{left:-8px;top:22px}.tcorner.vr{right:-8px;top:22px}
+  .tcorner.hl{left:-8px;bottom:22px}.tcorner.hr{right:-8px;bottom:22px}
+  .tyreinfo{flex:1 1 auto;min-width:0}
+  .setchip{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-radius:5px;padding:2px 7px;background:#eef0f3;color:var(--ink)}
+  .setchip.new{background:#e7f5ea;color:var(--green)}
+  .tyrelife input{width:52px;font-size:11px;padding:3px 5px}
+
+  /* pit window */
+  .boxcall{margin-top:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;letter-spacing:1px;border-radius:9px;padding:9px 6px;background:#f1f3f5;color:var(--muted)}
+  .boxcall.soon{background:#fff3e0;color:var(--amber)}
+  .boxcall.now{background:var(--accent);color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{opacity:.65}}
+
+  /* stint history strip */
+  .stinthist{display:flex;gap:3px;margin-top:8px;flex-wrap:wrap}
+  .sh{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:3px 6px;border-radius:5px;background:#eef0f3;color:var(--muted)}
+  .sh.cur{background:var(--ink);color:#fff}
+  .hint{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#aab0b8;margin-top:6px;line-height:1.5}
+</style></head>
+<body>
+<div class="app">
+  <header class="card">
+    <div><h1>stint<b>9</b></h1><div class="evdate" id="evdate"></div></div>
+    <div class="field"><label for="clsSel">Race class</label><select id="clsSel"></select></div>
+    <div class="field"><label for="carSel">Select car</label><select id="carSel"></select></div>
+    <div class="transport">
+      <div class="clock"><span id="clock">--:--:--</span><small>race time</small></div>
+      <button class="btn" id="play">&#10073;&#10073; Pause</button>
+      <input type="range" id="scrub" step="0.1">
+      <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30">30&times;</option><option value="60" selected>60&times;</option></select>
+      <span class="simtag">SIM</span>
+      <a class="backlink" href="index.html">&#8592; CLASSIC</a>
+    </div>
+  </header>
+
+  <section class="standings card">
+    <div class="colhead">Standings &middot; <span id="stcls"></span></div>
+    <div id="stlist"></div>
+  </section>
+
+  <section class="centre">
+    <div class="trackcard card">
+      <svg id="trk" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="badge" id="badge" style="display:none">
+        <div class="num" id="bNum"></div>
+        <div class="sub" id="bSub"></div>
+      </div>
+    </div>
+    <div class="tabs" id="tabs">
+      <span class="colhead" style="margin-right:6px">Analysis</span>
+      <button class="tab active" data-t="pace">PACE</button>
+      <button class="tab" data-t="gaps">GAPS</button>
+      <button class="tab" data-t="stints">STINTS</button>
+      <button class="tab" data-t="sectors">SECTORS</button>
+    </div>
+    <div class="analysis card"><svg id="ansvg" preserveAspectRatio="none"></svg></div>
+  </section>
+
+  <aside class="strategy">
+    <div class="scard card">
+      <div class="colhead">Fuel &middot; <span id="fcar">#&mdash;</span></div>
+      <div class="fuelin">
+        <label>capacity L<input id="fcap" type="number" step="1" value="85"></label>
+        <label>at start L<input id="fstart" type="number" step="0.5" value="85"></label>
+        <label>L / lap<input id="fcons" type="number" step="0.1" value="10.5"></label>
+      </div>
+      <div class="kv"><span class="k">in tank now</span><span class="v" id="ftank">&mdash;</span></div>
+      <div class="meter"><i id="fmeter" style="width:100%"></i></div>
+      <div class="kv"><span class="k">laps remaining</span><span class="v" id="flaps">&mdash;</span></div>
+      <div class="kv"><span class="k">fuel-limited lap</span><span class="v" id="fmax">&mdash;</span></div>
+    </div>
+
+    <div class="scard card">
+      <div class="colhead">Tyres &middot; set <span id="tset">&mdash;</span> <span class="setchip" id="tchip" style="margin-left:6px">&mdash;</span></div>
+      <div class="tyrewrap">
+        <!-- car.png orientation is locked nose-up: do not rotate -->
+        <div class="tyrecar">
+          <img src="car.png" alt="car top view">
+          <div class="tcorner vl"><div class="tl">VL</div><div class="tv" id="tvl">&mdash;</div></div>
+          <div class="tcorner vr"><div class="tl">VR</div><div class="tv" id="tvr">&mdash;</div></div>
+          <div class="tcorner hl"><div class="tl">HL</div><div class="tv" id="thl">&mdash;</div></div>
+          <div class="tcorner hr"><div class="tl">HR</div><div class="tv" id="thr">&mdash;</div></div>
+        </div>
+        <div class="tyreinfo">
+          <div class="kv"><span class="k">laps on set</span><span class="v" id="tlaps">&mdash;</span></div>
+          <div class="kv tyrelife"><span class="k">target life</span><span class="v">
+            <input id="tlife" type="number" min="1" step="1" value="18"> laps</span></div>
+          <div class="meter"><i id="tmeter" style="width:0%"></i></div>
+          <div class="kv"><span class="k">life left</span><span class="v" id="tleft">&mdash;</span></div>
+          <div class="stinthist" id="tsets"></div>
+        </div>
+      </div>
+      <div class="hint">set number = pit stops + 1 (assumes tyres at every stop). Corner values = laps on the current set.</div>
+    </div>
+
+    <div class="scard card">
+      <div class="colhead">Pit window</div>
+      <div class="kv"><span class="k">current lap</span><span class="v" id="pwlap">&mdash;</span></div>
+      <div class="kv"><span class="k">fuel window closes</span><span class="v" id="pwfuel">&mdash;</span></div>
+      <div class="kv"><span class="k">tyre window closes</span><span class="v" id="pwtyre">&mdash;</span></div>
+      <div class="kv"><span class="k">recommended box</span><span class="v" id="pwbox">&mdash;</span></div>
+      <div class="boxcall" id="boxcall">&mdash;</div>
+    </div>
+
+    <div class="scard card">
+      <div class="colhead">Current stint</div>
+      <div class="kv"><span class="k">driver</span><span class="v" id="csdrv">&mdash;</span></div>
+      <div class="kv"><span class="k">stint laps</span><span class="v" id="cslaps">&mdash;</span></div>
+      <div class="kv"><span class="k">last lap</span><span class="v" id="cslast">&mdash;</span></div>
+      <div class="kv"><span class="k">stint best</span><span class="v" id="csbest">&mdash;</span></div>
+    </div>
+  </aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const SVGNS='http://www.w3.org/2000/svg';
+const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
+const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
+
+/* ---------- state ---------- */
+let selCar='', T=0, playing=true, last=0, tab='pace';
+let LEG={}, BX={}, maxN=1, tmin=0, tmax=1;
+let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_alt_prefs')||'{}');}catch(e){}
+
+/* ---------- shared race maths (same semantics as index.html) ---------- */
+function activeLeg(st,t){const a=LEG[st];if(!a)return null;let lo=0,hi=a.length-1,res=-1;
+  while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=t){res=m;lo=m+1;}else hi=m-1;}
+  if(res<0)return null;const g=a[res];return(t<g[3])?g:null;}
+function progress(lg,t){return lg[0]*5+(lg[1]-1)+(t-lg[2])/((lg[3]-lg[2])||1);}
+// finished cars keep their last boundary so the leader stays P1 after the flag
+function carProgress(st,t){const lg=activeLeg(st,t);if(lg)return{p:progress(lg,t),t:t};
+  const a=LEG[st];if(!a||!a.length)return null;
+  for(let i=a.length-1;i>=0;i--){if(a[i][3]<=t)return{p:a[i][0]*5+a[i][1],t:a[i][3]};}return null;}
+function livePos(t){const a=[];DB.cars.forEach(st=>{const r=carProgress(st,t);if(r)a.push([r.p,r.t,st]);});
+  a.sort((x,y)=>y[0]-x[0]||x[1]-y[1]);const m={};a.forEach((e,i)=>m[e[2]]=i+1);return m;}
+function isFinished(st,t){return !activeLeg(st,t)&&carProgress(st,t)!=null&&carProgress(st,t).p>=maxN*5;}
+function commonGap(ref,other,t){const bx=BX[ref],keys=Object.keys(bx).map(Number).sort((a,b)=>b-a);
+  for(const k of keys){const tr=bx[k];if(tr>t)continue;const to=BX[other]&&BX[other][k];
+    if(to!=null&&to<=t)return tr-to;}
+  return null;}
+function lapsDrivenOf(st,t){const lg=activeLeg(st,t);
+  if(lg){const f=Math.max(0,Math.min(1,(t-lg[2])/((lg[3]-lg[2])||1)));return(lg[0]-1)+((lg[1]-1)+f)/5;}
+  const r=carProgress(st,t);return r?r.p/5:0;}
+function curLapOf(st,t){const lg=activeLeg(st,t);if(lg)return lg[0];
+  const r=carProgress(st,t);return r?Math.min(maxN,Math.ceil(r.p/5)):1;}
+function curDrv(st,t){const dl=DB.drvlap[st]||{};return dl[curLapOf(st,t)]||DB.name[st]||'';}
+function lapT(st,L,t){const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];
+  if(s&&s.length>=5&&s.every(x=>x!=null)&&b!=null&&b<=t)return s[0]+s[1]+s[2]+s[3]+s[4];return null;}
+function fmtT(v){if(v==null)return'—';const m=Math.floor(v/60),s=(v-m*60).toFixed(1);return m+':'+(s<10?'0':'')+s;}
+function fmtGap(v){if(v==null)return'';return(v<=0?'':'+')+v.toFixed(1)+'s';}
+function pitsBefore(st,L){return(DB.pits[st]||[]).filter(p=>p<L).length;}
+
+/* ---------- class / car selection ---------- */
+const clsSel=document.getElementById('clsSel'),carSel=document.getElementById('carSel');
+Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
+function buildClass(cls){
+  DB.cars=DB.classes[cls]||[];maxN=DB.classMaxN[cls]||1;
+  DB.cars.forEach((st,i)=>DB.carcol[st]=SAFE[i%SAFE.length]);
+  LEG={};BX={};
+  DB.cars.forEach(st=>{LEG[st]=(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]);
+    const m={};(DB.legs[st]||[]).forEach(g=>m[(g[0]-1)*5+g[1]]=g[3]);BX[st]=m;});
+  tmin=Math.min.apply(null,DB.cars.flatMap(st=>(DB.legs[st]||[]).map(g=>g[2])));
+  tmax=Math.max.apply(null,DB.cars.flatMap(st=>(DB.legs[st]||[]).map(g=>g[3])));
+  scrub.min=tmin;scrub.max=tmax;
+  if(!(T>=tmin&&T<=tmax))T=tmin;scrub.value=T;
+  carSel.innerHTML='<option value="">— select —</option>';
+  DB.cars.forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+' '+(DB.name[st]||'');carSel.appendChild(o);});
+  if(!DB.cars.includes(selCar))selCar=DB.cars[0]||'';
+  carSel.value=selCar;
+  document.getElementById('stcls').textContent=cls;
+  buildTrack();buildDots();
+}
+clsSel.onchange=e=>{buildClass(e.target.value);savePrefs();render();};
+carSel.onchange=e=>{selCar=e.target.value;savePrefs();render();};
+function savePrefs(){try{localStorage.setItem('stint9_alt_prefs',JSON.stringify({cls:clsSel.value,car:selCar,tab:tab,tlife:+document.getElementById('tlife').value||18,
+  fcap:+fcap.value,fstart:+fstart.value,fcons:+fcons.value}));}catch(e){}}
+
+/* ---------- track map ---------- */
+const trk=document.getElementById('trk');let dotEls={};
+function buildTrack(){trk.setAttribute('viewBox','80 80 '+(DB.W-160)+' '+(DB.H-260));trk.innerHTML='';
+  DB.poly.forEach((p,i)=>{const pl=document.createElementNS(SVGNS,'polyline');
+    pl.setAttribute('points',p.map(q=>q.join(',')).join(' '));
+    pl.setAttribute('fill','none');pl.setAttribute('stroke',SECCOL[i]);pl.setAttribute('stroke-width','15');
+    pl.setAttribute('stroke-linecap','round');pl.setAttribute('stroke-linejoin','round');pl.setAttribute('opacity','0.85');
+    trk.appendChild(pl);});}
+const CUM=DB.poly.map(p=>{const c=[0];for(let i=1;i<p.length;i++)c.push(c[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));return c;});
+function ptAlong(seg,f){const p=DB.poly[seg-1],c=CUM[seg-1],tot=c[c.length-1];const d=Math.max(0,Math.min(1,f))*tot;
+  let lo=0,hi=c.length-1;while(lo<hi-1){const m=(lo+hi)>>1;if(c[m]<=d)lo=m;else hi=m;}
+  const t=(d-c[lo])/((c[hi]-c[lo])||1);return[p[lo][0]+(p[hi][0]-p[lo][0])*t,p[lo][1]+(p[hi][1]-p[lo][1])*t];}
+function buildDots(){dotEls={};const old=trk.querySelector('#dots');if(old)old.remove();
+  const g=document.createElementNS(SVGNS,'g');g.id='dots';trk.appendChild(g);
+  DB.cars.forEach(st=>{const gr=document.createElementNS(SVGNS,'g');gr.style.visibility='hidden';
+    const c=document.createElementNS(SVGNS,'circle');c.setAttribute('r','20');c.setAttribute('fill',DB.carcol[st]);c.setAttribute('stroke','#111');c.setAttribute('stroke-width','3');
+    const tx=document.createElementNS(SVGNS,'text');tx.setAttribute('text-anchor','middle');tx.setAttribute('dy','-28');
+    tx.setAttribute('font-family','Space Grotesk,sans-serif');tx.setAttribute('font-weight','700');tx.setAttribute('font-size','34');
+    tx.setAttribute('stroke','#fff');tx.setAttribute('stroke-width','5');tx.setAttribute('paint-order','stroke');tx.textContent='#'+st;
+    gr.appendChild(c);gr.appendChild(tx);g.appendChild(gr);dotEls[st]={g:gr,c,tx};});}
+function renderTrack(t){DB.cars.forEach(st=>{const el=dotEls[st];if(!el)return;
+  const lg=activeLeg(st,t);
+  if(!lg){el.g.style.visibility='hidden';return;}
+  const f=(t-lg[2])/((lg[3]-lg[2])||1);const[x,y]=ptAlong(lg[1],f);
+  el.g.style.visibility='visible';
+  el.c.setAttribute('cx',x);el.c.setAttribute('cy',y);
+  el.tx.setAttribute('x',x);el.tx.setAttribute('y',y);
+  const sel=st===selCar;
+  el.c.setAttribute('r',sel?26:16);el.c.setAttribute('opacity',sel||!selCar?1:.45);
+  el.tx.style.display=sel?'':'none';});}
+
+/* ---------- standings ---------- */
+const stlist=document.getElementById('stlist');
+function renderStandings(t){const lp=livePos(t);
+  const rows=DB.cars.map(st=>({st,pos:lp[st]||999})).sort((a,b)=>a.pos-b.pos);
+  const leader=rows[0]&&rows[0].st;
+  let h='';
+  rows.forEach(r=>{const st=r.st;
+    const gap=st===leader?null:commonGap(st,leader,t);
+    const nPit=(DB.pits[st]||[]).filter(p=>lapsDrivenOf(st,t)>=p).length;
+    const fin=isFinished(st,t);
+    h+='<div class="strow'+(st===selCar?' sel':'')+(fin?' finished':'')+'" data-car="'+st+'">'
+      +'<span class="p">P'+r.pos+'</span><span class="car" style="color:'+DB.carcol[st]+'">#'+st+'</span>'
+      +'<span class="drv">'+curDrv(st,t)+'</span>'
+      +'<span class="gap">'+(st===leader?'—':(gap!=null?'+'+Math.max(0,gap).toFixed(1):''))+'</span>'
+      +(nPit?'<span class="pit">PIT ×'+nPit+'</span>':'')
+      +'</div>';});
+  stlist.innerHTML=h;
+  stlist.querySelectorAll('.strow').forEach(r=>r.onclick=()=>{selCar=r.dataset.car;carSel.value=selCar;savePrefs();render();});}
+
+/* ---------- badge ---------- */
+function renderBadge(t){const b=document.getElementById('badge');
+  if(!selCar){b.style.display='none';return;}
+  const lp=livePos(t),p=lp[selCar];
+  document.getElementById('bNum').textContent='#'+selCar;
+  let sub='P'+(p||'—')+' · L'+curLapOf(selCar,t);
+  const byPos={};for(const s in lp)byPos[lp[s]]=s;
+  const ah=p>1?byPos[p-1]:null;
+  if(ah){const g=commonGap(selCar,ah,t);if(g!=null)sub+=' · <span class="pos">+'+Math.max(0,g).toFixed(1)+'</span>';}
+  document.getElementById('bSub').innerHTML=sub;
+  b.style.display='block';}
+
+/* ---------- fuel model ---------- */
+const fcap=document.getElementById('fcap'),fstart=document.getElementById('fstart'),fcons=document.getElementById('fcons');
+[fcap,fstart,fcons].forEach(i=>i.oninput=()=>{savePrefs();render();});
+function fuelState(t){if(!selCar)return null;
+  const cons=Math.max(.01,+fcons.value||10.5),start=+fstart.value||85,cap=+fcap.value||85;
+  const laps=lapsDrivenOf(selCar,t);
+  // simplified single-stint model: refuel to full assumed at each pit stop.
+  // NB a pit-in lap has no S5 boundary in the data, so a stop counts as done
+  // once that lap number is completed (laps >= p), not via the S5 timestamp.
+  const pits=(DB.pits[selCar]||[]).filter(p=>laps>=p);
+  const lastPitLap=pits.length?pits[pits.length-1]:0;
+  const stintLaps=laps-(lastPitLap?lastPitLap:0);
+  const base=lastPitLap?cap:start;
+  const tank=Math.max(0,base-stintLaps*cons);
+  const lapsLeft=tank/cons;
+  const curL=curLapOf(selCar,t);
+  return{tank,lapsLeft,maxLap:Math.floor(curL+lapsLeft-1),cap,pits,lastPitLap,curL,stintLaps};}
+function renderFuel(t){const fs=fuelState(t);
+  document.getElementById('fcar').textContent=selCar?'#'+selCar:'#—';
+  const set=(id,v)=>document.getElementById(id).textContent=v;
+  if(!fs){set('ftank','—');set('flaps','—');set('fmax','—');return null;}
+  set('ftank',fs.tank.toFixed(1)+' L');
+  set('flaps',fs.lapsLeft.toFixed(1));
+  set('fmax','L'+fs.maxLap);
+  const m=document.getElementById('fmeter'),pct=Math.max(0,Math.min(100,fs.tank/fs.cap*100));
+  m.style.width=pct+'%';m.className=pct<12?'crit':pct<30?'warn':'';
+  return fs;}
+
+/* ---------- tyres (set = pit stops + 1) ---------- */
+function renderTyres(t,fs){const life=Math.max(1,+document.getElementById('tlife').value||18);
+  const ids=['tvl','tvr','thl','thr'];
+  if(!selCar||!fs){document.getElementById('tset').textContent='—';ids.forEach(i=>document.getElementById(i).textContent='—');return null;}
+  const setNo=fs.pits.length+1;
+  const onSet=Math.max(0,fs.stintLaps);
+  document.getElementById('tset').textContent=setNo;
+  const chip=document.getElementById('tchip');
+  chip.textContent=onSet<3?'NEW':'USED';chip.className='setchip'+(onSet<3?' new':'');
+  ids.forEach(i=>document.getElementById(i).textContent=onSet.toFixed(1));
+  document.getElementById('tlaps').textContent=onSet.toFixed(1)+' / '+life;
+  const leftL=Math.max(0,life-onSet);
+  document.getElementById('tleft').textContent=leftL.toFixed(1)+' laps';
+  const m=document.getElementById('tmeter'),pct=Math.min(100,onSet/life*100);
+  m.style.width=pct+'%';m.className=pct>88?'crit':pct>66?'warn':'';
+  // set history
+  const hist=document.getElementById('tsets');let h='';
+  for(let s=1;s<=setNo;s++){const from=s===1?1:fs.pits[s-2]+1;
+    const to=s===setNo?Math.floor(fs.curL):fs.pits[s-1];
+    h+='<span class="sh'+(s===setNo?' cur':'')+'">S'+s+' L'+from+'–'+(s===setNo?'…':to)+'</span>';}
+  hist.innerHTML=h;
+  return{life,onSet,tyreMaxLap:Math.floor(fs.curL+leftL-1)};}
+document.getElementById('tlife').oninput=()=>{savePrefs();render();};
+
+/* ---------- pit window ---------- */
+function renderPit(t,fs,ty){const set=(id,v)=>document.getElementById(id).textContent=v;
+  const call=document.getElementById('boxcall');
+  if(!fs||!ty){['pwlap','pwfuel','pwtyre','pwbox'].forEach(i=>set(i,'—'));call.textContent='—';call.className='boxcall';return;}
+  set('pwlap','L'+Math.floor(fs.curL));
+  set('pwfuel','L'+fs.maxLap);
+  set('pwtyre','L'+ty.tyreMaxLap);
+  const box=Math.min(fs.maxLap,ty.tyreMaxLap);
+  set('pwbox','L'+box);
+  const inLaps=box-Math.floor(fs.curL);
+  if(isFinished(selCar,t)){call.textContent='FINISHED';call.className='boxcall';}
+  else if(inLaps<=0){call.textContent='BOX BOX BOX';call.className='boxcall now';}
+  else if(inLaps<=2){call.textContent='BOX IN '+inLaps+' LAP'+(inLaps>1?'S':'');call.className='boxcall soon';}
+  else{call.textContent='BOX IN '+inLaps+' LAPS';call.className='boxcall';}}
+
+/* ---------- current stint ---------- */
+function renderStint(t){const set=(id,v)=>document.getElementById(id).textContent=v;
+  if(!selCar){['csdrv','cslaps','cslast','csbest'].forEach(i=>set(i,'—'));return;}
+  const curL=curLapOf(selCar,t);
+  const pits=(DB.pits[selCar]||[]).filter(p=>p<curL);
+  const from=pits.length?pits[pits.length-1]+1:1;
+  set('csdrv',curDrv(selCar,t));
+  let best=null,lastV=null,n=0;
+  for(let L=from;L<=curL;L++){const v=lapT(selCar,L,t);if(v!=null){n++;lastV=v;if(best==null||v<best)best=v;}}
+  set('cslaps',n);
+  set('cslast',fmtT(lastV));
+  set('csbest',fmtT(best));}
+
+/* ---------- analysis tabs ---------- */
+const ansvg=document.getElementById('ansvg');
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));savePrefs();render();});
+function axShell(W,H){return{W,H,padL:56,padR:16,padT:16,padB:26};}
+function renderAnalysis(t){ansvg.setAttribute('viewBox','0 0 1000 260');
+  if(tab==='pace')return renderPace(t);
+  if(tab==='gaps')return renderGaps(t);
+  if(tab==='stints')return renderStintsTab(t);
+  return renderSectors(t);}
+function ph(msg){ansvg.innerHTML='<text x="500" y="135" text-anchor="middle" font-size="20" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+msg+'</text>';}
+
+function renderPace(t){if(!selCar)return ph('select a car');
+  const A=axShell(1000,260);const mine=[],cls=[];
+  for(let L=1;L<=maxN;L++){const v=lapT(selCar,L,t);if(v!=null)mine.push([L,v]);
+    let m=Infinity;DB.cars.forEach(st=>{const x=lapT(st,L,t);if(x!=null&&x<m)m=x;});
+    if(isFinite(m))cls.push([L,m]);}
+  if(!mine.length)return ph('no completed laps yet');
+  const all=mine.concat(cls);let lo=Math.min(...all.map(p=>p[1])),hi=Math.max(...mine.map(p=>p[1]));
+  const pad=(hi-lo)*.1||2;lo-=pad;hi+=pad;
+  const X=L=>A.padL+(L-1)/((maxN-1)||1)*(A.W-A.padL-A.padR);
+  const Y=v=>A.padT+(1-(v-lo)/((hi-lo)||1))*(260-A.padT-A.padB);
+  let s='';
+  for(let i=0;i<=3;i++){const v=lo+(hi-lo)*i/3,y=Y(v);
+    s+='<line x1="'+A.padL+'" x2="'+(A.W-A.padR)+'" y1="'+y+'" y2="'+y+'" stroke="#eceef1"/>'
+      +'<text x="'+(A.padL-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+fmtT(v)+'</text>';}
+  for(let L=1;L<=maxN;L+=(maxN>25?5:2))s+='<text x="'+X(L)+'" y="252" text-anchor="middle" font-size="11" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';
+  const path=a=>a.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(Math.min(p[1],hi)).toFixed(1)).join(' ');
+  s+='<path d="'+path(cls)+'" fill="none" stroke="#c9ced4" stroke-width="2" stroke-dasharray="5 5"/>';
+  s+='<path d="'+path(mine)+'" fill="none" stroke="'+(DB.carcol[selCar]||'#2f5fd0')+'" stroke-width="3" stroke-linejoin="round"/>';
+  s+='<text x="'+(A.W-A.padR)+'" y="14" text-anchor="end" font-size="11" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">grey dashed = class fastest per lap (clipped to scale)</text>';
+  ansvg.innerHTML=s;}
+
+function renderGaps(t){if(!selCar)return ph('select a car');
+  const lp=livePos(t);const rows=DB.cars.map(st=>({st,pos:lp[st]||999})).sort((a,b)=>a.pos-b.pos);
+  const leader=rows[0].st;if(leader===selCar)return ph('#'+selCar+' leads — gap chart from P2');
+  const pts=[];
+  for(let L=1;L<=maxN;L++){const tl=(BX[leader]||{})[L*5],tc=(BX[selCar]||{})[L*5];
+    if(tl!=null&&tc!=null&&tl<=t&&tc<=t)pts.push([L,tc-tl]);}
+  if(!pts.length)return ph('no shared laps yet');
+  const A=axShell(1000,260);
+  let lo=Math.min(0,...pts.map(p=>p[1])),hi=Math.max(...pts.map(p=>p[1]));const pad=(hi-lo)*.1||1;lo-=pad;hi+=pad;
+  const X=L=>A.padL+(L-1)/((maxN-1)||1)*(A.W-A.padL-A.padR);
+  const Y=v=>A.padT+(1-(v-lo)/((hi-lo)||1))*(260-A.padT-A.padB);
+  let s='';
+  for(let i=0;i<=3;i++){const v=lo+(hi-lo)*i/3,y=Y(v);
+    s+='<line x1="'+A.padL+'" x2="'+(A.W-A.padR)+'" y1="'+y+'" y2="'+y+'" stroke="#eceef1"/>'
+      +'<text x="'+(A.padL-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="12" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+  for(let L=1;L<=maxN;L+=(maxN>25?5:2))s+='<text x="'+X(L)+'" y="252" text-anchor="middle" font-size="11" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';
+  s+='<path d="'+pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round"/>';
+  s+='<text x="'+(A.W-A.padR)+'" y="14" text-anchor="end" font-size="11" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">gap #'+selCar+' to leader #'+leader+' at each completed lap</text>';
+  ansvg.innerHTML=s;}
+
+function renderStintsTab(t){if(!selCar)return ph('select a car');
+  const curL=curLapOf(selCar,t),dl=DB.drvlap[selCar]||{};
+  const pits=(DB.pits[selCar]||[]);
+  const stops=[0].concat(pits.filter(p=>p<curL)).concat([curL]);
+  const X=L=>40+(L)/(maxN||1)*920;
+  let s='<line x1="40" x2="960" y1="130" y2="130" stroke="#eceef1" stroke-width="26"/>';
+  const cols=['#2f5fd0','#e0301e','#1e8f3a','#c9971e','#7b2fbe','#17becf'];
+  for(let i=0;i<stops.length-1;i++){const a=stops[i],b=stops[i+1];
+    const drv=dl[Math.min(a+1,curL)]||'';
+    s+='<rect x="'+X(a)+'" y="117" width="'+Math.max(2,X(b)-X(a)-2)+'" height="26" rx="5" fill="'+cols[i%cols.length]+'" opacity="0.9"/>';
+    if(X(b)-X(a)>70)s+='<text x="'+((X(a)+X(b))/2)+'" y="108" text-anchor="middle" font-size="13" fill="#16202b" font-family="IBM Plex Mono,monospace">'+drv+'</text>';
+    s+='<text x="'+((X(a)+X(b))/2)+'" y="134" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="IBM Plex Mono,monospace">'+(b-a)+'</text>';}
+  pits.filter(p=>p<curL).forEach(p=>{s+='<line x1="'+X(p)+'" x2="'+X(p)+'" y1="100" y2="160" stroke="#16202b" stroke-width="2" stroke-dasharray="3 3"/>'
+    +'<text x="'+X(p)+'" y="176" text-anchor="middle" font-size="11" fill="#6b7480" font-family="IBM Plex Mono,monospace">PIT L'+p+'</text>';});
+  s+='<text x="40" y="60" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">stints of #'+selCar+' · bar = laps per stint · name above</text>';
+  ansvg.innerHTML=s;}
+
+function renderSectors(t){if(!selCar)return ph('select a car');
+  const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{};
+  const lastVals=[null,null,null,null,null],pb=[Infinity,Infinity,Infinity,Infinity,Infinity];
+  Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(L=>{const s=stm[L];if(!s)return;
+    for(let k=0;k<5;k++){const b=bx[(L-1)*5+k+1];if(b!=null&&b<=t&&s[k]!=null){lastVals[k]=s[k];if(s[k]<pb[k])pb[k]=s[k];}}});
+  if(lastVals.every(v=>v==null))return ph('no sectors completed yet');
+  let s='';const bw=130,gap=44,x0=90;
+  for(let k=0;k<5;k++){const x=x0+k*(bw+gap),v=lastVals[k],p=pb[k];
+    const ratio=v!=null&&isFinite(p)?Math.min(2,v/p):1;
+    const h=90*(2-ratio);
+    const col=v==null?'#eceef1':(v-p<0.05?'#22B14C':(ratio<1.05?'#F5C500':'#e0301e'));
+    s+='<rect x="'+x+'" y="'+(210-Math.max(6,h))+'" width="'+bw+'" height="'+Math.max(6,h)+'" rx="6" fill="'+col+'"/>'
+      +'<text x="'+(x+bw/2)+'" y="232" text-anchor="middle" font-size="14" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">S'+(k+1)+'</text>'
+      +'<text x="'+(x+bw/2)+'" y="'+(200-Math.max(6,h))+'" text-anchor="middle" font-size="13" fill="#16202b" font-family="IBM Plex Mono,monospace">'+(v!=null?v.toFixed(1):'—')+'</text>'
+      +'<text x="'+(x+bw/2)+'" y="52" text-anchor="middle" font-size="10" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">pb '+(isFinite(p)?p.toFixed(1):'—')+'</text>';}
+  s+='<text x="90" y="24" font-size="12" fill="#6b7480" font-family="IBM Plex Mono,monospace">latest sectors of #'+selCar+' vs personal best (green = at pb)</text>';
+  ansvg.innerHTML=s;}
+
+/* ---------- transport ---------- */
+const scrub=document.getElementById('scrub'),playBtn=document.getElementById('play'),clock=document.getElementById('clock');
+function fmtClock(t){const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=Math.floor(t%60),p=n=>String(n).padStart(2,'0');return p(h)+':'+p(m)+':'+p(s);}
+function loop(ts){if(!playing)return;if(!last)last=ts;const dt=(ts-last)/1000;last=ts;
+  T+=dt*parseFloat(document.getElementById('speed').value);
+  if(T>=tmax){T=tmax;playing=false;playBtn.innerHTML='&#9654; Play';scrub.value=T;render();return;}
+  scrub.value=T;render();requestAnimationFrame(loop);}
+playBtn.onclick=()=>{playing=!playing;
+  if(playing){if(T>=tmax)T=tmin;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
+  else playBtn.innerHTML='&#9654; Play';};
+scrub.oninput=e=>{T=parseFloat(e.target.value);render();};
+document.addEventListener('keydown',e=>{const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  if(e.key===' '){e.preventDefault();playBtn.click();}
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();
+    const tabs=['pace','gaps','stints','sectors'];let i=tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1);
+    i=(i+tabs.length)%tabs.length;document.querySelector('.tab[data-t="'+tabs[i]+'"]').click();}});
+
+/* ---------- master render ---------- */
+function render(){clock.textContent=fmtClock(T);
+  renderTrack(T);renderStandings(T);renderBadge(T);
+  const fs=renderFuel(T);const ty=renderTyres(T,fs);
+  renderPit(T,fs,ty);renderStint(T);renderAnalysis(T);}
+
+/* ---------- boot ---------- */
+(function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=(DB.event.name||'')+' · '+(DB.event.date||'');})();
+if(PREFS.tlife)document.getElementById('tlife').value=PREFS.tlife;
+if(PREFS.fcap)fcap.value=PREFS.fcap;if(PREFS.fstart)fstart.value=PREFS.fstart;if(PREFS.fcons)fcons.value=PREFS.fcons;
+if(PREFS.tab){tab=PREFS.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.t===tab));}
+const startCls=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
+clsSel.value=startCls;if(PREFS.car)selCar=PREFS.car;
+buildClass(startCls);
+T=tmin;scrub.value=T;
+render();
+requestAnimationFrame(loop);
+</script>
+</body></html>

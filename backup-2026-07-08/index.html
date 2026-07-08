@@ -288,8 +288,8 @@
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="10" title="Selected car vs class P1 — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
-        <div class="reelthumb" data-i="11" title="Selected car vs class P1 — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
+        <div class="reelthumb" data-i="10" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="11" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
         <div class="reelthumb" data-i="12" title="Setup board (test2.html)"><span class="thumbcap">BOARD</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="8" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="8" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="43" y="22" width="14" height="28" rx="6" fill="none" stroke="#9aa1a9" stroke-width="3"/></svg></div>
       </div>
     </div>
@@ -1042,7 +1042,7 @@ function renderP1Comp(T){
     const delta=mine-m;cum+=delta;
     pts.push({L,mine,delta,cum});
   }
-  if(!pts.length){ph('vs class P1 — no completed laps yet');return;}
+  if(!pts.length){ph('vs P1 (race leader) — no completed laps yet');return;}
   const yT2=64,yB2=CH-30;
   let loL=0,hiL=0;
   pts.forEach(p=>{if(p.delta<loL)loL=p.delta;if(p.delta>hiL)hiL=p.delta;if(p.cum<loL)loL=p.cum;if(p.cum>hiL)hiL=p.cum;});
@@ -1062,7 +1062,7 @@ function renderP1Comp(T){
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YL(0).toFixed(1)+'" y2="'+YL(0).toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
-  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs class P1</text>';
+  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs P1 (race leader)</text>';
   s+='<text x="10" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">— laptime (right, s)</text>';
   s+='<text x="230" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">— Δ per lap (left, s)</text>';
   s+='<text x="450" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">— cumulative Δ (left, s)</text>';
@@ -1092,7 +1092,7 @@ function renderP1Bar(T){
     const delta=mine-m;cum+=delta;
     pts.push({L,delta,cum});
   }
-  if(!pts.length){ph('vs class P1 — no completed laps yet');return;}
+  if(!pts.length){ph('vs P1 (race leader) — no completed laps yet');return;}
   const yT2=64,yB2=CH-30;
   let lo=0,hi=0;
   pts.forEach(p=>{if(p.delta<lo)lo=p.delta;if(p.delta>hi)hi=p.delta;if(p.cum<lo)lo=p.cum;if(p.cum>hi)hi=p.cum;});
@@ -1112,7 +1112,7 @@ function renderP1Bar(T){
     s+='<rect x="'+bx2.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+(p.delta<0?'#1e8f3a':'#c0392b')+'"/>';
   });
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+zeroY.toFixed(1)+'" y2="'+zeroY.toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
-  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs class P1 — per-lap Δ (bars) + cumulative Δ (line)</text>';
+  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs P1 (race leader) — per-lap Δ (bars) + cumulative Δ (line)</text>';
   const cumPts=pts.map(p=>[X(p.L),Yv(p.cum)]);
   s+='<path d="'+cumPts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#9aa1a9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
   cumPts.forEach(p=>{s+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.5" fill="#9aa1a9"/>';});
@@ -1449,7 +1449,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     // (but not while typing in an input/number field inside a reel).
     if(!cur||(e.key!=='ArrowUp'&&e.key!=='ArrowDown'))return;
     const t=e.target;
-    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
     const step=e.key==='ArrowDown'?1:-1;
     if(cur.id==='reelcard'){e.preventDefault();setReel(reelIdx+step);}
     else if(cur.querySelector&&cur.querySelector('#wxview')){e.preventDefault();setWxReel(wxReelIdx+step);}
@@ -1474,7 +1474,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
    typing in a field. */
 document.addEventListener('keydown',e=>{
   if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;
-  const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
   if(document.querySelector('.card.zoomed'))return;
   e.preventDefault();setReel(reelIdx+(e.key==='ArrowDown'?1:-1));
 });
