@@ -140,11 +140,15 @@ function setEl(s,kind){
   const h=document.createElement('div');h.className='setlbl';h.textContent=s.label;col.appendChild(h);
   s.tyres.forEach(t=>{
     if(s.placeholder){const b=document.createElement('div');b.className='band placeholder';col.appendChild(b);}
-    // rule: STINT tyres are always COLD — force hot -> cold for stint bands
-    // (a set transferred from TRACK cools down once it's a stint set).
-    else col.appendChild(bandEl(kind==='stint'&&t&&t.temp==='hot'?Object.assign({},t,{temp:'cold'}):t));
+    else col.appendChild(bandEl(stintTransfer(t,kind)));
   });
   return col;
+}
+/* TRACK -> STINT transfer = one heat cycle: hot band cools (hot -> cold) and
+   its cycle count (heat cycles) increments by 1. */
+function stintTransfer(t,kind){
+  if(kind==='stint'&&t&&t.temp==='hot')return Object.assign({},t,{temp:'cold',cycle:(t.cycle!=null?t.cycle+1:t.cycle)});
+  return t;
 }
 function emptySet(label){return {label,placeholder:true,tyres:[0,0,0,0]};}
 
