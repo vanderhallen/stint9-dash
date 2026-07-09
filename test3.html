@@ -140,7 +140,9 @@ function setEl(s,kind){
   const h=document.createElement('div');h.className='setlbl';h.textContent=s.label;col.appendChild(h);
   s.tyres.forEach(t=>{
     if(s.placeholder){const b=document.createElement('div');b.className='band placeholder';col.appendChild(b);}
-    else col.appendChild(bandEl(t));
+    // rule: STINT tyres are always COLD — force hot -> cold for stint bands
+    // (a set transferred from TRACK cools down once it's a stint set).
+    else col.appendChild(bandEl(kind==='stint'&&t&&t.temp==='hot'?Object.assign({},t,{temp:'cold'}):t));
   });
   return col;
 }
