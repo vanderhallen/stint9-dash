@@ -660,6 +660,11 @@ function saveRemoved(){try{localStorage.setItem('stint9_stint_removed',JSON.stri
 const sigOf=tyres=>(tyres||[]).map(t=>t&&t.id).join(',');
 /* STINT_SETS with any sample set that was moved to STOCK turned into an empty slot */
 function effectiveStintSets(){return STINT_SETS.map(s=>(!s.placeholder&&STINT_REMOVED.has(sigOf(s.tyres)))?{label:s.label,placeholder:true,tyres:[0,0,0,0]}:s);}
+/* every tyre serial currently on the STINT board (fixed sets + transfers) */
+function stintSerialsInUse(){const seen=new Set();
+  effectiveStintSets().forEach(s=>{if(!s.placeholder)(s.tyres||[]).forEach(t=>{if(t&&t.id)seen.add(t.id);});});
+  STINT_XFERS.forEach(ts=>(ts||[]).forEach(t=>{if(t&&t.id)seen.add(t.id);}));
+  return seen;}
 function stintSetsWithXfers(){
   // A band serial can only exist in one rectangle: reserve the fixed sets'
   // serials, then drop any transfer that reuses an already-seen serial.
@@ -672,7 +677,12 @@ function stintSetsWithXfers(){
     ids.forEach(id=>seen.add(id));clean.push(tyres);});
   if(clean.length!==STINT_XFERS.length){STINT_XFERS=clean;saveXfers();}
   let xi=0;
-  return base.map(s=>(s.placeholder&&xi<clean.length)?{label:s.label,tyres:clean[xi++]}:s);
+  const out=base.map(s=>(s.placeholder&&xi<clean.length)?{label:s.label,tyres:clean[xi++]}:s);
+  // overflow: transfers beyond the 5 fixed columns get their own columns (the
+  // STINT reel scrolls) so nothing is lost when more than 4 sets are transferred.
+  let n=out.length;
+  while(xi<clean.length){const ts=clean[xi++];out.push({label:'Stint '+(++n)+' · '+((ts[0]&&ts[0].id)||'----'),tyres:ts});}
+  return out;
 }
 /* STOCK sets = fixed A-E, then sets retired from STINT, then the empty placeholder(s) */
 function stockSetsAll(){const fixed=STOCK_SETS.filter(s=>!s.placeholder),ph=STOCK_SETS.filter(s=>s.placeholder);return [...fixed,...STOCK_ADDS,...ph];}
@@ -923,10 +933,13 @@ function unmountTrackToPit(){
 function doTransfer(){
   if(xferBusy||isTrackEmpty())return;
   _pendingPit=null;   // user did the TRACK->STINT transfer -> clear the pit reminder
-  const emptySlots=STINT_SETS.filter(s=>s.placeholder).length;
-  if(STINT_XFERS.length>=emptySlots)return;      // no empty STINT slot left
-  xferBusy=true;xferBtn.classList.add('busy');
   const raw=TRACK_BANDS.map(captureTyreRaw);
+  // no duplicate serials on the STINT board: warn + cancel instead of silently
+  // dropping the set (which would leave those tyres nowhere). No slot cap — extra
+  // sets get their own columns via stintSetsWithXfers().
+  const inUse=stintSerialsInUse(),dup=raw.map(t=>t&&t.id).filter(id=>id&&inUse.has(id));
+  if(dup.length){alert('Cannot transfer to STINT — tyre '+dup.join(', ')+' is already on the STINT board (no duplicate serials).');return;}
+  xferBusy=true;xferBtn.classList.add('busy');
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
   const clones=raw.map((t,i)=>{const c=pBand(t);const xy=CORNER_XY[TRACK_BANDS[i]];
     c.style.cssText='position:absolute;left:'+xy[0]+'px;top:'+xy[1]+'px;transform:translate(-50%,-50%);box-shadow:0 6px 20px rgba(0,0,0,.25)';overlay.appendChild(c);return c;});
