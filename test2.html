@@ -506,34 +506,17 @@ function gatherAndExit(overlay,clones,opts){
     },i*stag));
   },GATHER+60);
 }
-/* ▸ send: stack the 4 selected bands (VL top..HR bottom) at the reel's left edge,
-   then sweep them off toward the PIT (stage left); fill the PIT stack (HOT) and
-   repack STOCK as they leave. */
+/* ▸ send: fill the PIT stack (HOT) from the 4 selected bands, empty those STOCK
+   slots and repack — no fly-out animation. */
 function sendSelectedToPit(){
   if(stockSel.length<4)return;
-  const items=stockSel.slice(0,4).map((b,i)=>({band:b,pos:SEL_POS[i],key:b.dataset.stockkey,tyre:tyreFromStockBand(b,SEL_POS[i])}));
-  const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
-  const clones=items.map(it=>{const r=it.band.getBoundingClientRect();const c=pBand(it.tyre);
-    c.style.cssText='position:absolute;left:'+(r.left+r.width/2)+'px;top:'+(r.top+r.height/2)+'px;transform:translate(-50%,-50%);box-shadow:0 6px 20px rgba(0,0,0,.28)';
-    overlay.appendChild(c);return c;});
-  items.forEach(it=>{it.band.style.visibility='hidden';});   // lift the originals off
-  const panel=document.getElementById('stockPanel').getBoundingClientRect();
-  const cb=clones[0].getBoundingClientRect(),CW=cb.width,CH=cb.height;   // real clone size → panel-relative, no magic numbers
-  gatherAndExit(overlay,clones,{
-    gatherX:panel.left+28+CW/2,     // the reel's left edge = the "exit lane"
-    gatherY:panel.top+96+CH/2,      // just under the header
-    step:CH+8,
-    exitX:panel.left-CW,            // fully off the panel's left edge, toward PIT
-    onLeave:()=>{
-      const slots=['v1','v2','v3','v4'];
-      items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
-      items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();
-      stockSel=[];
-      rebuildStockPanel(true);updateStockBadge();          // emptied slots -> placeholders…
-      if(typeof refreshBtns==='function')refreshBtns();
-      setTimeout(collapseEmptyStockColumns,120);           // …then fade + repack right away (no dead pause)
-    }
-  });
+  const items=stockSel.slice(0,4).map((b,i)=>({key:b.dataset.stockkey,tyre:tyreFromStockBand(b,SEL_POS[i])}));
+  const slots=['v1','v2','v3','v4'];
+  items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
+  items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();
+  stockSel=[];
+  rebuildStockPanel(false);updateStockBadge();   // repack immediately: real bands left, placeholders trail
+  if(typeof refreshBtns==='function')refreshBtns();
 }
 /* fade every just-emptied (in-place) placeholder, then rebuild packed so the
    remaining bands shift up-and-left and only trailing placeholders remain. */
