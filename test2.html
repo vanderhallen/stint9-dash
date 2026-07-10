@@ -82,6 +82,11 @@
   /* empty parking spot: keep the rectangle, no icons — a band drops in here
      after a set is moved to PIT during a pitstop */
   .pband.placeholder{display:block;width:200px;height:132px;background:#f7f8fa;box-shadow:none}
+  /* "add new tyre" plus on the top-right-most placeholder */
+  .pband.addnew{display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pband.addnew .plus{font-size:72px;font-weight:200;line-height:1;color:#9aa2ab;transition:color .15s}
+  .pband.addnew:hover{background:#eef4ef}
+  .pband.addnew:hover .plus{color:#1e8f3a}
   .pcell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
   .pcell.hl{background:rgba(30,143,58,.12)}
   .pcell svg{width:28px;height:28px;display:block}
@@ -669,6 +674,17 @@ function saveXfers(){try{localStorage.setItem('stint9_stint_xfers',JSON.stringif
 /* sets retired STINT->STOCK, and sample STINT sets removed by such a move */
 let STOCK_ADDS=[];try{STOCK_ADDS=JSON.parse(localStorage.getItem('stint9_stock_adds'))||[];}catch(e){}
 function saveStockAdds(){try{localStorage.setItem('stint9_stock_adds',JSON.stringify(STOCK_ADDS));}catch(e){}}
+/* individual new tyres added via the "+" on the top-right-most STOCK placeholder */
+let STOCK_NEW=[];try{STOCK_NEW=JSON.parse(localStorage.getItem('stint9_stock_new'))||[];}catch(e){}
+function saveStockNew(){try{localStorage.setItem('stint9_stock_new',JSON.stringify(STOCK_NEW));}catch(e){}}
+/* next free serial across the whole board = highest in use + 1 */
+function nextFreeSerial(){let max=0;allUsedSerials(null).forEach(s=>{const n=parseInt(s,10);if(n>max)max=n;});return pad4(max+1);}
+/* add a new tyre: only NEW + COLD active, next serial, KM & CYCLE = 0 */
+function addNewStockTyre(){
+  STOCK_NEW.push({pos:null,cond:null,wear:'new',temp:'cold',id:nextFreeSerial(),km:0,cycle:0});
+  saveStockNew();
+  rebuildStockPanel(false);updateStockBadge();if(typeof refreshBtns==='function')refreshBtns();
+}
 let STINT_REMOVED=new Set();try{STINT_REMOVED=new Set(JSON.parse(localStorage.getItem('stint9_stint_removed'))||[]);}catch(e){}
 function saveRemoved(){try{localStorage.setItem('stint9_stint_removed',JSON.stringify([...STINT_REMOVED]));}catch(e){}}
 const sigOf=tyres=>(tyres||[]).map(t=>t&&t.id).join(',');
@@ -715,10 +731,16 @@ function stockDisplayColumns(){
     s.tyres.forEach((t,ti)=>{const bk='stock-'+setIdx+'-'+ti;
       if(STOCK_REMOVED.has(bk))return;               // sent to PIT: its slot stays a placeholder
       bands.push({tyre:stockMerge(t,bk),bk});});});
+  STOCK_NEW.forEach((t,i)=>{const bk='stocknew-'+i;   // individually-added new tyres
+    if(STOCK_REMOVED.has(bk))return;
+    bands.push({tyre:stockMerge(t,bk),bk});});
   const cols=[];
   for(let c=0;c<STOCK_COLS;c++){const chunk=[];
     for(let r=0;r<STOCK_ROWS;r++)chunk.push(bands[c*STOCK_ROWS+r]||null);   // survivors packed front, rest = permanent placeholders
     cols.push(chunk);}
+  // mark the top-most, right-most placeholder with the "add new tyre" plus
+  for(let r=0,done=false;r<STOCK_ROWS&&!done;r++)
+    for(let c=STOCK_COLS-1;c>=0;c--){if(cols[c][r]===null){cols[c][r]={plus:true};done=true;break;}}
   return cols;
 }
 function buildStockPanelPacked(){
@@ -732,6 +754,8 @@ function buildStockPanelPacked(){
   stockDisplayColumns().forEach(colArr=>{
     const col=document.createElement('div');col.className='pset stock';
     colArr.forEach(entry=>{
+      if(entry&&entry.plus){const b=document.createElement('div');b.className='pband placeholder addnew';b.title='add new tyre';
+        b.innerHTML='<div class="plus">+</div>';b.addEventListener('click',addNewStockTyre);col.appendChild(b);return;}
       if(!entry){const b=document.createElement('div');b.className='pband placeholder';col.appendChild(b);return;}
       const bb=pBand(entry.tyre,entry.bk);bb.dataset.stockkey=entry.bk;col.appendChild(bb);
     });
@@ -863,6 +887,7 @@ function allUsedSerials(excludeStockKey){
   [...TRACK_BANDS,...PIT_BANDS].forEach(b=>{if(EMPTY_BANDS.has(b))return;add((readBandState(b).texts||{}).xxxx);});
   stintSetsWithXfers().forEach(s=>{if(!s.placeholder)(s.tyres||[]).forEach(t=>add(t&&t.id));});
   stockSetsAll().forEach((s,si)=>{if(s.placeholder)return;(s.tyres||[]).forEach((t,ti)=>{const bk='stock-'+si+'-'+ti;if(bk===excludeStockKey||STOCK_REMOVED.has(bk))return;add(stockMerge(t,bk).id);});});
+  STOCK_NEW.forEach((t,i)=>{const bk='stocknew-'+i;if(bk===excludeStockKey||STOCK_REMOVED.has(bk))return;add(stockMerge(t,bk).id);});
   return used;
 }
 
