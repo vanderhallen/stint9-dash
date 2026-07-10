@@ -487,10 +487,14 @@ function sendSelectedToPit(){
 }
 /* fade fully-empty STOCK columns, then rebuild collapsed so the rest shift left */
 function collapseEmptyStockColumns(){
-  // fade every emptied (sent) placeholder — the gaps inside partly-emptied
-  // columns as well as fully-empty columns (but not the F "empty slot" set) —
-  // then rebuild collapsed so the remaining bands re-pack up and to the left.
-  const phs=[].slice.call(document.querySelectorAll('#stockPanel .preel > .pset:not(.placeholder) .pband.placeholder'));
+  // only fully-emptied columns collapse (fade, then shift left). Partly-emptied
+  // columns keep a placeholder in each sent slot, so every position always shows
+  // either a band or a placeholder — never a bare empty spot.
+  const phs=[];
+  [].slice.call(document.querySelectorAll('#stockPanel .preel > .pset.stock:not(.placeholder)')).forEach(col=>{
+    const bands=col.querySelectorAll('.pband'),empties=col.querySelectorAll('.pband.placeholder');
+    if(bands.length&&empties.length===bands.length)empties.forEach(p=>phs.push(p));  // whole column empty
+  });
   if(!phs.length)return;
   phs.forEach(p=>{p.style.transition='opacity .45s';p.style.opacity='0';});
   setTimeout(()=>rebuildStockPanel(false),470);
@@ -563,7 +567,7 @@ function pSet(s,kind,setIdx){
   s.tyres.forEach((t,ti)=>{
     if(s.placeholder){const b=document.createElement('div');b.className='pband placeholder';col.appendChild(b);return;}
     if(kind==='stock'){const bk='stock-'+setIdx+'-'+ti;
-      if(STOCK_REMOVED.has(bk)){if(stockShowEmpty){const pb=document.createElement('div');pb.className='pband placeholder';col.appendChild(pb);}return;}   // collapsed: skip the sent band entirely (re-packs)
+      if(STOCK_REMOVED.has(bk)){const pb=document.createElement('div');pb.className='pband placeholder';col.appendChild(pb);return;}   // sent band -> keep a placeholder so the slot is never left empty
       const bb=pBand(stockMerge(t,bk),bk);bb.dataset.stockkey=bk;col.appendChild(bb);}
     else col.appendChild(pBand(stintTransfer(t,kind)));
   });
