@@ -787,9 +787,9 @@ const rightBtn=makeMoveBtn(857,'&#9654;','put TRACK set back to PIT',unmountTrac
 const pitStockBtn=makeMoveBtn(1136,'&#9654;','send PIT set to STOCK',pitToStock);
 function refreshBtns(){
   xferBtn.classList.toggle('busy',isTrackEmpty());                 // TRACK->STINT needs a TRACK set
-  // mount: empty TRACK + filled PIT, and only in the pit window (S1) — the car
-  // is out on track in S2-S5 so mounting is blocked then.
-  leftBtn.classList.toggle('busy',isPitEmpty()||!isTrackEmpty()||(_curSec!=null&&_curSec>=2));
+  // mount: empty TRACK + filled PIT. Always active whenever the TRACK is empty
+  // (and a PIT set is available), regardless of the current sector.
+  leftBtn.classList.toggle('busy',isPitEmpty()||!isTrackEmpty());
   rightBtn.classList.toggle('busy',isTrackEmpty()||!isPitEmpty()); // unmount: filled TRACK + empty PIT
   pitStockBtn.classList.toggle('busy',isPitEmpty());               // PIT->STOCK needs a PIT set
   if(typeof updateStockCtl==='function')updateStockCtl();          // "to PIT" depends on PIT being empty
