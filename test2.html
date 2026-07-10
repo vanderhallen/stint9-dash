@@ -677,24 +677,24 @@ function stintSetsWithXfers(){
 /* STOCK sets = fixed A-E, then sets retired from STINT, then the empty placeholder(s) */
 function stockSetsAll(){const fixed=STOCK_SETS.filter(s=>!s.placeholder),ph=STOCK_SETS.filter(s=>s.placeholder);return [...fixed,...STOCK_ADDS,...ph];}
 function rebuildStintPanel(){buildPanel('stintPanel','STINT','used sets · 4 tyres per column','stint',stintSetsWithXfers(),'right');}
-/* STOCK display columns: a fixed grid of placeholder rectangles that acts like a
-   permanent background — rectangles are NEVER removed. Surviving bands are packed
-   into the top-left slots; every other slot stays a placeholder. Sending a band to
-   PIT just turns its slot into a trailing placeholder (the rectangle stays). Each
-   band keeps its stable edit-key (bk) so highlights/edits/selection follow the
-   tyre, not the slot. Columns are 4 tall; then extra empty parking columns. */
+/* STOCK display columns: a FIXED 6-column grid of placeholder rectangles that acts
+   like a permanent background — rectangles are NEVER removed. Surviving bands are
+   packed into the top-left slots (column by column); every other slot stays a
+   placeholder. Sending a band to PIT just turns its slot into a placeholder (the
+   rectangle stays). Each band keeps its stable edit-key (bk) so highlights/edits/
+   selection follow the tyre, not the slot. */
+const STOCK_COLS=6, STOCK_ROWS=4;
 function stockDisplayColumns(){
   const sets=stockSetsAll();
-  const bands=[];let totalSlots=0;
+  const bands=[];
   sets.forEach((s,setIdx)=>{if(s.placeholder)return;
-    s.tyres.forEach((t,ti)=>{const bk='stock-'+setIdx+'-'+ti;totalSlots++;   // count every original band slot
-      if(STOCK_REMOVED.has(bk))return;               // sent to PIT: slot kept as a placeholder below
+    s.tyres.forEach((t,ti)=>{const bk='stock-'+setIdx+'-'+ti;
+      if(STOCK_REMOVED.has(bk))return;               // sent to PIT: its slot stays a placeholder
       bands.push({tyre:stockMerge(t,bk),bk});});});
-  const slots=[];for(let i=0;i<totalSlots;i++)slots.push(bands[i]||null);   // survivors packed front, rest = permanent placeholders
-  const parkCols=(sets.filter(s=>s.placeholder).length||1)+4;              // extra empty parking columns
   const cols=[];
-  for(let i=0;i<slots.length;i+=4){const chunk=slots.slice(i,i+4);while(chunk.length<4)chunk.push(null);cols.push(chunk);}
-  for(let p=0;p<parkCols;p++)cols.push([null,null,null,null]);
+  for(let c=0;c<STOCK_COLS;c++){const chunk=[];
+    for(let r=0;r<STOCK_ROWS;r++)chunk.push(bands[c*STOCK_ROWS+r]||null);   // survivors packed front, rest = permanent placeholders
+    cols.push(chunk);}
   return cols;
 }
 function buildStockPanelPacked(){
