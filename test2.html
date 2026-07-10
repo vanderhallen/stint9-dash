@@ -216,6 +216,14 @@ function makeBand(x0,y0,bandKey,scale){
   box.style.cssText='position:absolute;left:'+x0+'px;top:'+y0+'px;width:'+boxW+'px;height:'+boxH+'px;'+
     'border:2px solid #16202b;border-radius:'+(14*scale)+'px;box-sizing:border-box;z-index:0;pointer-events:none';
   stage.appendChild(box);
+  // over-max-KM red cross overlay (hidden until the band's KM exceeds MAX_KM),
+  // matching the STOCK/STINT band cross. Toggled by updateBandCross().
+  const cross=el('div');cross.dataset.key='cross-band-'+bandKey;
+  cross.style.cssText='position:absolute;left:'+x0+'px;top:'+y0+'px;width:'+boxW+'px;height:'+boxH+'px;z-index:6;pointer-events:none;display:none';
+  cross.innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
+    '<line x1="0" y1="0" x2="100" y2="100" stroke="#e0301e" stroke-width="2" vector-effect="non-scaling-stroke"/>'+
+    '<line x1="100" y1="0" x2="0" y2="100" stroke="#e0301e" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
+  stage.appendChild(cross);
   const grid=[
     ['vl','VL','txt'],['vr','VR','txt'],['hl','HL','txt'],['hr','HR','txt'],['xxxx','XXXX','txt'],
     ['dry','DRY','icon'],['new','NEW','icon'],['cold','COLD','icon'],['km','KM','icon'],['n1234','0','txt'],
@@ -305,10 +313,12 @@ function loadBandStateLS(){try{return JSON.parse(localStorage.getItem('stint9_ba
 function applyBandState(st){if(!st)return;BAND_KEYS.forEach(b=>{const bs=st[b];if(!bs)return;
   BAND_HL_CELLS.forEach(k=>{const e=document.querySelector('[data-key="'+k+'-band-'+b+'"]');if(!e)return;const on=(bs.active||[]).indexOf(k)>=0;e.dataset.hl=on?'1':'0';e.style.background=on?'rgba(30,143,58,0.1)':'#fff';});
   if(bs.texts)Object.keys(bs.texts).forEach(k=>{const e=document.querySelector('[data-key="'+k+'-band-'+b+'"] .txt');if(e&&bs.texts[k]!=null)e.textContent=bs.texts[k];});
+  try{updateBandCross(b);}catch(e){}   // KM may have changed -> refresh the over-max cross (no-op if called before MAX_KM/EMPTY_BANDS init)
 });}
 const _bandSyncTimers={};
 function syncBand(band){
   saveBandStateLS();
+  try{updateBandCross(band);}catch(e){}   // keep the over-max-KM cross in sync on any band change
   clearTimeout(_bandSyncTimers[band]);
   _bandSyncTimers[band]=setTimeout(()=>{const bs=readBandState(band);
     fetch(SB_URL+'/rest/v1/stint9_band_state',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
@@ -418,6 +428,16 @@ function saveStockRemoved(){try{localStorage.setItem('stint9_stock_removed',JSON
 let MAX_KM=1000;try{const _mk=parseInt(localStorage.getItem('stint9_max_km'),10);if(_mk>0)MAX_KM=_mk;}catch(e){}
 function saveMaxKm(){try{localStorage.setItem('stint9_max_km',String(MAX_KM));}catch(e){}}
 const BAND_CROSS='<div class="bandcross"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="0" x2="100" y2="100"/><line x1="100" y1="0" x2="0" y2="100"/></svg></div>';
+/* show/hide the over-max-KM red cross on a board band (TRACK corners + PIT stack).
+   An empty band never shows a cross. */
+function updateBandCross(band){
+  const cross=document.querySelector('[data-key="cross-band-'+band+'"]');if(!cross)return;
+  const kmEl=document.querySelector('[data-key="n1234-band-'+band+'"] .txt');
+  const km=kmEl?parseInt((kmEl.textContent||'').replace(/\D/g,''),10):NaN;
+  const empty=EMPTY_BANDS.has(band);   // (EMPTY_BANDS/MAX_KM defined later — early callers wrap this in try/catch)
+  cross.style.display=(!empty&&!isNaN(km)&&km>MAX_KM)?'block':'none';
+}
+function refreshAllBandCrosses(){BAND_KEYS.forEach(updateBandCross);}
 /* marquee + cursor "select" icon (top-right of each STOCK band) */
 const SELECT_ICON='<svg viewBox="0 0 24 24" fill="none">'+
   '<g stroke="#16202b" stroke-width="2.3" stroke-linecap="round">'+
@@ -662,7 +682,7 @@ function rebuildStockPanel(showEmpty){
       '<button type="button" class="topitbtn" disabled>to PIT</button>';
     hd.appendChild(ctl);
     ctl.querySelector('.topitbtn').addEventListener('click',sendSelectedToPit);
-    const mk=ctl.querySelector('.maxkmin');if(mk)mk.addEventListener('change',()=>{const v=parseInt(mk.value,10);if(v>0){MAX_KM=v;saveMaxKm();rebuildStockPanel();rebuildStintPanel();}});
+    const mk=ctl.querySelector('.maxkmin');if(mk)mk.addEventListener('change',()=>{const v=parseInt(mk.value,10);if(v>0){MAX_KM=v;saveMaxKm();rebuildStockPanel();rebuildStintPanel();refreshAllBandCrosses();}});
   }
   updateStockCtl();
 }
@@ -715,7 +735,7 @@ let EMPTY_BANDS=new Set();try{EMPTY_BANDS=new Set(JSON.parse(localStorage.getIte
 try{if(localStorage.getItem('stint9_track_moved')==='1'){TRACK_BANDS.forEach(b=>EMPTY_BANDS.add(b));localStorage.removeItem('stint9_track_moved');}}catch(e){}
 function saveEmpty(){try{localStorage.setItem('stint9_empty_bands',JSON.stringify([...EMPTY_BANDS]));}catch(e){}}
 const _trackKm={};   // live accumulated KM per TRACK band (reset when a band is (un)mounted)
-function setBandEmpty(band,empty){if(empty)EMPTY_BANDS.add(band);else EMPTY_BANDS.delete(band);delete _trackKm[band];setBandCellsVisible(band,!empty);saveEmpty();}
+function setBandEmpty(band,empty){if(empty)EMPTY_BANDS.add(band);else EMPTY_BANDS.delete(band);delete _trackKm[band];setBandCellsVisible(band,!empty);saveEmpty();try{updateBandCross(band);}catch(e){}}
 const isTrackEmpty=()=>TRACK_BANDS.every(b=>EMPTY_BANDS.has(b));
 const isPitEmpty=()=>PIT_BANDS.every(b=>EMPTY_BANDS.has(b));
 /* copy one board band's state (highlights + serial/km/cycle) onto another + persist */
@@ -740,7 +760,7 @@ function onTyreLive(prog,sectorKm,lap,sec,pit){
       const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
       if(dKm>0){TRACK_BANDS.forEach(b=>{if(EMPTY_BANDS.has(b))return;const e=_boardKmEl(b);if(!e)return;
         if(_trackKm[b]==null)_trackKm[b]=parseInt((e.textContent||'').replace(/\D/g,''),10)||0;
-        _trackKm[b]+=dKm;e.textContent=String(Math.round(_trackKm[b]));});
+        _trackKm[b]+=dKm;e.textContent=String(Math.round(_trackKm[b]));updateBandCross(b);});
         const now=Date.now();if(now-_tkPersist>5000){_tkPersist=now;TRACK_BANDS.forEach(b=>{if(!EMPTY_BANDS.has(b))try{syncBand(b);}catch(e){}});}}
     }
     _liveProg=prog;
@@ -823,6 +843,7 @@ function pitToStock(){
 }
 EMPTY_BANDS.forEach(b=>setBandCellsVisible(b,false));   // restore hidden bands on load
 refreshBtns();
+refreshAllBandCrosses();   // reflect over-max-KM crosses from the loaded band state
 
 /* animate a set of band moves (compact clones fly from -> to, one by one) */
 function animateSeq(moves,done){
