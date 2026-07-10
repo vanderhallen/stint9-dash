@@ -505,17 +505,11 @@ function sendSelectedToPit(){
     setTimeout(collapseEmptyStockColumns,1000);    // …then (1s) fade them and shift columns left
   },1320);
 }
-/* fade fully-empty STOCK columns, then rebuild collapsed so the rest shift left */
+/* fade every just-emptied (in-place) placeholder, then rebuild packed so the
+   remaining bands shift up-and-left and only trailing placeholders remain. */
 function collapseEmptyStockColumns(){
-  // only fully-emptied columns collapse (fade, then shift left). Partly-emptied
-  // columns keep a placeholder in each sent slot, so every position always shows
-  // either a band or a placeholder — never a bare empty spot.
-  const phs=[];
-  [].slice.call(document.querySelectorAll('#stockPanel .preel > .pset.stock:not(.placeholder)')).forEach(col=>{
-    const bands=col.querySelectorAll('.pband'),empties=col.querySelectorAll('.pband.placeholder');
-    if(bands.length&&empties.length===bands.length)empties.forEach(p=>phs.push(p));  // whole column empty
-  });
-  if(!phs.length)return;
+  const phs=[].slice.call(document.querySelectorAll('#stockPanel .preel > .pset:not(.placeholder) .pband.placeholder'));
+  if(!phs.length){rebuildStockPanel(false);return;}
   phs.forEach(p=>{p.style.transition='opacity .45s';p.style.opacity='0';});
   setTimeout(()=>rebuildStockPanel(false),470);
 }
@@ -670,9 +664,47 @@ function stintSetsWithXfers(){
 /* STOCK sets = fixed A-E, then sets retired from STINT, then the empty placeholder(s) */
 function stockSetsAll(){const fixed=STOCK_SETS.filter(s=>!s.placeholder),ph=STOCK_SETS.filter(s=>s.placeholder);return [...fixed,...STOCK_ADDS,...ph];}
 function rebuildStintPanel(){buildPanel('stintPanel','STINT','used sets · 4 tyres per column','stint',stintSetsWithXfers(),'right');}
+/* STOCK display columns (resting view): surviving bands packed to the left —
+   real bands first, placeholders only trail. A placeholder that has a band to
+   its right collapses; the bands to its right shift up-and-left to fill. Each
+   band keeps its stable edit-key (bk) so highlights/edits/selection follow the
+   tyre, not the slot. Columns are 4 tall; a partial last column and the empty
+   parking column(s) are padded with placeholders (never a bare empty spot). */
+function stockDisplayColumns(){
+  const sets=stockSetsAll();
+  const bands=[];
+  sets.forEach((s,setIdx)=>{if(s.placeholder)return;
+    s.tyres.forEach((t,ti)=>{const bk='stock-'+setIdx+'-'+ti;
+      if(STOCK_REMOVED.has(bk))return;               // sent to PIT -> gone
+      bands.push({tyre:stockMerge(t,bk),bk});});});
+  const parkCols=sets.filter(s=>s.placeholder).length||1;   // trailing empty parking column(s)
+  const cols=[];
+  for(let i=0;i<bands.length;i+=4){const chunk=bands.slice(i,i+4);while(chunk.length<4)chunk.push(null);cols.push(chunk);}
+  for(let p=0;p<parkCols;p++)cols.push([null,null,null,null]);
+  return cols;
+}
+function buildStockPanelPacked(){
+  const p=document.getElementById('stockPanel');p.innerHTML='';
+  const hd=document.createElement('div');hd.className='phd';
+  hd.innerHTML='<button class="hbtn" data-goto="1" title="back to board">&#9664;</button><div class="ptitle">STOCK<small></small></div>';
+  const gb=hd.querySelector('[data-goto]');if(gb)gb.addEventListener('click',()=>goH(+gb.dataset.goto));
+  p.appendChild(hd);
+  const wrap=document.createElement('div');wrap.className='preelwrap';
+  const reel=document.createElement('div');reel.className='preel';
+  stockDisplayColumns().forEach(colArr=>{
+    const col=document.createElement('div');col.className='pset stock';
+    colArr.forEach(entry=>{
+      if(!entry){const b=document.createElement('div');b.className='pband placeholder';col.appendChild(b);return;}
+      const bb=pBand(entry.tyre,entry.bk);bb.dataset.stockkey=entry.bk;col.appendChild(bb);
+    });
+    reel.appendChild(col);
+  });
+  wrap.appendChild(reel);p.appendChild(wrap);
+}
 function rebuildStockPanel(showEmpty){
   stockSel=[];stockShowEmpty=!!showEmpty;
-  buildPanel('stockPanel','STOCK','','stock',stockSetsAll(),'left');
+  if(stockShowEmpty)buildPanel('stockPanel','STOCK','','stock',stockSetsAll(),'left');  // mid-animation: emptied slots shown in place
+  else buildStockPanelPacked();                                                          // resting: bands packed left, placeholders trail
   stockShowEmpty=false;
   const hd=document.querySelector('#stockPanel .phd');
   if(hd){const ctl=document.createElement('div');ctl.className='stockctl';
