@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STINT9 · admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
+  .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .statebig{font-size:26px;font-weight:700;letter-spacing:2px}
+  .on{color:#1e8f3a}.off{color:#e0301e}
+  .switch{position:relative;width:96px;height:44px;border-radius:24px;border:none;cursor:pointer;transition:background .2s;flex:0 0 auto}
+  .switch.on{background:#1e8f3a}.switch.off{background:#c3c8ce}
+  .knob{position:absolute;top:4px;left:4px;width:36px;height:36px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on .knob{left:56px}
+  .meta{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:10px}
+  a.btn,button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:11px 18px;border-radius:8px;text-decoration:none;display:inline-block;cursor:pointer}
+  a.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  .filters{display:flex;gap:8px;margin-bottom:14px}
+  .filters button{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;padding:7px 13px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer}
+  .filters button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .bar{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .bar .nm{width:56px;font-weight:700;letter-spacing:1px}
+  .bar .track{flex:1 1 auto;height:20px;background:#eef1f4;border-radius:5px;overflow:hidden}
+  .bar .fill{height:100%;background:#2f5fd0;border-radius:5px}
+  .bar .val{width:78px;text-align:right;color:var(--muted);font-size:12px}
+  .rank{width:22px;color:var(--muted);text-align:right;font-size:12px}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0}
+  /* login gate */
+  #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+  #gate .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px;width:300px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  #gate input{width:100%;font-family:inherit;font-size:15px;padding:10px;border:1px solid var(--border);border-radius:8px;margin:14px 0;text-align:center;letter-spacing:3px}
+  #gate .err{color:#e0301e;font-size:12px;min-height:16px}
+</style>
+</head>
+<body>
+<div id="gate"><div class="box">
+  <div style="font-size:16px;letter-spacing:3px;text-transform:uppercase;font-weight:700">STINT9 admin</div>
+  <input id="pw" type="password" placeholder="password" autofocus>
+  <div class="err" id="pwerr"></div>
+  <button class="btn" style="width:100%" onclick="tryLogin()">Enter</button>
+</div></div>
+
+<div class="wrap" id="app" style="display:none">
+  <div>
+    <h1>STINT9 · Admin</h1>
+    <div class="sub">Race-control panel &middot; stint9-dash</div>
+  </div>
+
+  <div class="card">
+    <h2>Site visibility</h2>
+    <div class="row">
+      <div>
+        <div class="statebig" id="stateLbl">…</div>
+        <div class="meta" id="stateMeta"></div>
+      </div>
+      <button class="switch off" id="sw" onclick="toggleOnline()"><span class="knob"></span></button>
+    </div>
+    <div class="meta">OFFLINE replaces the public dashboard with a blank “countdown until OPEN PITLANE” page.</div>
+  </div>
+
+  <div class="card">
+    <h2>Dashboard</h2>
+    <div class="row">
+      <div class="meta" style="margin:0">Open the live STINT9 dashboard.</div>
+      <a class="btn" href="index.html">Open dashboard →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Reel usage — most watched</h2>
+    <div class="filters">
+      <button id="fToday" class="active" onclick="setRange('today')">Today</button>
+      <button id="fAll" onclick="setRange('all')">All time</button>
+      <button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadUsage()">↻ refresh</button>
+    </div>
+    <div id="usage"><div class="empty">Loading…</div></div>
+    <div class="meta" id="usageMeta"></div>
+  </div>
+</div>
+
+<script>
+// Same Supabase project + publishable key the dashboard uses.
+var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
+var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+var H={apikey:KEY,Authorization:'Bearer '+KEY};
+// Client-side shared password (this is a soft gate — the key is in-page anyway).
+var ADMIN_PW='pitwall';
+
+/* ---- login gate ---- */
+function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadUsage();}
+function tryLogin(){var v=document.getElementById('pw').value;
+  if(v===ADMIN_PW){try{sessionStorage.setItem('stint9_admin_ok','1');}catch(e){}unlock();}
+  else{document.getElementById('pwerr').textContent='Wrong password';}}
+document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin();});
+try{if(sessionStorage.getItem('stint9_admin_ok')==='1')unlock();}catch(e){}
+
+/* ---- ONLINE / OFFLINE toggle ---- */
+var curOnline=null;
+function paint(online,meta){
+  curOnline=online;
+  var lbl=document.getElementById('stateLbl'),sw=document.getElementById('sw');
+  lbl.textContent=online?'ONLINE':'OFFLINE';lbl.className='statebig '+(online?'on':'off');
+  sw.className='switch '+(online?'on':'off');
+  document.getElementById('stateMeta').textContent=meta||'';
+}
+function loadStatus(){
+  fetch(SB+'/rest/v1/stint9_site_status?select=online,updated_at,updated_by&id=eq.1',{headers:H})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(rows){var row=rows&&rows[0];if(!row){paint(true,'');return;}
+      paint(row.online!==false,'last change '+fmtWhen(row.updated_at)+(row.updated_by?(' · '+row.updated_by):''));})
+    .catch(function(){paint(true,'(could not read status)');});
+}
+function toggleOnline(){
+  if(curOnline===null)return;var next=!curOnline;
+  paint(next,'saving…');
+  fetch(SB+'/rest/v1/stint9_site_status',{method:'POST',
+    headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({id:1,online:next,updated_at:new Date().toISOString(),updated_by:'admin'})})
+    .then(function(r){if(!r.ok)throw 0;loadStatus();})
+    .catch(function(){paint(!next,'save failed — try again');});
+}
+
+/* ---- reel-usage monitoring ---- */
+var range='today';
+function setRange(r){range=r;
+  document.getElementById('fToday').classList.toggle('active',r==='today');
+  document.getElementById('fAll').classList.toggle('active',r==='all');
+  loadUsage();}
+function todayStr(){var d=new Date(),p=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function fmtDur(s){s=Math.round(s);var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
+  if(m>0)return m+'m '+String(sec).padStart(2,'0')+'s';return sec+'s';}
+function fmtWhen(iso){if(!iso)return '—';try{var d=new Date(iso);return d.toLocaleString();}catch(e){return iso;}}
+function loadUsage(){
+  var url=SB+'/rest/v1/stint9_reel_usage?select=reel,seconds,session_id,event_date';
+  if(range==='today')url+='&event_date=eq.'+encodeURIComponent(todayStr());
+  fetch(url,{headers:H}).then(function(r){return r.ok?r.json():[];}).then(render).catch(function(){
+    document.getElementById('usage').innerHTML='<div class="empty">Could not load usage.</div>';});
+}
+function render(rows){
+  var box=document.getElementById('usage');
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No usage recorded '+(range==='today'?'today':'yet')+'.</div>';document.getElementById('usageMeta').textContent='';return;}
+  var byReel={},sess={};
+  rows.forEach(function(r){byReel[r.reel]=(byReel[r.reel]||0)+(+r.seconds||0);if(r.session_id)sess[r.session_id]=1;});
+  var arr=Object.keys(byReel).map(function(k){return {reel:k,sec:byReel[k]};}).sort(function(a,b){return b.sec-a.sec;});
+  var max=arr[0].sec||1;
+  box.innerHTML=arr.map(function(x,i){var pct=Math.max(2,Math.round(x.sec/max*100));
+    return '<div class="bar"><span class="rank">'+(i+1)+'</span><span class="nm">'+x.reel+'</span>'+
+      '<span class="track"><span class="fill" style="width:'+pct+'%"></span></span>'+
+      '<span class="val">'+fmtDur(x.sec)+'</span></div>';}).join('');
+  document.getElementById('usageMeta').textContent='Suggested reel order for next race: '+arr.map(function(x){return x.reel;}).join(' · ')+'   ('+Object.keys(sess).length+' session'+(Object.keys(sess).length!==1?'s':'')+')';
+}
+</script>
+</body>
+</html>
