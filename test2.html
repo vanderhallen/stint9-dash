@@ -677,7 +677,7 @@ function stockDisplayColumns(){
     s.tyres.forEach((t,ti)=>{const bk='stock-'+setIdx+'-'+ti;
       if(STOCK_REMOVED.has(bk))return;               // sent to PIT -> gone
       bands.push({tyre:stockMerge(t,bk),bk});});});
-  const parkCols=(sets.filter(s=>s.placeholder).length||1)+3;   // trailing empty parking columns (base + 3 extra)
+  const parkCols=(sets.filter(s=>s.placeholder).length||1)+2;   // trailing empty parking columns (base + 2 extra; fits without horizontal scroll)
   const cols=[];
   for(let i=0;i<bands.length;i+=4){const chunk=bands.slice(i,i+4);while(chunk.length<4)chunk.push(null);cols.push(chunk);}
   for(let p=0;p<parkCols;p++)cols.push([null,null,null,null]);
