@@ -480,30 +480,60 @@ function setBoardBandFromTyre(band,t){
   try{syncBand(band);}catch(e){}
   setBandEmpty(band,false);
 }
-/* ▸ send: stack the 4 selected bands (VL top..HR bottom) and slide them left off
-   the page, then fill the PIT stack and empty those STOCK slots. */
+/* Shared transfer animation. `clones` are already in `overlay` at their start
+   positions (with NO transition set). They gather into a neat vertical stack at
+   (gatherX, gatherY + i*step), then leave one-by-one — sliding to exitX while
+   shrinking and fading toward the destination side.
+   • opts.onLeave fires once, as the stack starts leaving → do the state commit +
+     repack there so it happens under the departing clones (no dead pause).
+   • opts.onExit fires after the last clone is gone → release busy flags.
+   Completion is driven by transitionend (with a timeout fallback), so nothing
+   depends on hand-tuned frame counts. */
+function gatherAndExit(overlay,clones,opts){
+  const EASE='cubic-bezier(.55,.06,.2,1)',GATHER=520,EXIT=520,
+        stag=(opts.stagger!=null?opts.stagger:90),step=(opts.step!=null?opts.step:140),shrink=opts.shrink!==false;
+  clones.forEach(c=>{c.style.transition='left '+GATHER+'ms '+EASE+',top '+GATHER+'ms '+EASE;});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{clones.forEach((c,i)=>{c.style.left=opts.gatherX+'px';c.style.top=(opts.gatherY+i*step)+'px';});}));
+  setTimeout(()=>{
+    if(opts.onLeave)opts.onLeave();
+    let gone=0;const finish=()=>{if(++gone>=clones.length){overlay.remove();if(opts.onExit)opts.onExit();}};
+    clones.forEach((c,i)=>setTimeout(()=>{
+      c.style.transition='left '+EXIT+'ms '+EASE+',transform '+EXIT+'ms '+EASE+',opacity '+EXIT+'ms '+EASE;
+      c.style.left=opts.exitX+'px';if(shrink)c.style.transform='translate(-50%,-50%) scale(.35)';c.style.opacity='0';
+      let done=false;const end=()=>{if(done)return;done=true;finish();};
+      c.addEventListener('transitionend',ev=>{if(ev.propertyName==='left')end();},{once:true});
+      setTimeout(end,EXIT+140);   // fallback if transitionend never fires
+    },i*stag));
+  },GATHER+60);
+}
+/* ▸ send: stack the 4 selected bands (VL top..HR bottom) at the reel's left edge,
+   then sweep them off toward the PIT (stage left); fill the PIT stack (HOT) and
+   repack STOCK as they leave. */
 function sendSelectedToPit(){
   if(stockSel.length<4)return;
   const items=stockSel.slice(0,4).map((b,i)=>({band:b,pos:SEL_POS[i],key:b.dataset.stockkey,tyre:tyreFromStockBand(b,SEL_POS[i])}));
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
-  const EASE='cubic-bezier(.55,.06,.2,1)';
   const clones=items.map(it=>{const r=it.band.getBoundingClientRect();const c=pBand(it.tyre);
-    c.style.cssText='position:absolute;left:'+(r.left+r.width/2)+'px;top:'+(r.top+r.height/2)+'px;transform:translate(-50%,-50%);'+
-      'transition:left .55s '+EASE+',top .55s '+EASE+',opacity .5s;box-shadow:0 6px 20px rgba(0,0,0,.28)';overlay.appendChild(c);return c;});
+    c.style.cssText='position:absolute;left:'+(r.left+r.width/2)+'px;top:'+(r.top+r.height/2)+'px;transform:translate(-50%,-50%);box-shadow:0 6px 20px rgba(0,0,0,.28)';
+    overlay.appendChild(c);return c;});
   items.forEach(it=>{it.band.style.visibility='hidden';});   // lift the originals off
-  const stackX=430,stackY0=112,step=140;
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{clones.forEach((c,i)=>{c.style.left=stackX+'px';c.style.top=(stackY0+i*step)+'px';});}));
-  setTimeout(()=>{clones.forEach(c=>{c.style.transition='left .6s '+EASE+',opacity .6s';c.style.left='-260px';c.style.opacity='0';});},640);
-  setTimeout(()=>{
-    overlay.remove();
-    const slots=['v1','v2','v3','v4'];
-    items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
-    items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();  // empty STOCK slots
-    stockSel=[];
-    rebuildStockPanel(true);updateStockBadge();   // show the emptied slots as placeholders first
-    if(typeof refreshBtns==='function')refreshBtns();
-    setTimeout(collapseEmptyStockColumns,1000);    // …then (1s) fade them and shift columns left
-  },1320);
+  const panel=document.getElementById('stockPanel').getBoundingClientRect();
+  const cb=clones[0].getBoundingClientRect(),CW=cb.width,CH=cb.height;   // real clone size → panel-relative, no magic numbers
+  gatherAndExit(overlay,clones,{
+    gatherX:panel.left+28+CW/2,     // the reel's left edge = the "exit lane"
+    gatherY:panel.top+96+CH/2,      // just under the header
+    step:CH+8,
+    exitX:panel.left-CW,            // fully off the panel's left edge, toward PIT
+    onLeave:()=>{
+      const slots=['v1','v2','v3','v4'];
+      items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
+      items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();
+      stockSel=[];
+      rebuildStockPanel(true);updateStockBadge();          // emptied slots -> placeholders…
+      if(typeof refreshBtns==='function')refreshBtns();
+      setTimeout(collapseEmptyStockColumns,120);           // …then fade + repack right away (no dead pause)
+    }
+  });
 }
 /* fade every just-emptied (in-place) placeholder, then rebuild packed so the
    remaining bands shift up-and-left and only trailing placeholders remain. */
@@ -858,20 +888,16 @@ function pitToStock(){
   const slots=PIT_BANDS.filter(v=>!EMPTY_BANDS.has(v));
   const tyres=slots.map(captureTyreRaw);
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
-  const EASE='cubic-bezier(.55,.06,.2,1)';
   const clones=slots.map((v,i)=>{const c=pBand(tyres[i]);const xy=PIT_XY[v];
-    c.style.cssText='position:absolute;left:'+xy[0]+'px;top:'+xy[1]+'px;transform:translate(-50%,-50%);'+
-      'transition:left .55s '+EASE+',top .55s '+EASE+',opacity .6s;box-shadow:0 6px 20px rgba(0,0,0,.28)';overlay.appendChild(c);return c;});
+    c.style.cssText='position:absolute;left:'+xy[0]+'px;top:'+xy[1]+'px;transform:translate(-50%,-50%);box-shadow:0 6px 20px rgba(0,0,0,.28)';overlay.appendChild(c);return c;});
   slots.forEach(v=>setBandCellsVisible(v,false));
-  const stackX=980,stackY0=112,step=140;
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{clones.forEach((c,i)=>{c.style.left=stackX+'px';c.style.top=(stackY0+i*step)+'px';});}));
-  setTimeout(()=>{clones.forEach(c=>{c.style.transition='left .6s '+EASE+',opacity .6s';c.style.left='1600px';c.style.opacity='0';});},640);
-  setTimeout(()=>{
-    overlay.remove();
-    STOCK_ADDS.push({label:'Set · '+((tyres[0]&&tyres[0].id)||'----'),tyres:tyres});saveStockAdds();
-    slots.forEach(v=>setBandEmpty(v,true));
-    animBusy=false;rebuildStockPanel();updateStockBadge();refreshBtns();
-  },1320);
+  gatherAndExit(overlay,clones,{gatherX:980,gatherY:112,step:140,exitX:window.innerWidth+260,   // sweep right toward STOCK
+    onLeave:()=>{
+      STOCK_ADDS.push({label:'Set · '+((tyres[0]&&tyres[0].id)||'----'),tyres:tyres});saveStockAdds();
+      slots.forEach(v=>setBandEmpty(v,true));
+      rebuildStockPanel();updateStockBadge();refreshBtns();
+    },
+    onExit:()=>{animBusy=false;}});
 }
 EMPTY_BANDS.forEach(b=>setBandCellsVisible(b,false));   // restore hidden bands on load
 refreshBtns();
@@ -918,20 +944,16 @@ function doTransfer(){
   xferBusy=true;xferBtn.classList.add('busy');
   const raw=TRACK_BANDS.map(captureTyreRaw);
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
-  const corners=[[336,225.6],[694,225.6],[336,494.4],[694,494.4]]; // tl,tr,bl,br centres
-  const EASE='cubic-bezier(.55,.06,.2,1)';
-  const clones=raw.map((t,i)=>{const c=pBand(t);c.style.cssText='position:absolute;left:'+corners[i][0]+'px;top:'+corners[i][1]+'px;transform:translate(-50%,-50%);'+
-    'transition:left .5s '+EASE+',top .5s '+EASE+',opacity .4s;box-shadow:0 6px 20px rgba(0,0,0,.25)';overlay.appendChild(c);return c;});
+  const clones=raw.map((t,i)=>{const c=pBand(t);const xy=CORNER_XY[TRACK_BANDS[i]];
+    c.style.cssText='position:absolute;left:'+xy[0]+'px;top:'+xy[1]+'px;transform:translate(-50%,-50%);box-shadow:0 6px 20px rgba(0,0,0,.25)';overlay.appendChild(c);return c;});
   TRACK_BANDS.forEach(b=>setBandCellsVisible(b,false));
-  const stackX=430,stackY0=112,step=140;
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{clones.forEach((c,i)=>{c.style.left=stackX+'px';c.style.top=(stackY0+i*step)+'px';});}));
-  setTimeout(()=>{clones.forEach(c=>{c.style.transition='left .6s '+EASE+',top .6s '+EASE+',opacity .6s';c.style.left='-260px';c.style.opacity='0';});},640);
-  setTimeout(()=>{
-    overlay.remove();
-    STINT_XFERS.push(raw.map(tyreTransfer));saveXfers();rebuildStintPanel();updateStintBadge();
-    TRACK_BANDS.forEach(b=>setBandEmpty(b,true));
-    xferBusy=false;refreshBtns();
-  },1320);
+  gatherAndExit(overlay,clones,{gatherX:430,gatherY:112,step:140,exitX:-260,   // sweep left toward STINT
+    onLeave:()=>{
+      STINT_XFERS.push(raw.map(tyreTransfer));saveXfers();rebuildStintPanel();updateStintBadge();
+      TRACK_BANDS.forEach(b=>setBandEmpty(b,true));
+      refreshBtns();
+    },
+    onExit:()=>{xferBusy=false;refreshBtns();}});
 }
 /* red badge on the STINT button = number of sets currently in STINT (filled
    columns), like an unread-SMS count on an iPhone app icon. */
