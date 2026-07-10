@@ -527,7 +527,9 @@ function sendSelectedToPit(){
   const EASE='cubic-bezier(.5,.05,.2,1)';
   const clones=items.map(it=>{const r=it.band.getBoundingClientRect();const c=pBand(it.tyre);
     c.style.cssText='position:absolute;left:'+r.left+'px;top:'+r.top+'px;box-shadow:0 6px 20px rgba(0,0,0,.28)';
-    overlay.appendChild(c);it.band.style.visibility='hidden';return {c,w:r.width};});
+    overlay.appendChild(c);
+    const ph=document.createElement('div');ph.className='pband placeholder';it.band.replaceWith(ph);   // reveal the placeholder grid underneath as the band lifts off
+    return {c,w:r.width};});
   let gone=0;const finish=()=>{if(++gone>=clones.length){overlay.remove();rebuildStockPanel(false);updateStockBadge();if(typeof refreshBtns==='function')refreshBtns();}};
   clones.forEach(({c,w},i)=>setTimeout(()=>{
     c.style.transition='left .5s '+EASE+',opacity .5s ease,transform .5s '+EASE;
@@ -738,9 +740,9 @@ function stockDisplayColumns(){
   for(let c=0;c<STOCK_COLS;c++){const chunk=[];
     for(let r=0;r<STOCK_ROWS;r++)chunk.push(bands[c*STOCK_ROWS+r]||null);   // survivors packed front, rest = permanent placeholders
     cols.push(chunk);}
-  // mark the top-most, right-most placeholder with the "add new tyre" plus
-  for(let r=0,done=false;r<STOCK_ROWS&&!done;r++)
-    for(let c=STOCK_COLS-1;c>=0;c--){if(cols[c][r]===null){cols[c][r]={plus:true};done=true;break;}}
+  // mark the left-most, top-most free placeholder (the next packing slot) with the "add new tyre" plus
+  for(let c=0,done=false;c<STOCK_COLS&&!done;c++)
+    for(let r=0;r<STOCK_ROWS;r++){if(cols[c][r]===null){cols[c][r]={plus:true};done=true;break;}}
   return cols;
 }
 function buildStockPanelPacked(){
