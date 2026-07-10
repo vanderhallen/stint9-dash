@@ -57,7 +57,9 @@
     display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25);user-select:none}
   .setretire:hover{background:#6b7480}
   /* STOCK "send 4 tyres to PIT" controls (in the STOCK header) */
-  .stockctl{display:flex;align-items:center;gap:14px}
+  .stockctl{display:flex;align-items:center;gap:18px}
+  .stockcta{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .stockcta-row{display:flex;align-items:center;gap:14px}
   .stockctltxt{font-size:14px;color:#16202b;font-weight:600;letter-spacing:.5px}
   .stockmax{font-size:13px;color:#6b7480;font-weight:600;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px}
   .stockmax input{width:70px;font-family:inherit;font-size:13px;font-weight:700;color:#16202b;padding:5px 7px;border:1.5px solid #cfd4da;border-radius:6px}
@@ -744,9 +746,11 @@ function rebuildStockPanel(showEmpty){
   stockShowEmpty=false;
   const hd=document.querySelector('#stockPanel .phd');
   if(hd){const ctl=document.createElement('div');ctl.className='stockctl';
-    ctl.innerHTML='<span class="stockctltxt">select 4 tyres, and send to PIT</span>'+
-      '<span class="stockpips"><i></i><i></i><i></i><i></i></span>'+
-      '<button type="button" class="topitbtn" disabled>to PIT</button>'+
+    ctl.innerHTML='<span class="stockcta">'+
+        '<span class="stockcta-row"><span class="stockpips"><i></i><i></i><i></i><i></i></span>'+
+        '<button type="button" class="topitbtn" disabled>to PIT</button></span>'+
+        '<span class="stockctltxt">select 4 tyres, and send to PIT</span>'+
+      '</span>'+
       '<span class="stockmax">max KM <input type="number" class="maxkmin" min="0" step="100" value="'+MAX_KM+'"></span>';
     hd.appendChild(ctl);
     ctl.querySelector('.topitbtn').addEventListener('click',sendSelectedToPit);
