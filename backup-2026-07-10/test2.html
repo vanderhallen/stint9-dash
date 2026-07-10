@@ -480,9 +480,18 @@ function sendSelectedToPit(){
     items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
     items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();  // empty STOCK slots
     stockSel=[];
-    rebuildStockPanel();updateStockBadge();
+    rebuildStockPanel(true);updateStockBadge();   // show the emptied slots as placeholders first
     if(typeof refreshBtns==='function')refreshBtns();
+    setTimeout(collapseEmptyStockColumns,1000);    // …then (1s) fade them and shift columns left
   },1320);
+}
+/* fade fully-empty STOCK columns, then rebuild collapsed so the rest shift left */
+function collapseEmptyStockColumns(){
+  const cols=[].slice.call(document.querySelectorAll('#stockPanel .preel > .pset'));
+  const empties=cols.filter(col=>!col.classList.contains('placeholder')&&col.querySelectorAll('.pband').length>0&&col.querySelector('.pband:not(.placeholder)')===null);
+  if(!empties.length)return;
+  empties.forEach(col=>{col.style.transition='opacity .45s';col.style.opacity='0';});
+  setTimeout(()=>rebuildStockPanel(false),470);
 }
 function pBand(t,editKey){
   t=t||{};const b=document.createElement('div');b.className='pband';
@@ -543,7 +552,10 @@ function wireStockCell(c,g,band,editKey){
     txt.addEventListener('blur',commit);
   }
 }
+let stockShowEmpty=false;   // when false, a fully-emptied STOCK set collapses (column removed)
 function pSet(s,kind,setIdx){
+  // a STOCK set whose 4 bands were all sent to PIT collapses (unless we're mid-fade)
+  if(kind==='stock'&&!s.placeholder&&!stockShowEmpty&&s.tyres.every((t,ti)=>STOCK_REMOVED.has('stock-'+setIdx+'-'+ti)))return null;
   const col=document.createElement('div');col.className='pset '+kind+(s.placeholder?' placeholder':'');
   if(kind!=='stock'){const h=document.createElement('div');h.className='psetlbl';h.textContent=s.label;col.appendChild(h);}  // STOCK: no set label
   s.tyres.forEach((t,ti)=>{
@@ -601,7 +613,7 @@ function buildPanel(panelId,titleMain,titleSub,kind,sets,backSide){
   p.appendChild(hd);
   const wrap=document.createElement('div');wrap.className='preelwrap';
   const reel=document.createElement('div');reel.className='preel';
-  sets.forEach((s,i)=>reel.appendChild(pSet(s,kind,i)));
+  sets.forEach((s,i)=>{const col=pSet(s,kind,i);if(col)reel.appendChild(col);});
   wrap.appendChild(reel);p.appendChild(wrap);
 }
 /* sets transferred from TRACK during pitstops fill STINT's empty slots in order */
@@ -632,9 +644,10 @@ function stintSetsWithXfers(){
 /* STOCK sets = fixed A-E, then sets retired from STINT, then the empty placeholder(s) */
 function stockSetsAll(){const fixed=STOCK_SETS.filter(s=>!s.placeholder),ph=STOCK_SETS.filter(s=>s.placeholder);return [...fixed,...STOCK_ADDS,...ph];}
 function rebuildStintPanel(){buildPanel('stintPanel','STINT','used sets · 4 tyres per column','stint',stintSetsWithXfers(),'right');}
-function rebuildStockPanel(){
-  stockSel=[];
+function rebuildStockPanel(showEmpty){
+  stockSel=[];stockShowEmpty=!!showEmpty;
   buildPanel('stockPanel','STOCK','','stock',stockSetsAll(),'left');
+  stockShowEmpty=false;
   const hd=document.querySelector('#stockPanel .phd');
   if(hd){const ctl=document.createElement('div');ctl.className='stockctl';
     ctl.innerHTML='<span class="stockmax">max KM <input type="number" class="maxkmin" min="0" step="100" value="'+MAX_KM+'"></span>'+
@@ -667,7 +680,7 @@ window.addEventListener('keydown',e=>{
 });
 // ...and when the parent dashboard (which owns focus for the reel arrows)
 // forwards a Left/Right press to us
-window.addEventListener('message',e=>{const d=e.data;if(d&&d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));});
+window.addEventListener('message',e=>{const d=e.data;if(!d)return;if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreLive')onTyreLive(d.prog,d.kmPerSector);});
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
@@ -695,11 +708,28 @@ const posOf=st=>(st.active||[]).find(k=>['vl','vr','hl','hr'].indexOf(k)>=0);
 let EMPTY_BANDS=new Set();try{EMPTY_BANDS=new Set(JSON.parse(localStorage.getItem('stint9_empty_bands'))||[]);}catch(e){}
 try{if(localStorage.getItem('stint9_track_moved')==='1'){TRACK_BANDS.forEach(b=>EMPTY_BANDS.add(b));localStorage.removeItem('stint9_track_moved');}}catch(e){}
 function saveEmpty(){try{localStorage.setItem('stint9_empty_bands',JSON.stringify([...EMPTY_BANDS]));}catch(e){}}
-function setBandEmpty(band,empty){if(empty)EMPTY_BANDS.add(band);else EMPTY_BANDS.delete(band);setBandCellsVisible(band,!empty);saveEmpty();}
+const _trackKm={};   // live accumulated KM per TRACK band (reset when a band is (un)mounted)
+function setBandEmpty(band,empty){if(empty)EMPTY_BANDS.add(band);else EMPTY_BANDS.delete(band);delete _trackKm[band];setBandCellsVisible(band,!empty);saveEmpty();}
 const isTrackEmpty=()=>TRACK_BANDS.every(b=>EMPTY_BANDS.has(b));
 const isPitEmpty=()=>PIT_BANDS.every(b=>EMPTY_BANDS.has(b));
 /* copy one board band's state (highlights + serial/km/cycle) onto another + persist */
-function copyBandState(from,to){const bs=readBandState(from);try{applyBandState({[to]:bs});}catch(e){}try{syncBand(to);}catch(e){}}
+function copyBandState(from,to){const bs=readBandState(from);try{applyBandState({[to]:bs});}catch(e){}try{syncBand(to);}catch(e){}delete _trackKm[to];}
+/* live KM: the parent posts the selected car's progress; while tyres are on
+   TRACK their KM ticks up by (Δprogress × km-per-sector). The accumulated KM is
+   in the DOM, so it travels with the band when it's later pushed to STINT. */
+let _liveProg=null,_tkPersist=0;
+function _boardKmEl(band){return document.querySelector('[data-key="n1234-band-'+band+'"] .txt');}
+function onTyreLive(prog,kmPerSector){
+  if(prog==null){_liveProg=null;return;}
+  if(_liveProg!=null&&prog>_liveProg&&kmPerSector>0&&!isTrackEmpty()){
+    const dKm=(prog-_liveProg)*kmPerSector;
+    TRACK_BANDS.forEach(b=>{if(EMPTY_BANDS.has(b))return;const e=_boardKmEl(b);if(!e)return;
+      if(_trackKm[b]==null)_trackKm[b]=parseInt((e.textContent||'').replace(/\D/g,''),10)||0;
+      _trackKm[b]+=dKm;e.textContent=String(Math.round(_trackKm[b]));});
+    const now=Date.now();if(now-_tkPersist>5000){_tkPersist=now;TRACK_BANDS.forEach(b=>{if(!EMPTY_BANDS.has(b))try{syncBand(b);}catch(e){}});}
+  }
+  _liveProg=prog;
+}
 /* every serial currently in use across TRACK, PIT, STINT and STOCK (visible
    bands only), optionally excluding one STOCK band key being edited. */
 function allUsedSerials(excludeStockKey){

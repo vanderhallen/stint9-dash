@@ -1475,6 +1475,9 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===11||_tk)renderP1Comp(T);
   if(reelIdx===12||_tk)renderP1Bar(T);
   if(_tk)updateThumbs();
+  // feed the TYRE board the selected car's live progress so KM ticks up on TRACK
+  // (carProgress.p is ~+5 per lap → kmPerSector = km-per-lap / 5). Throttled.
+  try{const _bf=document.getElementById('boardframe');if(_bf&&_bf.contentWindow){const _now=Date.now();if(_now-(window.__tlT||0)>200){window.__tlT=_now;const _pr=selCar?carProgress(selCar,T):null;_bf.contentWindow.postMessage({type:'tyreLive',prog:_pr?_pr.p:null,kmPerSector:5},'*');}}}catch(e){}
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const ld=slg?Math.max(0,slg[0]-1):0;
