@@ -13,26 +13,29 @@ of truth, so a teammate on another device sees the same data):
   stored per-car under `state.set` in the same row, applied when a car is
   selected. Two teams with different tank sizes no longer clash.
 - **Per-lap notes** — `stint9_fuel_notes (event_date, car, lap)`.
+- **Tyre board** (TYRE reel, `test2.html`) — the WHOLE board as one JSON blob per
+  car in `stint9_tyre_state (car)`: stock inventory (serials/km/cycles), stock &
+  stint moves, empty bands, and board-band highlights. The dashboard sends the
+  selected car to the iframe (`postMessage 'tyreCar'`); on car change the board
+  saves the outgoing car, then loads + re-renders the incoming car's blob (or a
+  fresh default board if that car has none). Replaces all the old localStorage
+  stores (`stint9_stock_state`, `_stock_removed/_adds/_new`, `_stint_xfers/
+  _removed`, `_empty_bands`, `stint9_band_state`).
 
-localStorage is no longer used for any of the above. (Persisted only in **LIVE**;
-SIM stays in-memory as it's just practice replay.)
+localStorage is no longer used for any of the above. (Fuel/notes persist only in
+**LIVE**; SIM stays in-memory. The tyre board persists per-car whenever a car is
+selected.)
 
-## ⏳ Planned next — full tyre board per-car (deferred, needs a tested pass)
-The tyre board (`test2.html`, TYRE reel) keeps **most of its real state in
-global localStorage**, not just the small `stint9_band_state` highlights. To make
-tyres truly per-car, all of these must move to per-car DB storage:
+⚠️ **Needs an in-browser rehearsal before race use** — the tyre-board migration
+is verified for syntax + DB round-trip, but the intricate render (locked
+orientation, unique serials, heat-cycle/flow logic) should be exercised live:
+select car A, edit stock/stint/bands, switch to car B, confirm B is separate,
+switch back and confirm A persisted.
 
-- `stint9_stock_state` — **the tyre inventory** (per-band serial / km / cycles).
-- `stint9_stock_removed`, `stint9_stock_adds`, `stint9_stock_new` — stock moves.
-- `stint9_stint_xfers`, `stint9_stint_removed` — stint transfers/removals.
-- `stint9_empty_bands` — which parking spots are empty.
-- `stint9_band_state` — highlight/number cells (has a Supabase table already).
-
-Plan: add a `car` key to each, thread the dashboard's selected car into the
-iframe (postMessage `tyreCar`), load/save per-car, and clear the board on car
-change. This is an intricate board (locked orientation, unique serials, heat-
-cycle & flow logic) so it needs its own change + an in-browser rehearsal before
-a race. **Deferred deliberately** to avoid a half-migrated, inconsistent board.
+## Kept global on purpose
+- `stint9_max_km` (max km per band — a tyre spec, same across cars) stays in
+  localStorage as global config.
+- Board layout + sub-reel index (`test2_*`) stay local (per-device UI).
 
 Config that is genuinely global stays global: `stint9_max_km` (max km per band),
 board layout, and sub-reel index.
