@@ -26,11 +26,9 @@ localStorage is no longer used for any of the above. (Fuel/notes persist only in
 **LIVE**; SIM stays in-memory. The tyre board persists per-car whenever a car is
 selected.)
 
-⚠️ **Needs an in-browser rehearsal before race use** — the tyre-board migration
-is verified for syntax + DB round-trip, but the intricate render (locked
-orientation, unique serials, heat-cycle/flow logic) should be exercised live:
-select car A, edit stock/stint/bands, switch to car B, confirm B is separate,
-switch back and confirm A persisted.
+✅ **Rehearsed in-browser (2026-07-13)** — select car A, edit stock/stint/bands,
+switch to car B (fresh board), switch back to A (edits persisted), and a second
+device on car A sees the same data. All confirmed working.
 
 ## Kept global on purpose
 - `stint9_max_km` (max km per band — a tyre spec, same across cars) stays in
