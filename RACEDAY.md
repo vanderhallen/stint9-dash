@@ -4,6 +4,28 @@ Goal: minimal coding on the day. Everything is built and tested. The data source
 is stint9's own JSON API (see `live/stint9-api.md`), read by the browser
 collector — the WIGE-socket path below is only a fallback.
 
+## 🔬 Dry-run (do this BEFORE the real race — any live NLS session works)
+A 5-minute test during practice/quali proves the four things not yet verified:
+eventId detection, the Clerk cookie, the `todTs` format, and end-to-end render.
+It moves race-day confidence from ~65% to ~90%.
+
+1. **Probe (read-only, writes nothing).** Log in to **stint9.com/app**, open the
+   live-timing view while cars are running, DevTools → Console → paste
+   **`live/probe.js`**. Copy the whole console output back to me — it captures
+   the `eventId` and one real lap object so I can lock down `todTs`/fields with
+   no guessing. *(Skip straight to step 2 if you'd rather just try it.)*
+2. **Collector.** Paste **`live/collector.js`**, let it run ~2 min. Check
+   `stint9collector.status()` shows `polls` climbing and `lastErr: null`.
+3. **Render.** Open the dashboard → **LIVE**. Confirm cars appear on the map and
+   positions look sane. Note anything off.
+4. **Clean up the test data:**
+   `delete from stint9_live_timing where event_date = current_date;`
+   and `stint9collector.stop()`.
+
+If steps 1–3 work, race day is ~95%. If anything errors, send me the console
+line — every likely failure is a small patch (eventId regex, todTs conversion,
+a field name).
+
 ## ✅ Primary path — browser collector (recommended, ~30 seconds)
 1. Open **stint9.com/app**, log in, go to the **live timing** view.
 2. Open DevTools → **Console**, paste the entire contents of **`live/collector.js`**.
