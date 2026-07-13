@@ -15,10 +15,19 @@
  * Target: public.stint9_live_timing (same table the LIVE view reads).
  *
  * USAGE
- *   node live/vds-relay.mjs <eventId>          # subscribe + upsert to Supabase
+ *   node live/vds-relay.mjs --watch            # RACE-DAY: scan until an event is
+ *                                              #   live, then auto-start the relay
+ *   node live/vds-relay.mjs --watch --range 1-80
+ *   node live/vds-relay.mjs <eventId>          # known id: subscribe + upsert
  *   EVENT_ID=24 node live/vds-relay.mjs        # eventId via env
  *   node live/vds-relay.mjs <eventId> --dry    # log + map, but DON'T write Supabase
- *   node live/vds-relay.mjs --detect 19 20 24  # probe which eventId is live now
+ *   node live/vds-relay.mjs --detect 19 20 24  # one-shot: is any of these live now?
+ *
+ * WIGE note: livetiming.azurewebsites.net IS the WIGE timing backend (channels
+ * [0,4], Origin livetiming.wige.de — see live/wige-scrape/config.ts); vdsmotorsport.com
+ * and wige.de are just front-ends onto it, so this already reads WIGE directly.
+ * If a distinct wige.de socket ever appears, set WIGE_WS_URL=wss://… and it is
+ * tried FIRST; whichever endpoint yields a live snapshot is the one used.
  *
  * Requires Node >= 22 (global WebSocket + fetch). No npm deps.
  *
@@ -29,6 +38,9 @@
  */
 
 const WS_URL = process.env.WS_URL || 'wss://livetiming.azurewebsites.net/';
+// Endpoints tried in order. A real wige.de socket (if one ever exists) wins over
+// the Azure/WIGE backend — implements "prefer WIGE if found".
+const ENDPOINTS = [process.env.WIGE_WS_URL, WS_URL].filter(Boolean);
 const SB_URL = process.env.SB_URL || 'https://esvvzgxqnfszhttdkuzc.supabase.co';
 const SB_KEY = process.env.SB_KEY || 'sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
 const UPSERT_MIN_MS = Number(process.env.UPSERT_MIN_MS || 4000); // throttle writes
@@ -44,9 +56,21 @@ const LOG_DIR = join(HERE, 'logs');
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry');
 const DETECT = args.includes('--detect');
-const positional = args.filter(a => !a.startsWith('--'));
-const EVENT_ID = process.env.EVENT_ID || (!DETECT ? positional[0] : undefined);
+const WATCH = args.includes('--watch');
+// --range a-b  (inclusive) expands to a candidate eventId list for scan modes.
+function parseRange() {
+  const i = args.indexOf('--range');
+  if (i >= 0 && args[i + 1]) {
+    const m = args[i + 1].match(/^(\d+)-(\d+)$/);
+    if (m) { const out = []; for (let n = +m[1]; n <= +m[2]; n++) out.push(String(n)); return out; }
+  }
+  return null;
+}
+const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--range');
+const EVENT_ID = process.env.EVENT_ID || (!DETECT && !WATCH ? positional[0] : undefined);
+const DEFAULT_RANGE = parseRange() || (positional.length ? positional : Array.from({ length: 80 }, (_, i) => String(i + 1)));
 const DETECT_IDS = DETECT ? (positional.length ? positional : ['19', '20', '21', '22', '23', '24', '25']) : [];
+const POLL_MS = Number(process.env.WATCH_POLL_MS || 30000); // gap between scan sweeps
 
 // ---- parsing helpers (shared shape with live/collector.js) ------------------
 const p2 = n => String(n).padStart(2, '0');
@@ -149,39 +173,82 @@ async function detect() {
   ws.addEventListener('error', e => log('detect error:', e.message || e.type));
 }
 
-// ---- relay mode -------------------------------------------------------------
+// ---- watch mode: scan endpoints × eventIds until one goes live, then relay ---
 const stat = { snapshots: 0, upserts: 0, rows: 0, lastUpsert: 0, notFound: 0, firstShown: false, ed: today() };
+let activeUrl = ENDPOINTS[ENDPOINTS.length - 1]; // default = Azure/WIGE backend
+let activeEventId = EVENT_ID;
 
+// One scan sweep: subscribe to every candidate id on `url`, resolve the first
+// live snapshot's {url, eventId, msg}, or null after `waitMs`.
+function scanOnce(url, ids, waitMs = 12000) {
+  return new Promise(resolve => {
+    let ws, done = false;
+    const finish = v => { if (done) return; done = true; clearTimeout(t); try { ws && ws.close(); } catch {} resolve(v); };
+    const t = setTimeout(() => finish(null), waitMs);
+    try { ws = new WebSocket(url); } catch { return finish(null); }
+    ws.addEventListener('open', () => { for (const id of ids) ws.send(JSON.stringify({ eventId: id, eventPid: [0, 4], clientLocalTime: Date.now() })); });
+    ws.addEventListener('message', ev => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.PID === 'LTS_TIMESYNC' || m.PID === 'LTS_NOT_FOUND') return;
+      if (Array.isArray(m.RESULT) && m.RESULT.length) finish({ url, eventId: String(m.EXPORTID ?? ''), msg: m });
+    });
+    ws.addEventListener('error', () => finish(null));
+    ws.addEventListener('close', () => finish(null));
+  });
+}
+
+async function watch() {
+  log(`WATCH start  endpoints=[${ENDPOINTS.join(', ')}]  ids=${DEFAULT_RANGE[0]}..${DEFAULT_RANGE[DEFAULT_RANGE.length - 1]} (${DEFAULT_RANGE.length})  sweep every ${POLL_MS / 1000}s  dry=${DRY}`);
+  let sweeps = 0;
+  for (;;) {
+    for (const url of ENDPOINTS) {                    // WIGE_WS_URL first if set
+      const hit = await scanOnce(url, DEFAULT_RANGE);
+      if (hit && hit.eventId) {
+        log(`LIVE FOUND  event=${hit.eventId}  SESSION=${hit.msg.SESSION}  HEAT=${hit.msg.HEAT}  TRACK=${hit.msg.TRACKNAME}  cars=${hit.msg.RESULT.length}  via ${url}`);
+        activeUrl = url; activeEventId = hit.eventId;
+        return startRelay();                          // hand off; never returns
+      }
+    }
+    sweeps++;
+    if (sweeps % 5 === 1) log(`no live event yet (sweep ${sweeps}) — retrying every ${POLL_MS / 1000}s…`);
+    await new Promise(r => setTimeout(r, POLL_MS));
+  }
+}
+
+// ---- relay mode -------------------------------------------------------------
 function run() {
-  if (!EVENT_ID) { console.error('ERROR: no eventId. Usage: node live/vds-relay.mjs <eventId>  (or --detect).'); process.exit(1); }
-  log(`RELAY start  event=${EVENT_ID}  date=${stat.ed}  dry=${DRY}  -> ${DRY ? '(no writes)' : SB_URL}`);
+  if (!activeEventId) { console.error('ERROR: no eventId. Use --watch to auto-find, or pass <eventId>.'); process.exit(1); }
+  startRelay();
+}
+function startRelay() {
+  log(`RELAY start  event=${activeEventId}  date=${stat.ed}  dry=${DRY}  via ${activeUrl}  -> ${DRY ? '(no writes)' : SB_URL}`);
   connect();
 }
 
 let backoff = 1000;
 function connect() {
   let ws;
-  try { ws = new WebSocket(WS_URL); }
+  try { ws = new WebSocket(activeUrl); }
   catch (e) { log('WS construct failed:', e.message); return reconnect(); }
 
   ws.addEventListener('open', () => {
     backoff = 1000;
-    ws.send(JSON.stringify({ eventId: EVENT_ID, eventPid: [0, 4], clientLocalTime: Date.now() }));
-    log(`connected — subscribed to event ${EVENT_ID} (channel [0,4])`);
+    ws.send(JSON.stringify({ eventId: activeEventId, eventPid: [0, 4], clientLocalTime: Date.now() }));
+    log(`connected — subscribed to event ${activeEventId} (channel [0,4])`);
   });
 
   ws.addEventListener('message', async ev => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.PID === 'LTS_TIMESYNC') return;                 // heartbeat
     if (m.PID === 'LTS_NOT_FOUND') {                      // event not live yet
-      if (stat.notFound++ % 20 === 0) log(`event ${EVENT_ID} not live yet (LTS_NOT_FOUND) — staying subscribed…`);
+      if (stat.notFound++ % 20 === 0) log(`event ${activeEventId} not live yet (LTS_NOT_FOUND) — staying subscribed…`);
       return;
     }
     if (!Array.isArray(m.RESULT)) return;                 // ignore anything without a leaderboard
 
     stat.snapshots++;
     stat.ed = today();
-    await logRaw(EVENT_ID, m);
+    await logRaw(activeEventId, m);
 
     if (!stat.firstShown) {
       stat.firstShown = true;
@@ -221,4 +288,4 @@ function reconnect() {
 
 process.on('SIGINT', () => { log('SIGINT — stats:', JSON.stringify(stat)); process.exit(0); });
 
-if (DETECT) detect(); else run();
+if (DETECT) detect(); else if (WATCH) watch(); else run();

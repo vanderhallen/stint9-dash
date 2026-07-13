@@ -1,5 +1,28 @@
 # Race-day runbook — turning on the LIVE feed
 
+## ⭐ Primary path (2026-07-13) — one command, no browser, no auth
+```
+node live/vds-relay.mjs --watch
+```
+Leave it running from before the session. It scans the WIGE timing backend
+(`wss://livetiming.azurewebsites.net/` — the same socket vdsmotorsport.com and
+wige.de use, channels [0,4]) across eventIds 1..80 every 30 s, and the moment an
+event goes live it auto-detects the `eventId` and starts upserting laps into
+`stint9_live_timing`. Then open the dashboard → **LIVE**. Stop with Ctrl-C.
+
+- Narrow/uncertain id range: `--watch --range 1-120`.
+- Known id (skip the scan): `node live/vds-relay.mjs <eventId>`.
+- Dry test (map + log, no writes): add `--dry`. Raw snapshots are always logged
+  to `live/logs/` so the first live event verifies the field shapes.
+- This reads WIGE **directly** — VDS is not in the data path. If a distinct
+  wige.de socket ever appears, `WIGE_WS_URL=wss://… node live/vds-relay.mjs --watch`
+  tries it first.
+
+The two older paths below (browser collector on stint9's Clerk-gated API, and the
+Deno WIGE-scrape Edge Function) are kept only as fallbacks.
+
+---
+
 Goal: minimal coding on the day. Everything is built and tested. The data source
 is stint9's own JSON API (see `live/stint9-api.md`), read by the browser
 collector — the WIGE-socket path below is only a fallback.
