@@ -5,8 +5,9 @@
  * LIVE, and watch the maps/positions fill in exactly as they will on race day.
  * This is the end-to-end test of: table -> dashboard LIVE loop -> build-db.js.
  *
- * Needs a service-role key (writes bypass the read-only anon policy):
- *   SUPABASE_SERVICE_KEY=... node live/mock-replay.mjs [--speed 60] [--date YYYY-MM-DD]
+ * Writes with the public publishable key (anon insert/update is allowed on this
+ * table, same as the collector) — no secret needed:
+ *   node live/mock-replay.mjs [--speed 60] [--date YYYY-MM-DD]
  *
  * --speed 60  = 60x real time (1 race minute per real second). Default 120.
  * --date      = event_date to write under. Default = today (matches LIVE header).
@@ -14,8 +15,8 @@
 import { readFileSync } from 'node:fs';
 
 const SB_URL = 'https://esvvzgxqnfszhttdkuzc.supabase.co';
-const KEY = process.env.SUPABASE_SERVICE_KEY;
-if (!KEY) { console.error('Set SUPABASE_SERVICE_KEY (service-role) in the env.'); process.exit(1); }
+// service-role key if provided (env), else the public publishable key.
+const KEY = process.env.SUPABASE_SERVICE_KEY || 'sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > -1 ? process.argv[i + 1] : d; };
 const SPEED = +arg('speed', 120);
