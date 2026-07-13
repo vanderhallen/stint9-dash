@@ -18,8 +18,41 @@ event goes live it auto-detects the `eventId` and starts upserting laps into
   wige.de socket ever appears, `WIGE_WS_URL=wss://… node live/vds-relay.mjs --watch`
   tries it first.
 
-The two older paths below (browser collector on stint9's Clerk-gated API, and the
-Deno WIGE-scrape Edge Function) are kept only as fallbacks.
+The `wige-scrape` Edge Function is the **serverless twin** of this relay — the
+LIVE **⟳ Update** button calls it to pull one snapshot with no laptop running
+(details under "Update button" below). The old browser collector on stint9's
+Clerk-gated API is kept only as a last-resort fallback.
+
+---
+
+## ✅ Race-day checklist (do this, in order)
+
+1. **Start the feed** — one command, leave it running:
+   ```
+   ./live/raceday.sh          # = vds-relay.mjs --watch, auto-restarts if it dies
+   ```
+   Widen the scan if unsure of the id range: `./live/raceday.sh --range 1-120`.
+2. **Open the dashboard → click LIVE.**
+3. **Read the header badge** — it tells you the state at a glance:
+   - grey **`offline`** + "waiting for timing data…" → no event live yet (or the
+     scan hasn't found it). Cars on the map are leftover SIM data — not a bug.
+   - green **`event <id> · <track> · H<heat>`** + "LIVE · N cars · <clock>" →
+     you're live. **Check the event id/track is the right session** (the scan can
+     latch a wrong concurrent event — if so, stop and run
+     `node live/vds-relay.mjs <correct-id>`).
+4. **No laptop / relay not running?** Just click **⟳ Update** in the LIVE header.
+   It invokes the `wige-scrape` Edge Function (one WIGE snapshot → Supabase) and
+   refreshes the view + badge. Fine as a manual poll; the relay is better for a
+   full race (continuous).
+5. **First live snapshot = the one verification.** The relay logs it raw to
+   `live/logs/` and prints which time-of-day field it found. If cars sit slightly
+   "late" on the map, send me that log line — `lap_end_tod` just needs the real
+   field name (everything else maps 1:1). See `live/vds-relay.mjs` (TOD_KEYS).
+6. **After the session:** Ctrl-C the relay. Optional cleanup of test data:
+   `delete from stint9_live_timing where event_date = current_date;`
+
+Tables both paths write: `stint9_live_timing` (per-lap rows the LIVE view renders)
+and `stint9_live_status` (one row/day the header badge reads).
 
 ---
 
