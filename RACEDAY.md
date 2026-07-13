@@ -1,7 +1,23 @@
 # Race-day runbook — turning on the LIVE feed
 
-Goal: minimal coding on the day. Everything below the "capture" step is already
-built and tested. See `STINT9-INFO-REQUEST.md` for what to gather beforehand.
+Goal: minimal coding on the day. Everything is built and tested. The data source
+is stint9's own JSON API (see `live/stint9-api.md`), read by the browser
+collector — the WIGE-socket path below is only a fallback.
+
+## ✅ Primary path — browser collector (recommended, ~30 seconds)
+1. Open **stint9.com/app**, log in, go to the **live timing** view.
+2. Open DevTools → **Console**, paste the entire contents of **`live/collector.js`**.
+   It auto-detects the `eventId` (asks if it can't) and starts pushing laps to
+   Supabase every 5 s. Leave the tab open.
+   - stop with `stint9collector.stop()`, check with `stint9collector.status()`.
+3. Open the dashboard, click **LIVE**. Done — positions/maps fill in live.
+
+That's it. No deploy, no secret: the collector rides your Clerk cookie to read
+stint9's feed and writes with the public publishable key (same as the dashboard's
+other Supabase writes). The rest of this file is the WIGE fallback only.
+
+---
+## Fallback path — WIGE WebSocket scraper
 
 ## 0. Rehearse anytime (no live event)
 Prove the whole chain with the 2026-06-20 CSV:
