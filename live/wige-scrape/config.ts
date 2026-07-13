@@ -67,8 +67,41 @@ export function secOrNull(v: unknown): number | null {
   return Number.isFinite(val) ? val : null;
 }
 
+// stint9's own API (preferred source — see ../stint9-api.md). Both the
+// /api/worker/events/{id}/laps snapshot and the SSE stream carry this same
+// lap-object shape. Field names below are the REAL ones recovered from the app.
+export function mapLaps(laps: any[], eventDate: string): TimingRow[] {
+  const out: TimingRow[] = [];
+  for (const s of laps || []) {
+    const car = String(s?.stnr ?? '').trim();
+    const lap = Number(s?.lap);
+    if (!car || !Number.isFinite(lap)) continue;
+    out.push({
+      event_date: eventDate, car, lap,
+      klass: s?.className ?? null,
+      s1: secOrNull(s?.s1Time), s2: secOrNull(s?.s2Time), s3: secOrNull(s?.s3Time),
+      s4: secOrNull(s?.s4Time), s5: secOrNull(s?.s5Time),
+      lap_end_tod: todSeconds(s?.todTs ?? s?.createdAt),
+      lap_time: secOrNull(s?.lapTime),
+      inpit: false,                 // derived from /pits or pitStopCount deltas
+      fastest: false,               // build-db recomputes bests
+      driver: s?.driverName ?? null,
+      vehicle: s?.car ?? null,
+    });
+  }
+  return out;
+}
+
+// todTs is a timestamp (epoch-ms or ISO) -> seconds-of-day, matching build-db.
+export function todFromTimestamp(v: unknown): number | null {
+  if (v == null) return null;
+  const d = new Date(v as any);
+  if (isNaN(d.getTime())) return todSeconds(v);
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+}
+
+// --- legacy WIGE-WebSocket adapter (fallback only; see stint9-api.md) ---
 export function mapResults(msg: any, eventDate: string): TimingRow[] {
-  // TODO(raceday): replace r.* with the real per-car fields from the results payload.
   const cars = msg?.entries ?? msg?.results ?? msg?.data ?? [];
   const out: TimingRow[] = [];
   for (const r of cars) {
