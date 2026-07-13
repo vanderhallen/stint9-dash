@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>stint9 · backend logic</title>
+<style>
+  :root{
+    --ground:#0b0e13; --surface:#141924; --surface2:#1a2130; --raise:#212a3a;
+    --ink:#e8eef6; --muted:#8b96a6; --faint:#5c6675; --line:#232c3a;
+    --accent:#ffb020;                 /* timing amber — the signal colour */
+    --fe:#4aa3ff;                     /* frontend (browser) */
+    --sb:#b884ff;                     /* supabase (backend db) */
+    --ext:#ff6262;                    /* external live source */
+    --live:#38c877;                   /* live race data */
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px -12px rgba(0,0,0,.6);
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ground:#eef1f6; --surface:#ffffff; --surface2:#f5f7fb; --raise:#eef2f8;
+      --ink:#141922; --muted:#5a6472; --faint:#8b95a3; --line:#dde3ec;
+      --accent:#b26a00; --fe:#1f6fd4; --sb:#7c46c9; --ext:#d63a3a; --live:#1f9d57;
+      --shadow:0 1px 2px rgba(20,30,50,.06), 0 10px 30px -18px rgba(20,30,50,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0b0e13; --surface:#141924; --surface2:#1a2130; --raise:#212a3a;
+    --ink:#e8eef6; --muted:#8b96a6; --faint:#5c6675; --line:#232c3a;
+    --accent:#ffb020; --fe:#4aa3ff; --sb:#b884ff; --ext:#ff6262; --live:#38c877;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+  :root[data-theme="light"]{
+    --ground:#eef1f6; --surface:#ffffff; --surface2:#f5f7fb; --raise:#eef2f8;
+    --ink:#141922; --muted:#5a6472; --faint:#8b95a3; --line:#dde3ec;
+    --accent:#b26a00; --fe:#1f6fd4; --sb:#7c46c9; --ext:#d63a3a; --live:#1f9d57;
+    --shadow:0 1px 2px rgba(20,30,50,.06), 0 10px 30px -18px rgba(20,30,50,.25);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:44px 44px, 44px 44px;
+    background-position:center top;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:clamp(20px,5vw,56px) clamp(16px,4vw,32px) 80px;}
+  .mono{font-family:var(--mono)}
+
+  /* ---- masthead ---- */
+  header{margin-bottom:44px}
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); display:flex; align-items:center; gap:10px; margin:0 0 14px;
+  }
+  .eyebrow::before{content:""; width:26px; height:2px; background:var(--accent); display:inline-block}
+  h1{font-size:clamp(30px,6vw,50px); line-height:1.02; margin:0 0 12px; letter-spacing:-.02em; text-wrap:balance; font-weight:680}
+  h1 .thin{color:var(--muted); font-weight:400}
+  .dek{font-size:clamp(15px,2.2vw,18px); color:var(--muted); max-width:64ch; margin:0}
+
+  /* ---- legend ---- */
+  .legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:22px; font-family:var(--mono); font-size:12px}
+  .legend span{display:inline-flex; align-items:center; gap:7px; color:var(--muted); letter-spacing:.02em}
+  .dot{width:10px; height:10px; border-radius:3px; flex:none}
+
+  /* ---- section ---- */
+  section{margin-top:52px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:20px; border-bottom:1px solid var(--line); padding-bottom:10px}
+  .sec-num{font-family:var(--mono); font-size:13px; color:var(--accent); letter-spacing:.1em}
+  h2{font-size:clamp(19px,3vw,25px); margin:0; letter-spacing:-.01em; font-weight:640}
+  .sec-note{margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.12em}
+  .lead{color:var(--muted); max-width:70ch; margin:-6px 0 22px}
+
+  /* ---- generic node card ---- */
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px; box-shadow:var(--shadow); position:relative;
+  }
+  .card::before{content:""; position:absolute; left:0; top:14px; bottom:14px; width:3px; border-radius:3px; background:var(--sys,var(--accent))}
+  .card[data-sys="fe"]{--sys:var(--fe)} .card[data-sys="sb"]{--sys:var(--sb)}
+  .card[data-sys="ext"]{--sys:var(--ext)} .card[data-sys="live"]{--sys:var(--live)}
+  .card[data-sys="crew"]{--sys:var(--accent)}
+  .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--sys,var(--accent)); font-weight:600}
+  .card h4{margin:6px 0 4px; font-size:15.5px; letter-spacing:-.01em}
+  .card p{margin:0; color:var(--muted); font-size:13.5px}
+  .card code, .mono.k{font-family:var(--mono); font-size:12.5px; background:var(--surface2); border:1px solid var(--line); border-radius:5px; padding:1px 5px; color:var(--ink)}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+  .chip{font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--surface2); border:1px solid var(--line); border-radius:999px; padding:3px 9px; letter-spacing:.02em}
+  .chip.live{color:var(--live); border-color:color-mix(in srgb, var(--live) 40%, var(--line))}
+  .chip.key{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, var(--line))}
+
+  /* ---- topology zones ---- */
+  .zones{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .zone{background:var(--surface2); border:1px solid var(--line); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px}
+  .zone > .zlabel{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .zone .card{background:var(--surface)}
+  .rel{display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:18px; font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+  .rel b{color:var(--ink); font-weight:600}
+  .rel .ar{color:var(--accent)}
+
+  /* ---- vertical flow ---- */
+  .flow{display:flex; flex-direction:column; align-items:center; gap:0}
+  .flow .card{width:100%; max-width:660px}
+  .conn{height:40px; width:2px; background:linear-gradient(var(--line),var(--faint)); position:relative; flex:none}
+  .conn::after{content:""; position:absolute; left:50%; bottom:-1px; transform:translateX(-50%);
+    border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid var(--faint)}
+  .flow .step{display:flex; align-items:center; gap:10px; width:100%; max-width:660px}
+  .flow .step .n{font-family:var(--mono); font-size:12px; color:var(--faint); width:26px; text-align:right; flex:none}
+
+  /* ---- tables grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px}
+  .tgroup{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  .tgroup::after{content:""; flex:1; height:1px; background:var(--line)}
+  .tbl h4{font-family:var(--mono); font-size:13.5px; margin:0 0 3px; letter-spacing:-.01em}
+  .tbl .key{font-family:var(--mono); font-size:11px; color:var(--sys,var(--accent)); margin-bottom:7px; display:block}
+  .tbl p{font-size:12.5px}
+  .rw{display:flex; gap:8px; margin-top:9px; font-family:var(--mono); font-size:10.5px}
+  .rw .pill{border-radius:5px; padding:2px 7px; letter-spacing:.04em}
+  .pill.r{color:var(--fe); background:color-mix(in srgb,var(--fe) 14%, transparent)}
+  .pill.w{color:var(--live); background:color-mix(in srgb,var(--live) 15%, transparent)}
+
+  /* ---- two-up ---- */
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .two .card h4{font-size:16px}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin-top:12px; font-family:var(--mono); font-size:12.5px}
+  .kv dt{color:var(--faint)} .kv dd{margin:0; color:var(--ink)}
+
+  /* ---- isolation diagram ---- */
+  .iso{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px}
+  .iso .team{display:flex; flex-direction:column; gap:10px}
+  .iso .mid{font-family:var(--mono); font-size:11px; color:var(--faint); text-align:center; letter-spacing:.1em; text-transform:uppercase}
+  .barrier{width:2px; background:repeating-linear-gradient(var(--line) 0 6px, transparent 6px 12px); align-self:stretch; margin:0 auto; min-height:120px}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); color:var(--faint); font-family:var(--mono); font-size:12px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center}
+  footer .pulse{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 60%,transparent);animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 55%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  @media (prefers-reduced-motion: reduce){.pulse{animation:none}}
+
+  @media (max-width:720px){
+    .zones{grid-template-columns:1fr}
+    .two{grid-template-columns:1fr}
+    .iso{grid-template-columns:1fr; }
+    .barrier{width:100%; height:2px; min-height:0; background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">stint9 · system schematic</p>
+    <h1>Backend logic <span class="thin">— how the data actually moves</span></h1>
+    <p class="dek">You built the front end. This is what sits behind it: a static site with no server of its own, a Supabase database it talks to directly, and — on race day — a live feed borrowed from stint9's own API.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--fe)"></i>Front end (browser)</span>
+      <span><i class="dot" style="background:var(--sb)"></i>Supabase (database)</span>
+      <span><i class="dot" style="background:var(--ext)"></i>stint9 live source</span>
+      <span><i class="dot" style="background:var(--live)"></i>Live race data</span>
+      <span><i class="dot" style="background:var(--accent)"></i>Crew action</span>
+    </div>
+  </header>
+
+  <!-- 1 · TOPOLOGY -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>The shape of it</h2><span class="sec-note">three zones, no middle server</span></div>
+    <p class="lead">The dashboard is a plain HTML page on GitHub Pages. It has no backend of its own — instead the browser talks <b>straight to Supabase</b> over REST, writing with a public key that row-level security keeps in check. The only external system is stint9's live-timing API, and only your logged-in browser can reach it.</p>
+    <div class="zones">
+      <div class="zone">
+        <span class="zlabel">Front end · GitHub Pages</span>
+        <div class="card" data-sys="fe"><span class="tag">index.html</span><h4>The dashboard</h4><p>Map, leaderboard, fuel, positions. Static, ~840 KB, no build step.</p></div>
+        <div class="card" data-sys="fe"><span class="tag">test2.html · iframe</span><h4>Tyre board</h4><p>Self-contained sub-app, talks to the dashboard by postMessage.</p></div>
+      </div>
+      <div class="zone">
+        <span class="zlabel">Backend · Supabase</span>
+        <div class="card" data-sys="sb"><span class="tag">PostgREST + RLS</span><h4>Tables</h4><p>Timing, crew data, messages. Read by anyone; writes gated by policy.</p></div>
+        <div class="card" data-sys="sb"><span class="tag">Edge function</span><h4>Scrapers (optional)</h4><p>Per-dashboard update jobs; the live collector runs in-browser instead.</p></div>
+      </div>
+      <div class="zone">
+        <span class="zlabel">External · stint9</span>
+        <div class="card" data-sys="ext"><span class="tag">stint9.com/app</span><h4>Live-timing API</h4><p><span class="mono k">/api/worker/…</span> JSON behind Clerk login. The race feed's origin.</p></div>
+      </div>
+    </div>
+    <div class="rel">
+      <span>browser <span class="ar">→ writes →</span> <b>Supabase</b> <span class="ar">(public key + RLS)</span></span>
+      <span>browser <span class="ar">← reads ←</span> <b>Supabase</b> <span class="ar">(polling)</span></span>
+      <span>logged-in tab <span class="ar">→ reads →</span> <b>stint9 API</b> <span class="ar">(Clerk cookie)</span></span>
+    </div>
+  </section>
+
+  <!-- 2 · TWO SOURCES -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Two data sources, one renderer</h2><span class="sec-note">SIM / LIVE toggle</span></div>
+    <p class="lead">Every view draws from a single in-memory <span class="mono k">DB</span> object. Where that object comes from is the only difference between the two modes — the map, positions and charts don't care which.</p>
+    <div class="two">
+      <div class="card" data-sys="fe">
+        <span class="tag">SIM · default</span>
+        <h4>Baked-in CSV replay</h4>
+        <p>A past NLS event, pre-processed offline into a <span class="mono k">const DB</span> embedded in the page. The scrubber replays it. Nothing leaves the browser.</p>
+        <dl class="kv">
+          <dt>source</dt><dd>gen_db.py → embedded DB</dd>
+          <dt>persist</dt><dd>in-memory (practice)</dd>
+        </dl>
+      </div>
+      <div class="card" data-sys="live">
+        <span class="tag">LIVE · race day</span>
+        <h4>Rebuilt from live rows</h4>
+        <p>Polls Supabase for raw lap rows and rebuilds the exact same <span class="mono k">DB</span> shape via <span class="mono k">build-db.js</span> — verified to match the offline generator.</p>
+        <dl class="kv">
+          <dt>source</dt><dd>stint9_live_timing</dd>
+          <dt>persist</dt><dd>Supabase (per event-day)</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · LIVE PIPELINE -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>The LIVE pipeline</h2><span class="sec-note">stint9 → Supabase → you</span></div>
+    <p class="lead">stint9 already ingests the timing feed, so instead of scraping WIGE we borrow stint9's own JSON. A snippet in your logged-in tab bridges it into Supabase; the dashboard reads from there. Two independent loops, joined by one table.</p>
+    <div class="flow">
+      <div class="card" data-sys="ext">
+        <span class="tag">01 · external</span><h4>Logged-in stint9.com/app tab</h4>
+        <p>Your Clerk session — the only thing allowed to read the feed. Serves <span class="mono k">/api/worker/events/{id}/laps</span> as JSON.</p>
+      </div>
+      <div class="conn"></div>
+      <div class="card" data-sys="crew">
+        <span class="tag">02 · crew action</span><h4>collector.js pasted in the console</h4>
+        <p>Polls the laps endpoint every 5 s, maps each lap to a row, and upserts it.</p>
+        <div class="chips"><span class="chip">rides the Clerk cookie</span><span class="chip">auto-detects eventId</span><span class="chip key">writes with publishable key</span></div>
+      </div>
+      <div class="conn"></div>
+      <div class="card" data-sys="sb">
+        <span class="tag">03 · supabase</span><h4>stint9_live_timing</h4>
+        <p>Raw per-lap rows: <span class="mono k">car · lap · s1–s5 · time-of-day · pit</span>. One row per (car, lap); the collector upserts, RLS allows the anon write.</p>
+      </div>
+      <div class="conn"></div>
+      <div class="card" data-sys="fe">
+        <span class="tag">04 · front end</span><h4>Dashboard poll (every 5 s)</h4>
+        <p>In LIVE mode the page fetches today's rows and hands them on. No stint9 credentials ever touch the dashboard.</p>
+        <div class="chips"><span class="chip live">reads with publishable key</span></div>
+      </div>
+      <div class="conn"></div>
+      <div class="card" data-sys="fe">
+        <span class="tag">05 · front end</span><h4>build-db.js → buildClass → render</h4>
+        <p>Rebuilds the <span class="mono k">DB</span> (positions, legs, sector times), re-indexes the selected class, and repaints the map at the latest lap. Identical code path to SIM.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · TABLES -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>What Supabase stores</h2><span class="sec-note">read = anyone · write = RLS-gated</span></div>
+    <p class="lead">All tables are public-read (the dashboard uses the anon publishable key) and write-gated by row-level-security policy — the same pattern across every table.</p>
+
+    <div class="tgroup">Live timing</div>
+    <div class="grid">
+      <div class="card tbl" data-sys="live"><h4>stint9_live_timing</h4><span class="key">key · event_date, car, lap</span><p>Raw laps the collector writes; the dashboard rebuilds the DB from these.</p><div class="rw"><span class="pill w">collector ✎</span><span class="pill r">dashboard ↺</span></div></div>
+      <div class="card tbl" data-sys="live"><h4>stint9_messages</h4><span class="key">key · id</span><p>Race-control board — penalties, flags. Scraper-fed; test rows as fallback.</p><div class="rw"><span class="pill w">scraper ✎</span><span class="pill r">board ↺</span></div></div>
+    </div>
+
+    <div class="tgroup">Per-car crew data — one board per car</div>
+    <div class="grid">
+      <div class="card tbl" data-sys="sb"><h4>stint9_fuel_state</h4><span class="key">key · event_date, car</span><p>Fuel entries <b>+ per-car calculator settings</b> (tank, consumption) in <span class="mono k">state.set</span>.</p><div class="rw"><span class="pill w">crew ✎</span><span class="pill r">fuel reel ↺</span></div></div>
+      <div class="card tbl" data-sys="sb"><h4>stint9_fuel_notes</h4><span class="key">key · event_date, car, lap</span><p>Free-text pit-wall notes, one per lap.</p><div class="rw"><span class="pill w">crew ✎</span><span class="pill r">fuel reel ↺</span></div></div>
+      <div class="card tbl" data-sys="sb"><h4>stint9_tyre_state</h4><span class="key">key · car</span><p>The whole tyre board as one JSON blob — stock, serials/km/cycles, moves, highlights.</p><div class="rw"><span class="pill w">tyre board ✎</span><span class="pill r">tyre board ↺</span></div></div>
+    </div>
+
+    <div class="tgroup">Telemetry & housekeeping</div>
+    <div class="grid">
+      <div class="card tbl" data-sys="sb"><h4>stint9_weather</h4><span class="key">key · id</span><p>Periodic track temp / conditions logged in LIVE for lap-time correlation.</p><div class="rw"><span class="pill w">dashboard ✎</span></div></div>
+      <div class="card tbl" data-sys="sb"><h4>stint9_laptimes</h4><span class="key">key · id</span><p>One row per completed lap with the temperature at the time.</p><div class="rw"><span class="pill w">dashboard ✎</span></div></div>
+      <div class="card tbl" data-sys="sb"><h4>stint9_site_status</h4><span class="key">key · id = 1</span><p>Single ONLINE/OFFLINE flag toggled from admin.html.</p><div class="rw"><span class="pill w">admin ✎</span><span class="pill r">page load ↺</span></div></div>
+      <div class="card tbl" data-sys="sb"><h4>stint9_reel_usage · _visit · _feedback</h4><span class="key">key · id</span><p>Usage analytics and the feedback widget.</p><div class="rw"><span class="pill w">dashboard ✎</span><span class="pill r">admin ↺</span></div></div>
+    </div>
+  </section>
+
+  <!-- 5 · PER-CAR ISOLATION -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Two teams, one link, no collisions</h2><span class="sec-note">keyed by car</span></div>
+    <p class="lead">Because fuel, notes and tyres are all keyed by the <b>selected car</b>, two teams sharing the link — each on a different car — write to different rows and never overwrite each other. No login, no localStorage; the database is the single source of truth, so it also syncs across devices.</p>
+    <div class="iso">
+      <div class="team">
+        <div class="card" data-sys="crew"><span class="tag">Team A · car #650</span><h4>fuel · notes · tyres</h4><p class="mono" style="font-size:12px;color:var(--muted)">…_state (car=650)</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div class="mid">separate<br>rows</div>
+        <div class="barrier"></div>
+      </div>
+      <div class="team">
+        <div class="card" data-sys="crew"><span class="tag">Team B · car #667</span><h4>fuel · notes · tyres</h4><p class="mono" style="font-size:12px;color:var(--muted)">…_state (car=667)</p></div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:20px">Still shared on purpose: either team <i>can</i> select the other's car and see its data. Real team isolation (each side sees only its own cars) is the one planned feature left before a wide rollout.</p>
+  </section>
+
+  <!-- 6 · TYRE BOARD -->
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>The tyre board is its own app</h2><span class="sec-note">iframe · postMessage</span></div>
+    <p class="lead"><span class="mono k">test2.html</span> runs in an iframe so its ~260 variables and styling can't collide with the dashboard's. They speak over a three-message channel.</p>
+    <div class="two">
+      <div class="card" data-sys="fe">
+        <span class="tag">dashboard → board</span>
+        <h4>postMessage</h4>
+        <dl class="kv">
+          <dt>tyreCar</dt><dd>selected car → load that car's blob</dd>
+          <dt>tyreLive</dt><dd>car progress → tick TRACK km</dd>
+          <dt>tyreH</dt><dd>sub-reel navigation</dd>
+        </dl>
+      </div>
+      <div class="card" data-sys="sb">
+        <span class="tag">board → supabase</span>
+        <h4>Per-car blob</h4>
+        <p>On a car change it flushes the outgoing car, then loads &amp; re-renders the incoming car's <span class="mono k">stint9_tyre_state</span> row — or a fresh default board if that car has none.</p>
+        <div class="chips"><span class="chip">debounced upsert</span><span class="chip">no localStorage</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span class="pulse"></span>
+    <span>LIVE pipeline verified end-to-end · render confirmed</span>
+    <span style="color:var(--muted)">Pending race day: capture eventId + one lap payload via probe.js</span>
+  </footer>
+</div>
+</body>
+</html>
