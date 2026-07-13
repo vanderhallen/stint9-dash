@@ -1,3 +1,11 @@
+> **SUPERSEDED (2026-07-13) → use `live/vds-relay.mjs`.** livetiming.vdsmotorsport.com
+> exposes a **public, auth-free** WebSocket (`wss://livetiming.azurewebsites.net/`,
+> subscribe `{eventId,eventPid:[0,4],clientLocalTime}`) carrying the same leaderboard
+> data with **S1..S9** sectors. That removes the Clerk-cookie blocker below: a plain
+> Node process (`node live/vds-relay.mjs <eventId>`) can consume it and upsert to
+> `stint9_live_timing` directly — no logged-in browser tab, no owner permission. The
+> Clerk/`/api/worker` contract below is kept only as a fallback.
+
 # stint9 live-timing API — recovered contract (2026-07-13)
 
 Extracted statically from a **logged-in Web Archive** of `stint9.com/app` (its
