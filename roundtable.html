@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Roundtable</title>
+<style>
+  :root{
+    --bg:#0c0e11; --panel:#15181d; --panel2:#1b1f26; --line:#2a2f38;
+    --txt:#e7eaef; --muted:#8a929e; --stamp:#9aa2ad;
+    --white:#f4f6f9; --gray:#8b929c; --red:#e2453a;
+    --send:#2f6df6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{padding:22px 18px 6px; text-align:center}
+  header h1{margin:0; font-size:24px; letter-spacing:.5px; font-weight:700}
+  header p{margin:6px 0 0; color:var(--muted); font-size:13px}
+
+  /* ---------- Diagram ---------- */
+  .diagram-wrap{display:flex; justify-content:center; padding:14px 12px 6px}
+  .diagram{position:relative; width:100%; max-width:560px; aspect-ratio:560/520}
+  .diagram svg{position:absolute; inset:0; width:100%; height:100%; z-index:1}
+  .table-img{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:46%; border-radius:50%; z-index:2;
+    box-shadow:0 8px 30px rgba(0,0,0,.6);
+  }
+  .node{
+    position:absolute; z-index:3; transform:translate(-50%,-50%);
+    background:linear-gradient(180deg,#243044,#1a2331);
+    border:1px solid #33425c; color:#eaf0fb;
+    padding:8px 14px; border-radius:10px; font-weight:700; font-size:14px;
+    text-align:center; min-width:56px; box-shadow:0 4px 14px rgba(0,0,0,.5);
+  }
+  .node small{display:block; font-weight:500; font-size:10px; color:#8ea2c4; letter-spacing:.3px}
+  .node.ai{background:linear-gradient(180deg,#2a2233,#1f1926); border-color:#5a3f56}
+  .node.ai small{color:#c69ac0}
+  #nAI2{top:6%; left:50%}
+  #nAI1{top:94%; left:50%}
+  #nH1{top:50%; left:9%}
+  #nH2{top:50%; left:91%}
+
+  .legend{display:flex; gap:16px; justify-content:center; flex-wrap:wrap;
+    padding:2px 12px 10px; color:var(--muted); font-size:12px}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .swatch{width:22px; height:3px; border-radius:2px; display:inline-block}
+
+  /* ---------- Channels ---------- */
+  .channels{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:12px;
+    padding:8px 14px 40px; max-width:1500px; margin:0 auto;
+  }
+  @media(max-width:1100px){.channels{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:620px){.channels{grid-template-columns:1fr}}
+
+  .col{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    display:flex; flex-direction:column; overflow:hidden; min-height:380px;
+  }
+  .col-head{
+    padding:11px 12px; cursor:pointer; user-select:none;
+    display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--line); position:relative;
+  }
+  .col-head .accent{width:10px; height:10px; border-radius:50%; flex:none}
+  .col-head .title{font-weight:700; font-size:14px}
+  .col-head .sub{font-size:11px; color:var(--muted); margin-top:1px}
+  .col-head .hbadge{
+    margin-left:auto; background:var(--red); color:#fff; font-size:11px; font-weight:700;
+    min-width:20px; height:20px; padding:0 5px; border-radius:11px;
+    display:none; align-items:center; justify-content:center;
+  }
+  .col-head .hbadge.on{display:inline-flex}
+
+  .thread{
+    flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column;
+    gap:9px; background:var(--panel2); min-height:120px;
+  }
+  .thread .empty{color:var(--muted); font-size:12px; text-align:center; margin:auto 0}
+  .msg{max-width:88%; padding:8px 10px; border-radius:10px; font-size:13px; line-height:1.35; word-wrap:break-word}
+  .msg.sent{align-self:flex-end; background:#26497f; border:1px solid #34599a}
+  .msg.recv{align-self:flex-start; background:#22262d; border:1px solid #313743}
+  .msg .stamp{display:block; margin-top:4px; font-size:10px; color:var(--stamp); font-weight:400}
+  .msg.unread{box-shadow:0 0 0 1px var(--red) inset}
+
+  .composer{padding:10px; border-top:1px solid var(--line); background:var(--panel)}
+  .ai-note{font-size:10.5px; color:var(--muted); margin:0 0 6px; display:flex; align-items:center; gap:5px}
+  .ai-note b{color:#c69ac0}
+  textarea{
+    width:100%; resize:vertical; min-height:46px; max-height:140px;
+    background:#0f1216; color:var(--txt); border:1px solid var(--line);
+    border-radius:8px; padding:8px 9px; font:inherit; font-size:13px;
+  }
+  textarea:focus{outline:none; border-color:#3a4658}
+  .btnrow{display:flex; gap:7px; margin-top:7px}
+  button{font:inherit; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12.5px; padding:8px 12px}
+  .btn-draft{background:#2a2233; color:#d7b6d1; border:1px solid #5a3f56}
+  .btn-draft:hover{background:#33283f}
+  .btn-send{background:var(--send); color:#fff; margin-left:auto}
+  .btn-send:hover{background:#3b78ff}
+  .btn-send:disabled{background:#2a2f38; color:#6a7280; cursor:not-allowed}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Roundtable</h1>
+  <p>4-way collaboration &mdash; two humans and their AIs working one project simultaneously</p>
+</header>
+
+<div class="diagram-wrap">
+  <div class="diagram">
+    <svg viewBox="0 0 560 520" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="ah-white" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--white)"/></marker>
+        <marker id="ah-gray" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--gray)"/></marker>
+        <marker id="ah-red" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--red)"/></marker>
+      </defs>
+      <!-- H1(left,55,260) H2(right,505,260) AI2(top,280,45) AI1(bottom,280,475) -->
+      <!-- white: H1 <-> H2 -->
+      <line x1="80" y1="260" x2="480" y2="260" stroke="var(--white)" stroke-width="3"
+            marker-start="url(#ah-white)" marker-end="url(#ah-white)"/>
+      <!-- red: AI1 <-> AI2 (indirect / risk) -->
+      <line x1="280" y1="70" x2="280" y2="450" stroke="var(--red)" stroke-width="3" stroke-dasharray="7 6"
+            marker-start="url(#ah-red)" marker-end="url(#ah-red)"/>
+      <!-- gray: H1 <-> AI2 -->
+      <line x1="80" y1="245" x2="262" y2="62" stroke="var(--gray)" stroke-width="2.5"
+            marker-start="url(#ah-gray)" marker-end="url(#ah-gray)"/>
+      <!-- gray: H2 <-> AI1 -->
+      <line x1="480" y1="275" x2="298" y2="458" stroke="var(--gray)" stroke-width="2.5"
+            marker-start="url(#ah-gray)" marker-end="url(#ah-gray)"/>
+
+      <!-- badges -->
+      <g id="bg-white" style="display:none">
+        <circle cx="160" cy="243" r="13" fill="var(--red)"/>
+        <text id="bt-white" x="160" y="248" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">0</text>
+      </g>
+      <g id="bg-g1" style="display:none">
+        <circle cx="150" cy="150" r="13" fill="var(--red)"/>
+        <text id="bt-g1" x="150" y="155" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">0</text>
+      </g>
+      <g id="bg-g2" style="display:none">
+        <circle cx="410" cy="370" r="13" fill="var(--red)"/>
+        <text id="bt-g2" x="410" y="375" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">0</text>
+      </g>
+      <g id="bg-red" style="display:none">
+        <circle cx="305" cy="150" r="13" fill="var(--red)"/>
+        <text id="bt-red" x="305" y="155" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">0</text>
+      </g>
+    </svg>
+
+    <img class="table-img" src="roundtable.png" alt="Roundtable">
+    <div class="node ai" id="nAI2">AI 2<small>AI of Human 2</small></div>
+    <div class="node ai" id="nAI1">AI 1<small>AI of Human 1</small></div>
+    <div class="node" id="nH1">Human 1<small>left</small></div>
+    <div class="node" id="nH2">Human 2<small>right</small></div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><i class="swatch" style="background:var(--white)"></i> H1 &harr; H2</span>
+  <span><i class="swatch" style="background:var(--gray)"></i> Human &harr; other AI</span>
+  <span><i class="swatch" style="background:var(--red)"></i> AI1 &harr; AI2 (indirect / risk)</span>
+</div>
+
+<div class="channels" id="channels"></div>
+
+<script>
+const CHANNELS = [
+  {id:'h1h2',  title:'H1 → H2',   sub:'Human 1 asks Human 2',  color:'var(--white)', arrow:'white', reverse:'h2h1'},
+  {id:'h1ai2', title:'H1 → AI2',  sub:'Human 1 asks AI of H2', color:'var(--gray)',  arrow:'g1',    ai:'AI2'},
+  {id:'ai1ai2',title:'AI1 ⇄ AI2', sub:'AI–AI · indirect / risk', color:'var(--red)', arrow:'red', ai:'AI', aiCompose:true},
+  {id:'h2h1',  title:'H2 → H1',   sub:'Human 2 asks Human 1',  color:'var(--white)', arrow:'white', reverse:'h1h2'},
+  {id:'h2ai1', title:'H2 → AI1',  sub:'Human 2 asks AI of H1', color:'var(--gray)',  arrow:'g2',    ai:'AI1'},
+];
+const ARROWS = {white:['h1h2','h2h1'], g1:['h1ai2'], g2:['h2ai1'], red:['ai1ai2']};
+
+const KEY = 'roundtable_v1';
+let store = JSON.parse(localStorage.getItem(KEY) || '{}');
+CHANNELS.forEach(c=>{ if(!store[c.id]) store[c.id]=[]; });
+function save(){ localStorage.setItem(KEY, JSON.stringify(store)); }
+
+function stamp(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString([], {day:'2-digit',month:'short'}) + ' ' +
+         d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+const AI_REPLIES = [
+  "Understood — reviewing the shared project state now.",
+  "Noted. I'll cross-check the data and report back.",
+  "Good point. Here's my take: proceed, with a caveat on timing.",
+  "Acknowledged — flagging one risk for the humans to confirm.",
+];
+const AI_DRAFTS = [
+  "Proposing we align on the sector split before the next stint. Confirm?",
+  "Draft: shared model updated. Requesting human sign-off before broadcast.",
+  "Suggest we reconcile our two estimates — mine reads 3% higher.",
+];
+let ri=0, di=0;
+
+function render(){
+  const root = document.getElementById('channels');
+  root.innerHTML = '';
+  CHANNELS.forEach(c=>{
+    const col = document.createElement('div'); col.className='col'; col.dataset.id=c.id;
+    const unread = store[c.id].filter(m=>m.dir==='recv' && !m.read).length;
+
+    const head = document.createElement('div'); head.className='col-head';
+    head.innerHTML =
+      `<span class="accent" style="background:${c.color}"></span>`+
+      `<div><div class="title">${c.title}</div><div class="sub">${c.sub}</div></div>`+
+      `<span class="hbadge ${unread?'on':''}">${unread}</span>`;
+    head.onclick = ()=>{ markRead(c.id); };
+    col.appendChild(head);
+
+    const thread = document.createElement('div'); thread.className='thread';
+    if(store[c.id].length===0){
+      thread.innerHTML = '<div class="empty">No messages yet</div>';
+    } else {
+      store[c.id].forEach(m=>{
+        const el = document.createElement('div');
+        el.className = 'msg '+m.dir+(m.dir==='recv'&&!m.read?' unread':'');
+        el.innerHTML = (m.who?`<b>${m.who}:</b> `:'')+escapeHtml(m.text)+
+                       `<span class="stamp">${stamp(m.ts)}</span>`;
+        thread.appendChild(el);
+      });
+    }
+    col.appendChild(thread);
+
+    const comp = document.createElement('div'); comp.className='composer';
+    if(c.ai){
+      comp.innerHTML = `<p class="ai-note">\u{1F916} <b>AI may draft</b> — only a human may press Send.</p>`;
+    }
+    const ta = document.createElement('textarea');
+    ta.placeholder = c.aiCompose ? 'AI draft appears here — human reviews, then sends…' : 'Type a message…';
+    comp.appendChild(ta);
+
+    const row = document.createElement('div'); row.className='btnrow';
+    if(c.ai){
+      const draft = document.createElement('button'); draft.className='btn-draft';
+      draft.textContent = '\u{1F916} AI draft';
+      draft.onclick = ()=>{ ta.value = AI_DRAFTS[di++%AI_DRAFTS.length]; ta.focus(); };
+      row.appendChild(draft);
+    }
+    const send = document.createElement('button'); send.className='btn-send';
+    send.textContent = 'Send';
+    send.onclick = ()=>{ sendMsg(c, ta.value.trim()); ta.value=''; };
+    row.appendChild(send);
+    comp.appendChild(row);
+
+    // keep scroll at bottom
+    col.appendChild(comp);
+    root.appendChild(col);
+    thread.scrollTop = thread.scrollHeight;
+  });
+  updateBadges();
+}
+
+function sendMsg(c, text){
+  if(!text) return;
+  store[c.id].push({dir:'sent', who:c.id==='ai1ai2'?'AI':null, text, ts:Date.now(), read:true});
+  save(); render();
+
+  // simulate the counterpart's incoming message
+  setTimeout(()=>{
+    if(c.reverse){
+      store[c.reverse].push({dir:'recv', who:c.reverse==='h2h1'?'H2':'H1', text, ts:Date.now(), read:false});
+    } else if(c.ai){
+      const who = c.id==='ai1ai2' ? 'AI' : c.ai;
+      store[c.id].push({dir:'recv', who, text:AI_REPLIES[ri++%AI_REPLIES.length], ts:Date.now(), read:false});
+    }
+    save(); render();
+  }, 900);
+}
+
+function markRead(id){
+  let changed=false;
+  store[id].forEach(m=>{ if(m.dir==='recv'&&!m.read){ m.read=true; changed=true; } });
+  if(changed){ save(); render(); }
+}
+
+function updateBadges(){
+  Object.keys(ARROWS).forEach(a=>{
+    const n = ARROWS[a].reduce((s,id)=>s+store[id].filter(m=>m.dir==='recv'&&!m.read).length,0);
+    const g = document.getElementById('bg-'+a), t = document.getElementById('bt-'+a);
+    if(g){ g.style.display = n>0?'block':'none'; if(t) t.textContent = n>9?'9+':n; }
+  });
+}
+
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+render();
+</script>
+</body>
+</html>
