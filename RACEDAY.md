@@ -18,6 +18,26 @@ event goes live it auto-detects the `eventId` and starts upserting laps into
   wige.de socket ever appears, `WIGE_WS_URL=wss://… node live/vds-relay.mjs --watch`
   tries it first.
 
+**Hardening from the stint9 owner's review (2026-07-14) — batch 1 (live):**
+- **Root `TOD`**: time-of-day now comes from the message root (`TOD`), not a
+  per-car field. Receipt time is used only if `TOD` is absent.
+- **Metadata-gated latch**: `--watch` now latches only events whose `TRACKNAME`
+  matches Nürburgring/Nordschleife (WIGE serves several series at once). Rejected
+  candidates are logged. Override with `TRACK_MATCH=…` (e.g. `TRACK_MATCH=.` to
+  accept anything). A pinned `<eventId>` still bypasses the scan. The relay warns
+  once if the feed's `EXPORTID` drifts from the latched id.
+- **Stall watchdog**: if no message (not even a heartbeat) arrives for ~60 s the
+  relay forces a reconnect and re-sends the subscribe frame (`WATCHDOG_MS` env).
+- **Sector count from the feed** (`NROFINTERMEDIATETIMES`), not hardcoded 5; a
+  warning fires on the first snapshot if the feed reports >5 (24h/9-sector needs
+  the table widened — see batch 2).
+- **Off-line replay test**: `node live/test-mapper.mjs` pipes synthetic WIGE
+  snapshots through the real mapper (normal lap, pit-in with empty/`-`/missing
+  sectors, wrong-series rejection, sector-count cap). Run it after any mapper edit.
+- **Still TODO (batch 2, needs a DB migration + client change):** session key so
+  quali & race don't overwrite (`P1-1`), write-once-on-lap-increment to kill the
+  sector off-by-one (`P1-3`), and `PITSTOPCOUNT`-driven pit state.
+
 The `wige-scrape` Edge Function is the **serverless twin** of this relay — the
 LIVE **⟳ Update** button calls it to pull one snapshot with no laptop running
 (details under "Update button" below). The old browser collector on stint9's

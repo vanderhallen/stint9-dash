@@ -46,7 +46,7 @@ const SB_KEY = process.env.SB_KEY || 'sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8n
 const UPSERT_MIN_MS = Number(process.env.UPSERT_MIN_MS || 4000); // throttle writes
 
 import { appendFile, mkdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -92,30 +92,39 @@ function todSeconds(v) {
   return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
 }
 
-// VDS may expose the lap's time-of-day under one of several keys — take the
-// first present. VERIFY on first live snapshot; falls back to receipt time so a
-// car still gets placed on track (position will be slightly stale until fixed).
-const TOD_KEYS = ['TAGESZEIT', 'TIMEOFDAY', 'TOD', 'LASTLAPTIMEOFDAY', 'LASTPASSING', 'CROSSINGTIME'];
-function lapEndTod(car, receiptSecs) {
+// P1-4: the lap's time-of-day is TOD on the message ROOT (numeric, epoch-ms),
+// NOT a per-car field — verified by the stint9 owner against a season of NLS
+// feed. We still probe these per-car keys first in case a future feed exposes a
+// real per-car crossing time, but the true base is root TOD (snapshot time).
+// Receipt time is only a last resort so a car still gets placed on track.
+// Caveat: root TOD is the snapshot time, not the per-car line-crossing time.
+const TOD_KEYS = ['TAGESZEIT', 'TIMEOFDAY', 'LASTLAPTIMEOFDAY', 'LASTPASSING', 'CROSSINGTIME'];
+function lapEndTod(car, rootTodSecs) {
   for (const k of TOD_KEYS) if (car[k] != null && car[k] !== '') return todSeconds(car[k]);
-  return receiptSecs; // fallback
+  return rootTodSecs; // P1-4: root TOD (falls back to receipt time only if TOD absent)
 }
 
 function mapSnapshot(msg, ed) {
-  const nowSecs = todSeconds(Date.now());
+  // P1-4: base time-of-day from root TOD; receipt time only if the feed omits it.
+  const rootTod = msg.TOD != null && msg.TOD !== '' ? todSeconds(msg.TOD) : todSeconds(Date.now());
+  // P2: sector count from the feed, not hardcoded — NLS=5 today, 24h=9. The table
+  // has s1..s5, so we cap at 5 here (a warning fires on first snapshot if >5 so we
+  // know to widen the schema for the 9-sector case). NROFINTERMEDIATETIMES absent → 5.
+  const nSectors = Math.max(1, Number(msg.NROFINTERMEDIATETIMES) || 5);
   const rows = [];
   for (const c of msg.RESULT || []) {
     const car = String(c.STNR ?? '').trim();
     const lap = Number(c.LAPS ?? c.LAP);
     if (!car || !Number.isFinite(lap)) continue;
+    const sec = {};
+    for (let k = 1; k <= 5; k++) sec['s' + k] = k <= nSectors ? secOrNull(c['S' + k + 'TIME']) : null;
     rows.push({
       event_date: ed, car, lap,
       klass: c.CLASSNAME ?? null,
-      s1: secOrNull(c.S1TIME), s2: secOrNull(c.S2TIME), s3: secOrNull(c.S3TIME),
-      s4: secOrNull(c.S4TIME), s5: secOrNull(c.S5TIME),
-      lap_end_tod: lapEndTod(c, nowSecs),
+      ...sec,
+      lap_end_tod: lapEndTod(c, rootTod),
       lap_time: secOrNull(c.LASTLAPTIME),
-      inpit: false,          // build-db recomputes pit state; PITSTOPCOUNT delta TODO
+      inpit: false,          // build-db reads inpit; PITSTOPCOUNT delta lands in pass 2 (needs per-car state)
       fastest: false,        // build-db recomputes the fastest flag
       driver: c.NAME ?? null,
       vehicle: c.CAR ?? null,
@@ -124,6 +133,13 @@ function mapSnapshot(msg, ed) {
   }
   return rows;
 }
+
+// P1-2: WIGE serves multiple series at once, so "first live RESULT" can latch
+// the wrong race. Only latch an event whose TRACKNAME matches NLS/Nordschleife.
+// Override with TRACK_MATCH (e.g. TRACK_MATCH=. to accept anything, or a specific
+// circuit). A manually pinned <eventId> (run/detect path) bypasses the scan entirely.
+const TRACK_RE = new RegExp(process.env.TRACK_MATCH || 'n[uü]rburgring|nordschleife', 'i');
+function acceptEvent(m) { return TRACK_RE.test(String(m.TRACKNAME || '')); }
 
 async function upsert(rows) {
   if (!rows.length || DRY) return;
@@ -174,7 +190,7 @@ async function detect() {
 }
 
 // ---- watch mode: scan endpoints × eventIds until one goes live, then relay ---
-const stat = { snapshots: 0, upserts: 0, rows: 0, lastUpsert: 0, notFound: 0, firstShown: false, ed: today() };
+const stat = { snapshots: 0, upserts: 0, rows: 0, lastUpsert: 0, notFound: 0, firstShown: false, driftWarned: false, ed: today() };
 let activeUrl = ENDPOINTS[ENDPOINTS.length - 1]; // default = Azure/WIGE backend
 let activeEventId = EVENT_ID;
 
@@ -183,6 +199,7 @@ let activeEventId = EVENT_ID;
 function scanOnce(url, ids, waitMs = 12000) {
   return new Promise(resolve => {
     let ws, done = false;
+    const rejected = new Set();
     const finish = v => { if (done) return; done = true; clearTimeout(t); try { ws && ws.close(); } catch {} resolve(v); };
     const t = setTimeout(() => finish(null), waitMs);
     try { ws = new WebSocket(url); } catch { return finish(null); }
@@ -190,7 +207,12 @@ function scanOnce(url, ids, waitMs = 12000) {
     ws.addEventListener('message', ev => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.PID === 'LTS_TIMESYNC' || m.PID === 'LTS_NOT_FOUND') return;
-      if (Array.isArray(m.RESULT) && m.RESULT.length) finish({ url, eventId: String(m.EXPORTID ?? ''), msg: m });
+      if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
+      const id = String(m.EXPORTID ?? '');
+      // P1-2: latch only on a track match; log every rejected candidate once so a
+      // human can see what was passed over (concurrent series on the same socket).
+      if (acceptEvent(m)) finish({ url, eventId: id, msg: m });
+      else if (id && !rejected.has(id)) { rejected.add(id); log(`  scan: rejecting event=${id} TRACK="${m.TRACKNAME}" (no ${TRACK_RE.source} match)`); }
     });
     ws.addEventListener('error', () => finish(null));
     ws.addEventListener('close', () => finish(null));
@@ -222,7 +244,27 @@ function run() {
 }
 function startRelay() {
   log(`RELAY start  event=${activeEventId}  date=${stat.ed}  dry=${DRY}  via ${activeUrl}  -> ${DRY ? '(no writes)' : SB_URL}`);
+  startWatchdog();
   connect();
+}
+
+// P2: stall watchdog. A silent socket (no data, not even a heartbeat) is the
+// failure mode you don't notice from the dashboard until laps go missing. If
+// NOTHING — including LTS_TIMESYNC — arrives for WATCHDOG_MS, force a reconnect.
+const WATCHDOG_MS = Number(process.env.WATCHDOG_MS || 60000);
+let lastMsgAt = Date.now();
+let currentWs = null;
+let watchdogTimer = null;
+function startWatchdog() {
+  if (watchdogTimer) return;
+  watchdogTimer = setInterval(() => {
+    const gap = Date.now() - lastMsgAt;
+    if (gap > WATCHDOG_MS) {
+      log(`watchdog: no message for ${Math.round(gap / 1000)}s — forcing reconnect`);
+      lastMsgAt = Date.now();                    // reset so we don't re-trigger before the new socket opens
+      try { currentWs && currentWs.close(); } catch {}  // close → 'close' handler → reconnect()
+    }
+  }, Math.min(WATCHDOG_MS, 15000));
 }
 
 let backoff = 1000;
@@ -230,14 +272,19 @@ function connect() {
   let ws;
   try { ws = new WebSocket(activeUrl); }
   catch (e) { log('WS construct failed:', e.message); return reconnect(); }
+  currentWs = ws;
+  lastMsgAt = Date.now();
 
   ws.addEventListener('open', () => {
     backoff = 1000;
+    lastMsgAt = Date.now();
+    // P2: re-send the subscribe frame on EVERY open, so a reconnect re-joins the feed.
     ws.send(JSON.stringify({ eventId: activeEventId, eventPid: [0, 4], clientLocalTime: Date.now() }));
     log(`connected — subscribed to event ${activeEventId} (channel [0,4])`);
   });
 
   ws.addEventListener('message', async ev => {
+    lastMsgAt = Date.now();                              // any frame (incl. heartbeat) resets the watchdog
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.PID === 'LTS_TIMESYNC') return;                 // heartbeat
     if (m.PID === 'LTS_NOT_FOUND') {                      // event not live yet
@@ -246,6 +293,13 @@ function connect() {
     }
     if (!Array.isArray(m.RESULT)) return;                 // ignore anything without a leaderboard
 
+    // P1-2: warn (once) if the feed starts reporting a different EXPORTID than the
+    // one we latched — catches a feed-side event switch under our subscription.
+    if (!stat.driftWarned && m.EXPORTID != null && String(m.EXPORTID) !== String(activeEventId)) {
+      stat.driftWarned = true;
+      log(`⚠ EXPORTID ${m.EXPORTID} != latched event ${activeEventId} — feed may have switched events; re-pin with <eventId> if wrong`);
+    }
+
     stat.snapshots++;
     stat.ed = today();
     await logRaw(activeEventId, m);
@@ -253,10 +307,12 @@ function connect() {
     if (!stat.firstShown) {
       stat.firstShown = true;
       log(`FIRST snapshot  SESSION=${m.SESSION} HEAT=${m.HEAT} TRACK=${m.TRACKNAME} cars=${m.RESULT.length}`);
+      log(`  root TOD: ${m.TOD ?? '(absent → receipt time)'}   NROFINTERMEDIATETIMES: ${m.NROFINTERMEDIATETIMES ?? '(absent → assuming 5)'}`);
+      if (Number(m.NROFINTERMEDIATETIMES) > 5) log(`  ⚠ ${m.NROFINTERMEDIATETIMES} sectors but table has only s1..s5 — widen schema for 9-sector events`);
       if (m.RESULT[0]) {
         const c = m.RESULT[0];
         log('  car0 keys:', Object.keys(c).join(','));
-        log('  TOD field detected:', TOD_KEYS.find(k => c[k] != null && c[k] !== '') || '(none → using receipt time)');
+        log('  per-car TOD field:', TOD_KEYS.find(k => c[k] != null && c[k] !== '') || `(none → using root TOD ${m.TOD ?? '/ receipt time'})`);
         log('  car0 raw:', JSON.stringify(c).slice(0, 400));
       }
     }
@@ -286,6 +342,12 @@ function reconnect() {
   reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, wait);
 }
 
-process.on('SIGINT', () => { log('SIGINT — stats:', JSON.stringify(stat)); process.exit(0); });
+// Only auto-run when invoked as a script; stay inert (just export the mapper) when
+// imported by a test so the replay harness can exercise mapSnapshot/acceptEvent.
+const INVOKED_AS_SCRIPT = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (INVOKED_AS_SCRIPT) {
+  process.on('SIGINT', () => { log('SIGINT — stats:', JSON.stringify(stat)); process.exit(0); });
+  if (DETECT) detect(); else if (WATCH) watch(); else run();
+}
 
-if (DETECT) detect(); else if (WATCH) watch(); else run();
+export { mapSnapshot, acceptEvent, lapEndTod, secOrNull, todSeconds };

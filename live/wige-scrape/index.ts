@@ -50,14 +50,22 @@ function todSeconds(v: unknown): number | null {
   if (isNaN(d.getTime())) return null;
   return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
 }
-// VDS lap time-of-day: first present candidate key, else receipt time. VERIFY on
-// first live snapshot (kept identical to ../vds-relay.mjs).
-const TOD_KEYS = ['TAGESZEIT', 'TIMEOFDAY', 'TOD', 'LASTLAPTIMEOFDAY', 'LASTPASSING', 'CROSSINGTIME'];
+// P1-4: lap time-of-day is TOD on the message ROOT, not a per-car field (verified
+// by the stint9 owner). We still probe per-car keys first in case a future feed
+// exposes a real crossing time, else fall back to root TOD (snapshot time), and
+// only to receipt time if TOD is absent. Kept in sync with ../vds-relay.mjs.
+const TOD_KEYS = ['TAGESZEIT', 'TIMEOFDAY', 'LASTLAPTIMEOFDAY', 'LASTPASSING', 'CROSSINGTIME'];
 // deno-lint-ignore no-explicit-any
-function lapEndTod(c: any, receipt: number | null): number | null {
+function lapEndTod(c: any, rootTod: number | null): number | null {
   for (const k of TOD_KEYS) if (c[k] != null && c[k] !== '') return todSeconds(c[k]);
-  return receipt;
+  return rootTod;
 }
+
+// P1-2: only latch/accept an event whose TRACKNAME matches NLS/Nordschleife when
+// scanning a range (WIGE serves several series at once). WIGE_TRACK_MATCH overrides.
+const TRACK_RE = new RegExp(Deno.env.get('WIGE_TRACK_MATCH') || 'n[uü]rburgring|nordschleife', 'i');
+// deno-lint-ignore no-explicit-any
+function acceptEvent(m: any): boolean { return TRACK_RE.test(String(m.TRACKNAME || '')); }
 
 type TimingRow = {
   event_date: string; car: string; lap: number; klass: string | null;
@@ -68,16 +76,17 @@ type TimingRow = {
 type Meta = { event_id: string; session: string | null; heat: string | null; track: string | null };
 
 // deno-lint-ignore no-explicit-any
-function mapCar(c: any, ed: string, receipt: number | null): TimingRow | null {
+function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): TimingRow | null {
   const car = String(c.STNR ?? '').trim();
   const lap = Number(c.LAPS ?? c.LAP);
   if (!car || !Number.isFinite(lap)) return null;
+  // P2: sector count from the feed. Table has s1..s5, so cap at 5.
+  const s = (k: number) => (k <= nSectors ? secOrNull(c[`S${k}TIME`]) : null);
   return {
     event_date: ed, car, lap,
     klass: c.CLASSNAME ?? null,
-    s1: secOrNull(c.S1TIME), s2: secOrNull(c.S2TIME), s3: secOrNull(c.S3TIME),
-    s4: secOrNull(c.S4TIME), s5: secOrNull(c.S5TIME),
-    lap_end_tod: lapEndTod(c, receipt),
+    s1: s(1), s2: s(2), s3: s(3), s4: s(4), s5: s(5),
+    lap_end_tod: lapEndTod(c, rootTod),
     lap_time: secOrNull(c.LASTLAPTIME),
     inpit: false, fastest: false,
     driver: c.NAME ?? null, vehicle: c.CAR ?? null,
@@ -85,10 +94,13 @@ function mapCar(c: any, ed: string, receipt: number | null): TimingRow | null {
 }
 
 // Open the socket, subscribe to ids, gather one snapshot for COLLECT_MS.
-async function collect(ids: string[]): Promise<{ meta: Meta | null; rows: TimingRow[] }> {
+// `gated` (range scan) rejects events whose TRACKNAME doesn't match; a single
+// explicit eventId is trusted as-is. Returns rejected candidates for the caller.
+async function collect(ids: string[], gated: boolean): Promise<{ meta: Meta | null; rows: TimingRow[]; rejected: string[] }> {
   const ed = eventDate();
   const receipt = todSeconds(Date.now());
   const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win)
+  const rejected = new Set<string>();
   let meta: Meta | null = null;
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
@@ -101,12 +113,17 @@ async function collect(ids: string[]): Promise<{ meta: Meta | null; rows: Timing
       let m: any; try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.PID === 'LTS_TIMESYNC' || m.PID === 'LTS_NOT_FOUND') return;
       if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
+      // P1-2: skip wrong-series snapshots while range-scanning.
+      if (gated && !acceptEvent(m)) { const id = String(m.EXPORTID ?? ''); if (id) rejected.add(id); return; }
+      // P1-4: root TOD (snapshot time); P2: sector count both from the message root.
+      const rootTod = m.TOD != null && m.TOD !== '' ? todSeconds(m.TOD) : receipt;
+      const nSectors = Math.max(1, Number(m.NROFINTERMEDIATETIMES) || 5);
       if (!meta) meta = { event_id: String(m.EXPORTID ?? ''), session: m.SESSION ?? null, heat: (m.HEAT ?? null) + (m.HEATTYPE ? ` [${m.HEATTYPE}]` : ''), track: m.TRACKNAME ?? null };
-      for (const c of m.RESULT) { const r = mapCar(c, ed, receipt); if (r) timing.set(`${r.car}|${r.lap}`, r); }
+      for (const c of m.RESULT) { const r = mapCar(c, ed, rootTod, nSectors); if (r) timing.set(`${r.car}|${r.lap}`, r); }
     };
     ws.onerror = () => { clearTimeout(timer); done(); };
   });
-  return { meta, rows: [...timing.values()] };
+  return { meta, rows: [...timing.values()], rejected: [...rejected] };
 }
 
 async function upsert(table: string, rows: unknown[], onConflict: string) {
@@ -136,7 +153,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; } catch { /* no body */ } }
 
     const ids = eventId ? [eventId] : idRange(range);
-    const { meta, rows } = await collect(ids);
+    const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId);
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
     await upsert('stint9_live_status', [{
@@ -146,7 +163,7 @@ Deno.serve(async (req) => {
     }], 'event_date');
 
     return Response.json(
-      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT },
+      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, rejected },
       { headers: CORS },
     );
   } catch (e) {
