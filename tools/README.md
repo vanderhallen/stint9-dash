@@ -7,26 +7,33 @@ page — run them locally).
 Regenerates the embedded `const DB = {…}` (in `index.html` and `data.js`) from an
 official VLN/NLS sector-times CSV. See [../data-source.md](../data-source.md).
 
-## `make_clips.py` — racenote overtake clips
-Cuts short video clips of car **#665**'s on-track overtakes from the full race
-video, using the timestamps recorded by the racenote panel (left sidebar in
-`index.html`, which replaces the starting grid once formation lap L0 is done).
+## Overtake clips — primary flow is in-browser
 
-Pipeline:
+Clips of the **selected car**'s on-track overtakes are now cut **in the browser**
+from a locally-selected video, in the dashboard's **VIDEO** reel (4th panel of the
+right-side weather/agenda reel in `index.html`):
 
-1. In the dashboard, let the race play so #665's overtake notes accumulate (they
-   auto-save to Supabase `public.stint9_racenotes`). See
-   [../racenotes-supabase.sql](../racenotes-supabase.sql).
-2. In the racenote panel's **race video** section: paste the Dropbox link, enter
-   the **video start time-of-day** (`hh:mm:ss` — anchors video t=0 to a race clock
-   time), set **± sec** (default 20), and click **Analyse**. Download `jobs.json`.
-3. Cut the clips:
+1. Let the race play so overtake notes accumulate for the selected car (they
+   auto-save to Supabase `public.stint9_racenotes`).
+2. Open the **VIDEO** reel (▲▼ next to the timetable). Choose the **race video
+   file** from this computer, type the **start clock** shown in the video's
+   top-left corner (`hh:mm:ss` — the video is a continuous real-time recording, so
+   this anchors video t=0 to race time-of-day), set **± sec** (default 20), and
+   optionally paste a **GitHub token** (fine-grained, Contents:write on this repo —
+   it stays only in your browser's localStorage).
+3. Click **ANALYSE & CLIP**. ffmpeg.wasm cuts each overtake ±N s, names it
+   `YYYYMMDD_car_Llap_Ssector_Px_Py.mp4` (e.g. `20260620_665_L2_S3_P4_P3.mp4`),
+   and — if a token is set — uploads it to the repo's `clips/` folder and links it
+   in the reel and the racenote feed. With no token, each clip is offered as a
+   local download instead. **Sector 1 is excluded** (pit/out zone).
+
+## `make_clips.py` — offline / batch fallback
+
+Still available for cutting from a full local video without the browser (e.g. a
+huge recording, or no token). It reads specs straight from Supabase (or a
+`jobs.json`) and cuts with local `ffmpeg`:
 
    ```bash
-   # from the exported jobs.json (offline)
-   python3 tools/make_clips.py --jobs clips_665_20260620.json --video full_race.mp4
-
-   # or straight from Supabase (supply the video-start + pad yourself)
    python3 tools/make_clips.py --event 2026-06-20 --video full_race.mp4 \
            --video-start 12:05:00 --pad 20
    ```

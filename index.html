@@ -217,6 +217,8 @@
   #rn-feed{flex:1 1 auto;min-height:60px;overflow:auto;display:flex;flex-direction:column;gap:3px;padding-right:2px}
   #rn-feed .rn{font-size:9px;line-height:1.35;border-left:3px solid #c2c8d0;padding:3px 5px;background:#fbfbfc;border-radius:0 5px 5px 0}
   #rn-feed .rn .rnt{color:var(--muted);font-size:8px;letter-spacing:.3px}
+  #rn-feed .rn .rnclip{color:var(--accent);text-decoration:none;font-weight:700;font-size:8px;white-space:nowrap}
+  #rn-feed .rn .rnclip:hover{text-decoration:underline}
   #rn-feed .rn.overtake{border-left-color:#1e8f3a}
   #rn-feed .rn.overtake.loss{border-left-color:#c0392b}
   #rn-feed .rn.fastest{border-left-color:#A020F0}
@@ -242,6 +244,11 @@
   #rn-clips .cj{border-bottom:1px solid #eceef1;padding:6px 0}
   #rn-clips .cj b{font-weight:700;word-break:break-all}
   #rn-clips .cj .cjm{color:var(--muted);font-size:11px}
+  #rn-clips a,#videoreel .vrhint a{color:var(--accent);text-decoration:none;font-weight:700;word-break:break-all}
+  #rn-clips a:hover{text-decoration:underline}
+  #rn-clips .cj.err{color:#c0392b}
+  #videoreel input[type=file]{padding:6px 8px;font-size:11px}
+  #videoreel code{font-family:'IBM Plex Mono',monospace;background:#eef0f3;padding:1px 4px;border-radius:4px}
 </style></head>
 <body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
@@ -403,11 +410,13 @@
           <div class="reelpanel"><div id="videoreel">
             <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
             <div class="vrgrid">
-              <label class="vrfield vrwide"><span class="vrlbl">Dropbox video link</span><input id="rn-video-url" type="text" placeholder="https://www.dropbox.com/…"></label>
-              <label class="vrfield"><span class="vrlbl">Video start (time of day)</span><input id="rn-video-start" type="text" placeholder="hh:mm:ss"></label>
+              <label class="vrfield vrwide"><span class="vrlbl">Race video file (from this computer)</span><input id="rn-video-file" type="file" accept="video/*"></label>
+              <label class="vrfield"><span class="vrlbl">Start clock — top-left of video (hh:mm:ss)</span><input id="rn-video-start" type="text" placeholder="11:44:59"></label>
               <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
+              <label class="vrfield vrwide"><span class="vrlbl">GitHub token — Contents:write, this repo (kept only in this browser)</span><input id="rn-gh-token" type="password" placeholder="github_pat_… (optional — blank = download clips instead)" autocomplete="off"></label>
             </div>
-            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE</button><button class="rnbtn" id="rn-download" disabled>Download jobs.json</button><span id="vr-hint" class="vrhint">S1 excluded (pit/out zone) — on-track passes only.</span></div>
+            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
+            <div class="vrhint">S1 excluded (pit/out zone) — on-track passes only. Clips upload to <code>clips/</code> and link below.</div>
             <div id="rn-clips"></div>
           </div></div>
         </div>
@@ -2503,7 +2512,8 @@ function rnRenderFeed(){
   if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';return;}
   feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hms(n.tod):'';
     const ls=(n.lap!=null?('L'+n.lap):'')+(n.sector!=null?(' · S'+n.sector):'');
-    return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+'</div>';}).join('');
+    const clip=(n.meta&&n.meta.clip_url)?(' <a class="rnclip" href="'+n.meta.clip_url+'" target="_blank" rel="noopener">▶ clip</a>'):'';
+    return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+clip+'</div>';}).join('');
   feed.scrollTop=feed.scrollHeight;
 }
 function rnRenderSummary(T){
@@ -2518,31 +2528,107 @@ function rnRenderSummary(T){
     +'\nL'+laps+' done · best '+(best<Infinity?fmt(best):'—');
 }
 function rnParseTod(str){str=(str||'').trim();if(!str)return NaN;if(str.indexOf(':')>=0){const p=str.split(':').map(parseFloat);if(p.some(isNaN))return NaN;let s=0;for(const v of p)s=s*60+v;return s;}const v=parseFloat(str);return isNaN(v)?NaN:v;}
-function rnAnalyse(){
-  const url=(document.getElementById('rn-video-url').value||'').trim();
+/* ---- in-browser clipping (ffmpeg.wasm) + GitHub upload ----------------------
+   Cuts each on-track overtake (S2–S5) out of a locally-selected race video and
+   uploads it to the repo's clips/ folder. Video is a continuous real-time
+   recording with the race clock burned into the top-left, so a target race
+   time-of-day maps linearly to a video offset: video_s = TOD − start_clock. */
+const RN_REPO='vanderhallen/stint9-dash';
+const RN_FF_UMD='https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+const RN_FF_UTIL='https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js';
+// @ffmpeg/ffmpeg 0.12 spawns a *module* worker that loads the core via dynamic
+// import().default — so the core must be the ESM build (the UMD build has no default
+// export → "failed to import ffmpeg-core.js"). Core+wasm stream from the CDN.
+const RN_FF_CORE='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js';
+const RN_FF_WASM='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm';
+// A Worker can't be constructed from a cross-origin (CDN) URL, so we vendor the tiny
+// (2.6 KB) worker chunk in-repo and load it same-origin as classWorkerURL.
+const RN_FF_WORKER=new URL('vendor/ffmpeg/814.ffmpeg.js',document.baseURI).href;
+let rnFF=null,rnFFp=null;
+function rnLoadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[data-rn="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.dataset.rn=src;s.onload=()=>res();s.onerror=()=>rej(new Error('load failed'));document.head.appendChild(s);});}
+function rnLoadFFmpeg(){
+  if(rnFF)return Promise.resolve(rnFF);
+  if(rnFFp)return rnFFp;
+  rnFFp=(async()=>{
+    await rnLoadScript(RN_FF_UMD);await rnLoadScript(RN_FF_UTIL);       // -> window.FFmpegWASM / window.FFmpegUtil
+    const {FFmpeg}=window.FFmpegWASM;
+    const ff=new FFmpeg();
+    await ff.load({classWorkerURL:RN_FF_WORKER,coreURL:RN_FF_CORE,wasmURL:RN_FF_WASM});
+    rnFF=ff;return ff;
+  })();
+  return rnFFp;
+}
+function rnBytesToB64(bytes){let bin='';const c=0x8000;for(let i=0;i<bytes.length;i+=c)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+c));return btoa(bin);}
+// PUT the clip into clips/ via the GitHub Contents API (token from the field).
+async function rnUploadClip(filename,bytes){
+  const token=(document.getElementById('rn-gh-token').value||'').trim();
+  if(!token)return null;                       // caller falls back to a local download
+  const path='clips/'+filename,api='https://api.github.com/repos/'+RN_REPO+'/contents/'+path;
+  const hdr={Authorization:'Bearer '+token,Accept:'application/vnd.github+json','Content-Type':'application/json'};
+  let sha=null;try{const g=await fetch(api+'?ref=main',{headers:hdr});if(g.ok)sha=(await g.json()).sha;}catch(e){}
+  const body={message:'clip: '+filename,content:rnBytesToB64(bytes),branch:'main'};if(sha)body.sha=sha;
+  const r=await fetch(api,{method:'PUT',headers:hdr,body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('GitHub '+r.status);
+  const j=await r.json();return (j.content&&j.content.download_url)||('https://github.com/'+RN_REPO+'/blob/main/'+path);
+}
+// persist the uploaded clip URL onto the note so the feed shows a ▶ clip link on reload
+function rnSaveClipUrl(note,url){
+  if(!note.nkey||!url)return;note.meta=note.meta||{};note.meta.clip_url=url;
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?event_date=eq.'+encodeURIComponent(rnEventDate())+'&car=eq.'+encodeURIComponent(rnCar)+'&nkey=eq.'+encodeURIComponent(note.nkey),
+    {method:'PATCH',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({meta:note.meta})}).catch(()=>{});
+}
+async function rnAnalyse(){
+  const fi=document.getElementById('rn-video-file'),file=fi&&fi.files&&fi.files[0];
   const vs=rnParseTod(document.getElementById('rn-video-start').value);
   const pad=Math.max(1,parseFloat(document.getElementById('rn-pad').value)||20);
-  const clipsEl=document.getElementById('rn-clips'),dl=document.getElementById('rn-download');
-  if(isNaN(vs)){clipsEl.innerHTML='<div class="cj cjm">enter the video start time-of-day (hh:mm:ss) so clip offsets can be computed.</div>';dl.disabled=true;return;}
+  const clipsEl=document.getElementById('rn-clips'),prog=document.getElementById('rn-progress'),btn=document.getElementById('rn-analyse');
+  const setP=t=>{if(prog)prog.textContent=t;};
+  if(!file){clipsEl.innerHTML='<div class="cj cjm">choose the race video file first.</div>';return;}
+  if(isNaN(vs)){clipsEl.innerHTML='<div class="cj cjm">enter the start clock shown top-left of the video (hh:mm:ss).</div>';return;}
   const ed=rnEventDate().replace(/-/g,'');
-  const jobs=[];
-  rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod).forEach(n=>{
-    const m=n.meta,f=(m.g0!=null&&m.g1!=null)?Math.abs(m.g0)/((Math.abs(m.g0)+Math.abs(m.g1))||1):0.5;
-    const start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
-    jobs.push({filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,dropbox_url:url,
-      start_s:+start.toFixed(2),end_s:+end.toFixed(2),sector:n.sector,lap:n.lap,px:m.px,py:m.py,gain:m.gain!==false,
-      tcross_tod:+m.tcross.toFixed(2),dist_into_sector_km:+(f*(RN_SECKM[n.sector-1]||0)).toFixed(2)});
+  const specs=rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod).map(n=>{
+    const m=n.meta,start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
+    return {note:n,filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,start:start,dur:Math.max(0.1,end-start),sector:n.sector};
   });
-  if(!jobs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';dl.disabled=true;return;}
-  clipsEl.innerHTML=jobs.map(j=>'<div class="cj"><b>'+j.filename+'.mp4</b><div class="cjm">S'+j.sector+' · in '+hms(j.start_s)+' → '+hms(j.end_s)+' · ~'+j.dist_into_sector_km+' km into sector</div></div>').join('');
-  const blob=new Blob([JSON.stringify({video:url,pad_seconds:pad,video_start_tod:vs,event_date:rnEventDate(),car:rnCar,generated_at:new Date().toISOString(),jobs:jobs},null,2)],{type:'application/json'});
-  dl.disabled=false;dl.onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clips_'+rnCar+'_'+ed+'.json';document.body.appendChild(a);a.click();a.remove();};
+  if(!specs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';return;}
+  const token=(document.getElementById('rn-gh-token').value||'').trim();
+  btn.disabled=true;clipsEl.innerHTML='';
+  let ff;try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>';btn.disabled=false;return;}
+  // WORKERFS mounts the File lazily (no full-memory copy) so multi-GB videos work
+  const mnt='/mnt';let mounted=false,inPath;
+  try{try{await ff.createDir(mnt);}catch(e){}await ff.mount('WORKERFS',{files:[file]},mnt);mounted=true;inPath=mnt+'/'+file.name;}
+  catch(e){try{setP('reading file…');const {fetchFile}=window.FFmpegUtil;inPath=file.name.replace(/[^\w.\-]/g,'_');await ff.writeFile(inPath,await fetchFile(file));}
+    catch(e2){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video file.</div>';btn.disabled=false;return;}}
+  let ok=0;
+  for(let i=0;i<specs.length;i++){const s=specs[i],out='out.mp4';
+    setP('cutting '+(i+1)+'/'+specs.length+' — '+s.filename);
+    try{
+      try{await ff.deleteFile(out);}catch(e){}
+      await ff.exec(['-ss',s.start.toFixed(3),'-i',inPath,'-t',s.dur.toFixed(3),'-c','copy','-avoid_negative_ts','make_zero',out]);
+      let data;try{data=await ff.readFile(out);}catch(e){data=null;}
+      if(!data||!data.length){try{await ff.deleteFile(out);}catch(e){}          // stream-copy empty -> re-encode
+        await ff.exec(['-ss',s.start.toFixed(3),'-i',inPath,'-t',s.dur.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-c:a','aac',out]);data=await ff.readFile(out);}
+      const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
+      let link=null;
+      if(token){setP('uploading '+(i+1)+'/'+specs.length+'…');try{link=await rnUploadClip(s.filename+'.mp4',bytes);rnSaveClipUrl(s.note,link);}catch(e){}}
+      const href=link||URL.createObjectURL(blob);
+      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'"'+(link?' target="_blank"':(' download="'+s.filename+'.mp4"'))+'>'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · in '+hms(s.start)+' → '+hms(s.start+s.dur)+' · '+(link?'uploaded to clips/':'cut locally — click to download')+'</div></div>');
+      ok++;
+    }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+s.filename+' — failed</div>');}
+  }
+  if(mounted){try{await ff.unmount(mnt);}catch(e){}}
+  setP('done — '+ok+'/'+specs.length+(token?' uploaded':' cut'));btn.disabled=false;
+  if(typeof rnRenderFeed==='function')rnRenderFeed();
 }
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
 // whether the racenote sidebar panel is active (the analyse UI now lives in a reel).
 function rnWire(){
   if(rnWired)return;const an=document.getElementById('rn-analyse');if(!an)return;rnWired=true;
   an.onclick=rnAnalyse;
+  // GitHub token stays only in this browser (localStorage), never in the repo
+  const tk=document.getElementById('rn-gh-token');
+  if(tk){try{tk.value=localStorage.getItem('rn_gh_token')||'';}catch(e){}
+    tk.addEventListener('change',()=>{try{localStorage.setItem('rn_gh_token',(tk.value||'').trim());}catch(e){}});}
 }
 // VIDEO reel: reflect the selected car + how many on-track (S2–S5) overtake clips
 // are currently available.
