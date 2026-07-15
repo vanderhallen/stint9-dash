@@ -223,17 +223,25 @@
   #rn-feed .rn.gap{border-left-color:#e8871e}
   #rn-feed .rn.manual{border-left-color:#2b6cb0;background:#f2f7fc}
   #rn-feed .rn-empty{color:var(--muted);font-size:9px;text-align:center;padding:14px 4px}
-  #racenotebox .rnrow{display:flex;gap:4px;margin-top:5px}
-  #racenotebox input[type=text],#racenotebox input[type=number]{font-family:'IBM Plex Mono',monospace;font-size:9px;border:1px solid #d5d9df;border-radius:5px;padding:4px 5px;box-sizing:border-box;min-width:0;background:#fff;color:var(--ink)}
-  #racenotebox .rnbtn{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.5px;background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:5px;padding:4px 8px;cursor:pointer;white-space:nowrap}
-  #racenotebox .rnbtn:hover{background:var(--accent);border-color:var(--accent)}
-  #racenotebox .rnbtn:disabled{opacity:.5;cursor:default}
-  #racenotebox .rnvid{margin-top:7px;border-top:1px dashed #d5d9df;padding-top:6px}
-  #racenotebox .rnvid .rnlbl{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:4px 0 2px}
-  #rn-clips{margin-top:6px;max-height:150px;overflow:auto;font-size:8px;line-height:1.4}
-  #rn-clips .cj{border-bottom:1px solid #eceef1;padding:3px 0}
+  /* ---- VIDEO reel (race-video overtake clips) ---- */
+  #videoreel{width:100%;height:100%;box-sizing:border-box;padding:14px 18px;display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace;overflow:auto}
+  #videoreel .vrhd{font-weight:700;font-size:14px;letter-spacing:1px;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:12px}
+  #videoreel .vrcount{font-weight:700;color:var(--accent);margin-left:6px}
+  #videoreel .vrgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  #videoreel .vrfield{display:flex;flex-direction:column;gap:4px;min-width:0}
+  #videoreel .vrfield.vrwide{grid-column:1 / -1}
+  #videoreel .vrlbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  #videoreel input{font-family:'IBM Plex Mono',monospace;font-size:13px;border:1px solid #d5d9df;border-radius:7px;padding:8px 10px;box-sizing:border-box;width:100%;background:#fff;color:var(--ink)}
+  #videoreel input:focus{outline:none;border-color:var(--accent)}
+  #videoreel .vrbtns{display:flex;align-items:center;gap:10px;margin:14px 0 4px;flex-wrap:wrap}
+  #videoreel .rnbtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:8px;padding:9px 20px;cursor:pointer;white-space:nowrap}
+  #videoreel .rnbtn:hover{background:var(--accent);border-color:var(--accent)}
+  #videoreel .rnbtn:disabled{opacity:.45;cursor:default}
+  #videoreel .vrhint{font-size:10px;color:var(--muted)}
+  #rn-clips{margin-top:10px;flex:1 1 auto;min-height:0;overflow:auto;font-size:12px;line-height:1.5}
+  #rn-clips .cj{border-bottom:1px solid #eceef1;padding:6px 0}
   #rn-clips .cj b{font-weight:700;word-break:break-all}
-  #rn-clips .cj .cjm{color:var(--muted)}
+  #rn-clips .cj .cjm{color:var(--muted);font-size:11px}
 </style></head>
 <body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
@@ -242,20 +250,9 @@
     <div id="gridwrap"><svg id="gridsvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
     <div id="gridsource" style="flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-align:center;padding-top:5px;line-height:1.3"></div>
     <div id="racenotebox">
-      <div class="rnhd"><span>RACENOTES</span><span class="rncar">#665</span></div>
+      <div class="rnhd"><span>RACENOTES</span><span class="rncar">#—</span></div>
       <div id="rn-summary">waiting for race to start…</div>
       <div id="rn-feed"></div>
-      <div class="rnrow"><input id="rn-manual" type="text" placeholder="add a note…" style="flex:1 1 auto"><button class="rnbtn" id="rn-add">ADD</button></div>
-      <div class="rnvid">
-        <div class="rnlbl">race video</div>
-        <input id="rn-video-url" type="text" placeholder="paste Dropbox video link" style="width:100%">
-        <div class="rnrow">
-          <label style="flex:1 1 auto"><span class="rnlbl" style="margin:0">video start (tod)</span><input id="rn-video-start" type="text" placeholder="hh:mm:ss" style="width:100%"></label>
-          <label style="flex:0 0 54px"><span class="rnlbl" style="margin:0">± sec</span><input id="rn-pad" type="number" min="1" step="1" value="20" style="width:100%"></label>
-        </div>
-        <div class="rnrow"><button class="rnbtn" id="rn-analyse" style="flex:1 1 auto">ANALYSE</button><button class="rnbtn" id="rn-download" disabled>jobs.json</button></div>
-        <div id="rn-clips"></div>
-      </div>
     </div>
   </div>
   <div class="maincol" style="flex:1 1 auto;min-width:0">
@@ -403,6 +400,16 @@
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
+          <div class="reelpanel"><div id="videoreel">
+            <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
+            <div class="vrgrid">
+              <label class="vrfield vrwide"><span class="vrlbl">Dropbox video link</span><input id="rn-video-url" type="text" placeholder="https://www.dropbox.com/…"></label>
+              <label class="vrfield"><span class="vrlbl">Video start (time of day)</span><input id="rn-video-start" type="text" placeholder="hh:mm:ss"></label>
+              <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
+            </div>
+            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE</button><button class="rnbtn" id="rn-download" disabled>Download jobs.json</button><span id="vr-hint" class="vrhint">S1 excluded (pit/out zone) — on-track passes only.</span></div>
+            <div id="rn-clips"></div>
+          </div></div>
         </div>
       </div>
       <div id="wxnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
@@ -1576,6 +1583,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===10||_tk)renderDrvGrid(T);
   if(reelIdx===11||_tk)renderP1Comp(T);
   if(reelIdx===12||_tk)renderP1Bar(T);
+  if(_tk)renderVideoReel();
   if(_tk)updateThumbs();
   // feed the TYRE board the selected car's live progress so KM ticks up on TRACK.
   // sectorKm = the NLS 5-sector lengths (very unequal: S4 ≈ 9.4 km); the board
@@ -2380,26 +2388,28 @@ buildStartGrid();
 })();
 
 /* ============================================================
-   RACENOTE panel — chronological, factual race report for car
-   #665. Replaces the starting grid in the left sidebar once the
-   formation lap L0 is completed (= #665 has finished lap 1).
+   RACENOTE panel — chronological, factual race report for the
+   currently SELECTED car (any class). Replaces the starting grid
+   in the left sidebar once that car completes formation lap L0
+   (= it has finished lap 1). Switching the selected car rebuilds
+   the report for the new car/class and reloads its saved notes.
 
    Fully self-contained from DB.legs: the global LEG/BX maps are
-   only built for the *currently selected* class (buildClass),
-   but the racenote always targets #665, so it derives its own
-   per-boundary crossing times (rnBX) and within-class progress
-   ranking (rnProg) directly from DB.legs — independent of which
-   class the dashboard has selected. Works in SIM replay (notes
-   emitted as the scrubber/playback passes boundaries) and LIVE.
+   only built for the *currently selected* class (buildClass), so
+   the racenote derives its own per-boundary crossing times (rnBX)
+   and within-class progress ranking (rnProg) directly from
+   DB.legs for the selected car's class. Works in SIM replay
+   (notes emitted as the scrubber/playback passes boundaries) and
+   LIVE. Notes are stored per (event_date, car).
 
    Auto notes (deduped by a natural key `nkey`):
-     • overtake — #665's within-class order vs another class car
+     • overtake — the car's within-class order vs another class car
        flips across a sector (S1 excluded downstream = pit/out).
      • fastest  — new personal-best lap, or a class-best sector.
      • gap      — closing on the car directly ahead lap-on-lap.
-   Manual notes are crew-typed. All persist to public.stint9_racenotes.
+   All persist to public.stint9_racenotes.
    ============================================================ */
-const RN_CAR='665';
+let rnCar='';                            // the racenote target = the currently selected car (any class)
 const RN_SECKM=[3.3,3.3,6.0,9.4,2.4];   // NLS 5-sector estimated lengths (nls-sector-layout.md)
 const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "gap" note fires
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
@@ -2407,31 +2417,38 @@ let rnNotes=[],rnSeen=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
 function rnEventDate(){return (DB.event&&DB.event.date)||liveEventDate();}
 function rnEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function rnFullLap(car,L){const s=(DB.sectimes[car]||{})[L];return (s&&s.length>=5&&s.every(x=>x!=null))?s[0]+s[1]+s[2]+s[3]+s[4]:null;}
-function rnQualiPos(){if(typeof REAL_QUALI==='undefined')return null;const r=REAL_QUALI.find(x=>String(x[1])===RN_CAR);return r?r[3]:null;}
+function rnQualiPos(){if(typeof REAL_QUALI==='undefined')return null;const r=REAL_QUALI.find(x=>String(x[1])===rnCar);return r?r[3]:null;}
 // local leg lookup / fractional progress (mirror of activeLeg/carProgress but on rnLegs)
 function rnLegOf(car,T){const a=rnLegs[car];if(!a||!a.length)return null;let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return T<g[3]?g:null;}
 function rnProg(car,T){const lg=rnLegOf(car,T);if(lg)return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);const a=rnLegs[car];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return a[i][0]*5+a[i][1];return null;}
-function rnRank(T){const mp=rnProg(RN_CAR,T);if(mp==null)return null;let r=1;rnCars.forEach(c=>{if(c===RN_CAR)return;const p=rnProg(c,T);if(p!=null&&p>mp)r++;});return r;}
-function rnCurLapSec(T){const lg=rnLegOf(RN_CAR,T);if(lg)return[lg[0],lg[1]];const a=rnLegs[RN_CAR];if(a)for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return[a[i][0],a[i][1]];return[null,null];}
-// (re)build the self-contained #665-class structures when the DB changes (LIVE rebuild / first load)
+function rnRank(T){const mp=rnProg(rnCar,T);if(mp==null)return null;let r=1;rnCars.forEach(c=>{if(c===rnCar)return;const p=rnProg(c,T);if(p!=null&&p>mp)r++;});return r;}
+function rnCurLapSec(T){const lg=rnLegOf(rnCar,T);if(lg)return[lg[0],lg[1]];const a=rnLegs[rnCar];if(a)for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return[a[i][0],a[i][1]];return[null,null];}
+// (re)build the self-contained target-car-class structures whenever the selected
+// car, its class, or the DB (LIVE rebuild / first load) changes.
 function rnEnsure(){
-  const tok=(DB.event&&DB.event.date)+'|'+((DB.legs&&DB.legs[RN_CAR]||[]).length)+'|'+Object.keys(DB.classes||{}).length;
+  const car=String(selCar||'');
+  const tok=car+'|'+(DB.event&&DB.event.date)+'|'+((DB.legs&&DB.legs[car]||[]).length)+'|'+Object.keys(DB.classes||{}).length;
   if(tok===rnTok)return;
-  rnTok=tok;
+  rnTok=tok;rnCar=car;
+  if(!car){rnClass=null;rnCars=[];rnBX={};rnLegs={};rnNotes=[];rnSeen=new Set();rnLoaded=true;rnRenderFeed();return;}
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
-  rnClass=carClass[RN_CAR]||null;
-  rnCars=rnClass?DB.classes[rnClass].map(String):[];
+  rnClass=carClass[car]||null;
+  rnCars=rnClass?DB.classes[rnClass].map(String):[car];
   rnBX={};rnLegs={};
   rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=lg.slice().sort((a,b)=>a[2]-b[2]);const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
   // reload persisted notes for this event/car
   rnLoaded=false;rnNotes=[];rnSeen=new Set();
   const ed=rnEventDate();
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?select=lap,sector,kind,body,tod,nkey,meta&event_date=eq.'+encodeURIComponent(ed)+'&car=eq.'+RN_CAR+'&order=tod',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-    .then(r=>r.ok?r.json():[]).then(rows=>{rnNotes=rows||[];rnSeen=new Set(rnNotes.map(n=>n.nkey).filter(Boolean));rnLoaded=true;rnRenderFeed();}).catch(()=>{rnLoaded=true;});
+  // re-render once notes have loaded so detection + summary run even while paused
+  // (car may have been switched while playback is stopped). Guard against the token
+  // having changed again in the meantime (rapid car switching).
+  const done=()=>{rnLoaded=true;rnRenderFeed();if(rnTok===tok&&typeof render==='function')render();};
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?select=lap,sector,kind,body,tod,nkey,meta&event_date=eq.'+encodeURIComponent(ed)+'&car=eq.'+encodeURIComponent(car)+'&order=tod',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{rnNotes=rows||[];rnSeen=new Set(rnNotes.map(n=>n.nkey).filter(Boolean));done();}).catch(()=>{done();});
 }
 function rnPost(note){
   fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
-    body:JSON.stringify({event_date:rnEventDate(),car:RN_CAR,lap:note.lap,sector:note.sector,kind:note.kind,body:note.body,tod:note.tod,nkey:note.nkey,meta:note.meta||{}})}).catch(()=>{});
+    body:JSON.stringify({event_date:rnEventDate(),car:rnCar,lap:note.lap,sector:note.sector,kind:note.kind,body:note.body,tod:note.tod,nkey:note.nkey,meta:note.meta||{}})}).catch(()=>{});
 }
 function rnEmit(note){                        // auto note: skip if its natural key already exists
   if(note.nkey&&rnSeen.has(note.nkey))return false;
@@ -2440,14 +2457,14 @@ function rnEmit(note){                        // auto note: skip if its natural 
 }
 // scan all resolvable boundaries/laps up to T and emit any not-yet-seen auto notes
 function rnDetect(T){
-  const bx=rnBX[RN_CAR]||{};let dirty=false;
+  const bx=rnBX[rnCar]||{};let dirty=false;
   // highest #665 boundary crossed by T
   let maxIdx=0;Object.keys(bx).forEach(k=>{if(bx[k]<=T&&+k>maxIdx)maxIdx=+k;});
   // -- overtakes: same-boundary time gap to each class rival flips sign across a sector --
   for(let idx=2;idx<=maxIdx;idx++){
     const a=bx[idx-1],b=bx[idx];if(a==null||b==null||b>T)continue;
     const L=Math.floor((idx-1)/5)+1,k=((idx-1)%5)+1;
-    rnCars.forEach(X=>{if(X===RN_CAR)return;const xb=rnBX[X]||{},ax=xb[idx-1],bx2=xb[idx];
+    rnCars.forEach(X=>{if(X===rnCar)return;const xb=rnBX[X]||{},ax=xb[idx-1],bx2=xb[idx];
       if(ax==null||bx2==null||ax>T||bx2>T)return;
       const g0=a-ax,g1=b-bx2;                 // >0 => #665 behind X at that fixed track point
       if(g0>0===g1>0)return;                   // no crossover in this sector
@@ -2462,18 +2479,18 @@ function rnDetect(T){
   }
   // -- fastest: new personal-best full lap, and class-best sector held by #665 --
   const laps=Math.floor(maxIdx/5);let pb=Infinity;
-  for(let L=1;L<=laps;L++){const t=rnFullLap(RN_CAR,L);if(t==null)continue;
+  for(let L=1;L<=laps;L++){const t=rnFullLap(rnCar,L);if(t==null)continue;
     if(L>1&&t<pb-1e-6){if(rnEmit({kind:'fastest',lap:L,sector:5,tod:bx[L*5],nkey:'plap|'+L,body:'fastest lap so far · '+fmt(t)}))dirty=true;}
     if(t<pb)pb=t;}
   for(let idx=1;idx<=maxIdx;idx++){const tb=bx[idx];if(tb==null||tb>T)continue;const L=Math.floor((idx-1)/5)+1,k=((idx-1)%5)+1;
-    const my=(DB.sectimes[RN_CAR]||{})[L];if(!(my&&my[k-1]!=null))continue;const myv=my[k-1];
+    const my=(DB.sectimes[rnCar]||{})[L];if(!(my&&my[k-1]!=null))continue;const myv=my[k-1];
     let cb=Infinity;rnCars.forEach(X=>{const xb=rnBX[X]||{},sx=DB.sectimes[X]||{};for(const LL in sx){const bnd=xb[(+LL-1)*5+k];if(bnd==null||bnd>tb)continue;const v=(sx[LL]||[])[k-1];if(v!=null&&v<cb)cb=v;}});
     if(cb<Infinity&&myv<=cb+1e-6){if(rnEmit({kind:'fastest',lap:L,sector:k,tod:tb,nkey:'csec|'+k+'|'+L,body:'class-best S'+k+' · '+fmt(myv)+'s'}))dirty=true;}
   }
   // -- gap: closing on the car directly ahead lap-on-lap --
   for(let L=2;L<=laps;L++){const tb=bx[L*5],tp=bx[(L-1)*5];if(tb==null||tp==null||tb>T)continue;
-    const mp=rnProg(RN_CAR,tb);if(mp==null)continue;
-    let ahead=null,gapMin=Infinity;rnCars.forEach(X=>{if(X===RN_CAR)return;const p=rnProg(X,tb);if(p!=null&&p>mp&&p-mp<gapMin){gapMin=p-mp;ahead=X;}});
+    const mp=rnProg(rnCar,tb);if(mp==null)continue;
+    let ahead=null,gapMin=Infinity;rnCars.forEach(X=>{if(X===rnCar)return;const p=rnProg(X,tb);if(p!=null&&p>mp&&p-mp<gapMin){gapMin=p-mp;ahead=X;}});
     if(!ahead)continue;const xb=rnBX[ahead]||{};const gNow=(xb[L*5]!=null)?(tb-xb[L*5]):null,gPrev=(xb[(L-1)*5]!=null)?(tp-xb[(L-1)*5]):null;
     if(gNow==null||gPrev==null||gNow<=0||gPrev<=0)continue;
     if(gPrev-gNow>=RN_GAP_THR){if(rnEmit({kind:'gap',lap:L,sector:5,tod:tb,nkey:'gap|'+L+'|'+ahead,body:'closing on #'+ahead+' · '+gPrev.toFixed(1)+'s → '+gNow.toFixed(1)+'s'}))dirty=true;}
@@ -2491,13 +2508,13 @@ function rnRenderFeed(){
 }
 function rnRenderSummary(T){
   const el=document.getElementById('rn-summary');if(!el)return;
-  const cur=rnRank(T),bx=rnBX[RN_CAR]||{};
+  const cur=rnRank(T),bx=rnBX[rnCar]||{};
   // completed laps = highest boundary crossed / 5 (a pit-in lap has no S5, so a
   // sequential L*5 scan would stop early — take the max boundary index instead)
   let maxIdx=0;for(const k in bx){if(bx[k]<=T&&+k>maxIdx)maxIdx=+k;}const laps=Math.floor(maxIdx/5);
-  let best=Infinity;for(let L=1;L<=laps;L++){const t=rnFullLap(RN_CAR,L);if(t!=null&&t<best)best=t;}
+  let best=Infinity;for(let L=1;L<=laps;L++){const t=rnFullLap(rnCar,L);if(t!=null&&t<best)best=t;}
   const start=rnQualiPos(),net=(start!=null&&cur!=null)?(start-cur):null;
-  el.textContent='#'+RN_CAR+'  '+(rnClass||'')+'\nP'+(start!=null?start:'?')+' → P'+(cur!=null?cur:'?')+(net?(net>0?('   +'+net):('   '+net)):'')
+  el.textContent='#'+rnCar+'  '+(rnClass||'')+'\nP'+(start!=null?start:'?')+' → P'+(cur!=null?cur:'?')+(net?(net>0?('   +'+net):('   '+net)):'')
     +'\nL'+laps+' done · best '+(best<Infinity?fmt(best):'—');
 }
 function rnParseTod(str){str=(str||'').trim();if(!str)return NaN;if(str.indexOf(':')>=0){const p=str.split(':').map(parseFloat);if(p.some(isNaN))return NaN;let s=0;for(const v of p)s=s*60+v;return s;}const v=parseFloat(str);return isNaN(v)?NaN:v;}
@@ -2512,28 +2529,36 @@ function rnAnalyse(){
   rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod).forEach(n=>{
     const m=n.meta,f=(m.g0!=null&&m.g1!=null)?Math.abs(m.g0)/((Math.abs(m.g0)+Math.abs(m.g1))||1):0.5;
     const start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
-    jobs.push({filename:ed+'_'+RN_CAR+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,dropbox_url:url,
+    jobs.push({filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,dropbox_url:url,
       start_s:+start.toFixed(2),end_s:+end.toFixed(2),sector:n.sector,lap:n.lap,px:m.px,py:m.py,gain:m.gain!==false,
       tcross_tod:+m.tcross.toFixed(2),dist_into_sector_km:+(f*(RN_SECKM[n.sector-1]||0)).toFixed(2)});
   });
   if(!jobs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';dl.disabled=true;return;}
   clipsEl.innerHTML=jobs.map(j=>'<div class="cj"><b>'+j.filename+'.mp4</b><div class="cjm">S'+j.sector+' · in '+hms(j.start_s)+' → '+hms(j.end_s)+' · ~'+j.dist_into_sector_km+' km into sector</div></div>').join('');
-  const blob=new Blob([JSON.stringify({video:url,pad_seconds:pad,video_start_tod:vs,event_date:rnEventDate(),car:RN_CAR,generated_at:new Date().toISOString(),jobs:jobs},null,2)],{type:'application/json'});
-  dl.disabled=false;dl.onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clips_'+RN_CAR+'_'+ed+'.json';document.body.appendChild(a);a.click();a.remove();};
+  const blob=new Blob([JSON.stringify({video:url,pad_seconds:pad,video_start_tod:vs,event_date:rnEventDate(),car:rnCar,generated_at:new Date().toISOString(),jobs:jobs},null,2)],{type:'application/json'});
+  dl.disabled=false;dl.onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clips_'+rnCar+'_'+ed+'.json';document.body.appendChild(a);a.click();a.remove();};
 }
+// wire the VIDEO reel's Analyse button once, at load — it works independently of
+// whether the racenote sidebar panel is active (the analyse UI now lives in a reel).
 function rnWire(){
-  if(rnWired)return;rnWired=true;
-  const add=document.getElementById('rn-add'),inp=document.getElementById('rn-manual');
-  if(add&&inp){const submit=()=>{const v=(inp.value||'').trim();if(!v)return;const[ml,ms]=rnCurLapSec(T);
-      const note={kind:'manual',lap:ml,sector:ms,tod:T,nkey:null,body:v,meta:{}};rnNotes.push(note);rnPost(note);inp.value='';rnRenderFeed();};
-    add.onclick=submit;inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});}
-  const an=document.getElementById('rn-analyse');if(an)an.onclick=rnAnalyse;
+  if(rnWired)return;const an=document.getElementById('rn-analyse');if(!an)return;rnWired=true;
+  an.onclick=rnAnalyse;
+}
+// VIDEO reel: reflect the selected car + how many on-track (S2–S5) overtake clips
+// are currently available.
+function renderVideoReel(){
+  try{rnEnsure();const c=document.getElementById('vr-count'),cc=document.getElementById('vr-car');if(!c)return;
+    if(cc)cc.textContent=rnCar?('#'+rnCar):'#—';
+    if(!rnCar){c.textContent='· select a car';return;}
+    const n=rnNotes.filter(x=>x.kind==='overtake'&&x.sector&&x.sector!==1).length;
+    c.textContent=n?('· '+n+' overtake'+(n>1?'s':'')+' ready'):'· no on-track overtakes yet';
+  }catch(e){}
 }
 function updateRacenote(T){
  try{
   const box=document.getElementById('racenotebox');if(!box)return;
-  rnEnsure();rnWire();
-  const bx=rnBX[RN_CAR]||{};
+  rnEnsure();
+  const bx=rnBX[rnCar]||{};
   const active=(bx[5]!=null&&bx[5]<=T);      // #665 has completed lap 1 => formation lap L0 done
   const sl=document.getElementById('gridstartline'),gw=document.getElementById('gridwrap'),gs=document.getElementById('gridsource');
   if(sl)sl.style.display=active?'none':'';
@@ -2541,10 +2566,12 @@ function updateRacenote(T){
   if(gs)gs.style.display=active?'none':'';
   box.style.display=active?'flex':'none';
   if(!active||!rnLoaded)return;
+  const rc=box.querySelector('.rncar');if(rc)rc.textContent='#'+rnCar;   // header follows the selected car
   if(Date.now()-rnLastScan>350){rnLastScan=Date.now();if(rnDetect(T))rnRenderFeed();}
   rnRenderSummary(T);
  }catch(e){/* never let the racenote break the main render loop */}
 }
+rnWire();   // attach the Analyse handler now (reel is in the DOM already)
 
 /* ---- race-day timetable & countdown ----
    Standard NLS race-day timetable for a 4h round, as supplied. eventDate is
@@ -2603,7 +2630,7 @@ function renderTimetable(){
 renderTimetable();
 
 /* ---- weather / timetable reel (2 panels) ---- */
-let wxReelIdx=0;const WXN=3;
+let wxReelIdx=0;const WXN=4;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -2611,6 +2638,7 @@ function applyWxReel(anim){
   strip.style.transform='translateY(-'+(wxReelIdx*100)+'%)';
   if(up)up.disabled=wxReelIdx<=0;if(dn)dn.disabled=wxReelIdx>=WXN-1;
   if(wxReelIdx===0&&window.__syncWx)setTimeout(window.__syncWx,520);
+  if(wxReelIdx===3&&typeof renderVideoReel==='function')renderVideoReel();   // VIDEO panel: refresh clip count
 }
 function setWxReel(i){i=Math.max(0,Math.min(WXN-1,i));if(i===wxReelIdx)return;wxReelIdx=i;applyWxReel(true);}
 const wxUpBtn=document.getElementById('wxup'),wxDnBtn=document.getElementById('wxdn');
