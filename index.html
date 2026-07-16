@@ -236,13 +236,12 @@
   #champreel th.chcxl{color:#b5183c}
   #champreel th.chfut{color:#b8bec6}
   #champreel td.chpos{font-weight:700;color:var(--muted)}
-  #champreel tbody tr.chlead td.chpos{color:#b26a00}
   #champreel td.chcar{text-align:left;font-weight:700;color:var(--ink)}
   #champreel td.chtot{font-weight:700;color:var(--accent)}
   #champreel tbody tr:nth-child(even){background:#fafbfc}
-  #champreel tbody tr.chlead{background:#fff5e6}
-  #champreel tbody tr.chlead td.chcar{color:#b26a00}
-  #champreel tbody tr.chme td.chcar{color:var(--accent)}
+  /* highlight the SELECTED car's row (not the championship leader) */
+  #champreel tbody tr.chme{background:#fff5e6;box-shadow:inset 3px 0 0 var(--accent)}
+  #champreel tbody tr.chme td.chpos,#champreel tbody tr.chme td.chcar{color:var(--accent)}
   #champreel .chp{color:var(--muted)}
   #champreel .chwin{color:#1e8f3a;font-weight:700}
   #champreel .chnote{font-size:9px;color:var(--muted);margin-top:8px;line-height:1.4}
@@ -261,6 +260,10 @@
   #videoreel .rnbtn:hover{background:var(--accent);border-color:var(--accent)}
   #videoreel .rnbtn:disabled{opacity:.45;cursor:default}
   #videoreel .vrhint{font-size:10px;color:var(--muted)}
+  #videoreel .vrspin{display:none;width:13px;height:13px;flex:0 0 13px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:vrspin .7s linear infinite}
+  #videoreel .vrspin.on{display:inline-block}
+  @keyframes vrspin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){#videoreel .vrspin{animation-duration:2.4s}}
   #rn-clips{margin-top:10px;flex:1 1 auto;min-height:0;overflow:auto;font-size:12px;line-height:1.5}
   #rn-clips .cj{border-bottom:1px solid #eceef1;padding:6px 0}
   #rn-clips .cj b{font-weight:700;word-break:break-all}
@@ -435,7 +438,7 @@
               <label class="vrfield vrwide"><span class="vrlbl">Race video folder (from this computer)</span><input id="rn-video-file" type="file" accept="video/*" multiple webkitdirectory></label>
               <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="60"></label>
             </div>
-            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
+            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-spin" class="vrspin" role="progressbar" aria-label="analysing video"></span><span id="rn-progress" class="vrhint"></span></div>
             <div id="rn-clips"></div>
           </div></div>
         </div>
@@ -2444,6 +2447,10 @@ const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "ga
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
 let rnNotes=[],rnSeen=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
 function rnEventDate(){return (DB.event&&DB.event.date)||liveEventDate();}
+// the single definition of "an overtake the VIDEO reel can clip": on-track (S2–S5) and
+// carrying the crossing time the clip is cut around. The reel's count and ANALYSE must
+// read from this same list, or the header promises clips that analyse then can't place.
+function rnClipNotes(){return rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null);}
 // LIVE persists racenotes to Supabase (the real race). SIM is a replay/demo, so its
 // notes are ephemeral: kept in memory only and reset each time the replay restarts.
 function rnLive(){return window.dataMode==='LIVE';}
@@ -2694,16 +2701,18 @@ async function rnAnalyse(){
   const files=Array.from((fi&&fi.files)||[]).filter(isVid).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   const pad=Math.max(1,parseFloat(document.getElementById('rn-pad').value)||60);
   const clipsEl=document.getElementById('rn-clips'),prog=document.getElementById('rn-progress'),btn=document.getElementById('rn-analyse');
-  const setP=t=>{if(prog)prog.textContent=t;};
+  const spin=document.getElementById('rn-spin');
+  // the wheel spins for as long as there is progress text: every exit path clears it.
+  const setP=t=>{if(prog)prog.textContent=t;if(spin)spin.classList.toggle('on',!!t);};
   if(!files.length){clipsEl.innerHTML='<div class="cj cjm">choose the race video folder (or file) first.</div>';return;}
-  const overs=rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod);
+  const overs=rnClipNotes().sort((a,b)=>a.tod-b.tod);
   if(!overs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';return;}
   btn.disabled=true;clipsEl.innerHTML='';
   let worker,ff;
   try{setP('loading OCR…');worker=await rnLoadTesseract();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load the OCR engine — check your connection.</div>';btn.disabled=false;return;}
   try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>';btn.disabled=false;return;}
   const ed=rnEventDate().replace(/-/g,'');
-  clipsEl.innerHTML='<div class="cj cjm">'+files.length+' video'+(files.length!==1?'s':'')+' · '+overs.length+' overtake'+(overs.length!==1?'s':'')+' to place…</div>';
+  clipsEl.innerHTML='<div class="cj cjm">'+files.length+' video'+(files.length!==1?'s':'')+' · '+overs.length+' overtake'+(overs.length!==1?'s':'')+' took place…</div>';
   const pending=overs.slice();let ok=0;
   // walk every video file; each one clips whichever pending overtakes its clock covers
   for(let fx=0;fx<files.length&&pending.length;fx++){const file=files[fx],tag='['+(fx+1)+'/'+files.length+'] ';
@@ -2741,7 +2750,9 @@ async function rnAnalyse(){
   pending.forEach(n=>{const m=n.meta,fn=ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py;
     clipsEl.insertAdjacentHTML('beforeend','<div class="cj cjm">'+fn+' — '+hms(m.tcross)+' not found in any video</div>');});
   setP('done — '+ok+' clip'+(ok!==1?'s':'')+' saved'+(pending.length?(' · '+pending.length+' not found'):''));
+  if(spin)spin.classList.remove('on');                                  // finished: text stays, wheel stops
   btn.disabled=false;if(typeof rnRenderFeed==='function')rnRenderFeed();
+  renderVideoReel();
 }
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
 // whether the racenote sidebar panel is active (the analyse UI now lives in a reel).
@@ -2755,7 +2766,7 @@ function renderVideoReel(){
   try{rnEnsure();const c=document.getElementById('vr-count'),cc=document.getElementById('vr-car');if(!c)return;
     if(cc)cc.textContent=rnCar?('#'+rnCar):'#—';
     if(!rnCar){c.textContent='· select a car';return;}
-    const n=rnNotes.filter(x=>x.kind==='overtake'&&x.sector&&x.sector!==1).length;
+    const n=rnClipNotes().length;
     c.textContent=n?('· '+n+' overtake'+(n>1?'s':'')+' ready'):'· no on-track overtakes yet';
   }catch(e){}
 }
@@ -2831,7 +2842,7 @@ function renderChampionship(){
   h+='</tr></thead><tbody>';
   rows.forEach((r,ri)=>{
     const me=String(r.car)===String(selCar);
-    h+='<tr class="'+(ri===0?'chlead ':'')+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
+    h+='<tr class="'+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
     r.per.forEach((x,i)=>{const rd=R[i];
       if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(rd.fut?'·':'–'))+'</td>';}
       else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
