@@ -411,7 +411,7 @@
             <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
             <div class="vrgrid">
               <label class="vrfield vrwide"><span class="vrlbl">Race video file (from this computer)</span><input id="rn-video-file" type="file" accept="video/*"></label>
-              <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
+              <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="60"></label>
             </div>
             <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
             <div id="rn-clips"></div>
@@ -2648,7 +2648,7 @@ async function rnLocateTOD(v,worker,dur,samples,T){
 }
 async function rnAnalyse(){
   const fi=document.getElementById('rn-video-file'),file=fi&&fi.files&&fi.files[0];
-  const pad=Math.max(1,parseFloat(document.getElementById('rn-pad').value)||20);
+  const pad=Math.max(1,parseFloat(document.getElementById('rn-pad').value)||60);
   const clipsEl=document.getElementById('rn-clips'),prog=document.getElementById('rn-progress'),btn=document.getElementById('rn-analyse');
   const setP=t=>{if(prog)prog.textContent=t;};
   if(!file){clipsEl.innerHTML='<div class="cj cjm">choose the race video file first.</div>';return;}
