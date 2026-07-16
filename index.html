@@ -414,7 +414,7 @@
               <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
             </div>
             <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
-            <div class="vrhint">The race clock is read from the video's top-left timestamp. S1 excluded (pit/out zone). Clips are cut locally — click each below to save; upload them to <code>clips/</code> later.</div>
+            <div class="vrhint">The race clock is read from the video's top-left timestamp. S1 excluded (pit/out zone). Clips are cut locally and saved to your <b>Downloads</b> folder (allow multiple downloads if asked); move them into <code>clips/</code> later.</div>
             <div id="rn-clips"></div>
           </div></div>
         </div>
@@ -2642,12 +2642,13 @@ async function rnAnalyse(){
         await ff.exec(['-ss',s.start.toFixed(3),'-i',inPath,'-t',s.dur.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-c:a','aac',out]);data=await ff.readFile(out);}
       const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
       const href=URL.createObjectURL(blob);
-      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+s.filename+'.mp4">'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · in '+hms(s.start)+' → '+hms(s.start+s.dur)+' · click to save</div></div>');
+      const a=document.createElement('a');a.href=href;a.download=s.filename+'.mp4';document.body.appendChild(a);a.click();a.remove();   // auto-save to Downloads
+      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+s.filename+'.mp4">'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · in '+hms(s.start)+' → '+hms(s.start+s.dur)+' · saved to Downloads (click to save again)</div></div>');
       ok++;
     }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+s.filename+' — failed</div>');}
   }
   if(mounted){try{await ff.unmount(mnt);}catch(e){}}
-  setP('done — '+ok+'/'+specs.length+' cut · click each to save');btn.disabled=false;
+  setP('done — '+ok+'/'+specs.length+' saved to Downloads');btn.disabled=false;
   if(typeof rnRenderFeed==='function')rnRenderFeed();
 }
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
