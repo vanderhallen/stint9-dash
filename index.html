@@ -411,12 +411,11 @@
             <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
             <div class="vrgrid">
               <label class="vrfield vrwide"><span class="vrlbl">Race video file (from this computer)</span><input id="rn-video-file" type="file" accept="video/*"></label>
-              <label class="vrfield"><span class="vrlbl">Start clock — top-left of video (hh:mm:ss)</span><input id="rn-video-start" type="text" placeholder="11:44:59"></label>
               <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
-              <label class="vrfield vrwide"><span class="vrlbl">GitHub token — Contents:write, this repo (kept only in this browser)</span><input id="rn-gh-token" type="password" placeholder="github_pat_… (optional — blank = download clips instead)" autocomplete="off"></label>
+              <label class="vrfield"><span class="vrlbl">GitHub token — Contents:write, this repo</span><input id="rn-gh-token" type="password" placeholder="github_pat_… (optional)" autocomplete="off"></label>
             </div>
             <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
-            <div class="vrhint">S1 excluded (pit/out zone) — on-track passes only. Clips upload to <code>clips/</code> and link below.</div>
+            <div class="vrhint">The race clock is read from the video's top-left timestamp. S1 excluded (pit/out zone). Clips upload to <code>clips/</code> and link below (token kept only in this browser; blank = download instead).</div>
             <div id="rn-clips"></div>
           </div></div>
         </div>
@@ -2424,6 +2423,9 @@ const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "ga
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
 let rnNotes=[],rnSeen=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
 function rnEventDate(){return (DB.event&&DB.event.date)||liveEventDate();}
+// LIVE persists racenotes to Supabase (the real race). SIM is a replay/demo, so its
+// notes are ephemeral: kept in memory only and reset each time the replay restarts.
+function rnLive(){return window.dataMode==='LIVE';}
 function rnEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function rnFullLap(car,L){const s=(DB.sectimes[car]||{})[L];return (s&&s.length>=5&&s.every(x=>x!=null))?s[0]+s[1]+s[2]+s[3]+s[4]:null;}
 function rnQualiPos(){if(typeof REAL_QUALI==='undefined')return null;const r=REAL_QUALI.find(x=>String(x[1])===rnCar);return r?r[3]:null;}
@@ -2447,6 +2449,7 @@ function rnEnsure(){
   rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=lg.slice().sort((a,b)=>a[2]-b[2]);const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
   // reload persisted notes for this event/car
   rnLoaded=false;rnNotes=[];rnSeen=new Set();
+  if(!rnLive()){rnLoaded=true;rnRenderFeed();return;}   // SIM: ephemeral, don't load from DB
   const ed=rnEventDate();
   // re-render once notes have loaded so detection + summary run even while paused
   // (car may have been switched while playback is stopped). Guard against the token
@@ -2456,6 +2459,7 @@ function rnEnsure(){
     .then(r=>r.ok?r.json():[]).then(rows=>{rnNotes=rows||[];rnSeen=new Set(rnNotes.map(n=>n.nkey).filter(Boolean));done();}).catch(()=>{done();});
 }
 function rnPost(note){
+  if(!rnLive())return;                                  // SIM notes are in-memory only
   fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
     body:JSON.stringify({event_date:rnEventDate(),car:rnCar,lap:note.lap,sector:note.sector,kind:note.kind,body:note.body,tod:note.tod,nkey:note.nkey,meta:note.meta||{}})}).catch(()=>{});
 }
@@ -2574,25 +2578,60 @@ async function rnUploadClip(filename,bytes){
 // persist the uploaded clip URL onto the note so the feed shows a ▶ clip link on reload
 function rnSaveClipUrl(note,url){
   if(!note.nkey||!url)return;note.meta=note.meta||{};note.meta.clip_url=url;
+  if(!rnLive())return;                                  // SIM: keep the link in-memory only
   fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?event_date=eq.'+encodeURIComponent(rnEventDate())+'&car=eq.'+encodeURIComponent(rnCar)+'&nkey=eq.'+encodeURIComponent(note.nkey),
     {method:'PATCH',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({meta:note.meta})}).catch(()=>{});
 }
+/* ---- read the race clock straight from the video's burned-in top-left overlay ---- */
+const RN_TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let rnTess=null,rnTessp=null;
+function rnLoadTesseract(){
+  if(rnTess)return Promise.resolve(rnTess);if(rnTessp)return rnTessp;
+  rnTessp=(async()=>{await rnLoadScript(RN_TESS);const w=await Tesseract.createWorker('eng');
+    await w.setParameters({tessedit_char_whitelist:'0123456789:/ apmAPM',tessedit_pageseg_mode:'7'});rnTess=w;return w;})();
+  return rnTessp;
+}
+function rnParseClock(txt){                          // "11:44:59 am 06/20/2026" -> seconds of day
+  txt=(txt||'').replace(/[^0-9:apmAPM ]/g,' ').replace(/\s+/g,' ');
+  const m=txt.match(/(\d{1,2}):(\d{2}):(\d{2})\s*([ap])\s*m/i)||txt.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  if(!m)return NaN;let h=+m[1];const mi=+m[2],s=+m[3];if(h>23||mi>59||s>59)return NaN;
+  if(m[4]){const ap=m[4].toLowerCase();if(ap==='p'&&h<12)h+=12;if(ap==='a'&&h===12)h=0;}
+  return h*3600+mi*60+s;
+}
+async function rnReadStartClock(file){
+  const url=URL.createObjectURL(file),v=document.createElement('video');
+  v.preload='auto';v.muted=true;v.src=url;
+  try{
+    await new Promise((res,rej)=>{v.onloadeddata=()=>res();v.onerror=()=>rej(new Error('video load'));});
+    await new Promise(res=>{v.onseeked=()=>res();v.currentTime=Math.min(0.1,(v.duration||2)/4);setTimeout(res,2000);});
+    const vw=v.videoWidth||640,vh=v.videoHeight||480,sw=Math.round(vw*0.5),sh=Math.round(vh*0.16),sc=3;   // top-left, upscaled
+    const cv=document.createElement('canvas');cv.width=sw*sc;cv.height=sh*sc;
+    const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(v,0,0,sw,sh,0,0,sw*sc,sh*sc);
+    const img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data;                                        // threshold: light text -> black on white
+    for(let i=0;i<d.length;i+=4){const bw=((d[i]+d[i+1]+d[i+2])/3>140)?0:255;d[i]=d[i+1]=d[i+2]=bw;}
+    ctx.putImageData(img,0,0);
+    const w=await rnLoadTesseract();const {data}=await w.recognize(cv);
+    return rnParseClock(data&&data.text);
+  } finally { URL.revokeObjectURL(url); }
+}
 async function rnAnalyse(){
   const fi=document.getElementById('rn-video-file'),file=fi&&fi.files&&fi.files[0];
-  const vs=rnParseTod(document.getElementById('rn-video-start').value);
   const pad=Math.max(1,parseFloat(document.getElementById('rn-pad').value)||20);
   const clipsEl=document.getElementById('rn-clips'),prog=document.getElementById('rn-progress'),btn=document.getElementById('rn-analyse');
   const setP=t=>{if(prog)prog.textContent=t;};
   if(!file){clipsEl.innerHTML='<div class="cj cjm">choose the race video file first.</div>';return;}
-  if(isNaN(vs)){clipsEl.innerHTML='<div class="cj cjm">enter the start clock shown top-left of the video (hh:mm:ss).</div>';return;}
-  const ed=rnEventDate().replace(/-/g,'');
-  const specs=rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod).map(n=>{
-    const m=n.meta,start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
-    return {note:n,filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,start:start,dur:Math.max(0.1,end-start),sector:n.sector};
-  });
-  if(!specs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';return;}
-  const token=(document.getElementById('rn-gh-token').value||'').trim();
+  const overs=rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod);
+  if(!overs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';return;}
   btn.disabled=true;clipsEl.innerHTML='';
+  setP('reading the clock from the video…');                                    // OCR the burned-in timestamp
+  let vs;try{vs=await rnReadStartClock(file);}catch(e){vs=NaN;}
+  if(isNaN(vs)){const man=window.prompt('Could not read the timestamp in the video (top-left). Type the start clock shown there — hh:mm:ss:','');vs=rnParseTod(man||'');}
+  if(isNaN(vs)){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video start clock.</div>';btn.disabled=false;return;}
+  setP('video starts at '+hms(vs)+' — preparing…');
+  const ed=rnEventDate().replace(/-/g,'');
+  const specs=overs.map(n=>{const m=n.meta,start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
+    return {note:n,filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,start:start,dur:Math.max(0.1,end-start),sector:n.sector};});
+  const token=(document.getElementById('rn-gh-token').value||'').trim();
   let ff;try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>';btn.disabled=false;return;}
   // WORKERFS mounts the File lazily (no full-memory copy) so multi-GB videos work
   const mnt='/mnt';let mounted=false,inPath;
@@ -2644,6 +2683,9 @@ function updateRacenote(T){
  try{
   const box=document.getElementById('racenotebox');if(!box)return;
   rnEnsure();
+  // SIM: racenotes are ephemeral — when the replay is back at the start, wipe them so a
+  // fresh play-through regenerates them from scratch (LIVE keeps its persisted notes).
+  if(!rnLive()&&T<=DB.tmin+0.5&&(rnNotes.length||rnSeen.size)){rnNotes=[];rnSeen=new Set();rnRenderFeed();}
   const bx=rnBX[rnCar]||{};
   const active=(bx[5]!=null&&bx[5]<=T);      // #665 has completed lap 1 => formation lap L0 done
   const sl=document.getElementById('gridstartline'),gw=document.getElementById('gridwrap'),gs=document.getElementById('gridsource');
