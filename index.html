@@ -2793,14 +2793,14 @@ function updateRacenote(T){
 rnWire();   // attach the Analyse handler now (reel is in the DOM already)
 
 /* ============================================================
-   CHAMPIONSHIP reel — BMW M240i Racing Cup, NLS 2026 standings.
+   CHAMPIONSHIP reel — NLS 2026 class standings for EVERY class.
    Official class results (finishing order per round) from the NLS
    result archives; points by the NLS class scoring, running total.
-   Sorted by total points (leader first). Shown when a BMW M240i
-   car is the selected class. Fill `res` as more rounds run.
+   Sorted by total points (leader first); the selected car's row is
+   highlighted. Shows the standings of the selected car's class.
+   Fill `res` as more rounds run.
    ============================================================ */
-const NLS_M240={
-  klass:'BMW M240',                                   // matches DB.classes key (truncated)
+const NLS_CHAMP={
   rounds:[
     {lbl:'NLS1', date:'03-14', h:4, cxl:true},        // cancelled (snow)
     {lbl:'NLS2', date:'03-21', h:4},
@@ -2813,12 +2813,31 @@ const NLS_M240={
     {lbl:'NLS9', date:'09-13', h:4, fut:true},
     {lbl:'NLS10',date:'10-10', h:4, fut:true}
   ],
-  // finishing order per round index (index+1 = position). Missing round = no result.
+  /* Official class results, per DB class key -> {roundIndex:[cars in finishing order]}
+     (array index + 1 = finishing position), from the official "Ergebnis nach Klassen"
+     PDFs. The 24h-Qualifier (24hQ2) uses the 24h event's own class structure, so classes
+     it groups differently (a single "SP 9" vs the NLS SP9 PRO/PRO-AM/AM split, AT2, SP-X,
+     SP 2T/3/4T) have no mapped result for that round rather than a guessed one. */
   res:{
-    1:['650','651','669','652','653','680','658','677','667','665'],   // NLS2
-    2:['650','651','652','653','669','664','667','658'],               // NLS3
-    4:['650','653','658','664','652','680','677'],                     // 24hQ2
-    5:['651','667','650','653','665','680','670','677','660']          // NLS6
+    'AT 1':{1:['19','75'],2:['75'],5:['18','11']},
+    'BMW 325i':{1:['101','111'],2:['121','100','108'],4:['100','112','101'],5:['100','101','102']},
+    'BMW M2':{1:['888','877','899','898','878','870'],2:['888','877','870','878','899'],5:['877','870','878','898','888','899']},
+    'BMW M240':{1:['650','651','669','652','653','680','658','677','667','665'],2:['650','651','652','653','669','664','667','658'],4:['650','653','658','664','652','680','677'],5:['651','667','650','653','665','680','670','677','660']},
+    'CUP2':{1:['902','904','921','900','901','909','919','910','913','915','906'],2:['901','900','904','910','926','919','925','935','906','915','908'],4:['920','904','909','919','906','95'],5:['904','902','901','919','909','906','908','900','910']},
+    'CUP3':{1:['953','959','950','961','944','971','949','969','982','941','952','979','978','951','945'],2:['953','959','962','961','944','971','977','969','982','945','939','952','979','980','989','951'],4:['953','959','941','939','978','967','945','999'],5:['962','944','977','951','971','949','941','982','952','950','999','945']},
+    'SP10':{1:['176','177','155','180','189','171','164','181'],2:['177','180','176','189','174','175','164','178','188'],4:['170','188','176','180','145','177','189','155','171','90','175'],5:['176','170','177','189']},
+    'SP3T':{1:['321','322','300'],2:['312','317','819','322','300'],4:['323','800','300'],5:['312','808','300']},
+    'SP4':{1:['250','254'],2:['254','250'],5:['250']},
+    'SP7':{1:['69','82'],2:['89'],4:['82']},
+    'SP9 AM':{1:['5','8','37'],2:['5','786','37'],5:['786','5','37','6','50']},
+    'SP9 PRO':{1:['99','44','45','34','16','7','17','130','47','77','64','98'],2:['77','911','65','47'],5:['17','77','35','30','47']},
+    'SP9 PRO-':{1:['48','35','23','32'],2:['23','4','32','9'],5:['48','26','23','32']},
+    'TCR':{2:['801','821','808'],4:['89'],5:['801']},
+    'V3':{2:['529'],5:['529']},
+    'V5':{1:['444','446','447','455'],2:['444','447','445'],4:['444'],5:['447']},
+    'V6':{1:['400','416'],2:['400'],4:['415','396'],5:['396','400','410']},
+    'VT2-F+4W':{1:['470','494','488','472'],2:['495','470','472','488','474','496'],4:['480','495','494','496','472','491'],5:['470','471','491','477']},
+    'VT2-RWD':{1:['524','55','514','510','502','501','503','520','505','506'],2:['524','500','519','55','520','522','510','502','505'],4:['500','55','519','501','520','514'],5:['524','520','514','508','506','507']}
   }
 };
 function rnPoints(pos,hours){if(pos==null||pos<1)return 0;const T=[15,11,8,6,4,3,2];let p=pos<=7?T[pos-1]:1;if(hours>=6)p=Math.round(p*1.25);return p;}
@@ -2827,8 +2846,8 @@ function renderChampionship(){
   const el=document.getElementById('champreel');if(!el)return;
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   const cls=carClass[String(selCar)]||null;
-  if(cls!==NLS_M240.klass){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">No championship data for '+(cls||'—')+'.<br>Select a BMW M240i Racing Cup car.</div>';return;}
-  const R=NLS_M240.rounds,res=NLS_M240.res;
+  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[cls];
+  if(!res){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
   const cars={};Object.keys(res).forEach(k=>res[k].forEach(c=>{cars[c]=true;}));
   const rows=Object.keys(cars).map(car=>{
     const per=R.map((rd,i)=>{const arr=res[i];if(!arr)return null;const idx=arr.indexOf(car);if(idx<0)return null;const pos=idx+1;return {pos:pos,pts:rnPoints(pos,rd.h)};});
@@ -2836,7 +2855,7 @@ function renderChampionship(){
     return {car:car,per:per,total:total,wins:wins};
   });
   rows.sort((a,b)=>b.total-a.total||b.wins-a.wins||(a.car>b.car?1:-1));
-  let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· BMW M240i Racing Cup · NLS 2026</span></div>';
+  let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· '+rnEsc(cls)+' · NLS 2026</span></div>';
   h+='<table><thead><tr><th>Pos</th><th>Pts</th><th class="chcar">Car</th>';
   R.forEach(rd=>{h+='<th class="'+(rd.cxl?'chcxl':(rd.fut?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
   h+='</tr></thead><tbody>';
@@ -2852,7 +2871,7 @@ function renderChampionship(){
   h+='</tbody></table>';
   h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming.</div>';
   el.innerHTML=h;
- }catch(e){/* e.g. called from render() before NLS_M240 initialises — never break the render loop */}
+ }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
 
 /* ---- race-day timetable & countdown ----
