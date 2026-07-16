@@ -2609,14 +2609,43 @@ function rnAnchor(samples,dur,T){
   const scan=useCons=>v.forEach((s,i)=>{if(useCons&&!cons[i])return;const tv=s.t+(T-s.c);if(tv<0||tv>dur)return;const sc=Math.abs(s.c-T);if(sc<bs){bs=sc;best=tv;}});
   scan(true);if(best==null)scan(false);return best;
 }
-async function rnLocateTOD(v,worker,dur,samples,T){
-  let tv=rnAnchor(samples,dur,T);if(tv==null)return null;
+// break the clock samples into maximal real-time runs (clock advancing ~1s per
+// video-second, monotonically). A frozen/looped/rewound clock ends a run.
+function rnRuns(samples){
+  const v=samples.filter(s=>!isNaN(s.c));const runs=[];let cur=null;
+  for(let i=0;i<v.length;i++){
+    if(cur){const dt=v[i].t-cur[cur.length-1].t,dc=v[i].c-cur[cur.length-1].c;
+      if(dt>0&&dc>0&&Math.abs(dc-dt)<=5+dt*0.3){cur.push(v[i]);continue;}
+      if(cur.length>=2)runs.push(cur);}
+    cur=[v[i]];}
+  if(cur&&cur.length>=2)runs.push(cur);return runs;
+}
+// runs (longest clock-span first) whose clock range spans T — i.e. every place the
+// clock genuinely passes through T
+function rnRunsForT(samples,T){
+  return rnRuns(samples).filter(r=>T>=r[0].c-3&&T<=r[r.length-1].c+3)
+    .sort((a,b)=>(b[b.length-1].c-b[0].c)-(a[a.length-1].c-a[0].c));
+}
+// seek+OCR-refine to the frame whose clock == T, starting from a predicted offset
+async function rnRefine(v,worker,dur,tv0,T){
+  let tv=tv0;
   for(let k=0;k<3;k++){const t=Math.max(0,Math.min(dur-0.1,tv));await rnSeek(v,t);
-    const c=await rnReadClockAt(v,worker);if(isNaN(c))break;
-    const err=c-T;if(Math.abs(err)<1.2)return t;tv=t-err;}
-  const t=Math.max(0,Math.min(dur-0.1,tv));await rnSeek(v,t);
-  const c=await rnReadClockAt(v,worker);
+    const c=await rnReadClockAt(v,worker);if(isNaN(c))break;const err=c-T;if(Math.abs(err)<1.2)return t;tv=t-err;}
+  const t=Math.max(0,Math.min(dur-0.1,tv));await rnSeek(v,t);const c=await rnReadClockAt(v,worker);
   return (!isNaN(c)&&Math.abs(c-T)<=3)?t:null;
+}
+// locate the video time for race-clock T. The clock can repeat (the same time shows
+// twice), so try the LONGEST real-time run first — the occurrence embedded in genuine,
+// consistently-advancing footage rather than a glitch/freeze/replay.
+async function rnLocateTOD(v,worker,dur,samples,T){
+  const runs=rnRunsForT(samples,T);const cand=[];
+  for(const r of runs){let tv=null;
+    for(let i=1;i<r.length;i++){if(T>=r[i-1].c&&T<=r[i].c){const f=(T-r[i-1].c)/((r[i].c-r[i-1].c)||1);tv=r[i-1].t+f*(r[i].t-r[i-1].t);break;}}
+    if(tv==null){const s=r.reduce((a,b)=>Math.abs(b.c-T)<Math.abs(a.c-T)?b:a);tv=s.t+(T-s.c);}
+    cand.push(tv);}
+  if(!cand.length){const a=rnAnchor(samples,dur,T);if(a!=null)cand.push(a);}
+  for(const c0 of cand){const tv=await rnRefine(v,worker,dur,c0,T);if(tv!=null)return tv;}
+  return null;
 }
 async function rnAnalyse(){
   const fi=document.getElementById('rn-video-file'),file=fi&&fi.files&&fi.files[0];
@@ -2652,12 +2681,13 @@ async function rnAnalyse(){
     for(const n of overs){const m=n.meta,T=m.tcross,out='out.mp4';
       const fn=ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py;
       setP('locating '+fn+' ('+hms(T)+')…');
+      const nOcc=rnRunsForT(samples,T).length;                       // times this clock genuinely appears
       const tv=await rnLocateTOD(v,worker,dur,samples,T);
       if(tv==null){clipsEl.insertAdjacentHTML('beforeend','<div class="cj cjm">'+fn+' — '+hms(T)+' not found in this video</div>');continue;}
-      // window edges in CLOCK time (located separately) so a jumpy video clock can't
-      // shrink/shift the ±pad span; fall back to video-seconds around the centre.
-      const tvS=await rnLocateTOD(v,worker,dur,samples,T-pad),tvE=await rnLocateTOD(v,worker,dur,samples,T+pad);
-      let start=(tvS!=null)?Math.min(tvS,tv):tv-pad,end=(tvE!=null)?Math.max(tvE,tv):tv+pad;
+      // window edges in CLOCK time, refined *near the chosen occurrence* so a repeated/
+      // jumpy clock can't shrink the span or jump to the other occurrence.
+      const tvS=await rnRefine(v,worker,dur,tv-pad,T-pad),tvE=await rnRefine(v,worker,dur,tv+pad,T+pad);
+      let start=(tvS!=null&&tvS<tv)?tvS:tv-pad,end=(tvE!=null&&tvE>tv)?tvE:tv+pad;
       start=Math.max(0,start);end=Math.min(dur,end);const durc=Math.max(0.2,end-start);
       setP('cutting '+fn+'…');
       try{
@@ -2669,7 +2699,8 @@ async function rnAnalyse(){
         const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
         const href=URL.createObjectURL(blob);
         const a=document.createElement('a');a.href=href;a.download=fn+'.mp4';document.body.appendChild(a);a.click();a.remove();   // auto-save to Downloads
-        clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+fn+'.mp4">'+fn+'.mp4</a><div class="cjm">S'+n.sector+' · '+durc.toFixed(0)+'s · est. pass '+hms(T)+' (@ video '+hms(tv)+') · saved to Downloads</div></div>');
+        const occ=(nOcc>1)?(' · clock seen '+nOcc+'×, used most consistent'):'';
+        clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+fn+'.mp4">'+fn+'.mp4</a><div class="cjm">S'+n.sector+' · '+durc.toFixed(0)+'s · est. pass '+hms(T)+' (@ video '+hms(tv)+')'+occ+' · saved to Downloads</div></div>');
         ok++;
       }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+fn+' — cut failed</div>');}
     }
