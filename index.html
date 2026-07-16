@@ -2654,7 +2654,11 @@ async function rnAnalyse(){
       setP('locating '+fn+' ('+hms(T)+')…');
       const tv=await rnLocateTOD(v,worker,dur,samples,T);
       if(tv==null){clipsEl.insertAdjacentHTML('beforeend','<div class="cj cjm">'+fn+' — '+hms(T)+' not found in this video</div>');continue;}
-      const start=Math.max(0,tv-pad),end=Math.min(dur,tv+pad),durc=Math.max(0.2,end-start);
+      // window edges in CLOCK time (located separately) so a jumpy video clock can't
+      // shrink/shift the ±pad span; fall back to video-seconds around the centre.
+      const tvS=await rnLocateTOD(v,worker,dur,samples,T-pad),tvE=await rnLocateTOD(v,worker,dur,samples,T+pad);
+      let start=(tvS!=null)?Math.min(tvS,tv):tv-pad,end=(tvE!=null)?Math.max(tvE,tv):tv+pad;
+      start=Math.max(0,start);end=Math.min(dur,end);const durc=Math.max(0.2,end-start);
       setP('cutting '+fn+'…');
       try{
         try{await ff.deleteFile(out);}catch(e){}
@@ -2665,7 +2669,7 @@ async function rnAnalyse(){
         const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
         const href=URL.createObjectURL(blob);
         const a=document.createElement('a');a.href=href;a.download=fn+'.mp4';document.body.appendChild(a);a.click();a.remove();   // auto-save to Downloads
-        clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+fn+'.mp4">'+fn+'.mp4</a><div class="cjm">S'+n.sector+' · '+durc.toFixed(0)+'s · overtake '+hms(T)+' at '+hms(tv)+' in video · saved to Downloads</div></div>');
+        clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+fn+'.mp4">'+fn+'.mp4</a><div class="cjm">S'+n.sector+' · '+durc.toFixed(0)+'s · est. pass '+hms(T)+' (@ video '+hms(tv)+') · saved to Downloads</div></div>');
         ok++;
       }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+fn+' — cut failed</div>');}
     }
