@@ -412,10 +412,9 @@
             <div class="vrgrid">
               <label class="vrfield vrwide"><span class="vrlbl">Race video file (from this computer)</span><input id="rn-video-file" type="file" accept="video/*"></label>
               <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="20"></label>
-              <label class="vrfield"><span class="vrlbl">GitHub token — Contents:write, this repo</span><input id="rn-gh-token" type="password" placeholder="github_pat_… (optional)" autocomplete="off"></label>
             </div>
             <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-progress" class="vrhint"></span></div>
-            <div class="vrhint">The race clock is read from the video's top-left timestamp. S1 excluded (pit/out zone). Clips upload to <code>clips/</code> and link below (token kept only in this browser; blank = download instead).</div>
+            <div class="vrhint">The race clock is read from the video's top-left timestamp. S1 excluded (pit/out zone). Clips are cut locally — click each below to save; upload them to <code>clips/</code> later.</div>
             <div id="rn-clips"></div>
           </div></div>
         </div>
@@ -2516,8 +2515,7 @@ function rnRenderFeed(){
   if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';return;}
   feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hms(n.tod):'';
     const ls=(n.lap!=null?('L'+n.lap):'')+(n.sector!=null?(' · S'+n.sector):'');
-    const clip=(n.meta&&n.meta.clip_url)?(' <a class="rnclip" href="'+n.meta.clip_url+'" target="_blank" rel="noopener">▶ clip</a>'):'';
-    return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+clip+'</div>';}).join('');
+    return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+'</div>';}).join('');
   feed.scrollTop=feed.scrollHeight;
 }
 function rnRenderSummary(T){
@@ -2532,12 +2530,12 @@ function rnRenderSummary(T){
     +'\nL'+laps+' done · best '+(best<Infinity?fmt(best):'—');
 }
 function rnParseTod(str){str=(str||'').trim();if(!str)return NaN;if(str.indexOf(':')>=0){const p=str.split(':').map(parseFloat);if(p.some(isNaN))return NaN;let s=0;for(const v of p)s=s*60+v;return s;}const v=parseFloat(str);return isNaN(v)?NaN:v;}
-/* ---- in-browser clipping (ffmpeg.wasm) + GitHub upload ----------------------
+/* ---- in-browser clipping (ffmpeg.wasm) --------------------------------------
    Cuts each on-track overtake (S2–S5) out of a locally-selected race video and
-   uploads it to the repo's clips/ folder. Video is a continuous real-time
-   recording with the race clock burned into the top-left, so a target race
-   time-of-day maps linearly to a video offset: video_s = TOD − start_clock. */
-const RN_REPO='vanderhallen/stint9-dash';
+   offers each clip as a local download (upload to clips/ later, e.g. via VS Code).
+   Video is a continuous real-time recording with the race clock burned into the
+   top-left, so a target race time-of-day maps linearly to a video offset:
+   video_s = TOD − start_clock. */
 const RN_FF_UMD='https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
 const RN_FF_UTIL='https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js';
 // @ffmpeg/ffmpeg 0.12 spawns a *module* worker that loads the core via dynamic
@@ -2562,56 +2560,51 @@ function rnLoadFFmpeg(){
   })();
   return rnFFp;
 }
-function rnBytesToB64(bytes){let bin='';const c=0x8000;for(let i=0;i<bytes.length;i+=c)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+c));return btoa(bin);}
-// PUT the clip into clips/ via the GitHub Contents API (token from the field).
-async function rnUploadClip(filename,bytes){
-  const token=(document.getElementById('rn-gh-token').value||'').trim();
-  if(!token)return null;                       // caller falls back to a local download
-  const path='clips/'+filename,api='https://api.github.com/repos/'+RN_REPO+'/contents/'+path;
-  const hdr={Authorization:'Bearer '+token,Accept:'application/vnd.github+json','Content-Type':'application/json'};
-  let sha=null;try{const g=await fetch(api+'?ref=main',{headers:hdr});if(g.ok)sha=(await g.json()).sha;}catch(e){}
-  const body={message:'clip: '+filename,content:rnBytesToB64(bytes),branch:'main'};if(sha)body.sha=sha;
-  const r=await fetch(api,{method:'PUT',headers:hdr,body:JSON.stringify(body)});
-  if(!r.ok)throw new Error('GitHub '+r.status);
-  const j=await r.json();return (j.content&&j.content.download_url)||('https://github.com/'+RN_REPO+'/blob/main/'+path);
-}
-// persist the uploaded clip URL onto the note so the feed shows a ▶ clip link on reload
-function rnSaveClipUrl(note,url){
-  if(!note.nkey||!url)return;note.meta=note.meta||{};note.meta.clip_url=url;
-  if(!rnLive())return;                                  // SIM: keep the link in-memory only
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?event_date=eq.'+encodeURIComponent(rnEventDate())+'&car=eq.'+encodeURIComponent(rnCar)+'&nkey=eq.'+encodeURIComponent(note.nkey),
-    {method:'PATCH',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({meta:note.meta})}).catch(()=>{});
-}
 /* ---- read the race clock straight from the video's burned-in top-left overlay ---- */
 const RN_TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
 let rnTess=null,rnTessp=null;
 function rnLoadTesseract(){
   if(rnTess)return Promise.resolve(rnTess);if(rnTessp)return rnTessp;
   rnTessp=(async()=>{await rnLoadScript(RN_TESS);const w=await Tesseract.createWorker('eng');
-    await w.setParameters({tessedit_char_whitelist:'0123456789:/ apmAPM',tessedit_pageseg_mode:'7'});rnTess=w;return w;})();
+    await w.setParameters({tessedit_char_whitelist:'0123456789:/.apmAPM ',tessedit_pageseg_mode:'6'});rnTess=w;return w;})();
   return rnTessp;
 }
 function rnParseClock(txt){                          // "11:44:59 am 06/20/2026" -> seconds of day
-  txt=(txt||'').replace(/[^0-9:apmAPM ]/g,' ').replace(/\s+/g,' ');
-  const m=txt.match(/(\d{1,2}):(\d{2}):(\d{2})\s*([ap])\s*m/i)||txt.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  txt=(txt||'').replace(/[^0-9:.;apmAPM ]/gi,' ').replace(/\s+/g,' ');
+  const m=txt.match(/(\d{1,2})[:.;](\d{2})[:.;](\d{2})\s*([ap])\s*m/i)||txt.match(/(\d{1,2})[:.;](\d{2})[:.;](\d{2})/);
   if(!m)return NaN;let h=+m[1];const mi=+m[2],s=+m[3];if(h>23||mi>59||s>59)return NaN;
   if(m[4]){const ap=m[4].toLowerCase();if(ap==='p'&&h<12)h+=12;if(ap==='a'&&h===12)h=0;}
   return h*3600+mi*60+s;
 }
+// OCR one region of the current video frame. frac = fraction of width/height from
+// the top-left; invert flips light-on-dark overlays to dark-on-light (best for OCR).
+async function rnOcrRegion(v,worker,frac,invert){
+  const vw=v.videoWidth||640,vh=v.videoHeight||480;
+  const sw=Math.max(1,Math.round(vw*frac.w)),sh=Math.max(1,Math.round(vh*frac.h));
+  const sc=Math.min(4,Math.max(1,Math.round(1600/sw)));
+  const cv=document.createElement('canvas');cv.width=sw*sc;cv.height=sh*sc;
+  const ctx=cv.getContext('2d');ctx.drawImage(v,0,0,sw,sh,0,0,cv.width,cv.height);
+  const img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data;
+  for(let i=0;i<d.length;i+=4){let g=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;g=Math.max(0,Math.min(255,(g-90)*2.4));if(invert)g=255-g;d[i]=d[i+1]=d[i+2]=g;}
+  ctx.putImageData(img,0,0);
+  const {data}=await worker.recognize(cv);return (data&&data.text)||'';
+}
 async function rnReadStartClock(file){
   const url=URL.createObjectURL(file),v=document.createElement('video');
-  v.preload='auto';v.muted=true;v.src=url;
+  v.preload='auto';v.muted=true;v.src=url;window.__rnOcr='';
+  const seek=ts=>new Promise(res=>{let done=false;const go=()=>{if(!done){done=true;res();}};v.onseeked=go;try{v.currentTime=ts;}catch(e){go();}setTimeout(go,2500);});
   try{
     await new Promise((res,rej)=>{v.onloadeddata=()=>res();v.onerror=()=>rej(new Error('video load'));});
-    await new Promise(res=>{v.onseeked=()=>res();v.currentTime=Math.min(0.1,(v.duration||2)/4);setTimeout(res,2000);});
-    const vw=v.videoWidth||640,vh=v.videoHeight||480,sw=Math.round(vw*0.5),sh=Math.round(vh*0.16),sc=3;   // top-left, upscaled
-    const cv=document.createElement('canvas');cv.width=sw*sc;cv.height=sh*sc;
-    const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(v,0,0,sw,sh,0,0,sw*sc,sh*sc);
-    const img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data;                                        // threshold: light text -> black on white
-    for(let i=0;i<d.length;i+=4){const bw=((d[i]+d[i+1]+d[i+2])/3>140)?0:255;d[i]=d[i+1]=d[i+2]=bw;}
-    ctx.putImageData(img,0,0);
-    const w=await rnLoadTesseract();const {data}=await w.recognize(cv);
-    return rnParseClock(data&&data.text);
+    const w=await rnLoadTesseract();
+    const dur=(v.duration&&isFinite(v.duration))?v.duration:6;
+    const frames=[Math.min(1.2,dur/3),Math.min(4,dur/2),0.05];   // skip a fade-in first frame
+    const regions=[{w:0.55,h:0.18},{w:1,h:0.22}];                // tight top-left, then full top strip
+    for(const ts of frames){await seek(ts);
+      for(const rg of regions){for(const inv of [true,false]){
+        const txt=await rnOcrRegion(v,w,rg,inv);if(txt.trim())window.__rnOcr=txt.trim().replace(/\s+/g,' ');
+        const c=rnParseClock(txt);if(!isNaN(c))return c;
+      }}}
+    return NaN;
   } finally { URL.revokeObjectURL(url); }
 }
 async function rnAnalyse(){
@@ -2625,13 +2618,13 @@ async function rnAnalyse(){
   btn.disabled=true;clipsEl.innerHTML='';
   setP('reading the clock from the video…');                                    // OCR the burned-in timestamp
   let vs;try{vs=await rnReadStartClock(file);}catch(e){vs=NaN;}
-  if(isNaN(vs)){const man=window.prompt('Could not read the timestamp in the video (top-left). Type the start clock shown there — hh:mm:ss:','');vs=rnParseTod(man||'');}
+  if(isNaN(vs)){const raw=(window.__rnOcr||'').slice(0,48);
+    const man=window.prompt('Could not read the video clock automatically'+(raw?(' — OCR saw: "'+raw+'"'):'')+'.\nType the start clock shown top-left (hh:mm:ss):','');vs=rnParseTod(man||'');}
   if(isNaN(vs)){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video start clock.</div>';btn.disabled=false;return;}
   setP('video starts at '+hms(vs)+' — preparing…');
   const ed=rnEventDate().replace(/-/g,'');
   const specs=overs.map(n=>{const m=n.meta,start=Math.max(0,m.tcross-pad-vs),end=m.tcross+pad-vs;
     return {note:n,filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,start:start,dur:Math.max(0.1,end-start),sector:n.sector};});
-  const token=(document.getElementById('rn-gh-token').value||'').trim();
   let ff;try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>';btn.disabled=false;return;}
   // WORKERFS mounts the File lazily (no full-memory copy) so multi-GB videos work
   const mnt='/mnt';let mounted=false,inPath;
@@ -2648,15 +2641,13 @@ async function rnAnalyse(){
       if(!data||!data.length){try{await ff.deleteFile(out);}catch(e){}          // stream-copy empty -> re-encode
         await ff.exec(['-ss',s.start.toFixed(3),'-i',inPath,'-t',s.dur.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-c:a','aac',out]);data=await ff.readFile(out);}
       const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
-      let link=null;
-      if(token){setP('uploading '+(i+1)+'/'+specs.length+'…');try{link=await rnUploadClip(s.filename+'.mp4',bytes);rnSaveClipUrl(s.note,link);}catch(e){}}
-      const href=link||URL.createObjectURL(blob);
-      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'"'+(link?' target="_blank"':(' download="'+s.filename+'.mp4"'))+'>'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · in '+hms(s.start)+' → '+hms(s.start+s.dur)+' · '+(link?'uploaded to clips/':'cut locally — click to download')+'</div></div>');
+      const href=URL.createObjectURL(blob);
+      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+s.filename+'.mp4">'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · in '+hms(s.start)+' → '+hms(s.start+s.dur)+' · click to save</div></div>');
       ok++;
     }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+s.filename+' — failed</div>');}
   }
   if(mounted){try{await ff.unmount(mnt);}catch(e){}}
-  setP('done — '+ok+'/'+specs.length+(token?' uploaded':' cut'));btn.disabled=false;
+  setP('done — '+ok+'/'+specs.length+' cut · click each to save');btn.disabled=false;
   if(typeof rnRenderFeed==='function')rnRenderFeed();
 }
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
@@ -2664,10 +2655,6 @@ async function rnAnalyse(){
 function rnWire(){
   if(rnWired)return;const an=document.getElementById('rn-analyse');if(!an)return;rnWired=true;
   an.onclick=rnAnalyse;
-  // GitHub token stays only in this browser (localStorage), never in the repo
-  const tk=document.getElementById('rn-gh-token');
-  if(tk){try{tk.value=localStorage.getItem('rn_gh_token')||'';}catch(e){}
-    tk.addEventListener('change',()=>{try{localStorage.setItem('rn_gh_token',(tk.value||'').trim());}catch(e){}});}
 }
 // VIDEO reel: reflect the selected car + how many on-track (S2–S5) overtake clips
 // are currently available.

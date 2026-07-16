@@ -13,19 +13,18 @@ Clips of the **selected car**'s on-track overtakes are now cut **in the browser*
 from a locally-selected video, in the dashboard's **VIDEO** reel (4th panel of the
 right-side weather/agenda reel in `index.html`):
 
-1. Let the race play so overtake notes accumulate for the selected car (they
-   auto-save to Supabase `public.stint9_racenotes`).
-2. Open the **VIDEO** reel (▲▼ next to the timetable). Choose the **race video
-   file** from this computer, type the **start clock** shown in the video's
-   top-left corner (`hh:mm:ss` — the video is a continuous real-time recording, so
-   this anchors video t=0 to race time-of-day), set **± sec** (default 20), and
-   optionally paste a **GitHub token** (fine-grained, Contents:write on this repo —
-   it stays only in your browser's localStorage).
-3. Click **ANALYSE & CLIP**. ffmpeg.wasm cuts each overtake ±N s, names it
-   `YYYYMMDD_car_Llap_Ssector_Px_Py.mp4` (e.g. `20260620_665_L2_S3_P4_P3.mp4`),
-   and — if a token is set — uploads it to the repo's `clips/` folder and links it
-   in the reel and the racenote feed. With no token, each clip is offered as a
-   local download instead. **Sector 1 is excluded** (pit/out zone).
+1. Let the race play so overtake notes accumulate for the selected car (LIVE saves
+   them to Supabase `public.stint9_racenotes`; SIM keeps them in memory).
+2. Open the **VIDEO** reel (▲▼ next to the timetable) and choose the **race video
+   file** from this computer. The **race clock** is read automatically from the
+   video's burned-in top-left timestamp (OCR); the video is a continuous real-time
+   recording, so that anchors video t=0 to race time-of-day. Set **± sec**
+   (default 20).
+3. Click **ANALYSE & CLIP**. ffmpeg.wasm cuts each overtake ±N s and names it
+   `YYYYMMDD_car_Llap_Ssector_Px_Py.mp4` (e.g. `20260620_665_L2_S3_P4_P3.mp4`).
+   Each clip appears as a **download link in the reel — click to save it locally**,
+   then commit the files into `clips/` yourself (e.g. via VS Code). **Sector 1 is
+   excluded** (pit/out zone).
 
 ## `make_clips.py` — offline / batch fallback
 
