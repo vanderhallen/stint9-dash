@@ -2589,24 +2589,34 @@ async function rnOcrRegion(v,worker,frac,invert){
   ctx.putImageData(img,0,0);
   const {data}=await worker.recognize(cv);return (data&&data.text)||'';
 }
-async function rnReadStartClock(file){
-  const url=URL.createObjectURL(file),v=document.createElement('video');
-  v.preload='auto';v.muted=true;v.src=url;window.__rnOcr='';
-  const seek=ts=>new Promise(res=>{let done=false;const go=()=>{if(!done){done=true;res();}};v.onseeked=go;try{v.currentTime=ts;}catch(e){go();}setTimeout(go,2500);});
-  try{
-    await new Promise((res,rej)=>{v.onloadeddata=()=>res();v.onerror=()=>rej(new Error('video load'));});
-    const vdur=(v.duration&&isFinite(v.duration))?v.duration:0;
-    const w=await rnLoadTesseract();
-    const dur=vdur||6;
-    const frames=[Math.min(1.2,dur/3),Math.min(4,dur/2),0.05];   // skip a fade-in first frame
-    const regions=[{w:0.55,h:0.18},{w:1,h:0.22}];                // tight top-left, then full top strip
-    for(const ts of frames){await seek(ts);
-      for(const rg of regions){for(const inv of [true,false]){
-        const txt=await rnOcrRegion(v,w,rg,inv);if(txt.trim())window.__rnOcr=txt.trim().replace(/\s+/g,' ');
-        const c=rnParseClock(txt);if(!isNaN(c))return {clock:c,duration:vdur};
-      }}}
-    return {clock:NaN,duration:vdur};
-  } finally { URL.revokeObjectURL(url); }
+function rnSeek(v,ts){return new Promise(res=>{let done=false;const go=()=>{if(!done){done=true;res();}};v.onseeked=go;try{v.currentTime=Math.max(0,ts);}catch(e){go();}setTimeout(go,2500);});}
+// OCR the clock at the current frame (tight top-left, then full top strip, inverted then not)
+async function rnReadClockAt(v,worker){
+  for(const rg of [{w:0.55,h:0.18},{w:1,h:0.22}]){for(const inv of [true,false]){
+    const c=rnParseClock(await rnOcrRegion(v,worker,rg,inv));if(!isNaN(c))return c;}}
+  return NaN;
+}
+// The burned-in clock can jump (dropped frames), so map a race time-of-day -> video
+// offset empirically: pick the clock sample nearest the target that sits in a locally
+// real-time (slope~1) run, predict the offset, then refine+verify against the frame.
+function rnAnchor(samples,dur,T){
+  const v=samples.filter(s=>!isNaN(s.c));if(!v.length)return null;
+  const cons=v.map((s,i)=>{let ok=false;
+    if(i>0){const dt=s.t-v[i-1].t,dc=s.c-v[i-1].c;if(dt>0&&Math.abs(dc-dt)<=4+dt*0.2)ok=true;}
+    if(i<v.length-1){const dt=v[i+1].t-s.t,dc=v[i+1].c-s.c;if(dt>0&&Math.abs(dc-dt)<=4+dt*0.2)ok=true;}
+    return ok;});
+  let best=null,bs=Infinity;
+  const scan=useCons=>v.forEach((s,i)=>{if(useCons&&!cons[i])return;const tv=s.t+(T-s.c);if(tv<0||tv>dur)return;const sc=Math.abs(s.c-T);if(sc<bs){bs=sc;best=tv;}});
+  scan(true);if(best==null)scan(false);return best;
+}
+async function rnLocateTOD(v,worker,dur,samples,T){
+  let tv=rnAnchor(samples,dur,T);if(tv==null)return null;
+  for(let k=0;k<3;k++){const t=Math.max(0,Math.min(dur-0.1,tv));await rnSeek(v,t);
+    const c=await rnReadClockAt(v,worker);if(isNaN(c))break;
+    const err=c-T;if(Math.abs(err)<1.2)return t;tv=t-err;}
+  const t=Math.max(0,Math.min(dur-0.1,tv));await rnSeek(v,t);
+  const c=await rnReadClockAt(v,worker);
+  return (!isNaN(c)&&Math.abs(c-T)<=3)?t:null;
 }
 async function rnAnalyse(){
   const fi=document.getElementById('rn-video-file'),file=fi&&fi.files&&fi.files[0];
@@ -2617,47 +2627,52 @@ async function rnAnalyse(){
   const overs=rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null).sort((a,b)=>a.tod-b.tod);
   if(!overs.length){clipsEl.innerHTML='<div class="cj cjm">no on-track overtakes (S2–S5) recorded yet.</div>';return;}
   btn.disabled=true;clipsEl.innerHTML='';
-  setP('reading the clock from the video…');                                    // OCR the burned-in timestamp
-  let vs,vdur=0;try{const r=await rnReadStartClock(file);vs=r.clock;vdur=r.duration||0;}catch(e){vs=NaN;}
-  if(isNaN(vs)){const raw=(window.__rnOcr||'').slice(0,48);
-    const man=window.prompt('Could not read the video clock automatically'+(raw?(' — OCR saw: "'+raw+'"'):'')+'.\nType the start clock shown top-left (hh:mm:ss):','');vs=rnParseTod(man||'');}
-  if(isNaN(vs)){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video start clock.</div>';btn.disabled=false;return;}
-  const vspan=vdur?(' → '+hms(vs+vdur)):'';
-  clipsEl.innerHTML='<div class="cj cjm">video clock '+hms(vs)+vspan+(vdur?(' ('+fmt(vdur)+' long)'):'')+' — clipping overtakes inside that window.</div>';
-  // clip window per overtake, clamped to what this video file actually covers
+  let worker;try{setP('loading OCR…');worker=await rnLoadTesseract();}catch(e){setP('');clipsEl.innerHTML='<div class="cj err">could not load the OCR engine — check your connection.</div>';btn.disabled=false;return;}
+  const url=URL.createObjectURL(file),v=document.createElement('video');v.preload='auto';v.muted=true;v.src=url;
   const ed=rnEventDate().replace(/-/g,'');
-  const specs=overs.map(n=>{const m=n.meta,rs=m.tcross-pad-vs,re=m.tcross+pad-vs;
-    return {note:n,filename:ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py,rs:rs,re:re,tcross:m.tcross,sector:n.sector};});
-  const inrange=specs.filter(s=>s.re>0&&(!vdur||s.rs<vdur));
-  specs.filter(s=>!(s.re>0&&(!vdur||s.rs<vdur))).forEach(s=>clipsEl.insertAdjacentHTML('beforeend',
-    '<div class="cj cjm">'+s.filename+' — overtake at '+hms(s.tcross)+' is outside this video</div>'));
-  if(!inrange.length){setP('');clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">none of the '+specs.length+' overtakes fall inside this video (clock '+hms(vs)+vspan+'). Use the video segment that covers them.</div>');btn.disabled=false;return;}
-  let ff;try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>');btn.disabled=false;return;}
-  // WORKERFS mounts the File lazily (no full-memory copy) so multi-GB videos work
-  const mnt='/mnt';let mounted=false,inPath;
-  try{try{await ff.createDir(mnt);}catch(e){}await ff.mount('WORKERFS',{files:[file]},mnt);mounted=true;inPath=mnt+'/'+file.name;}
-  catch(e){try{setP('reading file…');const {fetchFile}=window.FFmpegUtil;inPath=file.name.replace(/[^\w.\-]/g,'_');await ff.writeFile(inPath,await fetchFile(file));}
-    catch(e2){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video file.</div>';btn.disabled=false;return;}}
-  let ok=0;
-  for(let i=0;i<inrange.length;i++){const s=inrange[i],out='out.mp4';
-    const start=Math.max(0,s.rs),end=vdur?Math.min(vdur,s.re):s.re,dur=Math.max(0.2,end-start);
-    setP('cutting '+(i+1)+'/'+inrange.length+' — '+s.filename);
-    try{
-      try{await ff.deleteFile(out);}catch(e){}
-      await ff.exec(['-ss',start.toFixed(3),'-i',inPath,'-t',dur.toFixed(3),'-c','copy','-avoid_negative_ts','make_zero',out]);
-      let data;try{data=await ff.readFile(out);}catch(e){data=null;}
-      if(!data||!data.length){try{await ff.deleteFile(out);}catch(e){}          // stream-copy empty -> re-encode
-        await ff.exec(['-ss',start.toFixed(3),'-i',inPath,'-t',dur.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-c:a','aac',out]);data=await ff.readFile(out);}
-      const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
-      const href=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=href;a.download=s.filename+'.mp4';document.body.appendChild(a);a.click();a.remove();   // auto-save to Downloads
-      clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+s.filename+'.mp4">'+s.filename+'.mp4</a><div class="cjm">S'+s.sector+' · '+dur.toFixed(0)+'s · in '+hms(start)+' → '+hms(end)+' · saved to Downloads (click to save again)</div></div>');
-      ok++;
-    }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+s.filename+' — failed</div>');}
-  }
-  if(mounted){try{await ff.unmount(mnt);}catch(e){}}
-  setP('done — '+ok+'/'+inrange.length+' saved to Downloads');btn.disabled=false;
-  if(typeof rnRenderFeed==='function')rnRenderFeed();
+  try{
+    await new Promise((res,rej)=>{v.onloadeddata=()=>res();v.onerror=()=>rej(new Error('video load'));v.load&&v.load();});
+    const dur=(v.duration&&isFinite(v.duration))?v.duration:0;
+    if(!dur){setP('');clipsEl.innerHTML='<div class="cj err">could not read the video length.</div>';return;}
+    // 1. scan the burned-in clock across the whole video (it can jump, so sample densely)
+    const N=Math.min(40,Math.max(10,Math.round(dur/10)));const samples=[];
+    for(let i=0;i<N;i++){const t=dur*(i+0.5)/N;setP('scanning clock '+(i+1)+'/'+N+'…');await rnSeek(v,t);samples.push({t:t,c:await rnReadClockAt(v,worker)});}
+    const valid=samples.filter(s=>!isNaN(s.c));
+    if(!valid.length){setP('');clipsEl.innerHTML='<div class="cj err">could not read the clock anywhere in this video.</div>';return;}
+    const cmin=Math.min.apply(null,valid.map(s=>s.c)),cmax=Math.max.apply(null,valid.map(s=>s.c));
+    clipsEl.innerHTML='<div class="cj cjm">clock read '+hms(cmin)+' → '+hms(cmax)+' ('+valid.length+'/'+N+' samples). Locating overtakes…</div>';
+    // 2. ffmpeg
+    let ff;try{setP('loading ffmpeg…');ff=await rnLoadFFmpeg();}catch(e){setP('');clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">could not load ffmpeg.wasm — check your connection.</div>');return;}
+    const mnt='/mnt';let mounted=false,inPath;
+    try{try{await ff.createDir(mnt);}catch(e){}await ff.mount('WORKERFS',{files:[file]},mnt);mounted=true;inPath=mnt+'/'+file.name;}
+    catch(e){try{setP('reading file…');const {fetchFile}=window.FFmpegUtil;inPath=file.name.replace(/[^\w.\-]/g,'_');await ff.writeFile(inPath,await fetchFile(file));}
+      catch(e2){setP('');clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">could not read the video file.</div>');return;}}
+    // 3. locate + cut each overtake by matching its race time-of-day to the video clock
+    let ok=0;
+    for(const n of overs){const m=n.meta,T=m.tcross,out='out.mp4';
+      const fn=ed+'_'+rnCar+'_L'+n.lap+'_S'+n.sector+'_P'+m.px+'_P'+m.py;
+      setP('locating '+fn+' ('+hms(T)+')…');
+      const tv=await rnLocateTOD(v,worker,dur,samples,T);
+      if(tv==null){clipsEl.insertAdjacentHTML('beforeend','<div class="cj cjm">'+fn+' — '+hms(T)+' not found in this video</div>');continue;}
+      const start=Math.max(0,tv-pad),end=Math.min(dur,tv+pad),durc=Math.max(0.2,end-start);
+      setP('cutting '+fn+'…');
+      try{
+        try{await ff.deleteFile(out);}catch(e){}
+        await ff.exec(['-ss',start.toFixed(3),'-i',inPath,'-t',durc.toFixed(3),'-c','copy','-avoid_negative_ts','make_zero',out]);
+        let data;try{data=await ff.readFile(out);}catch(e){data=null;}
+        if(!data||!data.length){try{await ff.deleteFile(out);}catch(e){}
+          await ff.exec(['-ss',start.toFixed(3),'-i',inPath,'-t',durc.toFixed(3),'-c:v','libx264','-preset','veryfast','-crf','20','-c:a','aac',out]);data=await ff.readFile(out);}
+        const bytes=data instanceof Uint8Array?data:new Uint8Array(data),blob=new Blob([bytes],{type:'video/mp4'});
+        const href=URL.createObjectURL(blob);
+        const a=document.createElement('a');a.href=href;a.download=fn+'.mp4';document.body.appendChild(a);a.click();a.remove();   // auto-save to Downloads
+        clipsEl.insertAdjacentHTML('beforeend','<div class="cj"><a href="'+href+'" download="'+fn+'.mp4">'+fn+'.mp4</a><div class="cjm">S'+n.sector+' · '+durc.toFixed(0)+'s · overtake '+hms(T)+' at '+hms(tv)+' in video · saved to Downloads</div></div>');
+        ok++;
+      }catch(e){clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">'+fn+' — cut failed</div>');}
+    }
+    if(mounted){try{await ff.unmount(mnt);}catch(e){}}
+    setP('done — '+ok+' clip'+(ok!==1?'s':'')+' saved to Downloads');
+  }catch(e){setP('');clipsEl.insertAdjacentHTML('beforeend','<div class="cj err">analyse failed — '+rnEsc(e&&e.message||'error')+'</div>');}
+  finally{URL.revokeObjectURL(url);btn.disabled=false;if(typeof rnRenderFeed==='function')rnRenderFeed();}
 }
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
 // whether the racenote sidebar panel is active (the analyse UI now lives in a reel).
