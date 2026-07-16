@@ -235,6 +235,8 @@
   #champreel thead th{position:sticky;top:0;background:#f2f3f6;color:var(--muted);font-weight:700;font-size:9px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #d5d9df}
   #champreel th.chcxl{color:#b5183c}
   #champreel th.chfut{color:#b8bec6}
+  #champreel td.chpos{font-weight:700;color:var(--muted)}
+  #champreel tbody tr.chlead td.chpos{color:#b26a00}
   #champreel td.chcar{text-align:left;font-weight:700;color:var(--ink)}
   #champreel td.chtot{font-weight:700;color:var(--accent)}
   #champreel tbody tr:nth-child(even){background:#fafbfc}
@@ -2824,12 +2826,12 @@ function renderChampionship(){
   });
   rows.sort((a,b)=>b.total-a.total||b.wins-a.wins||(a.car>b.car?1:-1));
   let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· BMW M240i Racing Cup · NLS 2026</span></div>';
-  h+='<table><thead><tr><th class="chcar">Car</th><th>Pts</th>';
+  h+='<table><thead><tr><th>Pos</th><th>Pts</th><th class="chcar">Car</th>';
   R.forEach(rd=>{h+='<th class="'+(rd.cxl?'chcxl':(rd.fut?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
   h+='</tr></thead><tbody>';
   rows.forEach((r,ri)=>{
     const me=String(r.car)===String(selCar);
-    h+='<tr class="'+(ri===0?'chlead ':'')+(me?'chme':'')+'"><td class="chcar">#'+r.car+'</td><td class="chtot">'+r.total+'</td>';
+    h+='<tr class="'+(ri===0?'chlead ':'')+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
     r.per.forEach((x,i)=>{const rd=R[i];
       if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(rd.fut?'·':'–'))+'</td>';}
       else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
