@@ -226,6 +226,25 @@
   #rn-feed .rn.manual{border-left-color:#2b6cb0;background:#f2f7fc}
   #rn-feed .rn-empty{color:var(--muted);font-size:9px;text-align:center;padding:14px 4px}
   /* ---- VIDEO reel (race-video overtake clips) ---- */
+  /* ---- CHAMPIONSHIP reel (NLS class standings) ---- */
+  #champreel{width:100%;height:100%;box-sizing:border-box;padding:12px 14px;display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace;overflow:auto}
+  #champreel .chd{font-weight:700;font-size:13px;letter-spacing:1px;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:8px}
+  #champreel .chd .chsub{font-weight:400;font-size:10px;color:var(--muted);letter-spacing:.5px}
+  #champreel table{border-collapse:collapse;width:100%;font-size:11px}
+  #champreel th,#champreel td{padding:3px 5px;text-align:center;white-space:nowrap}
+  #champreel thead th{position:sticky;top:0;background:#f2f3f6;color:var(--muted);font-weight:700;font-size:9px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #d5d9df}
+  #champreel th.chcxl{color:#b5183c}
+  #champreel th.chfut{color:#b8bec6}
+  #champreel td.chcar{text-align:left;font-weight:700;color:var(--ink)}
+  #champreel td.chtot{font-weight:700;color:var(--accent)}
+  #champreel tbody tr:nth-child(even){background:#fafbfc}
+  #champreel tbody tr.chlead{background:#fff5e6}
+  #champreel tbody tr.chlead td.chcar{color:#b26a00}
+  #champreel tbody tr.chme td.chcar{color:var(--accent)}
+  #champreel .chp{color:var(--muted)}
+  #champreel .chwin{color:#1e8f3a;font-weight:700}
+  #champreel .chnote{font-size:9px;color:var(--muted);margin-top:8px;line-height:1.4}
+  #champreel .chempty{color:var(--muted);font-size:11px;text-align:center;padding:20px 6px}
   #videoreel{width:100%;height:100%;box-sizing:border-box;padding:14px 18px;display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace;overflow:auto}
   #videoreel .vrhd{font-weight:700;font-size:14px;letter-spacing:1px;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:12px}
   #videoreel .vrcount{font-weight:700;color:var(--accent);margin-left:6px}
@@ -407,6 +426,7 @@
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
+          <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel"><div id="videoreel">
             <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
             <div class="vrgrid">
@@ -1590,6 +1610,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(reelIdx===11||_tk)renderP1Comp(T);
   if(reelIdx===12||_tk)renderP1Bar(T);
   if(_tk)renderVideoReel();
+  if(_tk&&typeof renderChampionship==='function')renderChampionship();
   if(_tk)updateThumbs();
   // feed the TYRE board the selected car's live progress so KM ticks up on TRACK.
   // sectorKm = the NLS 5-sector lengths (very unequal: S4 ≈ 9.4 km); the board
@@ -2758,6 +2779,69 @@ function updateRacenote(T){
 }
 rnWire();   // attach the Analyse handler now (reel is in the DOM already)
 
+/* ============================================================
+   CHAMPIONSHIP reel — BMW M240i Racing Cup, NLS 2026 standings.
+   Official class results (finishing order per round) from the NLS
+   result archives; points by the NLS class scoring, running total.
+   Sorted by total points (leader first). Shown when a BMW M240i
+   car is the selected class. Fill `res` as more rounds run.
+   ============================================================ */
+const NLS_M240={
+  klass:'BMW M240',                                   // matches DB.classes key (truncated)
+  rounds:[
+    {lbl:'NLS1', date:'03-14', h:4, cxl:true},        // cancelled (snow)
+    {lbl:'NLS2', date:'03-21', h:4},
+    {lbl:'NLS3', date:'04-11', h:4},
+    {lbl:'24hQ1',date:'04-18', h:4, q:true},          // qualifying only, no race classification
+    {lbl:'24hQ2',date:'04-19', h:4, q:true},          // 24h-Qualifier race
+    {lbl:'NLS6', date:'06-20', h:4},
+    {lbl:'NLS7', date:'08-01', h:6, fut:true},
+    {lbl:'NLS8', date:'09-12', h:4, fut:true},
+    {lbl:'NLS9', date:'09-13', h:4, fut:true},
+    {lbl:'NLS10',date:'10-10', h:4, fut:true}
+  ],
+  // finishing order per round index (index+1 = position). Missing round = no result.
+  res:{
+    1:['650','651','669','652','653','680','658','677','667','665'],   // NLS2
+    2:['650','651','652','653','669','664','667','658'],               // NLS3
+    4:['650','653','658','664','652','680','677'],                     // 24hQ2
+    5:['651','667','650','653','665','680','670','677','660']          // NLS6
+  }
+};
+function rnPoints(pos,hours){if(pos==null||pos<1)return 0;const T=[15,11,8,6,4,3,2];let p=pos<=7?T[pos-1]:1;if(hours>=6)p=Math.round(p*1.25);return p;}
+function renderChampionship(){
+ try{
+  const el=document.getElementById('champreel');if(!el)return;
+  const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
+  const cls=carClass[String(selCar)]||null;
+  if(cls!==NLS_M240.klass){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">No championship data for '+(cls||'—')+'.<br>Select a BMW M240i Racing Cup car.</div>';return;}
+  const R=NLS_M240.rounds,res=NLS_M240.res;
+  const cars={};Object.keys(res).forEach(k=>res[k].forEach(c=>{cars[c]=true;}));
+  const rows=Object.keys(cars).map(car=>{
+    const per=R.map((rd,i)=>{const arr=res[i];if(!arr)return null;const idx=arr.indexOf(car);if(idx<0)return null;const pos=idx+1;return {pos:pos,pts:rnPoints(pos,rd.h)};});
+    const total=per.reduce((a,x)=>a+(x?x.pts:0),0),wins=per.filter(x=>x&&x.pos===1).length;
+    return {car:car,per:per,total:total,wins:wins};
+  });
+  rows.sort((a,b)=>b.total-a.total||b.wins-a.wins||(a.car>b.car?1:-1));
+  let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· BMW M240i Racing Cup · NLS 2026</span></div>';
+  h+='<table><thead><tr><th class="chcar">Car</th><th>Pts</th>';
+  R.forEach(rd=>{h+='<th class="'+(rd.cxl?'chcxl':(rd.fut?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
+  h+='</tr></thead><tbody>';
+  rows.forEach((r,ri)=>{
+    const me=String(r.car)===String(selCar);
+    h+='<tr class="'+(ri===0?'chlead ':'')+(me?'chme':'')+'"><td class="chcar">#'+r.car+'</td><td class="chtot">'+r.total+'</td>';
+    r.per.forEach((x,i)=>{const rd=R[i];
+      if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(rd.fut?'·':'–'))+'</td>';}
+      else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming.</div>';
+  el.innerHTML=h;
+ }catch(e){/* e.g. called from render() before NLS_M240 initialises — never break the render loop */}
+}
+
 /* ---- race-day timetable & countdown ----
    Standard NLS race-day timetable for a 4h round, as supplied. eventDate is
    the next scheduled NLS round per nuerburgring-langstrecken-serie.de's
@@ -2815,7 +2899,7 @@ function renderTimetable(){
 renderTimetable();
 
 /* ---- weather / timetable reel (2 panels) ---- */
-let wxReelIdx=0;const WXN=4;
+let wxReelIdx=0;const WXN=5;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -2823,7 +2907,8 @@ function applyWxReel(anim){
   strip.style.transform='translateY(-'+(wxReelIdx*100)+'%)';
   if(up)up.disabled=wxReelIdx<=0;if(dn)dn.disabled=wxReelIdx>=WXN-1;
   if(wxReelIdx===0&&window.__syncWx)setTimeout(window.__syncWx,520);
-  if(wxReelIdx===3&&typeof renderVideoReel==='function')renderVideoReel();   // VIDEO panel: refresh clip count
+  if(wxReelIdx===3&&typeof renderChampionship==='function')renderChampionship();   // CHAMPIONSHIP panel
+  if(wxReelIdx===4&&typeof renderVideoReel==='function')renderVideoReel();         // VIDEO panel: refresh clip count
 }
 function setWxReel(i){i=Math.max(0,Math.min(WXN-1,i));if(i===wxReelIdx)return;wxReelIdx=i;applyWxReel(true);}
 const wxUpBtn=document.getElementById('wxup'),wxDnBtn=document.getElementById('wxdn');
