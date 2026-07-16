@@ -2430,7 +2430,10 @@ function rnQualiPos(){if(typeof REAL_QUALI==='undefined')return null;const r=REA
 // local leg lookup / fractional progress (mirror of activeLeg/carProgress but on rnLegs)
 function rnLegOf(car,T){const a=rnLegs[car];if(!a||!a.length)return null;let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return T<g[3]?g:null;}
 function rnProg(car,T){const lg=rnLegOf(car,T);if(lg)return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);const a=rnLegs[car];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return a[i][0]*5+a[i][1];return null;}
-function rnRank(T){const mp=rnProg(rnCar,T);if(mp==null)return null;let r=1;rnCars.forEach(c=>{if(c===rnCar)return;const p=rnProg(c,T);if(p!=null&&p>mp)r++;});return r;}
+// progress + the time it was reached, so equal-progress cars (e.g. everyone on the
+// same lap at the finish) are ranked by who got there first — matching livePos.
+function rnProgT(car,T){const lg=rnLegOf(car,T);if(lg)return {p:lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1),t:T};const a=rnLegs[car];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return {p:a[i][0]*5+a[i][1],t:a[i][3]};return null;}
+function rnRank(T){const me=rnProgT(rnCar,T);if(me==null)return null;let r=1;rnCars.forEach(c=>{if(c===rnCar)return;const o=rnProgT(c,T);if(!o)return;if(o.p>me.p+1e-6||(Math.abs(o.p-me.p)<1e-6&&o.t<me.t))r++;});return r;}
 function rnCurLapSec(T){const lg=rnLegOf(rnCar,T);if(lg)return[lg[0],lg[1]];const a=rnLegs[rnCar];if(a)for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return[a[i][0],a[i][1]];return[null,null];}
 // (re)build the self-contained target-car-class structures whenever the selected
 // car, its class, or the DB (LIVE rebuild / first load) changes.
