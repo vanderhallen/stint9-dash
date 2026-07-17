@@ -251,6 +251,7 @@
   #champreel tbody tr.chme td.chpos,#champreel tbody tr.chme td.chcar{color:var(--accent)}
   #champreel .chp{color:var(--muted)}
   #champreel .chwin{color:#1e8f3a;font-weight:700}
+  #champreel .chdnf{color:#b5183c;font-weight:700;font-size:9px;letter-spacing:.5px}
   #champreel .chnote{font-size:9px;color:var(--muted);margin-top:8px;line-height:1.4}
   #champreel .chempty{color:var(--muted);font-size:11px;text-align:center;padding:20px 6px}
   #videoreel{width:100%;height:100%;box-sizing:border-box;padding:14px 18px;display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace;overflow:auto}
@@ -2918,6 +2919,29 @@ const NLS_CHAMP={
     'V6':{1:['400','416'],2:['400'],4:['415','396'],5:['396','400','410']},
     'VT2-F+4W':{1:['470','494','488','472'],2:['495','470','472','488','474','496'],4:['480','495','494','496','472','491'],5:['470','471','491','477']},
     'VT2-RWD':{1:['524','55','514','510','502','501','503','520','505','506'],2:['524','500','519','55','520','522','510','502','505'],4:['500','55','519','501','520','514'],5:['524','520','514','508','506','507']}
+  },
+  /* Cars that STARTED a round (completed >=1 lap) but were not classified: class ->
+     {roundIndex:{car:officialStatus}}. Derived from the official RENNEN_RESULT.CSV
+     (STATUS column) at teilnehmer.vln.de — DNF retired, DNC ran but not classified,
+     DSQ disqualified; all score 0. A car in neither `res` nor `dnf` did not start and
+     shows –. Only NLS3 + NLS6 are covered: the timing CSVs for NLS2 have been removed
+     from the archive, and the 24h-Qualifier is not a VLN-published event. */
+  dnf:{
+    'AT 1':{2:{'19':'DNF'}},
+    'BMW 325i':{2:{'101':'DNF','111':'DNF','115':'DNF'},5:{'111':'DNF','112':'DNF'}},
+    'BMW M240':{2:{'665':'DNF','677':'DNF'},5:{'652':'DNF'}},
+    'CUP2':{2:{'902':'DNF','909':'DNF','921':'DNF'},5:{'913':'DNF','915':'DNC','921':'DNF'}},
+    'CUP3':{2:{'941':'DNF','949':'DNF','950':'DNF','966':'DNF','967':'DNF'},5:{'953':'DNF','959':'DNF','961':'DNF','966':'DNF','969':'DNC'}},
+    'SP10':{2:{'155':'DNF'},5:{'155':'DNF','164':'DNF'}},
+    'SP3T':{5:{'10':'DNF','321':'DNF','333':'DNF'}},
+    'SP7':{2:{'82':'DNF'},5:{'71':'DNF','82':'DNF'}},
+    'SP9 AM':{2:{'40':'DNF'},5:{'33':'DNF'}},
+    'SP9 PRO':{2:{'7':'DNF','44':'DSQ'},5:{'44':'DNF'}},
+    'SP9 PRO-':{5:{'8':'DNF'}},
+    'V5':{5:{'444':'DNF'}},
+    'V6':{2:{'396':'DNF'}},
+    'VT2-F+4W':{2:{'480':'DNF','481':'DNF','491':'DNF','492':'DNF','494':'DNF'},5:{'472':'DNF','480':'DNF','492':'DNF','494':'DNC','495':'DNF'}},
+    'VT2-RWD':{2:{'503':'DNF'},5:{'55':'DNF','500':'DNF','505':'DNF'}}
   }
 };
 function rnPoints(pos,hours){if(pos==null||pos<1)return 0;const T=[15,11,8,6,4,3,2];let p=pos<=7?T[pos-1]:1;if(hours>=6)p=Math.round(p*1.25);return p;}
@@ -2926,11 +2950,14 @@ function renderChampionship(){
   const el=document.getElementById('champreel');if(!el)return;
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   const cls=carClass[String(selCar)]||null;
-  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[cls];
+  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[cls],dnf=(NLS_CHAMP.dnf||{})[cls]||{};
   if(!res){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
   const cars={};Object.keys(res).forEach(k=>res[k].forEach(c=>{cars[c]=true;}));
+  Object.keys(dnf).forEach(k=>Object.keys(dnf[k]).forEach(c=>{cars[c]=true;}));
   const rows=Object.keys(cars).map(car=>{
-    const per=R.map((rd,i)=>{const arr=res[i];if(!arr)return null;const idx=arr.indexOf(car);if(idx<0)return null;const pos=idx+1;return {pos:pos,pts:rnPoints(pos,rd.h)};});
+    const per=R.map((rd,i)=>{const arr=res[i];if(!arr)return null;const idx=arr.indexOf(car);
+      if(idx<0){const st=(dnf[i]||{})[car];return st?{dnf:st,pts:0}:null;}
+      const pos=idx+1;return {pos:pos,pts:rnPoints(pos,rd.h)};});
     const total=per.reduce((a,x)=>a+(x?x.pts:0),0),wins=per.filter(x=>x&&x.pos===1).length;
     return {car:car,per:per,total:total,wins:wins};
   });
@@ -2944,12 +2971,13 @@ function renderChampionship(){
     h+='<tr class="'+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
     r.per.forEach((x,i)=>{const rd=R[i];
       if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(rd.fut?'·':'–'))+'</td>';}
+      else if(x.dnf){h+='<td><span class="chdnf" title="started, not classified">'+x.dnf+'</span></td>';}
       else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
     });
     h+='</tr>';
   });
   h+='</tbody></table>';
-  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming.</div>';
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming. Retirements known for NLS3 + NLS6 only.</div>';
   el.innerHTML=h;
  }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
