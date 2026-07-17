@@ -3151,7 +3151,7 @@ applyWxReel(false);
       del.onclick=()=>{
         const pw=window.prompt('Password to delete this message:');
         if(pw===null)return;                                        // cancelled
-        if(pw!=='nls'){window.alert('Wrong password — message not deleted.');return;}
+        if(pw!=='x'){window.alert('Wrong password — message not deleted.');return;}
         dismissed.add(String(m.id));saveDismissed();renderMessages();
       };
       const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=metaOf(m);
