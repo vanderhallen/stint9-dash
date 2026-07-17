@@ -103,9 +103,6 @@
   #agentq::placeholder{color:#9aa1a9}
   .agentgo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:8px 18px;border-radius:9px;border:none;background:#16202b;color:#fff;cursor:pointer}
   .agentgo:hover{background:#2a3646}
-  .agenta{flex:1 1 100%;font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#16202b;line-height:1.55;padding:0 2px;white-space:pre-wrap;max-height:0;overflow:hidden;transition:max-height .2s ease}
-  .agenta.show{max-height:76px;overflow-y:auto;padding:3px 2px 0}
-  .agenta b{color:#e0301e}
   .agentsug{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .agentsug>span{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9aa1a9}
   .sug{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3a4656;background:#f1f3f5;border:1px solid #e2e5ea;border-radius:20px;padding:3px 11px;cursor:pointer}
@@ -209,6 +206,15 @@
   #msgModal .mtxt{font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.45;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:18px}
   #msgModal .mok{display:block;margin-left:auto;font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:9px 24px;border-radius:8px;cursor:pointer}
   #msgModal .mok:hover{background:var(--accent);border-color:var(--accent)}
+  #agentModal{position:fixed;inset:0;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:1000}
+  #agentModal.show{display:flex}
+  #agentModal .mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:560px;width:calc(100% - 40px);padding:22px 22px 18px;box-shadow:0 24px 64px rgba(0,0,0,.32)}
+  #agentModal .mhd{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:12px}
+  #agentModal .mq{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:10px;word-break:break-word}
+  #agentModal .mtxt{font-family:'IBM Plex Mono',monospace;font-size:14px;line-height:1.55;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:18px;max-height:60vh;overflow-y:auto}
+  #agentModal .mtxt b{color:var(--accent)}
+  #agentModal .mok{display:block;margin-left:auto;font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:9px 24px;border-radius:8px;cursor:pointer}
+  #agentModal .mok:hover{background:var(--accent);border-color:var(--accent)}
   /* ---- racenote panel (replaces the starting grid after formation lap L0) ---- */
   #racenotebox{display:none;flex:1 1 auto;min-height:0;flex-direction:column;font-family:'IBM Plex Mono',monospace}
   #racenotebox .rnhd{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:12px;letter-spacing:2px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin:2px 0 5px}
@@ -454,7 +460,12 @@
     <input id="agentq" type="text" placeholder="ask agent a question" autocomplete="off" spellcheck="false">
     <button id="agentgo" class="agentgo">ask</button>
     <div class="agentsug"><span>Try:</span><button class="sug">What's the likely outcome for our car?</button><button class="sug">Which sector are we losing time?</button><button class="sug">What's the gap ahead?</button><button class="sug">What is the average speed over full lap?</button></div>
-    <div id="agenta" class="agenta"></div>
+    <div id="agentModal"><div class="mbox">
+      <div class="mhd">&#129302; Agent answer</div>
+      <div class="mq" id="agentModalQ"></div>
+      <div class="mtxt" id="agentModalText"></div>
+      <button type="button" class="mok" id="agentModalOk">OK</button>
+    </div></div>
   </div>
   </div><!-- /.maincol -->
   <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column">
@@ -1433,7 +1444,15 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
     if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.max(0,Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg))),gB=Math.max(0,Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg))),iy=y+gA,ih=Math.max(rowH*0.14,Math.min(rowH,rowH-gA-gB));
       s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
   svg.innerHTML=s;}
-function agentAsk(){const el=document.getElementById('agenta');if(!el)return;el.innerHTML=askAgent(document.getElementById('agentq').value);el.classList.add('show');}
+function closeAgentModal(){const m=document.getElementById('agentModal');if(m)m.classList.remove('show');}
+function agentAsk(){
+  const m=document.getElementById('agentModal'),q=document.getElementById('agentq').value;
+  if(!m)return;
+  document.getElementById('agentModalQ').textContent=q.trim()?('“'+q.trim()+'”'):'';
+  document.getElementById('agentModalText').innerHTML=askAgent(q);
+  m.classList.add('show');
+  const ok=document.getElementById('agentModalOk');if(ok)ok.focus();
+}
 function askAgent(q){
   q=(q||'').toLowerCase().trim();
   if(!q)return 'Ask me about the race — e.g. "what position are we?", "likely outcome?", "who pitted early?", "best class lap?"';
@@ -1702,6 +1721,9 @@ document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
 document.querySelectorAll('#compmetric .seg').forEach(b=>b.onclick=()=>{document.querySelectorAll('#compmetric .seg').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderComp(T);});
 document.getElementById('agentgo').onclick=agentAsk;
+document.getElementById('agentModalOk').onclick=closeAgentModal;
+document.getElementById('agentModal').onclick=e=>{if(e.target.id==='agentModal')closeAgentModal();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAgentModal();});
 document.getElementById('agentq').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agentAsk();}});
 document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementById('agentq').value=b.textContent;agentAsk();});
 (function initFocus(){const layer=document.createElement('div');layer.id='focusLayer';const host=document.createElement('div');host.id='focusHost';layer.appendChild(host);document.body.appendChild(layer);
