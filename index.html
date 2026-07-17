@@ -2924,24 +2924,26 @@ const NLS_CHAMP={
      {roundIndex:{car:officialStatus}}. Derived from the official RENNEN_RESULT.CSV
      (STATUS column) at teilnehmer.vln.de — DNF retired, DNC ran but not classified,
      DSQ disqualified; all score 0. A car in neither `res` nor `dnf` did not start and
-     shows –. Only NLS3 + NLS6 are covered: the timing CSVs for NLS2 have been removed
-     from the archive, and the 24h-Qualifier is not a VLN-published event. */
+     shows –. 24hQ2 comes from the 24h-Qualifier class result (2026-04-19k.pdf, the
+     "Not Classified" cars per class) and so only covers the classes `res` maps for that
+     round. NLS2 has no retirement data: its timing files are gone from the archive. */
   dnf:{
     'AT 1':{2:{'19':'DNF'}},
-    'BMW 325i':{2:{'101':'DNF','111':'DNF','115':'DNF'},5:{'111':'DNF','112':'DNF'}},
-    'BMW M240':{2:{'665':'DNF','677':'DNF'},5:{'652':'DNF'}},
-    'CUP2':{2:{'902':'DNF','909':'DNF','921':'DNF'},5:{'913':'DNF','915':'DNC','921':'DNF'}},
-    'CUP3':{2:{'941':'DNF','949':'DNF','950':'DNF','966':'DNF','967':'DNF'},5:{'953':'DNF','959':'DNF','961':'DNF','966':'DNF','969':'DNC'}},
+    'BMW 325i':{2:{'101':'DNF','111':'DNF','115':'DNF'},4:{'108':'DNF'},5:{'111':'DNF','112':'DNF'}},
+    'BMW M240':{2:{'665':'DNF','677':'DNF'},4:{'651':'DNF','665':'DNF'},5:{'652':'DNF'}},
+    'CUP2':{2:{'902':'DNF','909':'DNF','921':'DNF'},4:{'925':'DNF'},5:{'913':'DNF','915':'DNC','921':'DNF'}},
+    'CUP3':{2:{'941':'DNF','949':'DNF','950':'DNF','966':'DNF','967':'DNF'},4:{'977':'DNF'},5:{'953':'DNF','959':'DNF','961':'DNF','966':'DNF','969':'DNC'}},
     'SP10':{2:{'155':'DNF'},5:{'155':'DNF','164':'DNF'}},
     'SP3T':{5:{'10':'DNF','321':'DNF','333':'DNF'}},
-    'SP7':{2:{'82':'DNF'},5:{'71':'DNF','82':'DNF'}},
+    'SP7':{2:{'82':'DNF'},4:{'91':'DNF'},5:{'71':'DNF','82':'DNF'}},
     'SP9 AM':{2:{'40':'DNF'},5:{'33':'DNF'}},
     'SP9 PRO':{2:{'7':'DNF','44':'DSQ'},5:{'44':'DNF'}},
     'SP9 PRO-':{5:{'8':'DNF'}},
+    'TCR':{4:{'830':'DNF'}},
     'V5':{5:{'444':'DNF'}},
     'V6':{2:{'396':'DNF'}},
-    'VT2-F+4W':{2:{'480':'DNF','481':'DNF','491':'DNF','492':'DNF','494':'DNF'},5:{'472':'DNF','480':'DNF','492':'DNF','494':'DNC','495':'DNF'}},
-    'VT2-RWD':{2:{'503':'DNF'},5:{'55':'DNF','500':'DNF','505':'DNF'}}
+    'VT2-F+4W':{2:{'480':'DNF','481':'DNF','491':'DNF','492':'DNF','494':'DNF'},4:{'470':'DNF','488':'DNF'},5:{'472':'DNF','480':'DNF','492':'DNF','494':'DNC','495':'DNF'}},
+    'VT2-RWD':{2:{'503':'DNF'},4:{'524':'DNF'},5:{'55':'DNF','500':'DNF','505':'DNF'}}
   }
 };
 function rnPoints(pos,hours){if(pos==null||pos<1)return 0;const T=[15,11,8,6,4,3,2];let p=pos<=7?T[pos-1]:1;if(hours>=6)p=Math.round(p*1.25);return p;}
@@ -2977,7 +2979,7 @@ function renderChampionship(){
     h+='</tr>';
   });
   h+='</tbody></table>';
-  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming. Retirements known for NLS3 + NLS6 only.</div>';
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming. Retirements not known for NLS2.</div>';
   el.innerHTML=h;
  }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
