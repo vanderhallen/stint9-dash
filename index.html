@@ -2617,7 +2617,7 @@ function rnDetect(T){
       meta:{stop:i+1,lap:L}}))dirty=true;
     if(s1[3]<=T){const ref=secRef(rnCar,1),lost=(ref>0)?((s1[3]-s1[2])-ref):null;
       if(rnEmit({kind:'pit',lap:L+1,sector:1,tod:s1[3],nkey:'pitout|'+L,
-        body:'PIT OUT · '+rk(s1[3])+' at S1'+(lost!=null?(' · +'+lost.toFixed(1)+'s vs green S1'):''),
+        body:'PIT OUT · '+rk(s1[3])+' at S1'+(lost!=null?(' · +'+lost.toFixed(1)+'s'):''),
         meta:{stop:i+1,lap:L+1,lost:(lost!=null?+lost.toFixed(1):null)}}))dirty=true;}
   });
   return dirty;
