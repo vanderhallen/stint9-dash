@@ -1978,7 +1978,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
 (function initWeather(){if(typeof L==='undefined'){return setTimeout(initWeather,300);}
   const lat=DB.gps[0],lon=DB.gps[1],map=L.map('weather',{attributionControl:false}).setView([lat,lon],11);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
-  const circ=L.circle([lat,lon],{radius:10000,color:'#e0301e',weight:1.5,fill:false}).addTo(map);
+  const circ=L.circle([lat,lon],{radius:4000,color:'#e0301e',weight:1.5,fill:false}).addTo(map);
   L.circleMarker([lat,lon],{radius:5,color:'#e0301e',fillColor:'#e0301e',fillOpacity:1}).addTo(map);
   function frame(){map.fitBounds(circ.getBounds(),{padding:[22,22]});}
   function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
