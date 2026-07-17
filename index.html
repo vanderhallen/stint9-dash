@@ -229,6 +229,7 @@
   #rn-feed .rn.overtake.loss{border-left-color:#c0392b}
   #rn-feed .rn.fastest{border-left-color:#A020F0}
   #rn-feed .rn.gap{border-left-color:#e8871e}
+  #rn-feed .rn.pit{border-left-color:#0e7c86;background:#f3fafb}
   #rn-feed .rn.manual{border-left-color:#2b6cb0;background:#f2f7fc}
   #rn-feed .rn-empty{color:var(--muted);font-size:9px;text-align:center;padding:14px 4px}
   /* ---- VIDEO reel (race-video overtake clips) ---- */
@@ -601,15 +602,51 @@ function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<
 function lastStartedLeg(st,T){const a=LEG[st];if(!a)return null;for(let i=a.length-1;i>=0;i--)if(a[i][2]<=T)return a[i];return null;}
 function nextLeg(st,T){const a=LEG[st];if(!a)return null;for(let i=0;i<a.length;i++)if(a[i][2]>T)return a[i];return null;}
 // A car in a between-legs gap whose preceding lap is a recorded pit lap is IN THE
-// PITS: on a pit-in lap it leaves the track after S4 to enter the pit lane, so it
-// never crosses the S5 timing point — there is no S5 leg and a ~2min hole opens in
-// the timing until the out-lap's S1. Return the pit-in lap during that window, else
-// null. (Every multi-second leg gap in the source data is exactly one of these.)
+// PIT LANE. The pit entry sits at the END of S5, just before start/finish, so a
+// car peeling in drives the whole of S5 but never crosses the S5 beacon on the
+// line — the CSV therefore carries no S5 split for the in-lap (0 of 273 stops in
+// this dataset have one) and a hole opens between S4 and the out-lap's S1. The
+// hole is NOT the stop: its median is 65.5s against a 54.5s median green S5, i.e.
+// an S5's worth of driving plus pit-entry decel. The stop itself lands in S1,
+// whose out-lap median is 234.8s against a normal 74.6s (pit box + exit are inside
+// S1). buildClass fills the driven part of the hole back in via withPitS5, so this
+// window is only the pit-lane remainder. Return the pit-in lap during it, else null.
 function pitInfo(st,T){if(activeLeg(st,T))return null;
   const prev=lastStartedLeg(st,T);if(!prev)return null;      // before the car's first lap
   if(!nextLeg(st,T))return null;                             // after the last leg (finished/retired)
   const pits=(DB.pits&&DB.pits[st])||[];
   return pits.indexOf(prev[0])>=0?{lap:prev[0]}:null;}
+// Median of the car's own GREEN sector-k time — its pace with the pit laps taken out:
+// an in-lap's S5 and an out-lap's S1 are both distorted by the stop, so neither can be
+// part of the reference. Falls back to the car's OWN class average when nothing clean
+// remains. The class is resolved from DB.classes, not from the ambient DB.avgseg: that
+// tracks the class currently on the reel, and rnEnsure builds legs for the selected
+// car's class, which need not be the same one.
+function secRef(st,k){const d=[],p=(DB.pits&&DB.pits[st])||[];
+  (DB.legs[st]||[]).forEach(g=>{if(g[1]!==k)return;
+    if(k===5&&p.indexOf(g[0])>=0)return;                // in-lap S5
+    if(k===1&&p.indexOf(g[0]-1)>=0)return;              // out-lap S1 (carries the stop)
+    d.push(g[3]-g[2]);});
+  if(d.length){d.sort((a,b)=>a-b);return d[d.length>>1];}
+  const cls=Object.keys(DB.classes||{}).find(cl=>DB.classes[cl].map(String).indexOf(String(st))>=0);
+  const av=cls&&DB.classAvg&&DB.classAvg[cls];
+  return (av&&av[k-1])||0;}
+// Rebuild the S5 the timing never published for a pit in-lap (see pitInfo), so the
+// marker drives the sector instead of freezing at S4 and teleporting to the line.
+// The car runs S5 at its own typical pace; whatever is left of the hole is time in
+// the pit lane, which pitInfo then parks at the entry — a long hole (queuing, a
+// Code-60 crawl) stays in the lane rather than stretching S5 into slow motion.
+// Position-only: BX/rnBX are built from DB.legs so no estimate reaches gap maths.
+// Used by both buildClass (map/livePos) and rnEnsure (racenotes progress).
+function withPitS5(st,legs){const p=(DB.pits&&DB.pits[st])||[];if(!p.length)return legs;
+  const ref=secRef(st,5);if(!(ref>0))return legs;
+  const idx={};legs.forEach(g=>idx[g[0]*5+g[1]]=g);
+  const out=legs.slice();
+  p.forEach(lap=>{const s4=idx[lap*5+4],s1=idx[(lap+1)*5+1];
+    if(!s4||!s1||idx[lap*5+5])return;                 // need both ends, and no real S5
+    const hole=s1[2]-s4[3];if(hole<=0)return;
+    out.push([lap,5,s4[3],s4[3]+Math.min(hole,ref)]);});
+  return out.sort((a,b)=>a[2]-b[2]);}
 function progress(lg,T){return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);}
 // progress used for ranking: on-track cars use their live leg progress; a car
 // with no active leg is either not started (excluded) or FINISHED. A finished
@@ -1597,7 +1634,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   const vis=[];let selXY=null,selR=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);
     if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);[x,y]=ptAlong(lg[1],f);}
-    else if(pit){[x,y]=ptAlong(1,0);}          // parked at start/finish (pit lane) — visible, not "on track"
+    else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else{E.g.style.visibility='hidden';return;}
     const pos=lp[st]||nC;
     const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
@@ -1828,8 +1865,9 @@ function computeEvents(sc){const bs=Object.keys(POS[sc]).map(Number).sort((a,b)=
       else if(xp>sp&&xc<scur)ev.push({type:'LOST',car:x,bidx:bc,sector:((bc-1)%5)+1});});}
   return ev;}
 function carXY(st,T){const lg=activeLeg(st,T);if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);return ptAlong(lg[1],f);}
-  // no active leg: during a pit stop park the marker at start/finish (the pit lane
-  // sits there) so the car doesn't vanish; otherwise it's genuinely off the timeline.
+  // no active leg: in the pit lane, park the marker on the line (the entry at the end
+  // of S5 and the exit in S1 both sit there) so the car doesn't vanish; otherwise it's
+  // genuinely off the timeline.
   if(pitInfo(st,T))return ptAlong(1,0);
   return null;}
 function fmt(s){const m=Math.floor(s/60);return m>0?(m+':'+(s-60*m).toFixed(1).padStart(4,'0')):s.toFixed(1);}
@@ -2101,7 +2139,7 @@ function buildClass(cls){
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
   DB.cars.forEach((st,i)=>{DB.carcol[st]=SAFE[i%SAFE.length];});
   for(const k in LEG)delete LEG[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
-  DB.cars.forEach(st=>{LEG[st]=(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]);
+  DB.cars.forEach(st=>{LEG[st]=withPitS5(st,(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]));
     const m={};(DB.legs[st]||[]).forEach(g=>m[(g[0]-1)*5+g[1]]=g[3]);BX[st]=m;BKEYS[st]=Object.keys(m).map(Number).sort((a,b)=>a-b);
     const mp={},mt={};(DB.chart[st]||[]).forEach(pt=>{const b=Math.round(pt[0]*5);mp[b]=pt[1];mt[b]=pt[2];});POS[st]=mp;BT[st]=mt;});
   // Reconcile lap-chart positions with the live ranking (livePos) so every
@@ -2499,7 +2537,9 @@ function rnEnsure(){
   rnClass=carClass[car]||null;
   rnCars=rnClass?DB.classes[rnClass].map(String):[car];
   rnBX={};rnLegs={};
-  rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=lg.slice().sort((a,b)=>a[2]-b[2]);const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
+  // withPitS5: same in-lap S5 reconstruction the map uses, so rnProg/rnRank don't
+  // read a pitting car as stalled at the S4 boundary. rnBX stays on real splits.
+  rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=withPitS5(c,lg.slice().sort((a,b)=>a[2]-b[2]));const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
   // reload persisted notes for this event/car
   rnLoaded=false;rnNotes=[];rnSeen=new Set();
   if(!rnLive()){rnLoaded=true;rnRenderFeed();return;}   // SIM: ephemeral, don't load from DB
@@ -2561,6 +2601,24 @@ function rnDetect(T){
     if(gNow==null||gPrev==null||gNow<=0||gPrev<=0)continue;
     if(gPrev-gNow>=RN_GAP_THR){if(rnEmit({kind:'gap',lap:L,sector:5,tod:tb,nkey:'gap|'+L+'|'+ahead,body:'closing on #'+ahead+' · '+gPrev.toFixed(1)+'s → '+gNow.toFixed(1)+'s'}))dirty=true;}
   }
+  // -- pit: box-in and box-out. Two notes, each fired the moment its own facts land,
+  // so LIVE gets the box-in call immediately instead of waiting ~4min for the stop to
+  // resolve. The in-lap carries no S5 boundary (see pitInfo), so neither end can come
+  // from rnBX: the out-lap's S1 leg brackets the whole stop — it opens on the pit-lane
+  // timing line (box-in) and closes at the S1 beacon once the car is back up to speed.
+  const pr=(rnRank(T)!=null),pl=(DB.pits&&DB.pits[rnCar])||[];
+  if(pr)pl.forEach((L,i)=>{
+    const s1=(rnLegs[rnCar]||[]).find(g=>g[0]===L+1&&g[1]===1);
+    if(!s1)return;                                       // still in the box / race ended there
+    const rk=t=>{const r=rnRank(t);return r!=null?('P'+r):'P?';};
+    if(s1[2]<=T&&rnEmit({kind:'pit',lap:L,sector:5,tod:s1[2],nkey:'pitin|'+L,
+      body:'PIT IN · stop '+(i+1)+' · from '+rk(s1[2]),
+      meta:{stop:i+1,lap:L}}))dirty=true;
+    if(s1[3]<=T){const ref=secRef(rnCar,1),lost=(ref>0)?((s1[3]-s1[2])-ref):null;
+      if(rnEmit({kind:'pit',lap:L+1,sector:1,tod:s1[3],nkey:'pitout|'+L,
+        body:'PIT OUT · '+rk(s1[3])+' at S1'+(lost!=null?(' · +'+lost.toFixed(1)+'s vs green S1'):''),
+        meta:{stop:i+1,lap:L+1,lost:(lost!=null?+lost.toFixed(1):null)}}))dirty=true;}
+  });
   return dirty;
 }
 function rnRenderFeed(){
