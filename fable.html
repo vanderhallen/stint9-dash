@@ -6,7 +6,7 @@
 <style>
   *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
   :root{--bg:#04060c;--ink:#dfe7f3;--dim:#5a657a;--line:#141a28;--hot:#7ec8ff;
-        --best:#c77bff;--pb:#7dffa8;--pit:#ffb86b;--bad:#ff7a7a}
+        --best:#c77bff;--pb:#7dffa8;--pit:#ffb86b;--bad:#ff7a7a;--gold:#ffd97a}
   html,body{height:100%}
   body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
   #app{display:flex;flex-direction:column;height:100vh}
@@ -20,8 +20,8 @@
   .lbl{display:flex;flex-direction:column;gap:3px}
   .lbl span{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
   #bar .sp{flex:1 1 auto}
-  #clock{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--hot);text-shadow:0 0 14px rgba(126,200,255,.55);min-width:100px;text-align:right}
-  #clock small{display:block;font-size:8px;letter-spacing:2px;color:var(--dim);text-shadow:none;font-weight:500;text-align:right}
+  #clock{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--hot);text-shadow:0 0 14px rgba(126,200,255,.55);min-width:118px;text-align:right}
+  #clock small{display:block;font-size:8px;letter-spacing:1px;color:var(--dim);text-shadow:none;font-weight:500;text-align:right}
   #play{width:36px;height:36px;border-radius:50%;border:1px solid #2a3a60;background:radial-gradient(circle at 35% 30%,#16294d,#0a1226);color:#bcd8ff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:box-shadow .25s}
   #play:hover{box-shadow:0 0 18px rgba(83,182,255,.45)}
   #play.on{box-shadow:0 0 14px rgba(83,182,255,.6);border-color:#53b6ff}
@@ -30,7 +30,7 @@
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;background:#eaf4ff;box-shadow:0 0 10px rgba(126,200,255,.9);cursor:pointer}
   input[type=range]::-moz-range-thumb{width:13px;height:13px;border:none;border-radius:50%;background:#eaf4ff;box-shadow:0 0 10px rgba(126,200,255,.9);cursor:pointer}
   /* ---------- focus strip ---------- */
-  #focusline{display:none;align-items:center;gap:16px;padding:5px 16px;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#94a1b8;flex:0 0 auto;flex-wrap:wrap}
+  #focusline{display:none;align-items:center;gap:14px;padding:5px 16px;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#94a1b8;flex:0 0 auto;flex-wrap:wrap}
   #focusline b{color:var(--ink);font-size:12.5px}
   #focusline .ga{color:var(--bad)}#focusline .gb{color:var(--pb)}
   #focusline .schip{display:inline-block;padding:1px 6px;border-radius:5px;background:#0c1322;border:1px solid #1b2438;color:#aeb9cc;font-size:10px}
@@ -38,6 +38,7 @@
   #focusline .schip.ob{color:var(--best);border-color:#4a2a68;text-shadow:0 0 8px rgba(199,123,255,.6)}
   #focusline .schip.slow{color:var(--bad);border-color:#4a2020}
   #focusline .delay{color:#fff;background:var(--bad);border-radius:5px;padding:1px 7px;font-weight:700;animation:blink 1s infinite}
+  #focusline .net.up{color:var(--pb)}#focusline .net.dn{color:var(--bad)}
   @keyframes blink{50%{opacity:.45}}
   /* ---------- main ---------- */
   #main{display:flex;flex:1 1 auto;min-height:0}
@@ -60,30 +61,52 @@
   #orbit{display:block;width:100%}
   #orbitcap{position:absolute;top:8px;left:12px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
   /* ---------- standings ---------- */
-  #boardhd{padding:8px 12px 3px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between}
-  #boardcols{display:flex;gap:7px;padding:2px 12px 4px;font-family:'IBM Plex Mono',monospace;font-size:7.5px;letter-spacing:1px;text-transform:uppercase;color:#39445c;border-bottom:1px solid var(--line)}
-  #board{flex:1 1 auto;min-height:0;overflow-y:auto;padding:3px 0 8px;scrollbar-width:thin;scrollbar-color:#1d2740 transparent}
-  #board::-webkit-scrollbar{width:6px}#board::-webkit-scrollbar-thumb{background:#1d2740;border-radius:3px}
-  .brow{display:flex;align-items:center;gap:7px;padding:3.5px 12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;cursor:pointer;border-left:3px solid transparent;transition:background .15s;line-height:1.2}
+  #boardhd{padding:7px 12px 2px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;flex:0 0 auto}
+  #boardcols{display:flex;gap:6px;padding:2px 12px 4px;font-family:'IBM Plex Mono',monospace;font-size:7.5px;letter-spacing:1px;text-transform:uppercase;color:#39445c;border-bottom:1px solid var(--line);flex:0 0 auto}
+  #board{flex:1.25 1 0;min-height:90px;overflow-y:auto;padding:3px 0 6px;scrollbar-width:thin;scrollbar-color:#1d2740 transparent}
+  #board::-webkit-scrollbar,#feed::-webkit-scrollbar{width:6px}
+  #board::-webkit-scrollbar-thumb,#feed::-webkit-scrollbar-thumb{background:#1d2740;border-radius:3px}
+  .brow{display:flex;align-items:center;gap:6px;padding:3.5px 12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;cursor:pointer;border-left:3px solid transparent;transition:background .15s;line-height:1.2}
   .brow:hover{background:#0a101e}
   .brow.sel{background:#0c1526;border-left-color:var(--cc,#53b6ff)}
   .c-p{width:20px;color:var(--dim);font-weight:700;text-align:right;flex:0 0 auto}
-  .brow.top3 .c-p{color:#ffd97a;text-shadow:0 0 8px rgba(255,217,122,.5)}
+  .brow.top3 .c-p{color:var(--gold);text-shadow:0 0 8px rgba(255,217,122,.5)}
   .c-sw{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--cc);box-shadow:0 0 8px var(--cc)}
   .c-car{font-weight:700;width:38px;flex:0 0 auto}
   .c-drv{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#94a1b8;font-size:9.5px}
-  .c-last{width:47px;text-align:right;flex:0 0 auto;color:#aeb9cc;font-size:9.5px}
-  .c-best{width:47px;text-align:right;flex:0 0 auto;color:#8b97ad;font-size:9.5px}
+  .c-tr{width:26px;text-align:right;flex:0 0 auto;font-size:9px;color:#39445c}
+  .c-tr.up{color:var(--pb)}.c-tr.dn{color:var(--bad)}
+  .c-last{width:45px;text-align:right;flex:0 0 auto;color:#aeb9cc;font-size:9.5px}
+  .c-best{width:45px;text-align:right;flex:0 0 auto;color:#8b97ad;font-size:9.5px}
   .c-best.ob{color:var(--best);text-shadow:0 0 8px rgba(199,123,255,.55)}
-  .c-gap{width:46px;text-align:right;flex:0 0 auto;color:var(--dim);font-size:9.5px}
-  .c-pit{width:34px;text-align:right;flex:0 0 auto;font-size:8.5px;color:var(--pit);letter-spacing:.5px}
+  .c-int{width:40px;text-align:right;flex:0 0 auto;color:#7c8aa3;font-size:9.5px}
+  .c-gap{width:44px;text-align:right;flex:0 0 auto;color:var(--dim);font-size:9.5px}
+  .c-pit{width:24px;text-align:right;flex:0 0 auto;font-size:8.5px;color:var(--pit);letter-spacing:.5px}
   .c-pit.inpit{color:#fff;background:var(--pit);border-radius:4px;text-align:center;font-weight:700}
   .c-last.dly{color:#fff;background:var(--bad);border-radius:4px;text-align:center;font-weight:700;animation:blink 1s infinite}
   .brow.out .c-drv,.brow.out .c-car{color:#3a4356}
-  #records{flex:0 0 auto;border-top:1px solid var(--line);padding:6px 12px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;line-height:1.7;color:#7c8aa3}
+  /* ---------- race log feed ---------- */
+  #feedhd{padding:6px 12px 3px;border-top:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;flex:0 0 auto}
+  #feed{flex:1 1 0;min-height:80px;overflow-y:auto;padding:2px 0 6px;scrollbar-width:thin;scrollbar-color:#1d2740 transparent}
+  .fev{display:flex;gap:8px;padding:2.5px 12px 2.5px 9px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;line-height:1.35;border-left:3px solid #223052;margin:1px 0;cursor:pointer}
+  .fev:hover{background:#0a101e}
+  .fev .ft{color:#39445c;flex:0 0 44px}
+  .fev .fx{color:#94a1b8;flex:1 1 auto;min-width:0}
+  .fev .fx b{color:var(--ink);font-weight:700}
+  .fev.ov{border-left-color:var(--pb)}.fev.ov .fx b{color:var(--pb)}
+  .fev.pc{border-left-color:#6bd0ff}
+  .fev.pit{border-left-color:var(--pit)}.fev.pit .fx b{color:var(--pit)}
+  .fev.fast{border-left-color:var(--best)}.fev.fast .fx b{color:var(--best)}
+  .fev.sb{border-left-color:#8b5cc9}
+  .fev.slow{border-left-color:var(--bad)}.fev.slow .fx b{color:var(--bad)}
+  .fev.drv{border-left-color:#53b6ff}.fev.drv .fx b{color:#53b6ff}
+  .fev.flag{border-left-color:var(--gold);background:#0d1120}.fev.flag .fx b{color:var(--gold)}
+  .fev.mine{background:#0c1526}
+  #records{flex:0 0 auto;border-top:1px solid var(--line);padding:5px 12px 7px;font-family:'IBM Plex Mono',monospace;font-size:8.7px;line-height:1.65;color:#7c8aa3}
   #records b{color:var(--best);font-weight:700}
   #records .rc{color:#aeb9cc}
   #records .hd{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:#39445c;margin-bottom:1px}
+  #records .sv{color:#9fb4d8}
   @media (max-width:1200px){#side{flex:0 0 330px}.c-best,.c-gap{display:none}}
 </style></head>
 <body>
@@ -105,14 +128,17 @@
       <div id="lower">
         <div class="panel"><canvas id="pace"></canvas><div class="pcap">pace · lap times <b id="pacecap"></b></div></div>
         <div class="panel"><canvas id="gapc"></canvas><div class="pcap">gap to leader <b id="gapcap"></b></div></div>
+        <div class="panel"><canvas id="strat"></canvas><div class="pcap" id="stratcap">strategy</div></div>
         <div class="panel"><canvas id="secs"></canvas><div class="pcap" id="seccap">sectors</div></div>
       </div>
     </div>
     <div id="side">
       <div id="orbitbox"><canvas id="orbit"></canvas><div id="orbitcap">nordschleife · live</div></div>
       <div id="boardhd"><span>standings</span><span id="lapcount"></span></div>
-      <div id="boardcols"><span style="width:20px;text-align:right">P</span><span style="width:7px"></span><span style="width:38px">car</span><span style="flex:1">driver</span><span style="width:47px;text-align:right">last</span><span style="width:47px;text-align:right">best</span><span style="width:46px;text-align:right">gap</span><span style="width:34px;text-align:right">pit</span></div>
+      <div id="boardcols"><span style="width:20px;text-align:right">P</span><span style="width:7px"></span><span style="width:38px">car</span><span style="flex:1">driver</span><span style="width:26px;text-align:right">5m</span><span style="width:45px;text-align:right">last</span><span style="width:45px;text-align:right">best</span><span style="width:40px;text-align:right">int</span><span style="width:44px;text-align:right">gap</span><span style="width:24px;text-align:right">pit</span></div>
       <div id="board"></div>
+      <div id="feedhd"><span>race log</span><span id="feedcount"></span></div>
+      <div id="feed"></div>
       <div id="records"></div>
     </div>
   </div>
@@ -121,12 +147,14 @@
 <script>
 'use strict';
 /* ================================================================
-   fable — the race as a river of light.               (data-dense v2)
-   Same DB as index.html (data.js), completely different rendering:
-   RIVER braid · ORBIT constellation · PACE / GAP / SECTOR analytics
-   · live standings with last/best/gap/pit · class records ·
-   delay detection — everything computed only up to the playhead T.
+   fable — the race as a river of light.        (all-out detail v3)
+   RIVER braid + battle brackets + overtake pips · ORBIT constellation
+   · PACE / GAP / STRATEGY / SECTOR analytics · standings with trend,
+   interval, delay · auto-generated RACE LOG (overtakes, pits with
+   loss estimates, driver changes, records, incidents, flag) ·
+   class records — everything revealed chronologically by the playhead.
    ================================================================ */
+const TRACK_KM=24.358;   // NLS Nordschleife + GP short link, per lap
 
 /* ---------- shared race maths (ported from index.html) ---------- */
 const LEG={},BX={},BKEYS={};
@@ -142,7 +170,6 @@ function pitInfo(st,T){if(activeLeg(st,T))return null;
   if(!nextLeg(st,T))return null;
   const pits=(DB.pits&&DB.pits[st])||[];
   return pits.indexOf(prev[0])>=0?{lap:prev[0]}:null;}
-/* median green sector-k time for a car (pit-distorted laps excluded) */
 function secRef(st,k){const d=[],p=(DB.pits&&DB.pits[st])||[];
   (DB.legs[st]||[]).forEach(g=>{if(g[1]!==k)return;
     if(k===5&&p.indexOf(g[0])>=0)return;
@@ -152,7 +179,6 @@ function secRef(st,k){const d=[],p=(DB.pits&&DB.pits[st])||[];
   const cls=Object.keys(DB.classes||{}).find(cl=>DB.classes[cl].map(String).indexOf(String(st))>=0);
   const av=cls&&DB.classAvg&&DB.classAvg[cls];
   return (av&&av[k-1])||0;}
-/* rebuild the S5 the timing never publishes on a pit in-lap */
 function withPitS5(st,legs){const p=(DB.pits&&DB.pits[st])||[];if(!p.length)return legs;
   const ref=secRef(st,5);if(!(ref>0))return legs;
   const idx={};legs.forEach(g=>idx[g[0]*5+g[1]]=g);
@@ -178,7 +204,6 @@ function curDrv(st,T){const lg=activeLeg(st,T);let L=lg?lg[0]:null;
   return (dl&&dl[L])||DB.name[st]||'';}
 function pitsUpTo(st,T){const a=DB.pits&&DB.pits[st]||[];let n=0;
   for(const l of a){const t=(BX[st]||{})[l*5-1];if(t!=null&&t<=T)n++;}return n;}
-/* live DELAY flag: current sector already >50% over the class average */
 function delayed(st,T){const lg=activeLeg(st,T);if(!lg)return false;
   const ref=AVG[lg[1]-1]||0;if(!(ref>0))return false;
   return (T-lg[2])>ref*1.5;}
@@ -196,14 +221,22 @@ const PAL=['#53b6ff','#a06bff','#ff5fa8','#5dead5','#ffb86b','#7dffa8','#ff7a7a'
 const COL={};
 function hexA(hex,a){const n=parseInt(hex.slice(1),16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
 
-/* ---------- class build: rank field + per-lap series ---------- */
+/* ---------- class build ---------- */
 const SAMPLE_DT=25;
 let SAMPLES=[],RANK={},NC=0,PITT={},LAPT=[];
-let PLT={};      // PLT[st]=[{L,lt,end,pit}]  boundary-true lap times
-let GAPS={};     // GAPS[st]=[{L,gap,end}]    gap to lap-leader at each lap line
-let LAP0={};     // first-leg start per car
+let PLT={};       // PLT[st]=[{L,lt,end,pit}] boundary-true lap times
+let GAPS={};      // GAPS[st]=[{L,gap,end}]   gap to lap-line leader
+let LAP0={};      // first-leg start per car
+let MEDG={};      // median green lap per car
+let PLOSS={};     // PLOSS[st]={pitLap: est. seconds lost}
+let STINT={};     // STINT[st]=[{from,to,drv,laps,avg,n}]
+let DCHG={};      // DCHG[st]=[lap numbers where driver changed]
+let EVENTS=[];    // chronological race log
+let GRID0={};     // first known rank per car
 let selCar='',T=0,playing=false,lastFrame=0;
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('fable_prefs')||'{}');}catch(e){}
+
+function median(a){if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);return s[s.length>>1];}
 
 function buildClass(cls){
   CARS=(DB.classes[cls]||[]).map(String);
@@ -219,19 +252,20 @@ function buildClass(cls){
   });
   TMIN=Math.min.apply(null,CARS.flatMap(st=>(DB.legs[st]||[]).map(g=>g[2])));
   TMAX=Math.max.apply(null,CARS.flatMap(st=>(DB.legs[st]||[]).map(g=>g[3])));
-  /* rank field: position of every car every SAMPLE_DT */
+  /* rank field */
   SAMPLES=[];RANK={};PITT={};
   for(let t=TMIN;t<=TMAX;t+=SAMPLE_DT)SAMPLES.push(t);
   SAMPLES.push(TMAX);
   CARS.forEach(st=>RANK[st]=new Array(SAMPLES.length).fill(null));
   SAMPLES.forEach((t,i)=>{const lp=livePos(t);CARS.forEach(st=>{RANK[st][i]=lp[st]||null;});});
-  CARS.forEach(st=>{PITT[st]=(DB.pits[st]||[]).map(l=>(BX[st]||{})[l*5-1]).filter(t=>t!=null);});
-  /* lap spines: earliest crossing of each lap line */
+  CARS.forEach(st=>{PITT[st]=(DB.pits[st]||[]).map(l=>(BX[st]||{})[l*5-1]).filter(t=>t!=null);
+    GRID0[st]=null;for(let i=0;i<SAMPLES.length;i++)if(RANK[st][i]!=null){GRID0[st]=RANK[st][i];break;}});
+  /* lap spines */
   LAPT=[];
   for(let L=1;L<=MAXN;L++){let best=null;
     CARS.forEach(st=>{const t=(BX[st]||{})[L*5];if(t!=null&&(best==null||t<best))best=t;});
     LAPT.push(best);}
-  /* boundary-true lap times (includes pit time — the real elapsed lap) */
+  /* boundary-true lap times */
   PLT={};
   CARS.forEach(st=>{const out=[],bx=BX[st]||{},pits=DB.pits[st]||[];
     for(let L=1;L<=MAXN;L++){const e=bx[L*5];if(e==null)continue;
@@ -245,6 +279,37 @@ function buildClass(cls){
     CARS.forEach(st=>{const t=(BX[st]||{})[L*5];if(t!=null&&(lead==null||t<lead))lead=t;});
     if(lead==null)continue;
     CARS.forEach(st=>{const t=(BX[st]||{})[L*5];if(t!=null)GAPS[st].push({L,gap:t-lead,end:t});});}
+  /* per-car green-lap median + pit loss estimates. The in-lap's S5 split is
+     never published (see withPitS5), so the in- and out-lap are usually both
+     missing from PLT; instead measure the two-lap span around the stop
+     (lap-line boundaries either side always exist) minus 2 clean laps. */
+  MEDG={};PLOSS={};
+  CARS.forEach(st=>{
+    MEDG[st]=median((PLT[st]||[]).filter(e=>!e.pit).map(e=>e.lt));
+    PLOSS[st]={};
+    const bx=BX[st]||{};
+    (DB.pits[st]||[]).forEach(l=>{
+      const a=(l===1)?LAP0[st]:bx[(l-1)*5],b=bx[(l+1)*5];
+      if(a!=null&&b!=null&&MEDG[st]!=null){
+        const d=(b-a)-2*MEDG[st];if(d>3)PLOSS[st][l]=d;}});
+  });
+  /* driver stints (split at pit laps) + driver-change laps */
+  STINT={};DCHG={};
+  CARS.forEach(st=>{
+    const lastL=(PLT[st]||[]).length?PLT[st][PLT[st].length-1].L:0;
+    const pits=(DB.pits[st]||[]).filter(l=>l<lastL);
+    const segs=[];let from=1;
+    pits.forEach(pl=>{segs.push([from,pl]);from=pl+1;});
+    if(lastL>=from)segs.push([from,lastL]);
+    const dl=DB.drvlap&&DB.drvlap[st]||{};
+    STINT[st]=segs.map(([a,b],i)=>{
+      const greens=(PLT[st]||[]).filter(e=>e.L>=a&&e.L<=b&&!e.pit).map(e=>e.lt);
+      return{n:i+1,from:a,to:b,drv:dl[a]||DB.name[st]||'',laps:b-a+1,avg:greens.length?greens.reduce((x,y)=>x+y,0)/greens.length:null,
+             end:(BX[st]||{})[b*5]||null};});
+    DCHG[st]=[];
+    for(let L=2;L<=lastL;L++)if(dl[L]&&dl[L-1]&&dl[L]!==dl[L-1])DCHG[st].push(L);
+  });
+  buildEvents();
   const sc=document.getElementById('scrub');sc.min=Math.floor(TMIN);sc.max=Math.ceil(TMAX);
   if(!(T>=TMIN&&T<=TMAX))T=TMIN;
   const cs=document.getElementById('carSel');
@@ -252,10 +317,78 @@ function buildClass(cls){
   CARS.forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');cs.appendChild(o);});
   if(CARS.indexOf(String(selCar))<0)selCar='';
   cs.value=selCar;
-  boardBuilt=false;STAT=null;lastStatT=-1e9;
+  boardBuilt=false;STAT=null;lastStatT=-1e9;lastFeedKey='';
 }
 
-/* ---------- live stats cache (recomputed at most 2×/s of race scrub) ----- */
+/* ---------- race log: precomputed chronological events ---------- */
+function buildEvents(){
+  EVENTS=[];
+  const push=(t,type,car,html,car2)=>{if(t!=null)EVENTS.push({t,type,car,car2:car2||null,html});};
+  /* overtakes from the rank field (stable for one extra sample) */
+  for(let i=2;i<SAMPLES.length-1;i++){
+    const t=SAMPLES[i];
+    CARS.forEach(st=>{
+      const a=RANK[st][i-1],b=RANK[st][i];
+      if(a==null||b==null||b>=a)return;
+      if(RANK[st][i+1]!==b)return;                       // not held -> jitter
+      let vic=null;
+      CARS.forEach(o=>{if(o!==st&&RANK[o][i-1]===b&&RANK[o][i]>b)vic=o;});
+      const pitCycle=vic&&(PITT[vic]||[]).some(pt=>Math.abs(pt-t)<120);
+      const lg=activeLeg(st,t);
+      const where=lg?(' in S'+lg[1]):'';
+      const n=a-b;
+      if(pitCycle)push(t,'pc',st,'<b>#'+st+'</b> up to P'+b+(vic?' — #'+vic+' pits':'')+(n>1?' (+'+n+')':''),vic);
+      else push(t,'ov',st,'<b>#'+st+'</b> takes P'+b+(vic?' from #'+vic:'')+where+(n>1?' (+'+n+')':''),vic);
+    });
+  }
+  /* pit stops with loss estimate */
+  CARS.forEach(st=>{
+    (DB.pits[st]||[]).forEach((l,i)=>{
+      const t=(BX[st]||{})[l*5-1];if(t==null)return;
+      const loss=PLOSS[st][l];
+      push(t,'pit',st,'<b>#'+st+'</b> pit stop '+(i+1)+' (L'+l+')'+(loss!=null?' · ~'+Math.round(loss)+'s lost':''));});
+  });
+  /* driver changes */
+  CARS.forEach(st=>{
+    const dl=DB.drvlap&&DB.drvlap[st]||{};
+    (DCHG[st]||[]).forEach(L=>{
+      const t=(BX[st]||{})[(L-1)*5];if(t==null)return;
+      push(t,'drv',st,'<b>#'+st+'</b> driver change &rarr; '+(dl[L]||'?'));});
+  });
+  /* running fastest lap */
+  {const all=[];CARS.forEach(st=>(PLT[st]||[]).forEach(e=>{if(!e.pit)all.push({st,...e});}));
+   all.sort((a,b)=>a.end-b.end);
+   let best=null;
+   all.forEach(e=>{if(best==null||e.lt<best-1e-9){
+     if(best!=null)push(e.end,'fast',e.st,'<b>#'+e.st+'</b> fastest lap '+fmtLap(e.lt)+' (L'+e.L+') '+((DB.drvlap&&DB.drvlap[e.st]&&DB.drvlap[e.st][e.L])||''));
+     best=e.lt;}});}
+  /* running class-best sectors */
+  {const bySec=[[],[],[],[],[]];
+   CARS.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};
+     Object.keys(stm).forEach(L=>{const s=stm[L];if(!s)return;
+       for(let k=0;k<5;k++){const tc=bx[(L-1)*5+(k+1)];
+         if(tc!=null&&s[k]!=null&&s[k]>0)bySec[k].push({t:tc,v:s[k],st,L:+L});}});});
+   bySec.forEach((arr,k)=>{arr.sort((a,b)=>a.t-b.t);let best=null;
+     arr.forEach(e=>{if(best==null||e.v<best-1e-9){
+       if(best!=null&&best-e.v>0.15)push(e.t,'sb',e.st,'<b>#'+e.st+'</b> best S'+(k+1)+' '+e.v.toFixed(1)+'s (L'+e.L+')');
+       best=e.v;}});});}
+  /* incidents: a green sector run at >2x the class average */
+  CARS.forEach(st=>{const pits=DB.pits[st]||[];
+    (DB.legs[st]||[]).forEach(g=>{
+      const k=g[1],ref=AVG[k-1]||0;if(!(ref>0))return;
+      if(k===5&&pits.indexOf(g[0])>=0)return;
+      if(k===1&&pits.indexOf(g[0]-1)>=0)return;
+      const d=g[3]-g[2];
+      if(d>ref*2)push(g[3],'slow',st,'<b>#'+st+'</b> held up in S'+k+' L'+g[0]+' (+'+Math.round(d-ref)+'s)');});
+  });
+  /* chequered flag */
+  {const lp=livePos(TMAX);let win=null;for(const st in lp)if(lp[st]===1)win=st;
+   if(win){const r=carProgress(win,TMAX);
+     push((r&&r.t)||TMAX,'flag',win,'&#127937; <b>#'+win+'</b> wins — '+(DB.name[win]||'')+' · '+Math.floor(((r&&r.p)||0)/5)+' laps');}}
+  EVENTS.sort((a,b)=>a.t-b.t);
+}
+
+/* ---------- live stats cache ---------- */
 let STAT=null,lastStatT=-1e9;
 function fmtLap(s){if(s==null||!isFinite(s))return '—';const m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(1).padStart(4,'0');}
 function fmtGapS(s){if(s==null)return '';if(s>=60){const m=Math.floor(s/60);return '+'+m+':'+String(Math.floor(s%60)).padStart(2,'0');}return '+'+s.toFixed(1);}
@@ -263,10 +396,9 @@ function computeStats(){
   if(STAT&&Math.abs(T-lastStatT)<0.5)return STAT;
   lastStatT=T;
   const S={last:{},best:{},secLast:{},secPB:{},secBest:[null,null,null,null,null],
-           bestAll:null,laps:{},axLaps:1};
+           bestAll:null,laps:{},axLaps:1,sigma:{}};
   CARS.forEach(st=>{
     const bx=BX[st]||{},stm=DB.sectimes[st]||{};
-    /* completed sectors up to T -> personal bests + latest */
     const pb=[null,null,null,null,null],latest=[null,null,null,null,null];let lastLapDone=0;
     Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(L=>{
       const s=stm[L];if(!s)return;
@@ -277,25 +409,32 @@ function computeStats(){
           if(S.secBest[k]==null||s[k]<S.secBest[k].t)S.secBest[k]={t:s[k],st,L};
         }}});
     S.secPB[st]=pb;S.secLast[st]=latest;
-    /* boundary-true lap times up to T */
-    let last=null,best=null;
+    let last=null,best=null;const greens=[];
     (PLT[st]||[]).forEach(e=>{if(e.end>T)return;
       last=e;lastLapDone=e.L;
-      if(!e.pit&&(best==null||e.lt<best.lt))best=e;
-      if(!e.pit&&(S.bestAll==null||e.lt<S.bestAll.lt))S.bestAll={st,L:e.L,lt:e.lt};});
+      if(!e.pit){greens.push(e.lt);
+        if(best==null||e.lt<best.lt)best=e;
+        if(S.bestAll==null||e.lt<S.bestAll.lt)S.bestAll={st,L:e.L,lt:e.lt};}});
     S.last[st]=last;S.best[st]=best;S.laps[st]=lastLapDone;
+    if(greens.length>2){const m=greens.reduce((a,b)=>a+b,0)/greens.length;
+      S.sigma[st]=Math.sqrt(greens.reduce((a,b)=>a+(b-m)*(b-m),0)/greens.length);}
     if(lastLapDone>S.axLaps)S.axLaps=lastLapDone;
   });
   const r=carProgressMax();if(r>S.axLaps)S.axLaps=r;
   STAT=S;return S;
 }
 function carProgressMax(){let ml=1;CARS.forEach(st=>{const r=carProgress(st,T);if(r)ml=Math.max(ml,Math.ceil(r.p/5));});return ml;}
+/* rank at an arbitrary past time via the sample grid */
+function rankAt(st,t){if(t<=TMIN)return GRID0[st];
+  const i=Math.max(0,Math.min(SAMPLES.length-1,Math.round((t-TMIN)/SAMPLE_DT)));
+  return RANK[st][i];}
 
 /* ---------- canvases ---------- */
 const river=document.getElementById('river'),rc=river.getContext('2d');
 const orbit=document.getElementById('orbit'),oc=orbit.getContext('2d');
 const paceCv=document.getElementById('pace'),pc=paceCv.getContext('2d');
 const gapCv=document.getElementById('gapc'),gc=gapCv.getContext('2d');
+const stratCv=document.getElementById('strat'),tc=stratCv.getContext('2d');
 const secCv=document.getElementById('secs'),sc2=secCv.getContext('2d');
 let RW=0,RH=0,OW=0,OH=0,DPR=1;
 function fitCanvas(cv){const b=cv.parentElement.getBoundingClientRect();
@@ -308,15 +447,15 @@ function sizeCanvases(){
   RW=Math.max(50,rb.width);RH=Math.max(50,rb.height);
   river.width=RW*DPR;river.height=RH*DPR;
   const ob=document.getElementById('side').getBoundingClientRect();
-  OW=ob.width;OH=Math.min(OW*(DB.H/DB.W),Math.round(window.innerHeight*0.34));
+  OW=ob.width;OH=Math.min(OW*(DB.H/DB.W),Math.round(window.innerHeight*0.30));
   orbit.width=OW*DPR;orbit.height=OH*DPR;orbit.style.height=OH+'px';
-  fitCanvas(paceCv);fitCanvas(gapCv);fitCanvas(secCv);
+  fitCanvas(paceCv);fitCanvas(gapCv);fitCanvas(stratCv);fitCanvas(secCv);
   starfield=null;trackLayer=null;
 }
 window.addEventListener('resize',()=>{sizeCanvases();});
 
 /* ---------- river geometry ---------- */
-const RM={l:56,r:92,t:32,b:20};
+const RM={l:56,r:118,t:32,b:20};
 let TVIEW=1;
 const tX=t=>RM.l+((t-TMIN)/((TVIEW-TMIN)||1))*(RW-RM.l-RM.r);
 const pY=p=>RM.t+((p-1)/Math.max(1,NC-1))*(RH-RM.t-RM.b);
@@ -335,7 +474,6 @@ function drawStars(ctx,w,h){
   ctx.drawImage(starfield,0,0,w,h);
 }
 
-/* thread through the rank samples, gaussian-smoothed into flowing S-curves */
 function threadPath(st,tEnd){
   const R=RANK[st],pts=[];
   const iMax=Math.min(SAMPLES.length-1,Math.floor((tEnd-TMIN)/SAMPLE_DT));
@@ -376,7 +514,6 @@ function drawRiver(lp,S){
   rc.setTransform(DPR,0,0,DPR,0,0);
   rc.clearRect(0,0,RW,RH);
   drawStars(rc,RW,RH);
-  /* lap spines with the leader's lap time underneath the major labels */
   rc.save();
   rc.font='9px "IBM Plex Mono",monospace';rc.textAlign='center';
   LAPT.forEach((t,i)=>{
@@ -429,7 +566,20 @@ function drawRiver(lp,S){
       if(!dimmed){rc.fillStyle='rgba(255,184,107,.25)';rc.beginPath();rc.arc(x,y,5.5,0,7);rc.fill();}
     });
   });
-  /* fastest-lap star on the river: where the class best lap was set */
+  /* recent overtakes: fading pips on the river (EVENTS sorted by t, so
+     once we're past the 150s window we can stop scanning) */
+  for(let i=EVENTS.length-1;i>=0;i--){
+    const e=EVENTS[i];if(e.t>T)continue;
+    if(T-e.t>150)break;
+    if(e.type!=='ov'&&e.type!=='pc')continue;
+    if(selCar&&e.car!==selCar&&e.car2!==selCar)continue;
+    const r0=rankAt(e.car,e.t);if(r0==null)continue;
+    const age=(T-e.t)/150,a=(1-age)*.9;
+    const x=tX(e.t),y=pY(r0);
+    rc.fillStyle=e.type==='ov'?'rgba(125,255,168,'+a+')':'rgba(107,208,255,'+a+')';
+    rc.beginPath();rc.moveTo(x,y-7);rc.lineTo(x-3.5,y-1.5);rc.lineTo(x+3.5,y-1.5);rc.closePath();rc.fill();
+  }
+  /* fastest-lap star */
   if(S.bestAll){const st=S.bestAll.st,e=(PLT[st]||[]).find(x=>x.L===S.bestAll.L);
     if(e&&e.end<=T){const x=tX(e.end),i=Math.min(SAMPLES.length-1,Math.max(0,Math.round((e.end-TMIN)/SAMPLE_DT)));
       const R0=RANK[st][i];
@@ -452,6 +602,7 @@ function drawRiver(lp,S){
       rc.beginPath();rc.arc(h[0],h[1],r+3.5,0,7);rc.stroke();}
   });
   rc.globalCompositeOperation='source-over';
+  /* head labels */
   rc.font='700 10px "IBM Plex Mono",monospace';rc.textAlign='left';
   CARS.forEach(st=>{
     const h=heads[st];if(!h)return;
@@ -460,6 +611,26 @@ function drawRiver(lp,S){
     let tag='#'+st;
     if(!dimmed&&delayed(st,T))tag+=' !';
     rc.fillText(tag,h[0]+9,h[1]+3.5);
+  });
+  /* battle brackets: adjacent pairs within 2s at the last common boundary */
+  const pairs=[];
+  const byPos=CARS.filter(st=>lp[st]).sort((a,b)=>lp[a]-lp[b]);
+  for(let i=0;i<byPos.length-1;i++){
+    const A=byPos[i],B=byPos[i+1];
+    const g=commonGap(A,B,T);
+    if(g!=null&&Math.abs(g)<2.0&&heads[A]&&heads[B])pairs.push([A,B,Math.abs(g)]);
+  }
+  pairs.sort((a,b)=>a[2]-b[2]);
+  pairs.slice(0,5).forEach(([A,B,g])=>{
+    const yA=heads[A][1],yB=heads[B][1];
+    const x=Math.max(heads[A][0],heads[B][0])+46;
+    const hot=(selCar===A||selCar===B);
+    rc.strokeStyle=hot?'rgba(255,217,122,.95)':'rgba(255,217,122,.55)';
+    rc.lineWidth=1;
+    rc.beginPath();rc.moveTo(x-4,yA);rc.lineTo(x,yA);rc.lineTo(x,yB);rc.lineTo(x-4,yB);rc.stroke();
+    rc.fillStyle=hot?'rgba(255,217,122,1)':'rgba(255,217,122,.7)';
+    rc.font='700 9px "IBM Plex Mono",monospace';
+    rc.fillText(g.toFixed(1),x+3,(yA+yB)/2+3);
   });
 }
 
@@ -473,12 +644,15 @@ function buildTrackLayer(){
   const sc=Math.min(OW/DB.W,OH/DB.H)*0.92;
   const ox=(OW-DB.W*sc)/2,oy=(OH-DB.H*sc)/2;
   trackLayer._m=[sc,ox,oy];
-  /* sector-tinted ribbon + constellation nodes */
   DB.poly.forEach((p,si)=>{
     c.strokeStyle=hexA(SECCOL[si],.13);c.lineWidth=3;c.lineJoin='round';c.lineCap='round';
     c.beginPath();p.forEach((q,i)=>{const x=ox+q[0]*sc,y=oy+q[1]*sc;i?c.lineTo(x,y):c.moveTo(x,y);});c.stroke();
     c.fillStyle=hexA(SECCOL[si],.5);
     for(let i=0;i<p.length;i+=6){c.beginPath();c.arc(ox+p[i][0]*sc,oy+p[i][1]*sc,.7,0,7);c.fill();}
+    /* sector label at the segment midpoint */
+    const mid=p[Math.floor(p.length/2)];
+    c.font='7px "IBM Plex Mono",monospace';c.fillStyle=hexA(SECCOL[si],.65);
+    c.fillText('S'+(si+1),ox+mid[0]*sc+4,oy+mid[1]*sc-3);
   });
   const s0=DB.poly[0][0];
   c.fillStyle='rgba(126,200,255,.9)';
@@ -487,7 +661,7 @@ function buildTrackLayer(){
   c.fillText('S/F',ox+s0[0]*sc+5,oy+s0[1]*sc+2);
 }
 const TRAIL_N=9,TRAIL_DT=6;
-function drawOrbit(){
+function drawOrbit(lp){
   if(!trackLayer)buildTrackLayer();
   oc.setTransform(DPR,0,0,DPR,0,0);
   oc.clearRect(0,0,OW,OH);
@@ -511,9 +685,9 @@ function drawOrbit(){
         oc.beginPath();oc.arc(x,y,r*.55,0,7);oc.fill();
         if(!dimmed&&delayed(st,T)){oc.strokeStyle='rgba(255,122,122,.9)';oc.lineWidth=1.2;
           oc.beginPath();oc.arc(x,y,r+3,0,7);oc.stroke();}
-        if(isSel){oc.globalCompositeOperation='source-over';
-          oc.font='700 11px "IBM Plex Mono",monospace';oc.textAlign='center';
-          oc.fillStyle='#fff';oc.fillText('#'+st,x,y-10);
+        if(isSel||(!selCar&&lp[st]===1)){oc.globalCompositeOperation='source-over';
+          oc.font='700 10px "IBM Plex Mono",monospace';oc.textAlign='center';
+          oc.fillStyle=isSel?'#fff':'rgba(255,217,122,.85)';oc.fillText('#'+st,x,y-9);
           oc.globalCompositeOperation='lighter';}
       }else if(!dimmed){
         oc.fillStyle=hexA(col,.22*fade);
@@ -524,12 +698,11 @@ function drawOrbit(){
   oc.globalCompositeOperation='source-over';
 }
 
-/* ---------- PACE panel: lap-time traces ---------- */
+/* ---------- PACE panel ---------- */
 function drawPace(S){
   const w=paceCv._w,h=paceCv._h;
   pc.setTransform(DPR,0,0,DPR,0,0);pc.clearRect(0,0,w,h);
-  const M={l:44,r:10,t:22,b:16};
-  /* y-domain from green laps only (pit laps pinned at top edge) */
+  const M={l:44,r:8,t:22,b:16};
   let vals=[];
   CARS.forEach(st=>(PLT[st]||[]).forEach(e=>{if(e.end<=T&&!e.pit)vals.push(e.lt);}));
   document.getElementById('pacecap').textContent=selCar?('#'+selCar+' vs field'):'all cars';
@@ -539,14 +712,18 @@ function drawPace(S){
   const ax=Math.max(2,S.axLaps);
   const X=L=>M.l+((L-1)/(ax-1))*(w-M.l-M.r);
   const Y=v=>M.t+(1-Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1))))*(h-M.t-M.b);
-  /* grid + axes */
   pc.font='8px "IBM Plex Mono",monospace';pc.fillStyle='rgba(110,125,155,.6)';pc.textAlign='right';
   for(let i=0;i<=2;i++){const v=lo+(hi-lo)*i/2,y=Y(v);
     pc.strokeStyle='rgba(120,150,210,.08)';pc.beginPath();pc.moveTo(M.l,y);pc.lineTo(w-M.r,y);pc.stroke();
     pc.fillText(fmtLap(v),M.l-4,y+3);}
   pc.textAlign='center';
   for(let L=5;L<=ax;L+=5)pc.fillText('L'+L,X(L),h-4);
-  /* traces */
+  /* class average line */
+  const avgLap=AVG.reduce((a,b)=>a+b,0);
+  if(avgLap>lo&&avgLap<hi){const y=Y(avgLap);
+    pc.strokeStyle='rgba(199,123,255,.25)';pc.setLineDash([3,4]);
+    pc.beginPath();pc.moveTo(M.l,y);pc.lineTo(w-M.r,y);pc.stroke();pc.setLineDash([]);
+    pc.fillStyle='rgba(199,123,255,.5)';pc.textAlign='left';pc.fillText('avg',M.l+2,y-2);}
   pc.globalCompositeOperation='lighter';
   const order=CARS.slice().sort((a,b)=>(a===selCar)-(b===selCar));
   order.forEach(st=>{
@@ -556,20 +733,17 @@ function drawPace(S){
     pc.strokeStyle=hexA(COL[st],dimmed?0.10:(isSel?0.9:0.32));
     pc.lineWidth=isSel?1.8:1;pc.lineJoin='round';
     pc.beginPath();let started=false;
-    pts.forEach(e=>{const x=X(e.L),y=e.pit?M.t-6:Y(e.lt);
-      if(e.pit){return;}   // gap the line at pit laps
+    pts.forEach(e=>{if(e.pit)return;
+      const x=X(e.L),y=Y(e.lt);
       if(!started){pc.moveTo(x,y);started=true;}else pc.lineTo(x,y);});
     pc.stroke();
-    /* pit laps: hollow markers pinned to the top */
     pts.forEach(e=>{if(!e.pit)return;
       pc.strokeStyle=hexA('#ffb86b',dimmed?0.25:0.85);pc.lineWidth=1;
       pc.beginPath();pc.arc(X(e.L),M.t+3,2.4,0,7);pc.stroke();});
-    /* personal best dot */
     const b=S.best[st];
     if(b&&!dimmed){pc.fillStyle=hexA(COL[st],.9);
       pc.beginPath();pc.arc(X(b.L),Y(b.lt),1.8,0,7);pc.fill();}
   });
-  /* overall fastest: violet star */
   if(S.bestAll){pc.fillStyle='rgba(199,123,255,.95)';
     pc.beginPath();pc.arc(X(S.bestAll.L),Y(S.bestAll.lt),3,0,7);pc.fill();
     pc.fillStyle='rgba(199,123,255,.25)';
@@ -577,11 +751,11 @@ function drawPace(S){
   pc.globalCompositeOperation='source-over';
 }
 
-/* ---------- GAP panel: gap-to-leader fan ---------- */
+/* ---------- GAP panel ---------- */
 function drawGap(S){
   const w=gapCv._w,h=gapCv._h;
   gc.setTransform(DPR,0,0,DPR,0,0);gc.clearRect(0,0,w,h);
-  const M={l:44,r:10,t:22,b:16};
+  const M={l:44,r:8,t:22,b:16};
   let vals=[];
   CARS.forEach(st=>(GAPS[st]||[]).forEach(e=>{if(e.end<=T)vals.push(e.gap);}));
   document.getElementById('gapcap').textContent=selCar?('#'+selCar+' highlighted'):'whole field';
@@ -615,10 +789,103 @@ function drawGap(S){
   gc.globalCompositeOperation='source-over';
 }
 
+/* ---------- STRATEGY panel ---------- */
+/* no selection: pit/driver timeline for the whole field (rows in live
+   position order); selected: stint bars with driver, laps, avg pace and
+   per-stop loss estimates. */
+function drawStrat(lp,S){
+  const w=stratCv._w,h=stratCv._h;
+  tc.setTransform(DPR,0,0,DPR,0,0);tc.clearRect(0,0,w,h);
+  const cap=document.getElementById('stratcap');
+  tc.font='9px "IBM Plex Mono",monospace';
+  if(!selCar){
+    cap.textContent='strategy · pits & drivers';
+    const rows=CARS.filter(st=>rankAt(st,Math.min(T,TMAX))!=null||true).slice()
+      .sort((a,b)=>(lp[a]||999)-(lp[b]||999));
+    const M={l:46,r:10,t:24,b:6};
+    const rh=(h-M.t-M.b)/Math.max(1,rows.length);
+    const X=t=>M.l+((t-TMIN)/((TVIEW-TMIN)||1))*(w-M.l-M.r);
+    rows.forEach((st,i)=>{
+      const y=M.t+i*rh+rh/2;
+      const dimmed=false;
+      tc.fillStyle=hexA(COL[st],.85);tc.textAlign='left';
+      tc.fillText('#'+st,6,y+3);
+      /* baseline to current progress */
+      const r=carProgress(st,T);
+      const xEnd=r?X(Math.min(T,r.t)):X(T);
+      tc.strokeStyle=hexA(COL[st],.3);tc.lineWidth=1.2;
+      tc.beginPath();tc.moveTo(X(TMIN),y);tc.lineTo(xEnd,y);tc.stroke();
+      /* pit dots + loss */
+      (DB.pits[st]||[]).forEach(l=>{
+        const t=(BX[st]||{})[l*5-1];if(t==null||t>T)return;
+        tc.fillStyle='rgba(255,184,107,.95)';
+        tc.beginPath();tc.arc(X(t),y,2.2,0,7);tc.fill();});
+      /* driver-change ticks */
+      (DCHG[st]||[]).forEach(L=>{
+        const t=(BX[st]||{})[(L-1)*5];if(t==null||t>T)return;
+        tc.strokeStyle='rgba(83,182,255,.85)';tc.lineWidth=1.2;
+        tc.beginPath();tc.moveTo(X(t),y-3.5);tc.lineTo(X(t),y+3.5);tc.stroke();});
+    });
+    /* legend */
+    tc.font='8px "IBM Plex Mono",monospace';tc.textAlign='left';
+    tc.fillStyle='#ffb86b';tc.fillText('● pit',w-104,14);
+    tc.fillStyle='#53b6ff';tc.fillText('| driver',w-70,14);
+    return;
+  }
+  cap.textContent='stints · #'+selCar;
+  const st=selCar,stints=STINT[st]||[];
+  if(!stints.length)return;
+  const M={l:14,r:12},ax=Math.max(2,S.axLaps);
+  const X=L=>M.l+((L-1)/(ax-1))*(w-M.l-M.r);
+  const yBar=h*0.42,bh=20;
+  /* driver colour map */
+  const drvs=[];stints.forEach(s0=>{if(drvs.indexOf(s0.drv)<0)drvs.push(s0.drv);});
+  stints.forEach((s0,i)=>{
+    const t0=(BX[st]||{})[(s0.from-1)*5]||LAP0[st];
+    if(t0!=null&&t0>T)return;
+    /* clip stint to laps completed by T */
+    let toL=s0.from-1;
+    for(let L=s0.from;L<=s0.to;L++){const e=(BX[st]||{})[L*5];if(e!=null&&e<=T)toL=L;}
+    const partial=carProgress(st,T);
+    const curL=partial?Math.min(s0.to,Math.max(s0.from,Math.ceil(partial.p/5))):toL;
+    const xa=X(s0.from-0.5),xb=X(Math.max(toL,curL)+0.0);
+    if(xb<=xa)return;
+    const dc=PAL[(CARS.indexOf(st)+drvs.indexOf(s0.drv)*3)%PAL.length];
+    tc.fillStyle=hexA(dc,.22);
+    tc.beginPath();tc.roundRect(xa,yBar,xb-xa,bh,4);tc.fill();
+    tc.strokeStyle=hexA(dc,.7);tc.lineWidth=1;
+    tc.beginPath();tc.roundRect(xa,yBar,xb-xa,bh,4);tc.stroke();
+    tc.fillStyle=hexA(dc,.95);tc.textAlign='left';tc.font='700 9px "IBM Plex Mono",monospace';
+    const lbl=s0.drv+' · '+(toL-s0.from+1)+'L'+(s0.avg?' · avg '+fmtLap(s0.avg):'');
+    if(xb-xa>tc.measureText(lbl).width+8)tc.fillText(lbl,xa+5,yBar+13);
+    else if(xb-xa>30)tc.fillText(s0.drv.slice(0,6),xa+4,yBar+13);
+    /* stint label above */
+    tc.fillStyle='rgba(110,125,155,.7)';tc.font='8px "IBM Plex Mono",monospace';
+    tc.fillText('stint '+s0.n,xa+2,yBar-6);
+    tc.fillStyle='rgba(148,161,184,.6)';
+    tc.fillText('L'+s0.from+'–'+s0.to,xa+2,yBar+bh+13);
+  });
+  /* pit markers between stints with loss estimate */
+  (DB.pits[st]||[]).forEach((l,i)=>{
+    const t=(BX[st]||{})[l*5-1];if(t==null||t>T)return;
+    const x=X(l+0.5);
+    tc.strokeStyle='rgba(255,184,107,.9)';tc.lineWidth=1.4;
+    tc.beginPath();tc.moveTo(x,yBar-10);tc.lineTo(x,yBar+bh+10);tc.stroke();
+    tc.fillStyle='rgba(255,184,107,.95)';tc.textAlign='center';tc.font='700 9px "IBM Plex Mono",monospace';
+    tc.fillText('P'+(i+1),x,yBar-14);
+    const loss=PLOSS[st][l];
+    if(loss!=null)tc.fillText('−'+Math.round(loss)+'s',x,yBar+bh+24);
+  });
+  /* footer: totals */
+  const nStop=pitsUpTo(st,T);
+  const totLoss=Object.keys(PLOSS[st]).filter(l=>{const t=(BX[st]||{})[l*5-1];return t!=null&&t<=T;})
+    .reduce((a,l)=>a+PLOSS[st][l],0);
+  tc.fillStyle='rgba(148,161,184,.75)';tc.textAlign='left';tc.font='9px "IBM Plex Mono",monospace';
+  tc.fillText('stops '+nStop+(totLoss>0?' · pit loss ~'+Math.round(totLoss)+'s':'')+
+    (MEDG[st]?' · med '+fmtLap(MEDG[st]):''),M.l,h-8);
+}
+
 /* ---------- SECTOR panel ---------- */
-/* selected car: last laps × S1..S5 chips coloured like the index GRID
-   (violet = class best so far, green = personal best so far);
-   no selection: class sector bests + theoretical best lap. */
 function chipCol(v,pb,ob){
   if(ob!=null&&v<=ob.t+1e-9)return['rgba(199,123,255,.16)','#c77bff'];
   if(pb!=null&&v<=pb+1e-9)return['rgba(125,255,168,.13)','#7dffa8'];
@@ -631,7 +898,6 @@ function drawSectors(S){
   sc2.font='9px "IBM Plex Mono",monospace';
   if(!selCar){
     cap.textContent='sector bests · class';
-    /* header */
     const rows=[];let theo=0,ok=true;
     for(let k=0;k<5;k++){const b=S.secBest[k];
       if(b){theo+=b.t;}else ok=false;
@@ -662,7 +928,6 @@ function drawSectors(S){
   }
   cap.textContent='sectors · #'+selCar;
   const st=selCar,stm=DB.sectimes[st]||{},bx=BX[st]||{},pb=S.secPB[st]||[];
-  /* laps with any completed sector, newest last */
   const laps=Object.keys(stm).map(Number).sort((a,b)=>a-b)
     .filter(L=>{for(let k=1;k<=5;k++){const t=bx[(L-1)*5+k];if(t!=null&&t<=T)return true;}return false;});
   const rh=13.5,maxRows=Math.floor((h-46)/rh);
@@ -678,24 +943,20 @@ function drawSectors(S){
     const y=y0+r*rh;
     sc2.textAlign='left';sc2.fillStyle='rgba(110,125,155,.7)';
     sc2.fillText('L'+L,x0,y+9);
-    /* driver-change marker */
     const d=drvl[L]||null;
     if(d&&d!==prevDrv&&r>0){sc2.fillStyle='rgba(126,200,255,.75)';sc2.fillText(('» '+d).slice(0,9),x0+30+cw*6+4,y+9);}
     prevDrv=d;
     const s=stm[L]||[];
-    let lapT=0,lapOk=true;
     for(let k=0;k<5;k++){
-      const tc=bx[(L-1)*5+(k+1)];
+      const tcx=bx[(L-1)*5+(k+1)];
       const x=x0+30+cw*k;
-      if(tc==null||tc>T||s[k]==null||!(s[k]>0)){lapOk=false;continue;}
-      lapT+=s[k];
+      if(tcx==null||tcx>T||s[k]==null||!(s[k]>0))continue;
       const[bg,fg]=chipCol(s[k],pb[k],S.secBest[k]);
       sc2.fillStyle=bg;
       sc2.beginPath();sc2.roundRect(x+1,y,cw-3,rh-2.5,3);sc2.fill();
       sc2.fillStyle=fg;sc2.textAlign='center';
       sc2.fillText(s[k].toFixed(1),x+(cw-2)/2,y+9);
     }
-    /* boundary-true lap time (includes pit) in the LAP column */
     const e=(PLT[st]||[]).find(q=>q.L===L);
     const x=x0+30+cw*5;
     if(e&&e.end<=T){
@@ -709,7 +970,6 @@ function drawSectors(S){
       sc2.fillText(fmtLap(e.lt),x+(cw-2)/2,y+9);
     }
   });
-  /* legend */
   sc2.textAlign='left';sc2.font='8px "IBM Plex Mono",monospace';
   const ly=h-8;
   sc2.fillStyle='#c77bff';sc2.fillText('■ class best',x0,ly);
@@ -723,7 +983,7 @@ function buildBoard(){
   const b=document.getElementById('board');b.innerHTML='';rowEls={};
   CARS.forEach(st=>{
     const d=document.createElement('div');d.className='brow';d.style.setProperty('--cc',COL[st]);
-    d.innerHTML='<span class="c-p"></span><span class="c-sw"></span><span class="c-car">#'+st+'</span><span class="c-drv"></span><span class="c-last"></span><span class="c-best"></span><span class="c-gap"></span><span class="c-pit"></span>';
+    d.innerHTML='<span class="c-p"></span><span class="c-sw"></span><span class="c-car">#'+st+'</span><span class="c-drv"></span><span class="c-tr"></span><span class="c-last"></span><span class="c-best"></span><span class="c-int"></span><span class="c-gap"></span><span class="c-pit"></span>';
     d.onclick=()=>{setCar(selCar===st?'':st);};
     b.appendChild(d);rowEls[st]=d;
   });
@@ -744,12 +1004,25 @@ function renderBoard(lp,S){
     d.classList.toggle('out',p==null);
     d.querySelector('.c-p').textContent=p!=null?p:'—';
     d.querySelector('.c-drv').textContent=curDrv(st,T);
+    /* 5-minute trend */
+    const trEl=d.querySelector('.c-tr');
+    const then=rankAt(st,T-300);
+    if(p!=null&&then!=null&&then!==p){
+      const dp=then-p;
+      trEl.textContent=(dp>0?'▲':'▼')+Math.abs(dp);
+      trEl.className='c-tr '+(dp>0?'up':'dn');
+    }else{trEl.textContent='·';trEl.className='c-tr';}
     const lastEl=d.querySelector('.c-last');
     if(delayed(st,T)){lastEl.textContent='DELAY';lastEl.classList.add('dly');}
     else{lastEl.classList.remove('dly');lastEl.textContent=S.last[st]?fmtLap(S.last[st].lt):'—';}
     const bestEl=d.querySelector('.c-best');
     bestEl.textContent=S.best[st]?fmtLap(S.best[st].lt):'—';
     bestEl.classList.toggle('ob',!!(S.bestAll&&S.best[st]&&S.bestAll.st===st&&S.bestAll.L===S.best[st].L));
+    /* interval to the car directly ahead + gap to leader */
+    let intv='';
+    if(p!=null&&p>1){const ahead=order[p-2];
+      if(ahead){const g=commonGap(ahead,st,T);if(g!=null)intv=fmtGapS(Math.abs(g));}}
+    d.querySelector('.c-int').textContent=p===1?'—':intv;
     let g='';
     if(p!=null&&st!==leader){const dgap=commonGap(leader,st,T);if(dgap!=null)g=fmtGapS(Math.abs(dgap));}
     d.querySelector('.c-gap').textContent=st===leader?'lead':g;
@@ -762,11 +1035,36 @@ function renderBoard(lp,S){
   document.getElementById('lapcount').textContent='lap '+Math.max(1,Math.min(MAXN,ml+1))+' / '+MAXN;
   /* class records footer */
   let rec='<div class="hd">class records so far</div>';
-  if(S.bestAll)rec+='fastest lap <b>'+fmtLap(S.bestAll.lt)+'</b> <span class="rc">#'+S.bestAll.st+' L'+S.bestAll.L+' '+((DB.drvlap&&DB.drvlap[S.bestAll.st]&&DB.drvlap[S.bestAll.st][S.bestAll.L])||DB.name[S.bestAll.st]||'')+'</span><br>';
-  let theo=0,ok=true;const who=[];
-  for(let k=0;k<5;k++){const bsec=S.secBest[k];if(!bsec){ok=false;break;}theo+=bsec.t;who.push('S'+(k+1)+' #'+bsec.st);}
-  if(ok)rec+='theoretical <b>'+fmtLap(theo)+'</b> <span class="rc">'+who.join(' · ')+'</span>';
+  if(S.bestAll)rec+='fastest lap <b>'+fmtLap(S.bestAll.lt)+'</b> <span class="rc">#'+S.bestAll.st+' L'+S.bestAll.L+' '+((DB.drvlap&&DB.drvlap[S.bestAll.st]&&DB.drvlap[S.bestAll.st][S.bestAll.L])||DB.name[S.bestAll.st]||'')+'</span>';
+  if(S.bestAll)rec+=' · avg <span class="sv">'+(TRACK_KM/(S.bestAll.lt/3600)).toFixed(1)+' km/h</span><br>';
+  let theo=0,ok=true;const parts=[];
+  for(let k=0;k<5;k++){const bsec=S.secBest[k];if(!bsec){ok=false;break;}theo+=bsec.t;
+    parts.push('S'+(k+1)+' <span class="sv">'+bsec.t.toFixed(1)+'</span> #'+bsec.st);}
+  if(ok)rec+='theoretical <b>'+fmtLap(theo)+'</b> · '+parts.join(' · ');
   document.getElementById('records').innerHTML=rec;
+}
+
+/* ---------- race log feed ---------- */
+let lastFeedKey='';
+function renderFeed(){
+  /* events visible at T (chronological array) */
+  let n=0;
+  for(let i=0;i<EVENTS.length;i++){if(EVENTS[i].t<=T)n=i+1;else break;}
+  const key=n+'|'+selCar;
+  if(key===lastFeedKey)return;lastFeedKey=key;
+  const f=document.getElementById('feed');
+  const slice=EVENTS.slice(Math.max(0,n-90),n).reverse();
+  let html='';
+  slice.forEach(e=>{
+    const mine=selCar&&(e.car===selCar||e.car2===selCar);
+    html+='<div class="fev '+e.type+(mine?' mine':'')+'" data-car="'+(e.car||'')+'">'+
+      '<span class="ft">'+fmtTod(e.t).slice(0,5)+'</span><span class="fx">'+e.html+'</span></div>';
+  });
+  if(!html)html='<div class="fev"><span class="ft"></span><span class="fx">waiting for green flag…</span></div>';
+  f.innerHTML=html;
+  f.querySelectorAll('.fev[data-car]').forEach(el=>{
+    el.onclick=()=>{const c=el.getAttribute('data-car');if(c)setCar(selCar===c?'':c);};});
+  document.getElementById('feedcount').textContent=n+' events';
 }
 
 /* ---------- focus strip ---------- */
@@ -782,7 +1080,6 @@ function renderFocus(lp,S){
     for(const st in lp){if(lp[st]===p-1)A=st;if(lp[st]===p+1)B=st;}
     if(A){const d=commonGap(selCar,A,T);if(d!=null)ah='▲ '+Math.abs(d).toFixed(1)+'s to #'+A;}
     if(B){const d=commonGap(B,selCar,T);if(d!=null)be='▼ '+Math.abs(d).toFixed(1)+'s to #'+B;}}
-  /* latest sector chips coloured vs personal/class best */
   const latest=S.secLast[selCar]||[],pb=S.secPB[selCar]||[];
   let chips='';
   for(let k=0;k<5;k++){
@@ -796,23 +1093,40 @@ function renderFocus(lp,S){
   }
   const np=pitsUpTo(selCar,T);
   const pitL=(DB.pits[selCar]||[]).filter(l=>{const t=(BX[selCar]||{})[l*5-1];return t!=null&&t<=T;});
+  const curL=r?Math.max(1,Math.ceil(r.p/5)):null;
+  /* stint: laps since the last pit */
+  let stint='';
+  if(curL!=null){const lastPit=pitL.length?pitL[pitL.length-1]:0;
+    stint='stint <b>'+(np+1)+'</b> · lap <b>'+(curL-lastPit)+'</b> of it';}
+  /* net vs start */
+  let net='';
+  if(p!=null&&GRID0[selCar]!=null){const dp=GRID0[selCar]-p;
+    if(dp!==0)net='<span class="net '+(dp>0?'up':'dn')+'">'+(dp>0?'▲':'▼')+Math.abs(dp)+' vs start</span>';}
+  /* speed + consistency */
+  const lastLt=S.last[selCar]&&S.last[selCar].lt;
+  const spd=lastLt?(TRACK_KM/(lastLt/3600)).toFixed(1)+' km/h':null;
+  const sig=S.sigma[selCar]!=null?('σ '+S.sigma[selCar].toFixed(1)+'s'):null;
   fl.innerHTML=
     '<span>car <b style="color:'+COL[selCar]+'">#'+selCar+'</b></span>'+
-    '<span>pos <b>'+(p!=null?'P'+p:'—')+'</b></span>'+
-    '<span>lap <b>'+(r?('L'+Math.max(1,Math.ceil(r.p/5))):'—')+(lg?(' S'+lg[1]):'')+'</b></span>'+
+    '<span>pos <b>'+(p!=null?'P'+p:'—')+'</b></span>'+net+
+    '<span>lap <b>'+(curL!=null?('L'+curL):'—')+(lg?(' S'+lg[1]):'')+'</b></span>'+
     '<span>driver <b>'+curDrv(selCar,T)+'</b></span>'+
     (delayed(selCar,T)?'<span class="delay">DELAY</span>':'')+
     (pitInfo(selCar,T)?'<span class="delay" style="background:var(--pit)">IN PIT</span>':'')+
     '<span class="ga">'+ah+'</span><span class="gb">'+be+'</span>'+
-    '<span>last <b>'+(S.last[selCar]?fmtLap(S.last[selCar].lt):'—')+'</b></span>'+
+    '<span>last <b>'+(lastLt?fmtLap(lastLt):'—')+'</b>'+(spd?' <span style="color:#7c8aa3">'+spd+'</span>':'')+'</span>'+
     '<span>best <b>'+(S.best[selCar]?fmtLap(S.best[selCar].lt):'—')+'</b></span>'+
+    (sig?'<span>'+sig+'</span>':'')+
     chips+
+    '<span>'+stint+'</span>'+
     '<span>pits <b>'+(np?np+' (L'+pitL.join(', L')+')':'0')+'</b></span>';
 }
 
 /* ---------- clock / scrub ---------- */
 function fmtTod(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=Math.floor(s%60);
   return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');}
+function fmtEl(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=Math.floor(s%60);
+  return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');}
 const scrub=document.getElementById('scrub');
 function syncScrub(){scrub.value=T;const p=((T-TMIN)/((TMAX-TMIN)||1))*100;scrub.style.setProperty('--p',p+'%');}
 scrub.addEventListener('input',e=>{T=+e.target.value;});
@@ -833,21 +1147,27 @@ river.addEventListener('mousemove',e=>{
   hoverCar=best;
   if(best){
     const i=Math.max(0,Math.min(SAMPLES.length-1,Math.round((t-TMIN)/SAMPLE_DT)));
-    /* which lap was the car on at t, and that lap's time if complete */
     const r=carProgress(best,t);
     const L=r?Math.max(1,Math.ceil(r.p/5)):null;
-    const e=L!=null?(PLT[best]||[]).find(q=>q.L===L):null;
-    /* gap to the then-leader */
+    const e2=L!=null?(PLT[best]||[]).find(q=>q.L===L):null;
     const lpT=livePos(t);
     let leadSt=null;for(const st2 in lpT)if(lpT[st2]===1)leadSt=st2;
     let gtxt='';
     if(leadSt&&leadSt!==best){const g=commonGap(leadSt,best,t);if(g!=null)gtxt=fmtGapS(Math.abs(g))+' to #'+leadSt;}
     else if(leadSt===best)gtxt='leading';
+    /* that lap's sectors (if published) */
+    let secs='';
+    const sarr=L!=null&&(DB.sectimes[best]||{})[L];
+    if(sarr){const done=[];
+      for(let k=0;k<5;k++){const tb=(BX[best]||{})[(L-1)*5+(k+1)];
+        if(tb!=null&&tb<=t&&sarr[k]>0)done.push(sarr[k].toFixed(1));}
+      if(done.length)secs='<br><span class="k">S1–S'+done.length+'</span> '+done.join(' · ');}
     tip.style.display='block';
-    tip.style.left=Math.min(RW-210,mx+16)+'px';tip.style.top=(my+14)+'px';
+    tip.style.left=Math.min(RW-230,mx+16)+'px';tip.style.top=(my+14)+'px';
     tip.innerHTML='<b style="color:'+COL[best]+'">#'+best+'</b> '+(curDrv(best,t)||'')+
       '<br><span class="k">pos</span> P'+RANK[best][i]+' · <span class="k">lap</span> L'+(L||'—')+' · '+fmtTod(t)+
-      (e&&e.end<=t+((e.lt||0))?'<br><span class="k">lap time</span> '+fmtLap(e.lt)+(e.pit?' <span style="color:var(--pit)">pit</span>':''):'')+
+      (e2&&e2.end<=t+((e2.lt||0))?'<br><span class="k">lap time</span> '+fmtLap(e2.lt)+(e2.pit?' <span style="color:var(--pit)">pit</span>':''):'')+
+      secs+
       (gtxt?'<br><span class="k">gap</span> '+gtxt:'')+
       '<br><span class="k">stops</span> '+pitsUpTo(best,t);
     river.style.cursor='pointer';
@@ -861,8 +1181,8 @@ const playBtn=document.getElementById('play');
 function setPlaying(v){playing=v;playBtn.innerHTML=v?'&#10073;&#10073;':'&#9654;';playBtn.classList.toggle('on',v);}
 playBtn.onclick=()=>setPlaying(!playing);
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();setPlaying(!playing);}});
-function setCar(st){selCar=st||'';document.getElementById('carSel').value=selCar;lastBoardT=-1e9;save();}
-document.getElementById('carSel').onchange=e=>{selCar=e.target.value;lastBoardT=-1e9;save();};
+function setCar(st){selCar=st||'';document.getElementById('carSel').value=selCar;lastBoardT=-1e9;lastFeedKey='';save();}
+document.getElementById('carSel').onchange=e=>{selCar=e.target.value;lastBoardT=-1e9;lastFeedKey='';save();};
 document.getElementById('speed').onchange=save;
 const clsSel=document.getElementById('clsSel');
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' · '+DB.classes[c].length+' cars';clsSel.appendChild(o);});
@@ -892,20 +1212,22 @@ function frame(ts){
   const dt=(ts-lastFrame)/1000;lastFrame=ts;
   if(playing){
     T+=dt*(+document.getElementById('speed').value||30);
-    if(T>=TMAX){T=TMIN;headPos={};}
+    if(T>=TMAX){T=TMIN;headPos={};lastFeedKey='';}
   }
   T=Math.max(TMIN,Math.min(TMAX,T));
   TVIEW=Math.min(TMAX,Math.max(T+360,TMIN+1500));
   const lp=updateHeads();
   const S=computeStats();
   drawRiver(lp,S);
-  drawOrbit();
+  drawOrbit(lp);
   drawPace(S);
   drawGap(S);
+  drawStrat(lp,S);
   drawSectors(S);
   renderBoard(lp,S);
+  renderFeed();
   renderFocus(lp,S);
-  document.getElementById('clock').innerHTML=fmtTod(T)+'<small>time of day</small>';
+  document.getElementById('clock').innerHTML=fmtTod(T)+'<small>+'+fmtEl(T-TMIN)+' elapsed</small>';
   syncScrub();
   requestAnimationFrame(frame);
 }
