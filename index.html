@@ -1993,7 +1993,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   function frame(){map.fitBounds(circ.getBounds(),{padding:[22,22]});}
   function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
   window.__syncWx=syncWx;syncWx();setTimeout(syncWx,150);
-  const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);frame();});return b;}});map.addControl(new Rc());
+  const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
   /* animated rain radar: past (observed) + nowcast (forecast) frames from
      RainViewer, cycled with a play/pause button and a timeline clock. The blue
      divider on the timeline marks "now" (boundary between observed and forecast). */
@@ -2294,7 +2294,7 @@ const IS_TOUCH=!!(window.matchMedia&&window.matchMedia('(hover: none) and (point
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
-  syncReel();if(window.__syncWx)window.__syncWx();
+  syncReel();
   const DW=1722;
   let s=Math.min(1,window.innerWidth/DW);
   if(IS_TOUCH){
@@ -2312,7 +2312,13 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,0) scale('+s+')';
   const ov=IS_TOUCH?'hidden':'auto';
   document.documentElement.style.overflow=ov;document.body.style.overflow=ov;
-  growMaps();syncSideHeights();syncRightSplit();try{fitDrv();}catch(e){}}
+  growMaps();
+  // sync the Leaflet radar AFTER growMaps: growMaps is what sets the weather
+  // panel's final height, and invalidateSize/fitBounds against the pre-grow
+  // size left the map off-centre (worst with small classes, where the grow
+  // changes the panel height the most)
+  if(window.__syncWx)window.__syncWx();
+  syncSideHeights();syncRightSplit();try{fitDrv();}catch(e){}}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);setTimeout(fitPage,1500);
 // Re-align once web fonts have loaded — their metrics change row heights, which
