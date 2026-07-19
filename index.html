@@ -9,6 +9,10 @@
   *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
   :root{--bg:#f4f5f7;--card:#fff;--border:#e3e6ea;--ink:#16202b;--muted:#6b7480;--accent:#e0301e}
   body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  /* Tablet/phone (touch, no hover): the page is scaled to fit the screen by
+     fitPage, so the document itself must never scroll or rubber-band. Panels
+     inside the page (message board, fuel list, …) keep their own scrolling. */
+  @media (hover:none) and (pointer:coarse){html,body{overflow:hidden;height:100%;overscroll-behavior:none}}
   .wrap{width:1722px;box-sizing:border-box;margin:0;padding:10px 26px 28px}
   .metabar{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:20px}
   .pill{border:1px solid var(--border);border-radius:6px;padding:4px 10px;letter-spacing:1px;color:var(--ink);background:var(--card)}
@@ -2279,17 +2283,30 @@ function growMaps(){
   if(Math.abs(mapH-mapH0)>2){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
   if(Math.abs(reelH-reelH0)>2){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
 }
+/* Touch-only devices (tablet/phone). Desktop scales to fit the width and may
+   scroll vertically; touch devices must show the whole page with no scrolling. */
+const IS_TOUCH=!!(window.matchMedia&&window.matchMedia('(hover: none) and (pointer: coarse)').matches);
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
   syncReel();if(window.__syncWx)window.__syncWx();
   const DW=1722;
-  const s=Math.min(1,window.innerWidth/DW);
+  let s=Math.min(1,window.innerWidth/DW);
+  if(IS_TOUCH){
+    window.scrollTo(0,0);
+    // fit the height too, or locking scroll would clip the page bottom
+    // (content bottom = agent bar, same measure growMaps uses — the wrap's
+    // scrollHeight is polluted by the tall grid sidebar)
+    const agent=document.querySelector('.agentbar');
+    const DH=agent?agent.getBoundingClientRect().bottom+window.pageYOffset:0;
+    if(DH>0)s=Math.min(s,window.innerHeight/DH);
+  }
   __fit=s;
   syncMapHeights();
   const tx=Math.max(0,(window.innerWidth-DW*s)/2);
   w.style.transformOrigin='top left';w.style.transform='translate('+tx+'px,0) scale('+s+')';
-  document.documentElement.style.overflow='auto';document.body.style.overflow='auto';
+  const ov=IS_TOUCH?'hidden':'auto';
+  document.documentElement.style.overflow=ov;document.body.style.overflow=ov;
   growMaps();syncSideHeights();syncRightSplit();try{fitDrv();}catch(e){}}
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);setTimeout(fitPage,1500);
