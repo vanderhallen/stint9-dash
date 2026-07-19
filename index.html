@@ -2269,7 +2269,14 @@ function growMaps(){
   // by the tall grid sidebar, so we measure the visible column's end instead)
   const slack=(window.innerHeight-agent.getBoundingClientRect().bottom)/s;
   if(slack<=20)return; // no free space (or content already overflows) — leave natural sizes alone
-  const mapH0=svg.clientHeight,reelH0=rv.clientHeight;
+  /* reelH0 from the ROW, not the reel view: the thumb film strip's min-content
+     (13 thumbs + 12 flex gaps) floors the reel card ~44px taller than a very
+     short reel view (small classes). Budgeting with rv.clientHeight then counts
+     that floor as missing slack and the grown page ends short by exactly that
+     amount. -6 = card chrome (border+padding), the same offset the applied
+     reelH gains back when the row renders. */
+  const rowEl=document.getElementById('reelrow');
+  const mapH0=svg.clientHeight,reelH0=Math.max(rv.clientHeight,rowEl?rowEl.clientHeight-6:0);
   const aspect=svg.clientWidth/mapH0,card=svg.closest('.stage');
   const maxMapH=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
   // budget = everything currently used by both rows + whatever slack is free.
