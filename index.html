@@ -2204,7 +2204,12 @@ if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
 Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();syncReel();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();};
+/* fitPage (not bare syncReel): a class change alters CH, and syncReel alone
+   resets the reels to the short CH/1000 aspect without anything re-growing
+   them — the maincol/rightcol ResizeObserver never fires because rightcol is
+   pinned to the old height, so .maincol's stretched flex size doesn't change.
+   fitPage does the reset AND the grow in one pass. */
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
@@ -2453,7 +2458,7 @@ buildStartGrid();
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
     const pick=(cur&&DB.classes[cur])?cur:Object.keys(DB.classes)[0];if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
-    const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);}}
+    const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}}
   function liveTick(){
     refreshStatus();
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
@@ -2469,7 +2474,7 @@ buildStartGrid();
         applyCarFuelSettings(selCar);postTyreCar(selCar);
         T=DB.tmax;if(scrub)scrub.value=T;liveSeen=true;
         liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(T);
-        render();try{syncReel();}catch(e){}
+        render();try{fitPage();}catch(e){} // full re-fit: car count (CH) may have changed
         if(typeof buildStartGrid==='function')buildStartGrid();
         if(typeof renderMessages==='function')renderMessages();
       }).catch(()=>{if(window.dataMode==='LIVE'&&!liveSeen)liveMsg.textContent='LIVE · feed unreachable, retrying…';});
