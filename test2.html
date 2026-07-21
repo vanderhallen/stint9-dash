@@ -548,9 +548,11 @@ function updateStockCtl(){
   const btn=ctl.querySelector('.topitbtn');if(btn){btn.classList.toggle('ready',ready);btn.disabled=!ready;}
   // delete is available as soon as any band is selected (1–4)
   const del=ctl.querySelector('.deletebtn');if(del){const dready=n>=1;del.classList.toggle('ready',dready);del.disabled=!dready;}
-  // PIT status next to "to PIT": full if the PIT stack holds tyres, else empty
+  // PIT status next to "to PIT": full if the PIT stack holds tyres, else empty.
+  // isPitEmpty is a const defined later; at first paint it's still in the TDZ,
+  // so guard the call (try/catch) — refreshBtns re-runs this once it exists.
   const ps=ctl.querySelector('.pitstate');
-  if(ps){const empty=(typeof isPitEmpty!=='function')||isPitEmpty();ps.textContent=empty?'empty':'full';ps.classList.toggle('empty',empty);ps.classList.toggle('full',!empty);}
+  if(ps){let empty=true;try{empty=isPitEmpty();}catch(e){}ps.textContent=empty?'empty':'full';ps.classList.toggle('empty',empty);ps.classList.toggle('full',!empty);}
 }
 /* read a STOCK band's current tyre from its DOM (highlights + texts) */
 function tyreFromStockBand(b,pos){
