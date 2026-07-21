@@ -3125,32 +3125,35 @@ function renderChampionship(){
 }
 
 /* ---- race-day timetable & countdown ----
-   Standard NLS race-day timetable for a 4h round, as supplied. eventDate is
-   the next scheduled NLS round per nuerburgring-langstrecken-serie.de's
-   archive (KW 6h ADAC Ruhr-Pokal-Rennen, 01.08.2026) — no official Zeitplan
-   was published for it yet (it's a 6h round, so timings will differ from the
-   4h template below). Treat every time here as provisional: reconfirm the
-   real Zeitplan, including pitlane-open, once it's published / on raceday. */
-const SCHEDULE={
-  eventDate:'2026-08-01',
-  pitlaneOpen:'08:00',
-  sessions:[
-    {name:'quali',start:'08:30',end:'10:00'},
-    {name:'pitwalk',start:'10:30',end:'11:30'},
-    {name:'lineup',start:'11:10',end:'11:30'},
-    {name:'formation',start:'11:40',end:null},
-    {name:'race',start:'12:00',end:'16:00'}
-  ]
-};
+   Single source of truth: Supabase public.stint9_schedule_windows — the same
+   table the pg_cron auto-scan job (stint9_wige_autoscan) gates the automatic
+   WIGE polling against (see RACEDAY.md). This reel just reads it too, so the
+   on-page timetable/countdown and the automatic LIVE-feed polling can never
+   drift out of sync with each other. Adding a future round's real Zeitplan is
+   a single INSERT into that table — nothing here needs editing per round.
+   SCHEDULE states: undefined = not fetched yet, null = fetched but no
+   upcoming round found, object = the next round's rows. */
+let SCHEDULE,GRIDBOUNDS=[];
+const fmtHM=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+async function loadSchedule(){
+  try{
+    const res=await fetch(FUEL_SB_URL+'/rest/v1/stint9_schedule_windows?select=event_date,label,start_ts,end_ts&event_date=gte.'+liveEventDate()+'&order=event_date.asc,start_ts.asc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}});
+    const rows=res.ok?await res.json():[];
+    if(!rows.length){SCHEDULE=null;}
+    else{
+      const ed=rows[0].event_date,dayRows=rows.filter(r=>r.event_date===ed);
+      SCHEDULE={eventDate:ed,rows:dayRows.map(r=>({label:r.label,start:new Date(r.start_ts),end:r.end_ts?new Date(r.end_ts):null}))};
+    }
+  }catch(e){SCHEDULE=null;}
+  GRIDBOUNDS=scheduleBoundaries();renderTimetable();tickGridClock();
+}
 function scheduleBoundaries(){
-  const mk=t=>new Date(SCHEDULE.eventDate+'T'+t+':00');
-  const b=[{t:mk(SCHEDULE.pitlaneOpen),label:'pitlane'}];
-  SCHEDULE.sessions.forEach(s=>b.push({t:mk(s.start),label:s.name}));
-  const race=SCHEDULE.sessions.find(s=>s.name==='race');
-  if(race&&race.end)b.push({t:mk(race.end),label:'end',isEnd:true});
+  if(!SCHEDULE)return[];
+  const b=SCHEDULE.rows.map(r=>({t:r.start,label:r.label}));
+  const race=SCHEDULE.rows.find(r=>r.label==='race');
+  if(race&&race.end)b.push({t:race.end,label:'end',isEnd:true});
   return b.sort((a,c)=>a.t-c.t);
 }
-const GRIDBOUNDS=scheduleBoundaries();
 function fmtCountdown(ms,neg){
   let sec=Math.max(0,Math.floor(Math.abs(ms)/1000));
   const days=Math.floor(sec/86400);sec-=days*86400;
@@ -3162,6 +3165,8 @@ function fmtCountdown(ms,neg){
 function tickGridClock(){
   const now=new Date(),clockEl=document.getElementById('gridclock'),nextEl=document.getElementById('gridnext');
   if(!clockEl||!nextEl)return;
+  if(SCHEDULE===undefined){clockEl.textContent='--:--:--';nextEl.textContent='loading…';return;}
+  if(!SCHEDULE||!GRIDBOUNDS.length){clockEl.textContent='--:--:--';nextEl.textContent='no round scheduled';return;}
   const next=GRIDBOUNDS.find(b=>b.t.getTime()>now.getTime());
   if(!next){clockEl.textContent='00:00:00';nextEl.textContent='event over';return;}
   const diff=next.t.getTime()-now.getTime();
@@ -3171,7 +3176,10 @@ function tickGridClock(){
 tickGridClock();setInterval(tickGridClock,1000);
 function renderTimetable(){
   const el=document.getElementById('timetable');if(!el)return;
-  const rows=[['Pitlane open',SCHEDULE.pitlaneOpen,'']].concat(SCHEDULE.sessions.map(s=>[s.name.charAt(0).toUpperCase()+s.name.slice(1),s.start,s.end||'']));
+  if(SCHEDULE===undefined){el.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;padding:12px;color:var(--muted)">Loading timetable…</div>';return;}
+  if(!SCHEDULE){el.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;padding:12px;color:var(--muted)">No upcoming round scheduled.</div>';return;}
+  const label=l=>l==='pitlane'?'Pitlane open':(l.charAt(0).toUpperCase()+l.slice(1));
+  const rows=SCHEDULE.rows.map(r=>[label(r.label),fmtHM(r.start),r.end?fmtHM(r.end):'']);
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:6px 4px">';
   h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+SCHEDULE.eventDate+'</div>';
   rows.forEach(r=>{h+='<div style="display:flex;justify-content:flex-start;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:150px">'+r[0]+'</span><span style="font-weight:600;text-align:left">'+r[1]+(r[2]?('&ndash;'+r[2]):'')+'</span></div>';});
@@ -3179,6 +3187,8 @@ function renderTimetable(){
   el.innerHTML=h;
 }
 renderTimetable();
+loadSchedule();
+setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule table is updated while the page is left open
 
 /* ---- weather / timetable reel (2 panels) ---- */
 let wxReelIdx=0;const WXN=5;
@@ -3328,7 +3338,7 @@ applyWxReel(false);
   var H={apikey:KEY,Authorization:'Bearer '+KEY};
 
   /* OFFLINE gate — same countdown clock as the starting grid (fmtCountdown/SCHEDULE) */
-  function pitlaneTarget(){try{return new Date(SCHEDULE.eventDate+'T'+SCHEDULE.pitlaneOpen+':00');}catch(e){return null;}}
+  function pitlaneTarget(){try{var r=SCHEDULE&&SCHEDULE.rows&&SCHEDULE.rows.find(function(x){return x.label==='pitlane';});return r?r.start:null;}catch(e){return null;}}
   function showOffline(){
     if(document.getElementById('offlineveil'))return;
     var v=document.createElement('div');v.id='offlineveil';
