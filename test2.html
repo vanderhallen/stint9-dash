@@ -691,7 +691,10 @@ function pBand(t,editKey){
   ];
   // STOCK tyres are always COLD (like STINT): force cold regardless of stored temp
   const temp=editKey?'cold':t.temp;
-  const active=new Set([t.pos,t.cond,t.wear,temp].filter(Boolean));
+  // a tyre with more than 10 KM counts as USED: highlight USED, not NEW
+  const kmNum=parseInt(String(t.km==null?'':t.km).replace(/\D/g,''),10);
+  const wear=(!isNaN(kmNum)&&kmNum>10)?'used':t.wear;
+  const active=new Set([t.pos,t.cond,wear,temp].filter(Boolean));
   grid.forEach(g=>{
     const c=document.createElement('div');c.className='pcell';c.dataset.k=g.k;
     const isHl=(g.t==='pos'||g.hl);
@@ -699,7 +702,7 @@ function pBand(t,editKey){
     if(g.t==='pos')c.innerHTML='<div class="pt">'+g.l+'</div>';
     else if(g.t==='ico')c.innerHTML=ICONS[g.k]+'<div class="plbl">'+g.l+'</div>';
     else c.innerHTML='<div class="'+(g.k==='id'?'pid':'pn')+'">'+g.v+'</div>';
-    if(editKey)wireStockCell(c,g,b,editKey);
+    if(editKey)wireStockCell(c,g,b,editKey,t);
     b.appendChild(c);
   });
   if(editKey){   // STOCK only: select toggle in the top-right corner
@@ -712,7 +715,7 @@ function pBand(t,editKey){
   if(!isNaN(kmv)&&kmv>MAX_KM)b.insertAdjacentHTML('beforeend',BAND_CROSS);
   return b;
 }
-function wireStockCell(c,g,band,editKey){
+function wireStockCell(c,g,band,editKey,tyre){
   const isHl=(g.t==='pos'||g.hl);
   if(isHl&&STOCK_AXIS[g.k]==='temp')return;   // temp is locked to COLD in STOCK: not editable
   if(isHl){
@@ -738,7 +741,16 @@ function wireStockCell(c,g,band,editKey){
           txt.textContent=cand;
         }
       }
-      const st=STOCK_STATE[editKey]||(STOCK_STATE[editKey]={});st[field]=txt.textContent.trim();saveStock();};
+      const st=STOCK_STATE[editKey]||(STOCK_STATE[editKey]={});st[field]=txt.textContent.trim();saveStock();
+      // KM > 10 => the tyre is USED: flip the NEW/USED highlight live on this band
+      if(field==='km'){
+        const kmN=parseInt((txt.textContent||'').replace(/\D/g,''),10);
+        const storedWear=st.wear||(tyre&&tyre.wear);
+        const eff=(!isNaN(kmN)&&kmN>10)?'used':storedWear;
+        const nc=band.querySelector('.pcell[data-k="new"]'),uc=band.querySelector('.pcell[data-k="used"]');
+        if(nc)nc.classList.toggle('hl',eff==='new');
+        if(uc)uc.classList.toggle('hl',eff==='used');
+      }};
     c.addEventListener('click',()=>{if(txt.isContentEditable){commit();return;}txt.contentEditable='true';txt.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(txt);r.collapse(false);sel.removeAllRanges();sel.addRange(r);});
     txt.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}});
     txt.addEventListener('blur',commit);
