@@ -1000,13 +1000,16 @@ stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventL
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
 // prev/next panel arrows at the board's far edges — same grey pills as the side
 // pages, so the whole reel (STINT ◀ … ▶ STOCK ▶ TRASH) is walkable from here too
-function makeBoardNav(x,glyph,title,fn){
+// anchor to the SAME offsets as the side pages' .phd header (28px in from the
+// sides, 20px from the top) so every page's arrow lands on the identical screen
+// spot — clicking through the reel never moves out from under the mouse.
+function makeBoardNav(side,glyph,title,fn){
   const b=el('div');b.className='hbtn';b.innerHTML=glyph;b.title=title;
-  b.style.cssText='position:absolute;left:'+x+'px;top:20px;z-index:8';   // top:20px = same header height as the side pages (.phd padding)
+  b.style.cssText='position:absolute;'+side+':28px;top:20px;z-index:8';
   b.addEventListener('click',fn);stage.appendChild(b);return b;
 }
-makeBoardNav(12,'&#9664;','previous panel',()=>goH(hIdx-1));
-makeBoardNav(1294,'&#9654;','next panel',()=>goH(hIdx+1));
+makeBoardNav('left','&#9664;','previous panel',()=>goH(hIdx-1));
+makeBoardNav('right','&#9654;','next panel',()=>goH(hIdx+1));
 
 /* ================= TRACK -> STINT transfer (pitstop) ========================
    A button on the car roof. On click the 4 TRACK bands animate: first gather
