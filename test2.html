@@ -877,19 +877,20 @@ function rebuildStockPanel(showEmpty){
     if(back)left.appendChild(back);
     const cta=document.createElement('div');cta.className='stockcta';
     cta.innerHTML='<span class="stockcta-row"><span class="stockpips"><i></i><i></i><i></i><i></i></span>'+
-        '<button type="button" class="topitbtn" disabled>to PIT</button>'+
-        '<button type="button" class="deletebtn" disabled>delete</button></span>'+
+        '<button type="button" class="topitbtn" disabled>to PIT</button></span>'+
         '<span class="stockctltxt">select 4 tyres, and send to PIT</span>';
     left.appendChild(cta);
-    // RIGHT group: max KM + STOCK title pushed to the far right
+    // RIGHT group: delete + max KM + STOCK title pushed to the far right
     const right=document.createElement('div');right.className='phd-right';
+    const del=document.createElement('button');del.type='button';del.className='deletebtn';del.disabled=true;del.textContent='delete';
     const max=document.createElement('span');max.className='stockmax';
     max.innerHTML='max KM <input type="number" class="maxkmin" min="0" step="100" value="'+MAX_KM+'">';
+    right.appendChild(del);
     right.appendChild(max);
     if(title)right.appendChild(title);
     hd.appendChild(left);hd.appendChild(right);
     cta.querySelector('.topitbtn').addEventListener('click',sendSelectedToPit);
-    cta.querySelector('.deletebtn').addEventListener('click',()=>{if(stockSel.length<1)return;askPassword('Password to delete selected tyres:',deleteSelectedFromStock);});
+    del.addEventListener('click',()=>{if(stockSel.length<1)return;askPassword('Password to delete selected tyres:',deleteSelectedFromStock);});
     const mk=max.querySelector('.maxkmin');if(mk)mk.addEventListener('change',()=>{const v=parseInt(mk.value,10);if(v>0){MAX_KM=v;saveMaxKm();rebuildStockPanel();rebuildStintPanel();refreshAllBandCrosses();}});
   }
   updateStockCtl();
