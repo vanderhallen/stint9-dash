@@ -391,7 +391,7 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
-          <div class="reelpanel"><iframe id="boardframe" src="test2.html" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel"><iframe id="boardframe" src="test2.html?v=20260721" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg"></svg></div>
@@ -3141,8 +3141,17 @@ async function loadSchedule(){
     const rows=res.ok?await res.json():[];
     if(!rows.length){SCHEDULE=null;}
     else{
-      const ed=rows[0].event_date,dayRows=rows.filter(r=>r.event_date===ed);
-      SCHEDULE={eventDate:ed,rows:dayRows.map(r=>({label:r.label,start:new Date(r.start_ts),end:r.end_ts?new Date(r.end_ts):null}))};
+      // Cluster by proximity, not an exact event_date match: a multi-day
+      // round (e.g. the 24h weekend, Thu-Sun) has several event_date values a
+      // few days apart, while the NEXT round is always weeks away -- a 5-day
+      // window safely groups one round's days together without ever merging
+      // two different rounds into one display.
+      const ed=rows[0].event_date;
+      const clusterEndMs=new Date(ed+'T00:00:00Z').getTime()+5*86400000;
+      const dayRows=rows.filter(r=>new Date(r.event_date+'T00:00:00Z').getTime()<=clusterEndMs);
+      const lastDate=dayRows[dayRows.length-1].event_date;
+      SCHEDULE={eventDate:ed,eventDateEnd:lastDate!==ed?lastDate:null,
+        rows:dayRows.map(r=>({label:r.label,date:r.event_date,start:new Date(r.start_ts),end:r.end_ts?new Date(r.end_ts):null}))};
     }
   }catch(e){SCHEDULE=null;}
   GRIDBOUNDS=scheduleBoundaries();renderTimetable();tickGridClock();
@@ -3178,11 +3187,24 @@ function renderTimetable(){
   const el=document.getElementById('timetable');if(!el)return;
   if(SCHEDULE===undefined){el.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;padding:12px;color:var(--muted)">Loading timetable…</div>';return;}
   if(!SCHEDULE){el.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:14px;padding:12px;color:var(--muted)">No upcoming round scheduled.</div>';return;}
-  const label=l=>l==='pitlane'?'Pitlane open':(l.charAt(0).toUpperCase()+l.slice(1));
-  const rows=SCHEDULE.rows.map(r=>[label(r.label),fmtHM(r.start),r.end?fmtHM(r.end):'']);
+  // Friendly display names for session labels that don't just title-case
+  // nicely (multi-session weekends like the 24h qualifiers/race have several
+  // distinct quali sessions, not one generic "quali").
+  const LABELS={pitlane:'Pitlane open',quali:'Quali',quali1:'Qualifying 1',quali2:'Qualifying 2',quali3:'Qualifying 3',
+    topquali1:'Top Qualifying 1',topquali2:'Top Qualifying 2',topquali3:'Top Qualifying 3',
+    warmup:'Warm-up',opengrid:'Open Grid',lineup:'Lineup',startaufstellung:'Startaufstellung',formation:'Formation',race:'Race'};
+  const label=l=>LABELS[l]||(l.charAt(0).toUpperCase()+l.slice(1));
+  const multiDay=!!SCHEDULE.eventDateEnd;
+  // A session (e.g. the 24h race, Sat 15:00 -> Sun 15:00) can end on a LATER
+  // calendar day than it starts -- flag that in the end-time text, or
+  // "15:00-15:00" reads as zero-duration instead of 24 hours.
+  const dstr=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const endTxt=r=>{if(!r.end)return '';const days=Math.round((new Date(dstr(r.end))-new Date(dstr(r.start)))/86400000);return fmtHM(r.end)+(days>0?' (+'+days+'d)':'');};
+  const rows=SCHEDULE.rows.map(r=>[label(r.label),multiDay?r.date.slice(5):null,fmtHM(r.start),endTxt(r)]);
+  const heading=multiDay?(SCHEDULE.eventDate+' &ndash; '+SCHEDULE.eventDateEnd):SCHEDULE.eventDate;
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:6px 4px">';
-  h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+SCHEDULE.eventDate+'</div>';
-  rows.forEach(r=>{h+='<div style="display:flex;justify-content:flex-start;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:150px">'+r[0]+'</span><span style="font-weight:600;text-align:left">'+r[1]+(r[2]?('&ndash;'+r[2]):'')+'</span></div>';});
+  h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+heading+'</div>';
+  rows.forEach(r=>{h+='<div style="display:flex;justify-content:flex-start;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:150px">'+r[0]+(r[1]?' <span style="color:var(--muted);font-weight:400">('+r[1]+')</span>':'')+'</span><span style="font-weight:600;text-align:left">'+r[2]+(r[3]?('&ndash;'+r[3]):'')+'</span></div>';});
   h+='</div>';
   el.innerHTML=h;
 }
