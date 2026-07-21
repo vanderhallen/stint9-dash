@@ -39,32 +39,57 @@ you can stop doing that.
 
 ---
 
-## Per-round maintenance: the ONE manual step left
+## Per-round maintenance: now automatic (2026-07-21)
 
-Everything above runs unattended *if* `public.stint9_schedule_windows` knows
-this round's session times. That table is the single source of truth the cron
-job checks — nothing else needs touching per round. Once the real Zeitplan for
-a round is published, add its windows (Supabase SQL editor, or ask me):
+`public.stint9_schedule_windows` is the single source of truth for both the
+`stint9_wige_autoscan` cron gate above AND `index.html`'s race-day
+timetable/countdown reel (the client fetches it directly — see
+`loadSchedule()`), so the two can no longer drift out of sync with each other.
+
+**Keeping that table populated is itself now automatic.** A second cron job,
+`stint9_nls_schedule_autoscan` (daily, 06:00 UTC), calls the
+`nls-schedule-scrape` Edge Function (`live/nls-schedule-scrape/index.ts`),
+which:
+1. fetches the official NLS calendar page and finds every round's own event
+   page URL,
+2. fetches each upcoming round's page (next ~120 days) and parses its
+   published "Zeitplan" table, if one exists yet,
+3. upserts the parsed session times into `stint9_schedule_windows`.
+
+**It never deletes anything** — a round with no Zeitplan published yet, an
+unparseable page, or a network hiccup just means nothing is written for that
+round *this run*; existing rows (including any manual correction) are left
+alone. A round is only written if its parse found at least a `race` session,
+as a basic sanity check against a garbled parse. Every run logs its outcome to
+`stint9_schedule_scrape_log` (`select * from stint9_schedule_scrape_log order
+by created_at desc limit 5;`) — check there first if the on-page timetable
+ever looks stale.
+
+**This closed a real bug**, not just a hypothetical one: the schedule this
+table was originally seeded with (a "4h round template" guess) had NLS7's race
+ending at 16:00; the real, since-published Zeitplan runs 12:00–18:00 (it's a 6h
+round). The auto-scan would have silently stopped polling 2 hours before the
+race actually ended. The scraper caught and corrected this the same day it was
+built, and now would catch it on its own going forward.
+
+**If a round's page structure ever changes** and the scraper stops finding a
+"Zeitplan" heading/table it recognizes, it just logs `no_zeitplan_yet` (or
+`error`) and leaves that round's rows untouched — fall back to the manual
+insert this section used to describe:
 
 ```sql
 insert into public.stint9_schedule_windows (event_date, label, start_ts, end_ts) values
   ('2026-09-12', 'quali', '2026-09-12T08:30:00+02:00', '2026-09-12T10:00:00+02:00'),
-  ('2026-09-12', 'race',  '2026-09-12T12:00:00+02:00', '2026-09-12T16:00:00+02:00');
+  ('2026-09-12', 'race',  '2026-09-12T12:00:00+02:00', '2026-09-12T16:00:00+02:00')
+on conflict (event_date, label) do update set start_ts=excluded.start_ts, end_ts=excluded.end_ts;
 ```
+(Times are wall-clock Europe/Berlin — `+02:00` CEST / `+01:00` CET, mind the
+late-October DST switch. The cron gate pads 10 min before/15 min after each
+window, so a slightly-early pitlane open or a session overrun is still covered.)
 
-- Times are wall-clock Europe/Berlin (`+02:00` CEST / `+01:00` CET — mind the
-  DST switch in late October).
-- The cron function pads 10 min before `start_ts` and 15 min after `end_ts`, so
-  slightly-early pitlane opens / session overruns are still covered.
-- Keep this in sync with `index.html`'s client-side `SCHEDULE` const (used for
-  the on-page timetable/countdown reel) — the two aren't wired together yet.
-  Unifying them (client fetches from this same table) is a reasonable future
-  cleanup, not done here.
-- Nothing needs re-deploying, no cron edit, no code change — just the insert.
-
-Check it's working: `select * from cron.job_run_details where jobid = (select
-jobid from cron.job where jobname='stint9_wige_autoscan') order by start_time
-desc limit 5;`
+Check the WIGE auto-scan itself is running: `select * from
+cron.job_run_details where jobid = (select jobid from cron.job where
+jobname='stint9_wige_autoscan') order by start_time desc limit 5;`
 
 ---
 
