@@ -998,6 +998,15 @@ window.addEventListener('message',e=>{const d=e.data;if(!d)return;if(d.type==='t
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
+// prev/next panel arrows at the board's far edges — same grey pills as the side
+// pages, so the whole reel (STINT ◀ … ▶ STOCK ▶ TRASH) is walkable from here too
+function makeBoardNav(x,glyph,title,fn){
+  const b=el('div');b.className='hbtn';b.innerHTML=glyph;b.title=title;
+  b.style.cssText='position:absolute;left:'+x+'px;top:'+AXIS_Y+'px;transform:translateY(-50%);z-index:8';
+  b.addEventListener('click',fn);stage.appendChild(b);return b;
+}
+makeBoardNav(12,'&#9664;','previous panel',()=>goH(hIdx-1));
+makeBoardNav(1294,'&#9654;','next panel',()=>goH(hIdx+1));
 
 /* ================= TRACK -> STINT transfer (pitstop) ========================
    A button on the car roof. On click the 4 TRACK bands animate: first gather
