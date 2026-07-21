@@ -76,6 +76,10 @@
   .topitbtn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:#b8bdc4;border:none;padding:7px 14px;border-radius:7px;cursor:not-allowed}
   .topitbtn.ready{background:#e0301e;cursor:pointer}
   .topitbtn.ready:hover{background:#c0271a}
+  /* PIT status label beside "to PIT": full = PIT holds tyres, empty = no tyres */
+  .pitstate{font-size:14px;font-weight:800;letter-spacing:1px}
+  .pitstate.full{color:#e0301e}
+  .pitstate.empty{color:#1e8f3a}
   /* STOCK "delete selected" button (right of "to PIT"); enabled once ≥1 band is selected */
   .deletebtn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:#b8bdc4;border:none;padding:7px 14px;border-radius:7px;cursor:not-allowed}
   .deletebtn.ready{background:#16202b;cursor:pointer}
@@ -544,6 +548,9 @@ function updateStockCtl(){
   const btn=ctl.querySelector('.topitbtn');if(btn){btn.classList.toggle('ready',ready);btn.disabled=!ready;}
   // delete is available as soon as any band is selected (1–4)
   const del=ctl.querySelector('.deletebtn');if(del){const dready=n>=1;del.classList.toggle('ready',dready);del.disabled=!dready;}
+  // PIT status next to "to PIT": full if the PIT stack holds tyres, else empty
+  const ps=ctl.querySelector('.pitstate');
+  if(ps){const empty=(typeof isPitEmpty!=='function')||isPitEmpty();ps.textContent=empty?'empty':'full';ps.classList.toggle('empty',empty);ps.classList.toggle('full',!empty);}
 }
 /* read a STOCK band's current tyre from its DOM (highlights + texts) */
 function tyreFromStockBand(b,pos){
@@ -910,7 +917,8 @@ function rebuildStockPanel(showEmpty){
     if(back)left.appendChild(back);
     const cta=document.createElement('div');cta.className='stockcta';
     cta.innerHTML='<span class="stockcta-row"><span class="stockpips"><i></i><i></i><i></i><i></i></span>'+
-        '<button type="button" class="topitbtn" disabled>to PIT</button></span>'+
+        '<button type="button" class="topitbtn" disabled>to PIT</button>'+
+        '<span class="pitstate"></span></span>'+
         '<span class="stockctltxt">select 4 tyres, and send to PIT</span>';
     left.appendChild(cta);
     // RIGHT group: delete + max KM + STOCK title pushed to the far right
