@@ -633,68 +633,61 @@ function pitInfo(st,T){if(activeLeg(st,T))return null;
   const pits=(DB.pits&&DB.pits[st])||[];
   return pits.indexOf(prev[0])>=0?{lap:prev[0]}:null;}
 // --- Code 60 detection ------------------------------------------------------
-// There's no official slow-zone flag in the WIGE feed, so this infers one the
-// same way n24-live-tracker's engine does: watch for multiple cars running
-// abnormally slow through the SAME sector at the same time. Nordschleife's 5
-// sectors range from 2.4 to 9.4 km, so a fixed speed band (as n24 uses on its
-// short, even sectors) doesn't transfer — instead each car's completed-leg
-// duration is compared against its OWN class's average time for that sector
-// (DB.classAvg). `DB.legs`/`DB.classAvg` cover every class (unlike LEG, which
-// buildClass() rebuilds for only the currently-selected class), so this scans
-// across the whole field, not just the class in view.
+// Faithful port of n24-live-tracker's engine (github.com/arthurbes/n24-live-tracker,
+// backend/src/services/timingFeed.js getCode60Sectors()): a sector is Code 60 if
+// >=2 cars are simultaneously reading a speed between 45-75 km/h in it, excluding
+// any car that hasn't crossed a beacon in far longer than its own expected transit
+// time (crashed/pitted/stopped — don't let one stuck car pin the flag forever).
 //
-// CODE60_RATIO/CODE60_MIN_CARS were tuned empirically against the baked SIM
-// dataset (replay-scrubbing the whole race with an inline probe), NOT copied
-// from the reference project or reused from the UI's unrelated "Delay %"
-// slider — an earlier version did that (>=1.5x the class average, 2 cars)
-// and it flagged Sector 1 on ~88% of scrubs, i.e. it was reading the noise
-// floor, not slow zones. Three contamination sources had to be filtered out
-// of the "is this leg abnormally slow" candidate pool before real signal
-// showed through as a handful of short, sane windows instead of near-constant
-// noise:
-//   - lap 1 of every car's race: S1 duration includes the grid/rolling-start
-//     procedure, not green-flag pace (10-20x a normal S1 by itself).
-//   - the out-lap immediately after a pit stop: per the withPitS5 comment on
-//     pitInfo() above, a pit-lane exit is folded into that lap's S1 (median
-//     234.8s vs a green 74.6s in this dataset) — a pit stop, not a slow zone.
-//   - requiring only 2 simultaneously-slow cars: still ~35-40% of scrubs,
-//     because a single struggling/damaged car sitting well off its class's
-//     pace for several consecutive laps plus one unrelated slow car elsewhere
-//     trips a 2-car bar constantly. Raising to 3 cars (at 2.5x their own
-//     class average) collapsed that to two short, sane windows for this
-//     event's dataset — each pulling in cars from 3-4 *different* classes at
-//     once in the same sector, which is exactly the cross-class correlation a
-//     real trackwide slow zone should produce and same-class variance alone
-//     should not. Re-tune both constants if a future event's data disagrees.
-// Pit laps (and their out-laps, above) are excluded from the candidate pool;
-// a car queuing in the pits isn't evidence of a track-wide slow zone. A car
-// that has crashed/stopped mid-sector naturally drops out on its own: it has
-// no completed leg yet for the sector it's stuck in, so it simply isn't
-// counted until (if ever) it completes that leg — no separate "stuck" guard
-// needed, unlike n24's engine which has to add one for its continuous feed.
-const CODE60_RATIO=2.5,CODE60_MIN_CARS=3;
-function findLeg(legs,T){if(!legs||!legs.length)return null;
-  let lo=0,hi=legs.length-1,res=-1;
-  while(lo<=hi){const m=(lo+hi)>>1;if(legs[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}
-  if(res<0)return null;const g=legs[res];return(T<g[3])?g:null;}
-function code60Sectors(T){
+// WIGE's S{n}SPEED field (same backend n24 reads — see vds-relay.mjs) is captured
+// into s{n}_kmh alongside the existing s{n} sector times, so this is LIVE-only:
+// the baked SIM dataset has no speed captured, so every leg's speed is null there
+// and code60Sectors() naturally finds nothing to flag — WIGE live timing is the
+// sole source of truth for this feature, never the replay/scrub position.
+//
+// n24 tracks currentSectorIdx (the sector a car is presently driving, i.e. the
+// one AFTER its last crossed beacon) directly off its continuous carStates. This
+// dashboard only has discrete completed-leg rows, so the analogous "current"
+// state is: take each car's most recently completed leg (DB.legs[st] is already
+// sorted ascending, so it's just the last entry), read the speed recorded for
+// that just-finished sector, and treat the car as currently driving the NEXT
+// sector at that speed — exactly n24's own indexing (it reads S{currentSectorIdx}
+// SPEED, the speed tied to the beacon that DEFINES currentSectorIdx).
+//
+// Two additions on top of the ported algorithm, both specific to this feed/track
+// and NOT part of n24's own logic: lap 1 is skipped (a race-start/rolling-start
+// artifact — see the old ratio-based version's comment history for why), and pit
+// laps are skipped (a car queuing in the pit lane isn't evidence of a track-wide
+// slow zone; n24 has no pit lane on its layout to worry about).
+const SECTOR_KM=[3.3,3.3,6.0,9.4,2.4]; // NLS 5-sector lengths (also feeds the TYRE board below)
+const CODE60_MIN_SPEED=45,CODE60_MAX_SPEED=75,CODE60_MIN_CARS=2;
+function nowSecOfDay(){const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds()+d.getMilliseconds()/1000;}
+function code60Sectors(){
+  if(window.dataMode!=='LIVE')return[];   // WIGE live timing leads this feature; SIM has no speed data anyway
+  const now=nowSecOfDay();
   const counts=[0,0,0,0,0];
   for(const cls in DB.classes){
-    const avg=DB.classAvg[cls]||[0,0,0,0,0];
     for(const st of DB.classes[cls]){
-      const lg=findLeg(DB.legs[st],T);if(!lg)continue;
-      const lap=lg[0],sec=lg[1],avgSec=avg[sec-1];if(!avgSec)continue;
-      if(lap<=1)continue;                                       // grid/rolling-start S1
+      const legs=DB.legs[st];if(!legs||!legs.length)continue;
+      const lg=legs[legs.length-1];              // most recently completed sector
+      const speed=lg[4];if(speed==null)continue;  // no speed on this leg (e.g. SIM data)
+      const lap=lg[0],lastSector=lg[1];
+      if(lap<=1)continue;                                        // grid/rolling-start S1 (our addition, see above)
       const pits=DB.pits[st]||[];
-      if(pits.indexOf(lap)>=0||pits.indexOf(lap-1)>=0)continue; // pit lap + its out-lap
-      if((lg[3]-lg[2])>avgSec*CODE60_RATIO)counts[sec-1]++;
+      if(pits.indexOf(lap)>=0)continue;                          // pit lap (our addition, see above)
+      const curSector=(lastSector%5)+1;           // sector the car is now driving, n24-style
+      const safeSpeed=Math.max(speed,10);          // n24's own floor, avoids a divide-by-near-zero
+      const expectedMs=(SECTOR_KM[curSector-1]/safeSpeed)*3600*1000;
+      const sinceMs=(now-lg[3])*1000;              // real elapsed since that beacon crossing
+      if(sinceMs<0||sinceMs>expectedMs*2)continue;  // stuck/crashed/retired — n24's own guard, ported as-is
+      if(speed>CODE60_MIN_SPEED&&speed<CODE60_MAX_SPEED)counts[curSector-1]++;
     }
   }
   const flagged=[];for(let s=0;s<5;s++)if(counts[s]>=CODE60_MIN_CARS)flagged.push(s+1);
   return flagged;
 }
-function renderCode60(T){
-  const flagged=code60Sectors(T),on=new Set(flagged);
+function renderCode60(){
+  const flagged=code60Sectors(),on=new Set(flagged);
   CODE60_POLY.forEach((pl,i)=>pl.classList.toggle('on',on.has(i+1)));
   const el=document.getElementById('code60banner');if(!el)return;
   el.classList.toggle('on',flagged.length>0);
@@ -1737,7 +1730,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(oncount)oncount.textContent=on+' / '+DB.cars.length+' on track';
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
-  renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60(T);
+  renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60();
   const _tk=Date.now()-_thT>=300;
   // reel dispatch — order: 0 FUEL, 1 TYRE(board iframe, no render fn),
   // 2 POS, 3 FLOW, 4 SECT, 5 PACE, 6 STINT, 7 COMP, 8 GRID, 9 SNAP,
@@ -1767,7 +1760,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
       if(_lg){_lap=_lg[0];const _bx=BX[selCar]||{};_sec=5;for(let s=1;s<=5;s++){const tc=_bx[(_lap-1)*5+s];if(tc==null||tc>T){_sec=s;break;}}
         const _ps=(DB.pits&&DB.pits[selCar])||[];for(const pl of _ps){if(pl<=_lap)_pit=pl;}}}
     const _spd=parseFloat((document.getElementById('speed')||{}).value||'1');
-    _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:[3.3,3.3,6.0,9.4,2.4],lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd},'*');}}}catch(e){}
+    _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd},'*');}}}catch(e){}
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const selPit=slg?null:pitInfo(selCar,T);
@@ -2580,12 +2573,12 @@ buildStartGrid();
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}}
   function liveTick(){
     refreshStatus();
-    fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(r=>r.ok?r.json():[]).then(rows=>{
         if(window.dataMode!=='LIVE')return;
         if(typeof window.buildLiveDB!=='function'){liveMsg.textContent='live feed: build module not loaded';return;}
         if(!rows||!rows.length){liveMsg.textContent='LIVE · waiting for timing data…';return;}
-        const raw=rows.map(r=>({car:String(r.car),lap:r.lap,klass:r.klass,s:[r.s1,r.s2,r.s3,r.s4,r.s5],tend:r.lap_end_tod,rt:r.lap_time,inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle}));
+        const raw=rows.map(r=>({car:String(r.car),lap:r.lap,klass:r.klass,s:[r.s1,r.s2,r.s3,r.s4,r.s5],spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],tend:r.lap_end_tod,rt:r.lap_time,inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle}));
         const geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
         let live;try{live=window.buildLiveDB(raw,geom,{name:(DB.event&&DB.event.name)||'LIVE',date:liveEventDate()});}catch(e){liveMsg.textContent='live feed: parse error';return;}
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});

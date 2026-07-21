@@ -12,6 +12,9 @@
  * VDS car fields are UPPERCASE but 1:1 with what we already store:
  *   STNR→car  CLASSNAME→klass  NAME→driver  CAR→vehicle  LAPS→lap
  *   LASTLAPTIME→lap_time  S1TIME..S5TIME→s1..s5  (S6..S9 exist for 24h/9-sector)
+ *   S1SPEED..S5SPEED→s1_kmh..s5_kmh — the per-sector-boundary speed reading;
+ *   same field n24-live-tracker's engine reads for its Code 60 slow-zone
+ *   detector, ported here in index.html's code60Sectors().
  * Target: public.stint9_live_timing (same table the LIVE view reads).
  *
  * USAGE
@@ -117,7 +120,14 @@ function mapSnapshot(msg, ed) {
     const lap = Number(c.LAPS ?? c.LAP);
     if (!car || !Number.isFinite(lap)) continue;
     const sec = {};
-    for (let k = 1; k <= 5; k++) sec['s' + k] = k <= nSectors ? secOrNull(c['S' + k + 'TIME']) : null;
+    for (let k = 1; k <= 5; k++) {
+      sec['s' + k] = k <= nSectors ? secOrNull(c['S' + k + 'TIME']) : null;
+      // S{k}SPEED — the WIGE feed's per-sector-boundary speed reading, same field
+      // n24-live-tracker's engine reads for its Code 60 detector. Feeds Code 60
+      // in the dashboard (see code60Sectors() in index.html); s{k}_kmh columns
+      // added 2026-07-21 alongside the s{k} time columns.
+      sec['s' + k + '_kmh'] = k <= nSectors ? secOrNull(c['S' + k + 'SPEED']) : null;
+    }
     rows.push({
       event_date: ed, car, lap,
       klass: c.CLASSNAME ?? null,

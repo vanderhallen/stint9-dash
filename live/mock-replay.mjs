@@ -37,11 +37,15 @@ for (let li = 1; li < lines.length; li++) {
   const c = lines[li].split(';');
   const s = [1,2,3,4,5].map(k => sec(col(c, 'SEKTOR'+k+'_ZEIT')));
   if (s.every(x => x === null)) continue;
+  // SEKTORn_KMH — same per-sector speed reading as the live feed's S{n}SPEED,
+  // so replaying this CSV also exercises the Code 60 detector end-to-end.
+  const spd = [1,2,3,4,5].map(k => numde(col(c, 'SEKTOR'+k+'_KMH')));
   const dn = col(c, 'FAHRER_NR').trim();
   rows.push({
     event_date: EVENT_DATE, car: col(c,'STNR').trim(), lap: parseInt(col(c,'RUNDE_NR'),10),
     klass: col(c,'KLASSEKURZ').trim(),
     s1:s[0], s2:s[1], s3:s[2], s4:s[3], s5:s[4],
+    s1_kmh:spd[0], s2_kmh:spd[1], s3_kmh:spd[2], s4_kmh:spd[3], s5_kmh:spd[4],
     lap_end_tod: tod(col(c,'TAGESZEIT')), lap_time: numde(col(c,'RUNDENZEIT_IN_SEKUNDEN')),
     inpit: col(c,'INPIT').trim()==='J', fastest: col(c,'DIESCHNELLSTE').trim()==='J',
     driver: (col(c,'FAHRER'+dn+'_NAME').trim() || col(c,'FAHRER1_NAME').trim()),

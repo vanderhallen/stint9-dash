@@ -11,6 +11,7 @@
  * A "raw row" is exactly one row of public.stint9_live_timing:
  *   { car:"941", lap:15, klass:"SP9 PRO",
  *     s:[86.2, 90.1, 175.3, 260.4, 61.9],   // sector times (s); null allowed (pit-in S5)
+ *     spd:[178.2, 165.4, null, 152.9, 61.0], // sector speed readings (km/h), same shape as s; feeds Code 60 (see index.html code60Sectors())
  *     tend:43525.47,   // TAGESZEIT as seconds-of-day = lap END boundary
  *     rt:673.9,        // RUNDENZEIT_IN_SEKUNDEN (may be null -> sum of known sectors)
  *     inpit:false, fast:false,
@@ -58,7 +59,7 @@
     for (const c of cars) {
       const lg = [], st = {}, pit = [], bt = [], dl = {};
       for (const r of bycar[c]) {
-        const L = r.lap, s = r.s;
+        const L = r.lap, s = r.s, spd = r.spd;
         let known = 0;
         for (const x of s) if (x != null) known += x;
         const rt = r.rt ? r.rt : known;
@@ -67,7 +68,10 @@
         for (let k = 0; k < 5; k++) {
           if (s[k] == null) continue;           // e.g. S5 on a pit-in lap: no boundary
           const a = cum; cum = cum + s[k];
-          lg.push([L, k + 1, r2(a), r2(cum)]);
+          // 5th element = this sector's speed reading (km/h), or null if the row
+          // has no spd/spd[k] (e.g. the baked SIM dataset, which has no speed
+          // captured — Code 60 detection simply finds nothing there, by design).
+          lg.push([L, k + 1, r2(a), r2(cum), (spd && spd[k] != null) ? r2(spd[k]) : null]);
           bt.push([r2(cum), L, k + 1]);
         }
         st[String(L)] = s.map(x => (x != null ? r3(x) : null));

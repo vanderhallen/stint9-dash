@@ -70,6 +70,7 @@ function acceptEvent(m: any): boolean { return TRACK_RE.test(String(m.TRACKNAME 
 type TimingRow = {
   event_date: string; car: string; lap: number; klass: string | null;
   s1: number | null; s2: number | null; s3: number | null; s4: number | null; s5: number | null;
+  s1_kmh: number | null; s2_kmh: number | null; s3_kmh: number | null; s4_kmh: number | null; s5_kmh: number | null;
   lap_end_tod: number | null; lap_time: number | null;
   inpit: boolean; fastest: boolean; driver: string | null; vehicle: string | null;
 };
@@ -82,10 +83,14 @@ function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): T
   if (!car || !Number.isFinite(lap)) return null;
   // P2: sector count from the feed. Table has s1..s5, so cap at 5.
   const s = (k: number) => (k <= nSectors ? secOrNull(c[`S${k}TIME`]) : null);
+  // S{k}SPEED — WIGE's per-sector-boundary speed reading, feeds the dashboard's
+  // Code 60 detector (index.html's code60Sectors()). Kept in sync with ../vds-relay.mjs.
+  const spd = (k: number) => (k <= nSectors ? secOrNull(c[`S${k}SPEED`]) : null);
   return {
     event_date: ed, car, lap,
     klass: c.CLASSNAME ?? null,
     s1: s(1), s2: s(2), s3: s(3), s4: s(4), s5: s(5),
+    s1_kmh: spd(1), s2_kmh: spd(2), s3_kmh: spd(3), s4_kmh: spd(4), s5_kmh: spd(5),
     lap_end_tod: lapEndTod(c, rootTod),
     lap_time: secOrNull(c.LASTLAPTIME),
     inpit: false, fastest: false,
