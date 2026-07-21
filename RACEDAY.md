@@ -91,6 +91,39 @@ Check the WIGE auto-scan itself is running: `select * from
 cron.job_run_details where jobid = (select jobid from cron.job where
 jobname='stint9_wige_autoscan') order by start_time desc limit 5;`
 
+### The 24h Qualifiers (NLS4/NLS5) — a different source, a different limitation
+
+The 24h Nürburgring weekend's own Zeitplan (multiple qualifying sessions +
+the 24h race itself, spanning 4 calendar days) is only published as a **PDF**
+on `24h-rennen.de`, not on the NLS calendar site. A third cron job,
+`stint9_24h_pdf_autoscan` (daily, 06:15 UTC), calls the `nls-24h-pdf-scrape`
+Edge Function (`live/nls-24h-pdf-scrape/index.ts`), which downloads that PDF
+(text extraction via `unpdf`), keeps only the "ADAC RAVENOL 24h Nürburgring"
+branded sessions (the PDF also lists DHLM/Tourenwagen-Legenden/RCN sessions on
+the same shared weekend — not ours), and upserts them the same way.
+
+**Important difference from the NLS scraper: this one cannot auto-discover a
+new PDF URL.** `24h-rennen.de` sits behind Cloudflare bot-protection that
+blocks everything except a known direct file path — the homepage,
+`robots.txt`, `wp-sitemap.xml`, and a directory listing all 403/429; only the
+exact PDF URL itself 200s. So the URL lives as **data**, in
+`public.stint9_schedule_sources` (`key='24h_zeitplan'`), not in code. The
+scraper re-fetches that known URL daily, so an in-place revision to the SAME
+file (a new "Version" published at an unchanged URL) is picked up
+automatically. A **new URL** — next year's PDF, or a re-versioned filename —
+needs a one-line update:
+
+```sql
+update public.stint9_schedule_sources set url='<new pdf url>' where key='24h_zeitplan';
+```
+
+Session names in the PDF get mapped to: `quali1/2/3`, `topquali1/2/3`,
+`warmup`, `startaufstellung`, `opengrid`, `formation`, and `race` (the PDF's
+separate "Start Rennen" Saturday marker and "Zieleinlauf" Sunday marker are
+combined into one `race` window spanning the full 24 hours). An unrecognized
+session name is skipped, not guessed — check `stint9_schedule_scrape_log` if a
+session seems to be missing after a Zeitplan revision.
+
 ---
 
 ## ✅ Race-day checklist
