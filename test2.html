@@ -91,6 +91,17 @@
   .pwcancel:hover{background:#d8dce0}
   .pwok{background:#e0301e;color:#fff}
   .pwok:hover{background:#c0271a}
+  /* TRASH page: scrollable table of deleted tyres */
+  .trashwrap{position:absolute;left:0;right:0;top:92px;bottom:16px;overflow:auto;padding:6px 28px 20px}
+  .trashempty{color:#8a929b;font-size:16px;font-weight:600;letter-spacing:.5px;padding:24px 4px}
+  .trashtbl{border-collapse:collapse;width:100%;max-width:900px;font-size:15px}
+  .trashtbl thead th{position:sticky;top:0;background:#16202b;color:#fff;text-align:left;font-weight:700;letter-spacing:.6px;
+    font-size:13px;text-transform:uppercase;padding:11px 16px;white-space:nowrap}
+  .trashtbl thead th:first-child{border-top-left-radius:9px}
+  .trashtbl thead th:last-child{border-top-right-radius:9px}
+  .trashtbl tbody td{padding:11px 16px;border-bottom:1px solid #e6e9ec;color:#16202b;font-weight:600;white-space:nowrap}
+  .trashtbl tbody tr:nth-child(even){background:#f7f8fa}
+  .trashtbl tbody td.tnum{font-weight:800;letter-spacing:.5px}
   .pband{position:relative;display:grid;grid-template-columns:repeat(5,40px);grid-template-rows:repeat(3,44px);border:2px solid #16202b;border-radius:9px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
   /* STOCK band select toggle (top-right); selected = 3x border, margin -4px keeps neighbours from shifting */
   .bandsel{position:absolute;top:-13px;right:-13px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6}
@@ -119,6 +130,7 @@
   <div class="hpanel" id="stintPanel"></div>
   <div class="hpanel" id="boardPanel"><div id="stage" style="position:relative;width:100%;height:100%"></div></div>
   <div class="hpanel" id="stockPanel"></div>
+  <div class="hpanel" id="trashPanel"></div>
 </div>
 
 <script>
@@ -348,17 +360,20 @@ function applyBandState(st){if(!st)return;BAND_KEYS.forEach(b=>{const bs=st[b];i
    postMessage. No localStorage — the DB is the single source of truth, so two
    teams on different cars keep entirely separate tyre boards. ---- */
 let CUR_CAR='';
-const TYRE_DEFAULTS={stock:{},stockRemoved:[],stockAdds:[],stockNew:[],stintXfers:[],stintRemoved:[],emptyBands:[],bands:{}};
+const TYRE_DEFAULTS={stock:{},stockRemoved:[],stockAdds:[],stockNew:[],stintXfers:[],stintRemoved:[],emptyBands:[],bands:{},trash:[],firstUsed:{}};
 function collectTyreState(){
   const bands={};BAND_KEYS.forEach(b=>{bands[b]=readBandState(b);});
   return {stock:STOCK_STATE,stockRemoved:[...STOCK_REMOVED],stockAdds:STOCK_ADDS,stockNew:STOCK_NEW,
-          stintXfers:STINT_XFERS,stintRemoved:[...STINT_REMOVED],emptyBands:[...EMPTY_BANDS],bands};
+          stintXfers:STINT_XFERS,stintRemoved:[...STINT_REMOVED],emptyBands:[...EMPTY_BANDS],bands,
+          trash:TRASH,firstUsed:TYRE_FIRST_USED};
 }
 function applyTyreState(s){
   s=s||TYRE_DEFAULTS;
   STOCK_STATE=s.stock||{};STOCK_REMOVED=new Set(s.stockRemoved||[]);STOCK_ADDS=s.stockAdds||[];STOCK_NEW=s.stockNew||[];
   STINT_XFERS=s.stintXfers||[];STINT_REMOVED=new Set(s.stintRemoved||[]);EMPTY_BANDS=new Set(s.emptyBands||[]);
+  TRASH=s.trash||[];TYRE_FIRST_USED=s.firstUsed||{};
   try{rebuildStockPanel(false);}catch(e){}
+  try{buildTrashPanel();}catch(e){}
   try{rebuildStintPanel();}catch(e){}
   try{updateStockBadge();}catch(e){}
   try{if(typeof refreshBtns==='function')refreshBtns();}catch(e){}
@@ -481,6 +496,12 @@ function stockMerge(base,bandKey){const st=STOCK_STATE[bandKey];return st?Object
 /* STOCK bands sent to PIT are removed (shown as empty parking spots) */
 let STOCK_REMOVED=new Set();
 function saveStockRemoved(){scheduleTyreSave();}
+/* TRASH: log of tyres deleted from STOCK. They are NOT wiped from the DB — each
+   deletion keeps a record {id, km, firstUsed, deletedAt} listed on the TRASH page.
+   TYRE_FIRST_USED stamps the first time a serial is mounted (sent to PIT). */
+let TRASH=[];
+let TYRE_FIRST_USED={};
+function saveTrash(){scheduleTyreSave();}
 /* max KM per band (over this -> red cross on the band); set on the STOCK page */
 let MAX_KM=1000;try{const _mk=parseInt(localStorage.getItem('stint9_max_km'),10);if(_mk>0)MAX_KM=_mk;}catch(e){}
 function saveMaxKm(){try{localStorage.setItem('stint9_max_km',String(MAX_KM));}catch(e){}}
@@ -590,8 +611,17 @@ function askPassword(title,onOk){
    just dissolve away and their slots become placeholders. Password-gated. */
 function deleteSelectedFromStock(){
   if(stockSel.length<1)return;
-  const items=stockSel.slice().map(b=>({band:b,key:b.dataset.stockkey}));
+  const items=stockSel.slice().map((b,i)=>({band:b,key:b.dataset.stockkey,tyre:tyreFromStockBand(b,SEL_POS[i])}));
+  // hide from STOCK (STOCK_REMOVED) but keep a TRASH record — nothing is wiped from the DB
   items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();
+  const now=new Date().toISOString();
+  items.forEach(it=>{const t=it.tyre;TRASH.push({
+    id:t.id||'----',
+    km:(t.km!=null&&t.km!=='')?t.km:0,
+    firstUsed:TYRE_FIRST_USED[t.id]||null,
+    deletedAt:now
+  });});
+  saveTrash();buildTrashPanel();
   stockSel=[];
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
   const EASE='cubic-bezier(.5,.05,.2,1)';
@@ -617,6 +647,9 @@ function sendSelectedToPit(){
   const slots=['v1','v2','v3','v4'];
   items.forEach((it,i)=>setBoardBandFromTyre(slots[i],Object.assign({},it.tyre,{temp:'hot'})));   // fill PIT (tyre warmers -> HOT)
   items.forEach(it=>{if(it.key)STOCK_REMOVED.add(it.key);});saveStockRemoved();
+  // stamp first-used time the first time each serial is mounted (for the TRASH log)
+  const nowU=new Date().toISOString();
+  items.forEach(it=>{const id=it.tyre&&it.tyre.id;if(id&&!TYRE_FIRST_USED[id])TYRE_FIRST_USED[id]=nowU;});
   stockSel=[];
   const overlay=el('div');overlay.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none';document.body.appendChild(overlay);
   const EASE='cubic-bezier(.5,.05,.2,1)';
@@ -888,20 +921,66 @@ function rebuildStockPanel(showEmpty){
     right.appendChild(del);
     right.appendChild(max);
     if(title)right.appendChild(title);
+    // forward arrow into the TRASH page (deleted tyres)
+    const trashBtn=document.createElement('button');trashBtn.className='hbtn';trashBtn.title='show deleted tyres (TRASH)';trashBtn.innerHTML='&#9654;';
+    right.appendChild(trashBtn);
     hd.appendChild(left);hd.appendChild(right);
     cta.querySelector('.topitbtn').addEventListener('click',sendSelectedToPit);
     del.addEventListener('click',()=>{if(stockSel.length<1)return;askPassword('Password to delete selected tyres:',deleteSelectedFromStock);});
+    trashBtn.addEventListener('click',()=>goH(3));
     const mk=max.querySelector('.maxkmin');if(mk)mk.addEventListener('change',()=>{const v=parseInt(mk.value,10);if(v>0){MAX_KM=v;saveMaxKm();rebuildStockPanel();rebuildStintPanel();refreshAllBandCrosses();}});
   }
   updateStockCtl();
 }
+/* ================= TRASH page: table of tyres deleted from STOCK ============
+   One row per deleted tyre: serial number, KM, when first used, when deleted.
+   Nothing here is removed from the DB — it is a permanent log. Newest first. */
+function fmtTs(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);if(isNaN(d.getTime()))return '—';
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function buildTrashPanel(){
+  const p=document.getElementById('trashPanel');if(!p)return;p.innerHTML='';
+  const hd=document.createElement('div');hd.className='phd';
+  const left=document.createElement('div');left.className='phd-left';
+  const back=document.createElement('button');back.className='hbtn';back.title='back to STOCK';back.innerHTML='&#9664;';
+  back.addEventListener('click',()=>goH(2));
+  left.appendChild(back);
+  const right=document.createElement('div');right.className='phd-right';
+  const title=document.createElement('div');title.className='ptitle';title.innerHTML='TRASH<small>deleted tyres</small>';
+  right.appendChild(title);
+  hd.appendChild(left);hd.appendChild(right);p.appendChild(hd);
+  const wrap=document.createElement('div');wrap.className='trashwrap';
+  if(!TRASH.length){
+    const empty=document.createElement('div');empty.className='trashempty';empty.textContent='No deleted tyres yet.';
+    wrap.appendChild(empty);
+  }else{
+    const tbl=document.createElement('table');tbl.className='trashtbl';
+    tbl.innerHTML='<thead><tr><th>Number</th><th>KM</th><th>First used</th><th>Deleted</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    const mkTd=(txt,cls)=>{const td=document.createElement('td');if(cls)td.className=cls;td.textContent=txt;return td;};
+    TRASH.slice().reverse().forEach(r=>{   // newest first
+      const tr=document.createElement('tr');
+      tr.appendChild(mkTd(r.id||'----','tnum'));
+      tr.appendChild(mkTd(String(r.km!=null?r.km:0)));
+      tr.appendChild(mkTd(fmtTs(r.firstUsed)));
+      tr.appendChild(mkTd(fmtTs(r.deletedAt)));
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);wrap.appendChild(tbl);
+  }
+  p.appendChild(wrap);
+}
 rebuildStintPanel();
 rebuildStockPanel();
+buildTrashPanel();
 
-/* horizontal navigation: 0 STINT · 1 BOARD · 2 STOCK */
+/* horizontal navigation: 0 STINT · 1 BOARD · 2 STOCK · 3 TRASH */
 const reelh=document.getElementById('reelh');
 let hIdx=1;
-function goH(i){hIdx=Math.max(0,Math.min(2,i));reelh.style.transform='translateX(-'+(hIdx*100)+'vw)';try{localStorage.setItem('test2_hidx',hIdx);}catch(e){}}
+function goH(i){hIdx=Math.max(0,Math.min(3,i));reelh.style.transform='translateX(-'+(hIdx*100)+'vw)';try{localStorage.setItem('test2_hidx',hIdx);}catch(e){}}
 let hStart=1;try{const v=parseInt(localStorage.getItem('test2_hidx'),10);if(v>=0&&v<=2)hStart=v;}catch(e){}
 reelh.style.transition='none';goH(hStart);requestAnimationFrame(()=>{reelh.style.transition='';});
 // keyboard: Left/Right flips the horizontal reel when the board itself has focus
