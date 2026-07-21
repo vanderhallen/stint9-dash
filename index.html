@@ -2293,7 +2293,11 @@ const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.cla
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
-function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';const gg=document.getElementById('gapgauge');if(gg){gg.style.height=hh+'px';gg.style.width='auto';}}}
+// #svg/#mini may currently be relocated inside the zoom modal (see initFocus's
+// open()/close()) — while either is the zoomed/focused card, its box has
+// nothing to do with the underlying page layout, and the modal's own pinned
+// sizing owns it instead. Skip so this page-level sync doesn't stomp on it.
+function syncMapHeights(){const m=document.getElementById('svg'),z=document.getElementById('mini');if(!m||!z)return;if(m.closest('.card.zoomed')||z.closest('.card.zoomed'))return;const hh=m.getBoundingClientRect().height/__fit;if(hh>10){z.style.height=hh+'px';z.style.width='auto';const gg=document.getElementById('gapgauge');if(gg){gg.style.height=hh+'px';gg.style.width='auto';}}}
 syncMapHeights();setTimeout(syncMapHeights,80);
 /* gridcard/fbcard have no natural height of their own (their content is either
    huge — the car cascade — or short); pin both to .maincol's real height so
@@ -2339,6 +2343,16 @@ function syncRightSplit(){
 function growMaps(){
   const w=document.querySelector('.wrap'),svg=document.getElementById('svg'),rv=document.getElementById('reelview'),wv=document.getElementById('wxview'),agent=document.querySelector('.agentbar');
   if(!w||!svg||!rv||!agent||typeof CH==='undefined')return;
+  // #svg may be relocated inside the zoom modal right now (initFocus's open()
+  // pins it to 2x its pre-zoom size). fitPage() keeps running on its own timers
+  // and on every LIVE 5s poll regardless of the modal, and this function's
+  // math all keys off #svg's live box — while it's detached into the modal
+  // that box means nothing, and forcing width:64% here was overwriting the
+  // modal's pin down to a sliver a few seconds after opening. Bail out whole:
+  // the reel-height budget below also reads svg.clientWidth/clientHeight, so
+  // patching just the two width-reset lines would still leave that budget
+  // computed off the modal's box instead of the page's.
+  if(svg.closest('.card.zoomed'))return;
   const s=__fit||1;
   svg.style.width='64%';svg.style.height='auto';
   syncMapHeights();
