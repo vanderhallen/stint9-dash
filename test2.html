@@ -915,7 +915,7 @@ function rebuildStockPanel(showEmpty){
     left.appendChild(cta);
     // RIGHT group: delete + max KM + STOCK title pushed to the far right
     const right=document.createElement('div');right.className='phd-right';
-    const del=document.createElement('button');del.type='button';del.className='deletebtn';del.disabled=true;del.textContent='delete';
+    const del=document.createElement('button');del.type='button';del.className='deletebtn';del.disabled=true;del.textContent='DELETE';
     const max=document.createElement('span');max.className='stockmax';
     max.innerHTML='max KM <input type="number" class="maxkmin" min="0" step="100" value="'+MAX_KM+'">';
     right.appendChild(del);
