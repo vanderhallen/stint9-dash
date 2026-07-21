@@ -49,6 +49,12 @@
   .carbadge .gaps{display:inline-flex;flex-direction:column;justify-content:center;height:29px;line-height:1;font-family:'IBM Plex Mono',monospace;font-weight:600}
   .carbadge .ga{font-size:14px;color:#c0392b}.carbadge .gb{font-size:14px;color:#1e8f3a}
   .carbadge .drv{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-top:4px}
+  .code60poly{fill:none;stroke:#ff3b30;stroke-width:22px;stroke-linecap:round;stroke-linejoin:round;opacity:0;pointer-events:none}
+  .code60poly.on{animation:code60pulse 1.1s ease-in-out infinite}
+  @keyframes code60pulse{0%,100%{opacity:.15}50%{opacity:.55}}
+  .code60banner{position:absolute;top:12px;left:12px;padding:5px 11px;border-radius:8px;background:#ff3b30;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;letter-spacing:1px;display:none;animation:code60pulsebanner 1.1s ease-in-out infinite}
+  .code60banner.on{display:block}
+  @keyframes code60pulsebanner{0%,100%{opacity:.8}50%{opacity:1}}
     .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
   .controls input[type=range]{flex:1 1 50px;min-width:40px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
@@ -337,7 +343,7 @@
   </div>
   <div class="split" style="margin-top:13px">
     <div class="left">
-      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div></div>
+      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="code60"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div><div class="code60banner" id="code60banner"></div></div>
     </div>
     <div class="right">
       <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;margin:0 auto;overflow:visible">
@@ -598,6 +604,11 @@ const gt=document.getElementById('track');
 DB.poly.forEach((p,i)=>{const pl=document.createElementNS(SVGNS,'polyline');pl.setAttribute('points',p.map(q=>q.join(',')).join(' '));
   pl.setAttribute('fill','none');pl.setAttribute('stroke',SECCOL[i]);pl.setAttribute('stroke-width','15');pl.setAttribute('stroke-linecap','round');pl.setAttribute('stroke-linejoin','round');pl.setAttribute('opacity','0.9');gt.appendChild(pl);});
 
+/* Code 60 overlay — one polyline per sector, toggled on/off in code60Tick() below */
+const gc60=document.getElementById('code60');
+const CODE60_POLY=DB.poly.map((p,i)=>{const pl=document.createElementNS(SVGNS,'polyline');pl.setAttribute('points',p.map(q=>q.join(',')).join(' '));
+  pl.setAttribute('class','code60poly');gc60.appendChild(pl);return pl;});
+
 /* dots */
 const LEG={};
 function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
@@ -621,6 +632,74 @@ function pitInfo(st,T){if(activeLeg(st,T))return null;
   if(!nextLeg(st,T))return null;                             // after the last leg (finished/retired)
   const pits=(DB.pits&&DB.pits[st])||[];
   return pits.indexOf(prev[0])>=0?{lap:prev[0]}:null;}
+// --- Code 60 detection ------------------------------------------------------
+// There's no official slow-zone flag in the WIGE feed, so this infers one the
+// same way n24-live-tracker's engine does: watch for multiple cars running
+// abnormally slow through the SAME sector at the same time. Nordschleife's 5
+// sectors range from 2.4 to 9.4 km, so a fixed speed band (as n24 uses on its
+// short, even sectors) doesn't transfer — instead each car's completed-leg
+// duration is compared against its OWN class's average time for that sector
+// (DB.classAvg). `DB.legs`/`DB.classAvg` cover every class (unlike LEG, which
+// buildClass() rebuilds for only the currently-selected class), so this scans
+// across the whole field, not just the class in view.
+//
+// CODE60_RATIO/CODE60_MIN_CARS were tuned empirically against the baked SIM
+// dataset (replay-scrubbing the whole race with an inline probe), NOT copied
+// from the reference project or reused from the UI's unrelated "Delay %"
+// slider — an earlier version did that (>=1.5x the class average, 2 cars)
+// and it flagged Sector 1 on ~88% of scrubs, i.e. it was reading the noise
+// floor, not slow zones. Three contamination sources had to be filtered out
+// of the "is this leg abnormally slow" candidate pool before real signal
+// showed through as a handful of short, sane windows instead of near-constant
+// noise:
+//   - lap 1 of every car's race: S1 duration includes the grid/rolling-start
+//     procedure, not green-flag pace (10-20x a normal S1 by itself).
+//   - the out-lap immediately after a pit stop: per the withPitS5 comment on
+//     pitInfo() above, a pit-lane exit is folded into that lap's S1 (median
+//     234.8s vs a green 74.6s in this dataset) — a pit stop, not a slow zone.
+//   - requiring only 2 simultaneously-slow cars: still ~35-40% of scrubs,
+//     because a single struggling/damaged car sitting well off its class's
+//     pace for several consecutive laps plus one unrelated slow car elsewhere
+//     trips a 2-car bar constantly. Raising to 3 cars (at 2.5x their own
+//     class average) collapsed that to two short, sane windows for this
+//     event's dataset — each pulling in cars from 3-4 *different* classes at
+//     once in the same sector, which is exactly the cross-class correlation a
+//     real trackwide slow zone should produce and same-class variance alone
+//     should not. Re-tune both constants if a future event's data disagrees.
+// Pit laps (and their out-laps, above) are excluded from the candidate pool;
+// a car queuing in the pits isn't evidence of a track-wide slow zone. A car
+// that has crashed/stopped mid-sector naturally drops out on its own: it has
+// no completed leg yet for the sector it's stuck in, so it simply isn't
+// counted until (if ever) it completes that leg — no separate "stuck" guard
+// needed, unlike n24's engine which has to add one for its continuous feed.
+const CODE60_RATIO=2.5,CODE60_MIN_CARS=3;
+function findLeg(legs,T){if(!legs||!legs.length)return null;
+  let lo=0,hi=legs.length-1,res=-1;
+  while(lo<=hi){const m=(lo+hi)>>1;if(legs[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}
+  if(res<0)return null;const g=legs[res];return(T<g[3])?g:null;}
+function code60Sectors(T){
+  const counts=[0,0,0,0,0];
+  for(const cls in DB.classes){
+    const avg=DB.classAvg[cls]||[0,0,0,0,0];
+    for(const st of DB.classes[cls]){
+      const lg=findLeg(DB.legs[st],T);if(!lg)continue;
+      const lap=lg[0],sec=lg[1],avgSec=avg[sec-1];if(!avgSec)continue;
+      if(lap<=1)continue;                                       // grid/rolling-start S1
+      const pits=DB.pits[st]||[];
+      if(pits.indexOf(lap)>=0||pits.indexOf(lap-1)>=0)continue; // pit lap + its out-lap
+      if((lg[3]-lg[2])>avgSec*CODE60_RATIO)counts[sec-1]++;
+    }
+  }
+  const flagged=[];for(let s=0;s<5;s++)if(counts[s]>=CODE60_MIN_CARS)flagged.push(s+1);
+  return flagged;
+}
+function renderCode60(T){
+  const flagged=code60Sectors(T),on=new Set(flagged);
+  CODE60_POLY.forEach((pl,i)=>pl.classList.toggle('on',on.has(i+1)));
+  const el=document.getElementById('code60banner');if(!el)return;
+  el.classList.toggle('on',flagged.length>0);
+  el.textContent='⚠ CODE 60 · S'+flagged.join(', S');
+}
 // Median of the car's own GREEN sector-k time — its pace with the pit laps taken out:
 // an in-lap's S5 and an out-lap's S1 are both distorted by the stop, so neither can be
 // part of the reference. Falls back to the car's OWN class average when nothing clean
@@ -1658,7 +1737,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
   if(oncount)oncount.textContent=on+' / '+DB.cars.length+' on track';
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{if(t.textContent!=='DELAY')t.style.display=lbls.checked?'':'none';});
-  renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);
+  renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60(T);
   const _tk=Date.now()-_thT>=300;
   // reel dispatch — order: 0 FUEL, 1 TYRE(board iframe, no render fn),
   // 2 POS, 3 FLOW, 4 SECT, 5 PACE, 6 STINT, 7 COMP, 8 GRID, 9 SNAP,
