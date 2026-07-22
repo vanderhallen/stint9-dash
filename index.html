@@ -2073,17 +2073,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   setNb(mAhead,ah,'▲',p-1);setNb(mBehind,be,'▼',p+1);setEv(T);}
 
 /* ---- weather radar (RainViewer) ---- */
-(function initWeather(){
-  // Mobile guard: this radar stacks a base tile layer PLUS one Leaflet tile
-  // layer per RainViewer frame (~15) on the map simultaneously — Leaflet loads
-  // every tile of all of them (opacity:0 still fetches+decodes), ~40MB of
-  // bitmaps. On a phone that OOMs the tab and iOS shows the repeated-crash page.
-  // Skip the whole map on small screens; the panel stays a light placeholder.
-  if(Math.min(window.innerWidth,window.innerHeight)<600){
-    const wd=document.getElementById('weather');if(wd){wd.style.background='#eef0f3';}
-    window.__syncWx=function(){};return;
-  }
-  if(typeof L==='undefined'){return setTimeout(initWeather,300);}
+(function initWeather(){if(typeof L==='undefined'){return setTimeout(initWeather,300);}
   const lat=DB.gps[0],lon=DB.gps[1],map=L.map('weather',{attributionControl:false}).setView([lat,lon],11);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
   const circ=L.circle([lat,lon],{radius:10000,color:'#e0301e',weight:1.5,fill:false}).addTo(map);
