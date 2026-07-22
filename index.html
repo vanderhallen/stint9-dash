@@ -2442,14 +2442,20 @@ try{var __fpT;var scheduleFit=function(){clearTimeout(__fpT);__fpT=setTimeout(fi
 /* Watchdog: content can re-lay AFTER a fit pass finished (leaderboard rows
    filling in, the tyre-board iframe loading, reels settling on a class switch)
    without re-firing the ResizeObserver — and with the document unscrollable a
-   late overshoot clips the agent bar. Re-fit when the bottom edge is off:
-   clipped at all (<-3), or dead space beyond growMaps' own <=20px
-   "close enough" band (>25) so the check can never fire in a loop. */
+   late overshoot clips the agent bar. Since growMaps now holds a fixed
+   proportion and deliberately leaves centered margin, that margin is NOT dead
+   space to reclaim — refitting on it just re-derives the same margin, so an
+   absolute "gap > N" trigger would fire every tick forever (pegs the CPU and
+   crashes mobile Safari). So only refit when the content actually CLIPS the
+   viewport bottom, or when its true bottom MOVED since the last tick (a late
+   relayout fitPage hasn't re-centered yet). A stable page never refits. */
+let __wdB=-1;
 setInterval(function(){var a=document.querySelector('.agentbar');if(!a||typeof scheduleFit!=='function')return;
-  // subtract __ty so this reads the true content fill, not the centered offset —
-  // otherwise the balanced top/bottom gap would read as dead space and thrash
-  var d=window.innerHeight-(a.getBoundingClientRect().bottom-__ty);
-  if(d<-3||d>25)scheduleFit();},1000);
+  // true content bottom = agent bottom minus ty's centering offset
+  var b=a.getBoundingClientRect().bottom-__ty;
+  if(b>window.innerHeight+3){scheduleFit();__wdB=b;return;} // clipping — always fix
+  if(__wdB>=0&&Math.abs(b-__wdB)>3)scheduleFit();           // relayout since last tick
+  __wdB=b;},1000);
 // Start showing the very beginning, then auto-play only once the page has fully
 // loaded. Starting the RAF loop during a slow cold load let the clock accumulate
 // the elapsed load-time * speed, so cold loads began mid-race (~lap 2) while a
