@@ -1809,9 +1809,20 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
     badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(selPit?'<span class="pos" style="color:#e0301e">PIT</span>':(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>'))+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}
   if(typeof updateRacenote==='function')updateRacenote(T);}
+/* Render-rate cap. render() repaints the whole 1722px layout; at 60fps that
+   sustained compositing is what iOS Safari's GPU-memory limit can't hold (the
+   tab gets killed — the repeated-crash page). The sim clock T still advances
+   every frame from real timestamps, so motion/speed stay exactly correct; we
+   just skip the visual redraw between cap intervals. Tighter on small screens
+   (~20fps) than desktop (~33fps) — imperceptible at 30x replay speed. */
+const __mobileFit=Math.min(window.innerWidth,window.innerHeight)<600;
+const __renderGapMs=__mobileFit?48:30;
+let __lastRenderTs=0;
 function loop(ts){if(!playing)return;if(!last)last=ts;let dt=(ts-last)/1000;last=ts;if(dt>0.5)dt=0;T+=dt*parseFloat(document.getElementById('speed').value);
   if(T>=DB.tmax){T=DB.tmax;playing=false;const pb=document.getElementById('play');if(pb)pb.innerHTML='&#9654; Play';scrub.value=T;render();return;}
-  scrub.value=T;render();if(playing)requestAnimationFrame(loop);}
+  scrub.value=T;
+  if(ts-__lastRenderTs>=__renderGapMs){__lastRenderTs=ts;render();}
+  if(playing)requestAnimationFrame(loop);}
 document.getElementById('play').onclick=e=>{playing=!playing;if(playing){if(T>=DB.tmax)T=DB.tmin;last=0;e.target.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}else e.target.innerHTML='&#9654; Play';};
 scrub.oninput=e=>{T=parseFloat(e.target.value);render();};lbls.onchange=render;
 document.getElementById('delaythr').oninput=e=>{thr=Math.max(0,parseFloat(e.target.value||'0'))/100;render();savePrefs();};
