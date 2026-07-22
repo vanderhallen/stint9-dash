@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="nl"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>STINT9 Add-on</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -1828,6 +1828,17 @@ scrub.oninput=e=>{T=parseFloat(e.target.value);render();};lbls.onchange=render;
 document.getElementById('delaythr').oninput=e=>{thr=Math.max(0,parseFloat(e.target.value||'0'))/100;render();savePrefs();};
 document.getElementById('pacethr').oninput=e=>{paceThr=Math.max(0,parseFloat(e.target.value||'0'));render();savePrefs();};
 document.getElementById('speed').onchange=()=>{savePrefs();try{if(typeof renderMessages==='function')renderMessages();}catch(e){}};
+/* iPhone crash guard. The page shrinks the 1722px design to fit via
+   transform:scale; pinch-zooming it forces iOS Safari to re-rasterize that whole
+   scaled subtree at zoom resolution — a GPU-memory spike that kills the tab (the
+   repeated-crash page appears ONLY after a pinch-zoom, confirmed on-device). iOS
+   ignores user-scalable=no for accessibility, so block the pinch gestures
+   directly. Small touch screens only — desktop/trackpad pinch is unaffected. */
+if(__mobileFit){
+  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+    document.addEventListener(ev,function(e){e.preventDefault();},{passive:false});
+  });
+}
 
 /* driver stint table */
 function fillStints(st){const tb=document.getElementById('drvbody');const panel=document.getElementById('drvpanel');if(!panel)return;
