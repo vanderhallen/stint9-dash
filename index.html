@@ -301,8 +301,15 @@
   body.m #mobileview{display:flex}
   .mhdr{display:flex;align-items:center;gap:10px}
   .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
-  .mhdr .mclock{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
-  .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:9px 16px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+  .mhdrright{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .mhdr .mclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
+  .mmode{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .mmodebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:9px 14px;cursor:pointer}
+  .mmodebtn.active{background:var(--ink);color:#fff}
+  .mctrl{display:flex;gap:8px;align-items:center}
+  .mctrl select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
+  .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:11px 18px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;flex:0 0 auto}
+  .mplay.hide,.mctrl.hide{display:none}
   .mselrow{display:flex;gap:8px}
   .mselrow select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
   .mcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
@@ -1887,12 +1894,20 @@ function __mirrorSel(mid,did){var m=document.getElementById(mid),d=document.getE
   if(m.value!==d.value)m.value=d.value;}
 function renderMobile(){
   if(!renderMobile.__wired){renderMobile.__wired=true;
-    [['m_class','classsel'],['m_car','carsel']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
+    [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
     var mp=document.getElementById('m_play');if(mp)mp.onclick=function(){var pb=document.getElementById('play');if(pb)pb.click();};
+    var clickMode=function(mode){var b=document.querySelector('.modebtn[data-mode="'+mode+'"]');if(b)b.click();};
+    var ms=document.getElementById('m_sim');if(ms)ms.onclick=function(){clickMode('SIM');};
+    var ml=document.getElementById('m_live');if(ml)ml.onclick=function(){clickMode('LIVE');};
   }
-  __mirrorSel('m_class','classsel');__mirrorSel('m_car','carsel');
+  __mirrorSel('m_class','classsel');__mirrorSel('m_car','carsel');__mirrorSel('m_speed','speed');
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
   set('m_clock',hms(T));
+  // SIM/LIVE state mirrors window.dataMode; hide the SIM-only play/speed row in LIVE
+  var mode=window.dataMode||'SIM',ms=document.getElementById('m_sim'),ml=document.getElementById('m_live');
+  if(ms)ms.classList.toggle('active',mode==='SIM');
+  if(ml)ml.classList.toggle('active',mode==='LIVE');
+  var mc=document.getElementById('m_ctrl');if(mc)mc.classList.toggle('hide',mode==='LIVE');
   var mp=document.getElementById('m_play');if(mp)mp.textContent=playing?'Pause':'Play';
   var lp=livePos(T);
   if(!selCar||!lp[selCar]){['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});set('m_num','select a car');set('m_drv','');}
@@ -3537,8 +3552,14 @@ applyWxReel(false);
 })();
 </script>
 <div id="mobileview">
-  <div class="mhdr"><div class="mbrand">stint<b>9</b></div><div class="mclock" id="m_clock">--:--:--</div><button class="mplay" id="m_play">Play</button></div>
+  <div class="mhdr"><div class="mbrand">stint<b>9</b></div>
+    <div class="mhdrright">
+      <div class="mclock" id="m_clock">--:--:--</div>
+      <div class="mmode"><button type="button" class="mmodebtn" id="m_sim">SIM</button><button type="button" class="mmodebtn" id="m_live">LIVE</button></div>
+    </div>
+  </div>
   <div class="mselrow"><select id="m_class"></select><select id="m_car"></select></div>
+  <div class="mctrl" id="m_ctrl"><button class="mplay" id="m_play">Play</button><select id="m_speed"></select></div>
   <div class="mcard">
     <div class="mprimary"><span class="mpos" id="m_pos">&mdash;</span><span class="mnum" id="m_num">select a car</span></div>
     <div class="mdrv" id="m_drv"></div>
