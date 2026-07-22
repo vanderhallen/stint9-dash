@@ -2146,7 +2146,10 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   if(!selCar){for(const st in MEL)MEL[st].g.style.visibility='hidden';hint.style.display='';setNb(mAhead,null);setNb(mBehind,null);setEv(T);return;}
   hint.style.display='none';const sc=carXY(selCar,T);
   if(!sc){for(const st in MEL)MEL[st].g.style.visibility='hidden';setNb(mAhead,null);setNb(mBehind,null);setEv(T);return;}
-  miniG.setAttribute('transform','translate('+(134-sc[0]).toFixed(1)+','+(134-sc[1]).toFixed(1)+')');
+  // Zoom the mini map 50% more on the mobile view only (desktop stays 1:1). Scale
+  // about the circle centre (134,134) with the selected car pinned there.
+  var __mz=document.body.classList.contains('m')?1.5:1;
+  miniG.setAttribute('transform','translate(134,134) scale('+__mz+') translate('+(-sc[0]).toFixed(1)+','+(-sc[1]).toFixed(1)+')');
   const R=134,placedM=[],shown=new Set();
   for(const st in MEL)MEL[st].g.style.visibility='hidden';
   const vis=DB.cars.map(st=>[st,carXY(st,T)]).filter(a=>a[1]&&Math.hypot(a[1][0]-sc[0],a[1][1]-sc[1])<R+30).sort((a,b)=>(lp[a[0]]||99)-(lp[b[0]]||99));
