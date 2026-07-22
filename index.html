@@ -318,7 +318,7 @@
         <div class="clock"><span id="clock"></span></div>
         <button class="btn" id="play">&#9654; Play</button>
         <input type="range" id="scrub" step="0.1">
-        <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30" selected>30&times;</option><option value="60">60&times;</option></select>
+        <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30" selected>30&times;</option></select>
         <input type="checkbox" id="lbls" checked style="display:none">
       </div>
       <div id="liveBar" style="display:none;height:32px;align-items:center;gap:8px;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">
@@ -2293,7 +2293,7 @@ function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({del
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.delay!=null){document.getElementById('delaythr').value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
 if(PREFS.pace!=null){document.getElementById('pacethr').value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
-if(PREFS.speed!=null){document.getElementById('speed').value=PREFS.speed;}
+if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='30';}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
 const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
