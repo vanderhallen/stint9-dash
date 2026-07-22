@@ -291,6 +291,42 @@
   #rn-clips .cj.err{color:#c0392b}
   #videoreel input[type=file]{padding:6px 8px;font-size:11px}
   #videoreel code{font-family:'IBM Plex Mono',monospace;background:#eef0f3;padding:1px 4px;border-radius:4px}
+  /* ---------- Mobile view (phones) ----------
+     A readable, native-size race-essentials panel that overlays the scaled-down
+     desktop layout on small screens. Toggled by body.m. It reads the SAME live
+     computations as the desktop (livePos/gaps/carStats/fuel), so it never drifts. */
+  #mobileview{display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 32px;
+    font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);flex-direction:column;gap:10px}
+  body.m #mobileview{display:flex}
+  .mhdr{display:flex;align-items:center;gap:10px}
+  .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
+  .mhdr .mclock{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
+  .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:9px 16px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+  .mselrow{display:flex;gap:8px}
+  .mselrow select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .mlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .mprimary{display:flex;align-items:baseline;gap:12px}
+  .mpos{font-weight:700;font-size:46px;line-height:1;color:var(--accent)}
+  .mnum{font-weight:700;font-size:30px;line-height:1}
+  .mdrv{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);margin-top:8px}
+  .mgaps{display:flex;gap:10px;margin-top:14px}
+  .mgap{flex:1 1 0;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 10px;text-align:center}
+  .mgap .v{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:23px}
+  .mgap.ahead .v{color:#1e8f3a}.mgap.behind .v{color:#c0392b}
+  .mstats{display:flex;gap:10px;text-align:center}
+  .mstat{flex:1 1 0}.mstat .v{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:21px}
+  .mfuel{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .mfuel .v{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:19px}
+  .mbox{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;padding:7px 13px;border-radius:8px;background:var(--ink);color:#fff}
+  .mbox.soon{background:#e8871e}.mbox.now{background:var(--accent);animation:mboxp 1s ease-in-out infinite}
+  @keyframes mboxp{50%{opacity:.55}}
+  .mstand{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:14px}
+  .mstand td{padding:8px 4px;border-top:1px solid var(--border)}
+  .mstand tr:first-child td{border-top:none}
+  .mstand .p{color:var(--muted);width:40px}.mstand .g{text-align:right;color:var(--muted);white-space:nowrap}
+  .mstand tr.sel td{color:var(--accent);font-weight:700}
 </style></head>
 <body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
@@ -1839,6 +1875,43 @@ if(__mobileFit){
     document.addEventListener(ev,function(e){e.preventDefault();},{passive:false});
   });
 }
+/* ---------- Mobile view (phones) ----------
+   A readable, native-size overlay driven off the SAME live computations as the
+   desktop (livePos/gaps/carStats + the already-computed #fmini_* fuel readout),
+   so it never drifts. The desktop layout keeps running untouched underneath the
+   opaque overlay — safest first version; we can skip the desktop render on mobile
+   later if we want the extra battery. Toggled by body.m on small screens. */
+function __applyMobileView(){document.body.classList.toggle('m',Math.min(window.innerWidth,window.innerHeight)<600);}
+function __mirrorSel(mid,did){var m=document.getElementById(mid),d=document.getElementById(did);if(!m||!d)return;
+  if(m.__sig!==d.innerHTML){m.innerHTML=d.innerHTML;m.__sig=d.innerHTML;}
+  if(m.value!==d.value)m.value=d.value;}
+function renderMobile(){
+  if(!renderMobile.__wired){renderMobile.__wired=true;
+    [['m_class','classsel'],['m_car','carsel']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
+    var mp=document.getElementById('m_play');if(mp)mp.onclick=function(){var pb=document.getElementById('play');if(pb)pb.click();};
+  }
+  __mirrorSel('m_class','classsel');__mirrorSel('m_car','carsel');
+  var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+  set('m_clock',hms(T));
+  var mp=document.getElementById('m_play');if(mp)mp.textContent=playing?'Pause':'Play';
+  var lp=livePos(T);
+  if(!selCar||!lp[selCar]){['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});set('m_num','select a car');set('m_drv','');}
+  else{
+    set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));
+    var g=gaps(T,lp);set('m_ahead',g.ahead!=null?('-'+g.ahead+'s'):'—');set('m_behind',g.behind!=null?('+'+g.behind+'s'):'—');
+    var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');set('m_lap','L'+(cs.L||0));
+  }
+  var rd=function(id){var e=document.getElementById(id);return e?e.textContent:'';};
+  set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
+  var box=rd('fmini_box')||'—',mb=document.getElementById('m_box');
+  if(mb){mb.textContent=box;mb.className='mbox'+(/BOX BOX/.test(box)?' now':/BOX IN [12] /.test(box)?' soon':'');}
+  var order=Object.keys(lp).sort(function(a,b){return lp[a]-lp[b];}).slice(0,5),leader=order[0],rows='';
+  order.forEach(function(st){var gt='—';if(st!==leader){var d=commonGap(st,leader,T);gt=(d==null)?'—':('+'+Math.abs(d).toFixed(1)+'s');}
+    rows+='<tr class="'+(st===selCar?'sel':'')+'"><td class="p">P'+lp[st]+'</td><td>#'+st+' '+curDrv(st,T)+'</td><td class="g">'+gt+'</td></tr>';});
+  var sb=document.getElementById('m_stand');if(sb)sb.innerHTML=rows||'<tr><td>waiting…</td></tr>';
+}
+__applyMobileView();window.addEventListener('resize',__applyMobileView);
+setInterval(function(){if(document.body.classList.contains('m')){try{renderMobile();}catch(e){}}},250);
 
 /* driver stint table */
 function fillStints(st){const tb=document.getElementById('drvbody');const panel=document.getElementById('drvpanel');if(!panel)return;
@@ -3462,4 +3535,30 @@ applyWxReel(false);
   document.addEventListener('visibilitychange',function(){if(document.hidden)flush(true);});
   window.addEventListener('pagehide',function(){flush(true);});
 })();
-</script></body></html>
+</script>
+<div id="mobileview">
+  <div class="mhdr"><div class="mbrand">stint<b>9</b></div><div class="mclock" id="m_clock">--:--:--</div><button class="mplay" id="m_play">Play</button></div>
+  <div class="mselrow"><select id="m_class"></select><select id="m_car"></select></div>
+  <div class="mcard">
+    <div class="mprimary"><span class="mpos" id="m_pos">&mdash;</span><span class="mnum" id="m_num">select a car</span></div>
+    <div class="mdrv" id="m_drv"></div>
+    <div class="mgaps">
+      <div class="mgap ahead"><div class="mlbl">gap ahead</div><div class="v" id="m_ahead">&mdash;</div></div>
+      <div class="mgap behind"><div class="mlbl">gap behind</div><div class="v" id="m_behind">&mdash;</div></div>
+    </div>
+  </div>
+  <div class="mcard mstats">
+    <div class="mstat"><div class="mlbl">last lap</div><div class="v" id="m_last">&mdash;</div></div>
+    <div class="mstat"><div class="mlbl">fastest</div><div class="v" id="m_fast">&mdash;</div></div>
+    <div class="mstat"><div class="mlbl">lap</div><div class="v" id="m_lap">&mdash;</div></div>
+  </div>
+  <div class="mcard">
+    <div class="mlbl">fuel</div>
+    <div class="mfuel"><span class="v" id="m_tank">&mdash; L</span><span class="v" id="m_laps">&mdash; laps</span><span class="mbox" id="m_box">&mdash;</span></div>
+  </div>
+  <div class="mcard">
+    <div class="mlbl">standings</div>
+    <table class="mstand"><tbody id="m_stand"></tbody></table>
+  </div>
+</div>
+</body></html>
