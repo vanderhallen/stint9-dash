@@ -2366,18 +2366,18 @@ function growMaps(){
   const aspect=svg.clientWidth/mapH0,card=svg.closest('.stage');
   const maxMapH=((card?card.clientWidth:svg.clientWidth)-2)/aspect;
   // budget = everything currently used by both rows + whatever slack is free.
-  // Split mapH:reelH = 1:0.8, then cap the map by its own width limit. Once the
-  // map is width-capped it can't absorb any more, so the reels take the remaining
-  // budget (extend downward) instead of being frozen at 0.8*map and leaving a dead
-  // gap above the agent bar. The reel window ALWAYS fills the remaining budget,
-  // regardless of the selected class's car count — a small class used to leave the
-  // reel frozen at its short car-count aspect (CH/1000), shrinking the whole reel
-  // (incl. the TYRE board / fuel / weather panels, which are car-count-independent
-  // and fit-to-panel). Filling the budget keeps those panels maximized; the sparse
-  // car-count SVGs (POS/GRID/…) just letterbox, which is the intended trade-off.
+  // Hold mapH:reelH = 1:0.8 always, then cap the map by its own width limit.
+  // When the map is width-capped (tall/square screens) it can't absorb more, and
+  // the reel row is deliberately NOT stretched to swallow the rest of the budget:
+  // over-stretching made the layout bottom-heavy and pushed its middle high, so it
+  // drifted per screen shape. Keeping the fixed 1:0.8 proportion instead leaves the
+  // unabsorbed height as real margin, which fitPage's ty then splits equally top+
+  // bottom — the layout stays balanced and vertically centered on every system.
+  // Trade-off: on a width-capped screen the reel/TYRE/fuel/weather panels sit a bit
+  // smaller than if they'd filled the whole budget, in exchange for that centering.
   const budget=Math.max(0,mapH0+reelH0+slack);
   const mapH=Math.min(budget/1.8,maxMapH);
-  const reelH=Math.max(mapH*0.8,budget-mapH);
+  const reelH=mapH*0.8;
   if(Math.abs(mapH-mapH0)>2){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
   if(Math.abs(reelH-reelH0)>2){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
 }
