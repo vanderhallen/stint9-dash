@@ -314,6 +314,10 @@
   .mselrow select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
   .mcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
   .mlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .mtop{display:flex;align-items:center;gap:12px}
+  .mtopl{flex:1 1 auto;min-width:0}
+  .mtrack{flex:0 0 auto;width:120px;height:120px;background:#fbfbfc;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .mtrack svg{width:120px!important;height:120px!important;display:block;margin:0!important}
   .mprimary{display:flex;align-items:baseline;gap:12px}
   .mpos{font-weight:700;font-size:46px;line-height:1;color:var(--accent)}
   .mnum{font-weight:700;font-size:30px;line-height:1}
@@ -1888,11 +1892,20 @@ if(__mobileFit){
    so it never drifts. The desktop layout keeps running untouched underneath the
    opaque overlay — safest first version; we can skip the desktop render on mobile
    later if we want the extra battery. Toggled by body.m on small screens. */
-function __applyMobileView(){document.body.classList.toggle('m',Math.min(window.innerWidth,window.innerHeight)<600);}
+/* Relocate the LIVE circular zoom-track SVG (#mini) into the mobile card. It's a
+   self-contained SVG that renderMini() keeps drawing into by id, so moving the
+   node keeps it updating — no duplication, no drift. Moved back to its desktop
+   home if the viewport grows back to desktop size. */
+var __miniHome=null,__miniNext=null;
+function __placeMini(mobile){var mini=document.getElementById('mini');if(!mini)return;
+  if(mobile){var slot=document.getElementById('m_track');if(slot&&mini.parentNode!==slot){if(!__miniHome){__miniHome=mini.parentNode;__miniNext=mini.nextSibling;}slot.appendChild(mini);}}
+  else if(__miniHome&&mini.parentNode!==__miniHome){__miniHome.insertBefore(mini,__miniNext);}}
+function __applyMobileView(){var mob=Math.min(window.innerWidth,window.innerHeight)<600;document.body.classList.toggle('m',mob);__placeMini(mob);}
 function __mirrorSel(mid,did){var m=document.getElementById(mid),d=document.getElementById(did);if(!m||!d)return;
   if(m.__sig!==d.innerHTML){m.innerHTML=d.innerHTML;m.__sig=d.innerHTML;}
   if(m.value!==d.value)m.value=d.value;}
 function renderMobile(){
+  __placeMini(true);
   if(!renderMobile.__wired){renderMobile.__wired=true;
     [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
     var mp=document.getElementById('m_play');if(mp)mp.onclick=function(){var pb=document.getElementById('play');if(pb)pb.click();};
@@ -3561,8 +3574,13 @@ applyWxReel(false);
   <div class="mselrow"><select id="m_class"></select><select id="m_car"></select></div>
   <div class="mctrl" id="m_ctrl"><button class="mplay" id="m_play">Play</button><select id="m_speed"></select></div>
   <div class="mcard">
-    <div class="mprimary"><span class="mpos" id="m_pos">&mdash;</span><span class="mnum" id="m_num">select a car</span></div>
-    <div class="mdrv" id="m_drv"></div>
+    <div class="mtop">
+      <div class="mtopl">
+        <div class="mprimary"><span class="mpos" id="m_pos">&mdash;</span><span class="mnum" id="m_num">select a car</span></div>
+        <div class="mdrv" id="m_drv"></div>
+      </div>
+      <div class="mtrack" id="m_track"></div>
+    </div>
     <div class="mgaps">
       <div class="mgap ahead"><div class="mlbl">gap ahead</div><div class="v" id="m_ahead">&mdash;</div></div>
       <div class="mgap behind"><div class="mlbl">gap behind</div><div class="v" id="m_behind">&mdash;</div></div>
