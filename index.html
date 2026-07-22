@@ -309,6 +309,7 @@
   .mhdrright{margin-left:auto;display:flex;align-items:center;gap:8px}
   .mspeed{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--ink)}
   .mhdr .mclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
+  .mhdr .mclock.mstatus{font-size:12px;font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mmode{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
   .mmodebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:9px 14px;cursor:pointer}
   .mmodebtn.active{background:var(--ink);color:#fff}
@@ -1920,12 +1921,22 @@ function renderMobile(){
   }
   __mirrorSel('m_class','classsel');__mirrorSel('m_car','carsel');__mirrorSel('m_speed','speed');
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
-  set('m_clock',hms(T));
-  // SIM/LIVE state mirrors window.dataMode; hide the SIM-only play/speed row in LIVE
+  // SIM/LIVE state mirrors window.dataMode; hide the SIM-only speed selector in LIVE
   var mode=window.dataMode||'SIM',ms=document.getElementById('m_sim'),ml=document.getElementById('m_live');
   if(ms)ms.classList.toggle('active',mode==='SIM');
   if(ml)ml.classList.toggle('active',mode==='LIVE');
   var msp=document.getElementById('m_speed');if(msp)msp.style.display=(mode==='LIVE')?'none':'';
+  // Header time slot: the sim clock in SIM, the live-feed status in LIVE
+  var mcl=document.getElementById('m_clock');
+  if(mcl){
+    if(mode==='LIVE'){
+      var le=document.getElementById('liveEvent'),lm=document.getElementById('liveMsg');
+      var ev=le?le.textContent.trim():'',msg=lm?lm.textContent.trim():'';
+      mcl.textContent=(ev&&ev!=='event —')?ev:(msg||ev||'—');
+      mcl.style.color=(le&&le.style.color)?le.style.color:'';
+      mcl.classList.add('mstatus');
+    }else{mcl.textContent=hms(T);mcl.style.color='';mcl.classList.remove('mstatus');}
+  }
   var lp=livePos(T);
   if(!selCar||!lp[selCar]){['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});set('m_num','select a car');set('m_drv','');}
   else{
