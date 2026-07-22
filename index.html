@@ -297,7 +297,12 @@
      computations as the desktop (livePos/gaps/carStats/fuel), so it never drifts. */
   #mobileview{display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);
     overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 32px;
-    font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);flex-direction:column;gap:10px}
+    font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);flex-direction:column;gap:10px;
+    touch-action:pan-y}
+  /* Block zoom on phones: touch-action stops pinch AND double-tap zoom (iOS's
+     reliable path, alongside the gesture-event block below); pan-y keeps vertical
+     scroll. body.m covers the background behind the overlay. */
+  body.m{touch-action:none}
   body.m #mobileview{display:flex}
   .mhdr{display:flex;align-items:center;gap:10px}
   .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
