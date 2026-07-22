@@ -2414,8 +2414,20 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   // (Undershoot needs no pass — growMaps grows in innerHeight/s units and
   // fills it in this same run.)
   if(!__refit){const ab=document.querySelector('.agentbar');
-    if(ab&&ab.getBoundingClientRect().bottom>window.innerHeight+3){__refit=true;try{fitPage();}finally{__refit=false;}}}}
-let __refit=false;
+    if(ab&&ab.getBoundingClientRect().bottom>window.innerHeight+3){__refit=true;try{fitPage();}finally{__refit=false;}return;}}
+  // Vertical centering: any height growMaps couldn't absorb (e.g. the maps hit
+  // their width cap on a wide/short window) would otherwise all pile up below the
+  // top-pinned content, pushing the layout's middle above the viewport middle —
+  // and by a different amount on every differently-shaped screen. Split that
+  // leftover equally top+bottom (the vertical twin of tx above) so the layout's
+  // middle sits at the viewport middle on every system. Measured here with the
+  // vertical translate still 0 (set at line 2401), so agent-bottom is the true
+  // content height; then re-applied as ty. Runs only on the settled pass (the
+  // recursive corrective pass above returns before reaching here).
+  {const ab=document.querySelector('.agentbar');
+   __ty=ab?Math.max(0,(window.innerHeight-ab.getBoundingClientRect().bottom)/2):0;
+   w.style.transform='translate('+tx+'px,'+__ty+'px) scale('+s+')';}}
+let __refit=false,__ty=0;
 window.addEventListener('resize',fitPage);window.addEventListener('load',fitPage);
 fitPage();setTimeout(fitPage,150);setTimeout(fitPage,500);setTimeout(fitPage,1500);
 // Re-align once web fonts have loaded — their metrics change row heights, which
@@ -2434,7 +2446,9 @@ try{var __fpT;var scheduleFit=function(){clearTimeout(__fpT);__fpT=setTimeout(fi
    clipped at all (<-3), or dead space beyond growMaps' own <=20px
    "close enough" band (>25) so the check can never fire in a loop. */
 setInterval(function(){var a=document.querySelector('.agentbar');if(!a||typeof scheduleFit!=='function')return;
-  var d=window.innerHeight-a.getBoundingClientRect().bottom;
+  // subtract __ty so this reads the true content fill, not the centered offset —
+  // otherwise the balanced top/bottom gap would read as dead space and thrash
+  var d=window.innerHeight-(a.getBoundingClientRect().bottom-__ty);
   if(d<-3||d>25)scheduleFit();},1000);
 // Start showing the very beginning, then auto-play only once the page has fully
 // loaded. Starting the RAF loop during a slow cold load let the clock accumulate
