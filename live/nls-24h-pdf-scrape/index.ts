@@ -1,39 +1,50 @@
-/* nls-24h-pdf-scrape — keeps the 24h Nürburgring qualifier/race sessions
- * (the "24h Qualifiers" rounds referenced elsewhere as NLS4/NLS5) current in
- * public.stint9_schedule_windows, from the official Zeitplan PDF.
+/* nls-24h-pdf-scrape — keeps the 24h Nürburgring PDF-published Zeitplans
+ * current in public.stint9_schedule_windows.
  * ===========================================================================
+ * There are TWO separate, differently-named PDFs on 24h-rennen.de that this
+ * function tracks, each its own real event with its own session vocabulary:
+ *   - '24h_zeitplan' = the main ADAC RAVENOL 24h Nürburgring race weekend
+ *     itself (a 4-day weekend, its own on-site qualifying + the 24h race).
+ *   - '24h_qualifiers_zeitplan' = the SEPARATE standalone "ADAC 24h
+ *     Qualifiers" event (2 days, 2x4h races) held months earlier -- THIS is
+ *     the one referred to elsewhere as NLS4/NLS5 (it's what the NLS calendar
+ *     lists as "ADAC 24h Qualifiers (2x4h)"). Confirmed by fetching and
+ *     reading both PDFs directly: the first find (24h_zeitplan) was
+ *     initially assumed to BE the NLS4/5 source, which was wrong -- it's the
+ *     race weekend, not the qualifiers. Both are real, useful data (WIGE
+ *     polling should cover both), so both get written, neither replaces the
+ *     other.
+ *
  * Unlike nls-schedule-scrape (which reads nuerburgring-langstrecken-serie.de's
- * HTML calendar), the 24h weekend's Zeitplan is only published as a PDF on
- * 24h-rennen.de. That domain sits behind Cloudflare bot-protection that blocks
- * EVERYTHING except direct static-file paths (confirmed: the homepage,
- * robots.txt, wp-sitemap.xml, and a directory listing under /wp-content/
- * uploads/ all 403/429; the exact PDF path itself 200s fine). That means this
- * function CANNOT auto-discover a new/renamed PDF URL the way
- * nls-schedule-scrape discovers new NLS round pages -- there's no crawlable
- * calendar/index page it can reach.
+ * HTML calendar), 24h-rennen.de sits behind Cloudflare bot-protection that
+ * blocks EVERYTHING except direct static-file paths (confirmed: the homepage,
+ * robots.txt, wp-sitemap.xml, wp-json/, and a directory listing under
+ * /wp-content/uploads/ all 403/429; the exact PDF path itself, and /feed/,
+ * 200 fine). That means this function CANNOT auto-discover a new/renamed PDF
+ * URL by crawling the site the way nls-schedule-scrape discovers new NLS
+ * round pages -- there's no crawlable index it can reach. (A scheduled AGENT
+ * using web search CAN find new PDF URLs, since search engines' own crawlers
+ * get through Cloudflare where a direct fetch can't -- see the recurring
+ * schedule task that checks for a new PDF version and updates the source
+ * rows below; this function only re-parses whatever URL is already there.)
  *
- * So the PDF URL is DATA, not code: public.stint9_schedule_sources holds it
- * (key='24h_zeitplan'), so bumping it to a new year's (or a re-versioned)
- * URL is a one-line SQL update, no redeploy -- same principle as
- * stint9_schedule_windows itself. This function re-fetches that known URL
+ * So each PDF's URL is DATA, not code: public.stint9_schedule_sources holds
+ * both (keys above), so bumping either to a new year's (or re-versioned) URL
+ * is a one-line SQL update, no redeploy -- same principle as
+ * stint9_schedule_windows itself. This function re-fetches both known URLs
  * daily, so an in-place revision to the SAME PDF (e.g. V2 -> V3 published at
- * an unchanged URL, which does happen) is picked up automatically; a URL
- * change (new year, or a re-versioned filename) still needs that one manual
- * update to stint9_schedule_sources.
+ * an unchanged URL, which does happen) is picked up automatically.
  *
- * The PDF covers the WHOLE 24h weekend (multiple days, multiple series
- * sharing the same page -- DHLM, Tourenwagen-Legenden, RCN). Only rows
- * belonging to "ADAC RAVENOL 24h Nürburgring" are extracted; the rest is
- * someone else's schedule on the same layout. Text extraction via `unpdf`
- * (WASM, works in Deno/edge runtimes) -- verified against the real 2026 PDF
- * before this was deployed (single/merged-line text with no newlines, hence
- * the position-based day/time-anchor parsing below rather than line-splitting).
+ * Each PDF covers its own weekend but ALSO lists other series sharing the
+ * same days (DHLM, Tourenwagen-Legenden, RCN) -- only rows matching that
+ * source's own SERIES name are extracted. Text extraction via `unpdf` (WASM,
+ * works in Deno/edge runtimes) -- verified against both real 2026 PDFs with
+ * local Deno runs before any of this was deployed.
  *
  * SAFETY: same as nls-schedule-scrape -- never DELETEs, only upserts on
- * (event_date, label); logs every run to stint9_schedule_scrape_log; only
- * writes if both a race-start ("Start Rennen") AND race-finish
- * ("Zieleinlauf") entry were found, since those two are combined into one
- * "race" window spanning Saturday 15:00 to Sunday 15:00 (a real 24h race).
+ * (event_date, label); logs every run to stint9_schedule_scrape_log; a
+ * source only writes if its own "requiredLabels" were all found (see SOURCES
+ * below) -- a basic sanity check against a garbled/partial parse.
  *
  * Deploy: mcp deploy_edge_function (name nls-24h-pdf-scrape, verify_jwt:false).
  * Schedule: pg_cron stint9_24h_pdf_autoscan, daily.
@@ -44,30 +55,48 @@ import { getDocumentProxy, extractText } from 'npm:unpdf';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SOURCE_KEY = '24h_zeitplan';
-const SERIES = 'ADAC RAVENOL 24h Nürburgring'; // the only series on this shared-weekend PDF we track
+
+type SourceConfig = {
+  series: string;                 // exact prefix this source's sessions start with in the PDF
+  labelMap: [string, string][];   // exact (lowercased, parenthetical-stripped) session name -> our column
+  pairRace?: { startName: string; finishName: string; label: string }; // e.g. "Start Rennen"+"Zieleinlauf" -> one "race" window
+  requiredLabels: string[];       // must ALL be present (post-mapping/pairing) or nothing is written for this source
+};
+const SOURCES: Record<string, SourceConfig> = {
+  '24h_zeitplan': {
+    series: 'ADAC RAVENOL 24h Nürburgring',
+    labelMap: [
+      ['top qualifying 1', 'topquali1'], ['top qualifying 2', 'topquali2'], ['top qualifying 3', 'topquali3'],
+      ['qualifying 1', 'quali1'], ['qualifying 2', 'quali2'], ['qualifying 3', 'quali3'],
+      ['warm-up', 'warmup'],
+      ['startaufstellung', 'startaufstellung'],
+      ['open grid', 'opengrid'],
+      ['formationsrunde', 'formation'],
+    ],
+    pairRace: { startName: 'start rennen', finishName: 'zieleinlauf', label: 'race' },
+    requiredLabels: ['race'],
+  },
+  '24h_qualifiers_zeitplan': {
+    series: 'ADAC 24h Nürburgring Qualifiers',
+    labelMap: [
+      ['test- und einstellfahrten', 'test'],
+      ['qualifying rennen 1', 'qualirennen1'],
+      ['qualifying rennen 2', 'qualirennen2'],
+      ['top qualifying', 'topquali'],
+      ['startaufstellung', 'startaufstellung'],
+      ['formationsrunde', 'formation'],
+      ['rennen 1', 'race1'],
+      ['rennen 2', 'race2'],
+    ],
+    requiredLabels: ['race1', 'race2'], // the two NLS4/NLS5-scored races
+  },
+};
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
-
-// German session name -> our column. "Start Rennen"/"Zieleinlauf" are handled
-// separately (paired into one "race" window), not through this map.
-const LABEL_MAP: [string, string][] = [
-  ['top qualifying 1', 'topquali1'], ['top qualifying 2', 'topquali2'], ['top qualifying 3', 'topquali3'],
-  ['qualifying 1', 'quali1'], ['qualifying 2', 'quali2'], ['qualifying 3', 'quali3'],
-  ['warm-up', 'warmup'],
-  ['startaufstellung', 'startaufstellung'],
-  ['open grid', 'opengrid'],
-  ['formationsrunde', 'formation'],
-];
-function mapLabel(raw: string): string | null {
-  const key = raw.toLowerCase().trim();
-  for (const [k, v] of LABEL_MAP) if (key === k) return v;
-  return null;
-}
 
 const MONTHS: Record<string, string> = {
   januar: '01', februar: '02', märz: '03', april: '04', mai: '05', juni: '06', juli: '07',
@@ -100,10 +129,10 @@ type RawEntry = { date: string; start: string; end: string | null; name: string 
 
 // The PDF's text layer merges into one long line (no page-position newlines
 // preserved), so entries are located by scanning for time-anchors
-// ("HH:MM Uhr" / "HH:MM - HH:MM Uhr") and day-headers ("Freitag, 15. Mai
+// ("HH:MM Uhr" / "HH:MM - HH:MM Uhr") and day-headers ("Freitag, 17. April
 // 2026"), then slicing the description between one anchor and the next
 // (whichever -- next time or next day-header -- comes first).
-function parsePdfText(text: string): RawEntry[] {
+function parsePdfText(text: string, series: string): RawEntry[] {
   const yearMatch = text.match(/\b(20\d{2})\b/);
   const defaultYear = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
 
@@ -138,8 +167,8 @@ function parsePdfText(text: string): RawEntry[] {
     let desc = text.slice(t.descStart, descEnd).trim();
     const star = desc.indexOf('*'); // footnote marker -- guards the very last entry
     if (star >= 0) desc = desc.slice(0, star).trim();
-    if (!desc.startsWith(SERIES)) continue;
-    desc = desc.slice(SERIES.length).trim().replace(/^(GE|GP)\s+/, '').trim();
+    if (!desc.startsWith(series)) continue;
+    desc = desc.slice(series.length).trim().replace(/^(GE|GP|NO)\s+/, '').trim();
     const date = dayFor(t.pos);
     if (!date || !desc) continue;
     out.push({ date, start: t.start, end: t.end, name: desc });
@@ -148,13 +177,20 @@ function parsePdfText(text: string): RawEntry[] {
 }
 
 type Session = { event_date: string; label: string; start_ts: string; end_ts: string | null };
-function buildSessions(entries: RawEntry[]): Session[] {
+function buildSessions(entries: RawEntry[], cfg: SourceConfig): Session[] {
+  const mapLabel = (raw: string): string | null => {
+    const key = raw.toLowerCase().replace(/\(.*?\)/g, '').trim();
+    for (const [k, v] of cfg.labelMap) if (key === k) return v;
+    return null;
+  };
   const out: Session[] = [];
-  let raceStart: RawEntry | null = null, raceFinish: RawEntry | null = null;
+  let pairStart: RawEntry | null = null, pairFinish: RawEntry | null = null;
   for (const e of entries) {
-    const nameKey = e.name.toLowerCase();
-    if (nameKey === 'start rennen') { raceStart = e; continue; }
-    if (nameKey === 'zieleinlauf') { raceFinish = e; continue; }
+    const nameKey = e.name.toLowerCase().replace(/\(.*?\)/g, '').trim();
+    if (cfg.pairRace) {
+      if (nameKey === cfg.pairRace.startName) { pairStart = e; continue; }
+      if (nameKey === cfg.pairRace.finishName) { pairFinish = e; continue; }
+    }
     const label = mapLabel(e.name);
     if (!label) continue; // unrecognized session name -> skip rather than guess
     const start_ts = toInstant(e.date, e.start);
@@ -162,23 +198,20 @@ function buildSessions(entries: RawEntry[]): Session[] {
     const end_ts = e.end ? toInstant(e.date, e.end) : null;
     out.push({ event_date: e.date, label, start_ts, end_ts });
   }
-  // The 24h race itself: "Start Rennen" (Sat) paired with "Zieleinlauf" (Sun)
-  // into one window, exactly like a normal round's single race session.
-  if (raceStart && raceFinish) {
-    const start_ts = toInstant(raceStart.date, raceStart.start);
-    const end_ts = toInstant(raceFinish.date, raceFinish.start);
-    if (start_ts && end_ts) out.push({ event_date: raceStart.date, label: 'race', start_ts, end_ts });
+  if (cfg.pairRace && pairStart && pairFinish) {
+    const start_ts = toInstant(pairStart.date, pairStart.start);
+    const end_ts = toInstant(pairFinish.date, pairFinish.start);
+    if (start_ts && end_ts) out.push({ event_date: pairStart.date, label: cfg.pairRace.label, start_ts, end_ts });
   }
   return out;
 }
 
-async function getSourceUrl(): Promise<string | null> {
-  const res = await fetch(`${SB_URL}/rest/v1/stint9_schedule_sources?select=url&key=eq.${SOURCE_KEY}`, {
+async function getSources(): Promise<{ key: string; url: string }[]> {
+  const res = await fetch(`${SB_URL}/rest/v1/stint9_schedule_sources?select=key,url&key=in.(${Object.keys(SOURCES).join(',')})`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
   });
-  if (!res.ok) return null;
-  const rows = await res.json();
-  return rows[0]?.url ?? null;
+  if (!res.ok) return [];
+  return await res.json();
 }
 
 async function upsertSessions(sessions: Session[]): Promise<number> {
@@ -203,28 +236,41 @@ async function logRun(ok: boolean, detail: unknown) {
   } catch (e) { console.error('logRun threw:', e); }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+async function runSource(key: string, url: string): Promise<Record<string, unknown>> {
+  const cfg = SOURCES[key];
+  if (!cfg) return { key, status: 'unknown_source_key' };
   try {
-    const url = await getSourceUrl();
-    if (!url) { await logRun(false, { error: 'no source url configured' }); return Response.json({ ok: false, error: 'no source url in stint9_schedule_sources' }, { status: 500, headers: CORS }); }
-
     const pdfRes = await fetch(url);
-    if (!pdfRes.ok) { await logRun(false, { error: `pdf fetch ${pdfRes.status}`, url }); return Response.json({ ok: false, error: `pdf fetch ${pdfRes.status}`, url }, { status: 502, headers: CORS }); }
+    if (!pdfRes.ok) return { key, url, status: 'pdf_fetch_failed', http: pdfRes.status };
     const buf = new Uint8Array(await pdfRes.arrayBuffer());
     const pdf = await getDocumentProxy(buf);
     const { text } = await extractText(pdf, { mergePages: true });
 
-    const entries = parsePdfText(text);
-    const sessions = buildSessions(entries);
-    if (!sessions.some(s => s.label === 'race')) {
-      await logRun(false, { status: 'no_race_window_found', url, entriesFound: entries.length });
-      return Response.json({ ok: false, status: 'no_race_window_found', entriesFound: entries.length, url }, { headers: CORS });
+    const entries = parsePdfText(text, cfg.series);
+    const sessions = buildSessions(entries, cfg);
+    const foundLabels = new Set(sessions.map(s => s.label));
+    if (!cfg.requiredLabels.every(l => foundLabels.has(l))) {
+      return { key, url, status: 'required_labels_missing', required: cfg.requiredLabels, found: [...foundLabels] };
     }
-
     const written = await upsertSessions(sessions);
-    await logRun(true, { url, sessionsWritten: written, labels: sessions.map(s => `${s.event_date}/${s.label}`) });
-    return Response.json({ ok: true, sessionsWritten: written, sessions, url }, { headers: CORS });
+    return { key, url, status: 'ok', sessionsWritten: written, labels: sessions.map(s => `${s.event_date}/${s.label}`) };
+  } catch (e) {
+    return { key, url, status: 'error', error: String(e) };
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  try {
+    const sources = await getSources();
+    if (!sources.length) { await logRun(false, { error: 'no sources configured' }); return Response.json({ ok: false, error: 'no sources in stint9_schedule_sources' }, { status: 500, headers: CORS }); }
+
+    const results = [];
+    for (const s of sources) results.push(await runSource(s.key, s.url));
+
+    const ok = results.every(r => r.status === 'ok' || r.status === 'required_labels_missing');
+    await logRun(ok, { results });
+    return Response.json({ ok, results }, { headers: CORS });
   } catch (e) {
     await logRun(false, { error: String(e) });
     return Response.json({ ok: false, error: String(e) }, { status: 500, headers: CORS });
