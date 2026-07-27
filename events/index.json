@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-07-27T21:45:49.980Z",
+  "events": [
+    {
+      "slug": "NLS1",
+      "name": "1. ADAC Eifel-Trophy",
+      "label": null,
+      "date": "2026-06-20",
+      "end": null,
+      "car_count": 109,
+      "archived_at": "2026-07-27T21:45:49.315774+00:00",
+      "file": "events/NLS1.json",
+      "notes": "events/NLS1_notes.json"
+    }
+  ]
+}

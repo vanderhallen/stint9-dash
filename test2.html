@@ -388,9 +388,12 @@ function applyTyreState(s){
   BAND_KEYS.forEach(b=>{try{setBandCellsVisible(b,!EMPTY_BANDS.has(b));}catch(e){}try{updateBandCross(b);}catch(e){}});
 }
 const _tyreSaveT={};
-function scheduleTyreSave(){if(!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
+// ARCHIVE_RO: when the dashboard is replaying an archived event with overlay on,
+// tyre state is pushed in read-only — never save it back over the live board.
+let ARCHIVE_RO=false;
+function scheduleTyreSave(){if(ARCHIVE_RO||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
 function flushTyreSave(){
-  clearTimeout(_tyreSaveT.t);if(!CUR_CAR)return;
+  clearTimeout(_tyreSaveT.t);if(ARCHIVE_RO||!CUR_CAR)return;
   fetch(SB_URL+'/rest/v1/stint9_tyre_state?on_conflict=car',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({car:CUR_CAR,state:collectTyreState(),updated_at:new Date().toISOString()})}).catch(()=>{});
 }
@@ -1014,7 +1017,9 @@ window.addEventListener('keydown',e=>{
 });
 // ...and when the parent dashboard (which owns focus for the reel arrows)
 // forwards a Left/Right press to us
-window.addEventListener('message',e=>{const d=e.data;if(!d)return;if(d.type==='tyreCar'){setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
+window.addEventListener('message',e=>{const d=e.data;if(!d)return;
+  if(d.type==='tyreArchive'){ARCHIVE_RO=true;CUR_CAR=String(d.car||'');applyTyreState(d.state||TYRE_DEFAULTS);return;}
+  if(d.type==='tyreCar'){ARCHIVE_RO=false;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));

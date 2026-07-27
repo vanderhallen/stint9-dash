@@ -609,7 +609,11 @@ function applyCarFuelSettings(car){
   if(cap)cap.value=FUEL.cap;if(cons)cons.value=FUEL.cons;if(frm)frm.value=FUEL.form;if(st)st.value=FUEL.start;
 }
 // Tell the tyre-board iframe which car is selected (per-car tyre state).
-function postTyreCar(car){try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(car||'')},'*');}catch(e){}}
+// When replaying an archived event with overlay on, push that car's archived
+// tyre state (read-only) instead of the live per-car blob.
+function postTyreCar(car){
+  if(window.archiveOverlay&&typeof window.pushTyreArchive==='function'){window.pushTyreArchive(car);return;}
+  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(car||'')},'*');}catch(e){}}
 // Per-lap fuel notes only leave the browser while LIVE is on (SIM is just a
 // local CSV replay, nothing worth syncing) — debounced so a full sentence
 // isn't one write per keystroke.
@@ -3509,6 +3513,83 @@ applyWxReel(false);
       .catch(()=>{MESSAGES=TEST_MESSAGES;renderMessages();});
   }
   loadMessages();setInterval(loadMessages,5*60*1000);
+})();
+
+/* ============================================================
+   ARCHIVED-EVENT LOADER — ?event=<slug>[&overlay=1]
+   Loads a snapshotted event (public.stint9_events, mirrored to the
+   committed events/<slug>.json) into the SIM. The timing half is
+   either a pre-built `db` (baked event) or raw `timing[]` rows we
+   re-derive through the SAME window.buildLiveDB the LIVE feed uses,
+   so archived replay renders through identical code. overlay=1 also
+   applies the crew layer — fuel calculator/entries, per-lap notes,
+   race notes, and the per-car tyre board (pushed read-only to the
+   test2.html iframe so a replay never overwrites the live board).
+   ============================================================ */
+(function initArchiveEvent(){
+  var params=new URLSearchParams(location.search);
+  var slug=params.get('event');
+  if(!slug)return;
+  var overlay=(params.get('overlay')==='1'||params.get('overlay')==='true');
+  window.archiveSlug=slug;window.archiveOverlay=overlay;
+
+  var RAW=['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh'];
+  function applyDB(built,meta){
+    RAW.forEach(function(k){if(k in built)DB[k]=built[k];});
+    DB.event={name:meta.name||slug,date:meta.event_date||''};
+    window.archiveEventDate=DB.event.date;
+    var clsSel=document.getElementById('classsel');
+    var pick=Object.keys(DB.classes)[0];
+    if(clsSel){var cur=clsSel.value;clsSel.innerHTML='';
+      Object.keys(DB.classes).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
+      if(cur&&DB.classes[cur])pick=cur;clsSel.value=pick;}
+    if(pick)buildClass(pick);                       // sets DB.cars/maxN/avgseg/tmin/tmax
+    var evd=document.getElementById('evdate');if(evd)evd.textContent=DB.event.date+' · '+(DB.event.name||slug)+(overlay?' · overlay':'');
+    T=DB.tmin;var sc=document.getElementById('scrub');if(sc){sc.min=DB.tmin;sc.max=DB.tmax;sc.value=T;}
+    try{fillStints(selCar);}catch(e){}
+    try{render();}catch(e){}
+    try{fitPage();}catch(e){}
+    try{if(typeof buildStartGrid==='function')buildStartGrid();}catch(e){}
+  }
+
+  function pushTyreArchive(car){try{var bf=document.getElementById('boardframe');
+    if(bf&&bf.contentWindow&&window.__archiveTyres){bf.contentWindow.postMessage({type:'tyreArchive',car:String(car||''),state:window.__archiveTyres[String(car||'')]||null},'*');}}catch(e){}}
+  window.pushTyreArchive=pushTyreArchive;
+
+  function applyOverlay(o){
+    o=o||{};
+    // Fuel calculator + per-car entries/notes (same shape loadFuelForLive uses).
+    try{if(o.fuel_state&&typeof FUEL!=='undefined'){FUEL.cars={};o.fuel_state.forEach(function(r){FUEL.cars[String(r.car)]=r.state||{};});
+      if(typeof applyCarFuelSettings==='function')applyCarFuelSettings(selCar);
+      if(typeof refreshFuelReel==='function')refreshFuelReel();}}catch(e){}
+    // Tyre board: index posts read-only archived state to the iframe.
+    window.__archiveTyres={};(o.tyre_state||[]).forEach(function(t){window.__archiveTyres[String(t.car)]=t.state;});
+    var bf=document.getElementById('boardframe');
+    if(bf){pushTyreArchive(selCar);bf.addEventListener('load',function(){pushTyreArchive(selCar);});}
+    // Race notes load off DB.event.date via the existing panel, if present.
+    try{if(typeof rnLoad==='function')rnLoad();else if(typeof rnRefresh==='function')rnRefresh();}catch(e){}
+  }
+
+  function buildFromBundle(b){
+    if(!b)return;
+    var meta=b.meta||{name:slug,event_date:''};
+    var built=null;
+    if(b.db)built=b.db;
+    else if(b.timing&&b.timing.length&&typeof window.buildLiveDB==='function'){
+      var geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
+      try{built=window.buildLiveDB(b.timing,geom,{name:meta.name,date:meta.event_date});}catch(e){built=null;}
+    }
+    if(!built){var ed=document.getElementById('evdate');if(ed)ed.textContent='archive '+slug+': no timing data';return;}
+    applyDB(built,meta);
+    if(overlay)applyOverlay(b.overlay||{});
+  }
+
+  // committed file first (fast, offline), then the DB row as fallback
+  fetch('events/'+encodeURIComponent(slug)+'.json',{cache:'no-store'})
+    .then(function(r){if(r.ok)return r.json();throw 0;})
+    .catch(function(){return fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+      .then(function(r){return r.ok?r.json():[];}).then(function(a){return (a&&a[0]&&a[0].bundle)||null;});})
+    .then(buildFromBundle).catch(function(){});
 })();
 </script>
 <script>

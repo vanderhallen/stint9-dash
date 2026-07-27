@@ -40,6 +40,26 @@
   table.vis td.ip{font-weight:700}
   table.vis td.ua{max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis;color:var(--muted);white-space:nowrap}
   .visscroll{overflow-x:auto}
+  /* events archive */
+  .ev{border:1px solid var(--border);border-radius:9px;margin:8px 0;overflow:hidden}
+  .ev .evhead{display:flex;align-items:center;gap:12px;padding:11px 13px;flex-wrap:wrap;cursor:pointer}
+  .ev .evhead:hover{background:#fafbfc}
+  .ev .slug{font-weight:700;letter-spacing:1px;font-size:14px;background:var(--ink);color:#fff;border-radius:6px;padding:3px 9px}
+  .ev .evname{font-weight:700;font-size:13px}
+  .ev .evsub{color:var(--muted);font-size:11px;letter-spacing:.5px}
+  .ev .evacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .ev .evacts a,.ev .evacts button{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 10px;border-radius:6px;text-decoration:none;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink)}
+  .ev .evacts a.prim{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .ev .evbody{display:none;padding:4px 13px 14px;border-top:1px solid var(--border)}
+  .ev.open .evbody{display:block}
+  .ev.open .evhead{background:#f7f9fb}
+  .evsec{margin-top:12px}
+  .evsec h3{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .chip{display:inline-block;font-size:11px;background:#eef1f4;border-radius:5px;padding:3px 8px;margin:0 5px 5px 0}
+  .chip b{color:var(--ink)}
+  .evsec table.vis td,.evsec table.vis th{font-size:11px}
+  .caret{transition:transform .15s;color:var(--muted)}
+  .ev.open .caret{transform:rotate(90deg)}
   /* login gate */
   #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
   #gate .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px;width:300px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08)}
@@ -98,6 +118,14 @@
   </div>
 
   <div class="card">
+    <h2>Race events archive</h2>
+    <div class="meta" style="margin:0 0 12px">Each finished NLS event is snapshotted to <code>stint9_events</code> (timing + crew fuel/tyre/notes overlay), with a committed <code>events/&lt;slug&gt;.json</code> backup. Open one in the SIM, with or without the crew overlay, or expand to inspect its fuel / tyre / notes.</div>
+    <div class="filters"><button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadEvents()">↻ refresh</button></div>
+    <div id="events"><div class="empty">Loading…</div></div>
+    <div class="meta" id="eventsMeta"></div>
+  </div>
+
+  <div class="card">
     <h2>Reel usage — most watched</h2>
     <div class="filters">
       <button id="fToday" class="active" onclick="setRange('today')">Today</button>
@@ -129,7 +157,7 @@ var H={apikey:KEY,Authorization:'Bearer '+KEY};
 var ADMIN_PW='pitwall';
 
 /* ---- login gate ---- */
-function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadUsage();loadVisitors();}
+function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadEvents();loadUsage();loadVisitors();}
 function tryLogin(){var v=document.getElementById('pw').value;
   if(v===ADMIN_PW){try{sessionStorage.setItem('stint9_admin_ok','1');}catch(e){}unlock();}
   else{document.getElementById('pwerr').textContent='Wrong password';}}
@@ -160,6 +188,85 @@ function toggleOnline(){
     body:JSON.stringify({id:1,online:next,updated_at:new Date().toISOString(),updated_by:'admin'})})
     .then(function(r){if(!r.ok)throw 0;loadStatus();})
     .catch(function(){paint(!next,'save failed — try again');});
+}
+
+/* ---- race events archive ---- */
+var evDetailCache={};
+function loadEvents(){
+  document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
+  fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
+    .then(function(r){return r.ok?r.json():[];}).then(renderEvents)
+    .catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
+}
+function renderEvents(rows){
+  var box=document.getElementById('events');
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No events archived yet. They appear here automatically ~1h after an NLS session ends (or run <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>).</div>';document.getElementById('eventsMeta').textContent='';return;}
+  box.innerHTML=rows.map(function(e){
+    var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
+    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||'')].filter(Boolean).join(' · ');
+    var q='index.html?event='+encodeURIComponent(e.slug);
+    return '<div class="ev" id="ev-'+esc(e.slug)+'">'+
+      '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+
+        '<span class="caret">▶</span>'+
+        '<span class="slug">'+esc(e.slug)+'</span>'+
+        '<span><span class="evname">'+esc(e.name||e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evacts" onclick="event.stopPropagation()">'+
+          '<a class="prim" href="'+q+'&overlay=1" target="_blank" rel="noopener">SIM + overlay →</a>'+
+          '<a href="'+q+'" target="_blank" rel="noopener">SIM →</a>'+
+          '<a href="events/'+esc(e.slug)+'_notes.json" target="_blank" rel="noopener">notes file</a>'+
+        '</span>'+
+      '</div>'+
+      '<div class="evbody" id="evbody-'+esc(e.slug)+'"><div class="empty">…</div></div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived';
+}
+function toggleEvent(slug){
+  var el=document.getElementById('ev-'+slug);if(!el)return;
+  el.classList.toggle('open');
+  if(el.classList.contains('open')&&!evDetailCache[slug])loadEventDetail(slug);
+}
+function loadEventDetail(slug){
+  evDetailCache[slug]='loading';
+  // Prefer the lightweight committed notes file; fall back to the DB bundle overlay.
+  fetch('events/'+encodeURIComponent(slug)+'_notes.json',{cache:'no-store'})
+    .then(function(r){if(r.ok)return r.json();throw 0;})
+    .catch(function(){
+      return fetch(SB+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:H})
+        .then(function(r){return r.json();}).then(function(a){var b=(a&&a[0]&&a[0].bundle)||{};var o=b.overlay||{};
+          return {fuel:o.fuel_state||[],fuel_notes:o.fuel_notes||[],tyres:o.tyre_state||[],tyre_bands:o.band_state||[],racenotes:o.racenotes||[],messages:o.messages||[]};});
+    })
+    .then(function(d){evDetailCache[slug]=d;renderEventDetail(slug,d);})
+    .catch(function(){document.getElementById('evbody-'+slug).innerHTML='<div class="empty">Could not load details.</div>';});
+}
+function evTable(head,rows){return '<div class="visscroll"><table class="vis"><tr>'+head.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr>'+rows.join('')+'</table></div>';}
+function tyreSummary(state){if(!state||typeof state!=='object')return '—';
+  var bands=state.bands?Object.keys(state.bands).length:0;
+  var stock=Array.isArray(state.stock)?state.stock.length:(state.stock?Object.keys(state.stock).length:0);
+  var bits=[];if(bands)bits.push(bands+' bands');if(stock)bits.push(stock+' stock');return bits.length?bits.join(' · '):'—';}
+function renderEventDetail(slug,d){
+  var body=document.getElementById('evbody-'+slug);var html='';
+  // Fuel state per car
+  html+='<div class="evsec"><h3>Fuel — per car</h3>';
+  if(d.fuel&&d.fuel.length){html+=d.fuel.map(function(f){var s=f.state||{};var keys=Object.keys(s).slice(0,4).map(function(k){return k+':'+(typeof s[k]==='object'?'…':s[k]);}).join(' ');return '<span class="chip"><b>#'+esc(f.car)+'</b> '+esc(keys||'—')+'</span>';}).join('');}else{html+='<div class="empty">No fuel state.</div>';}
+  html+='</div>';
+  // Fuel notes (per-lap)
+  html+='<div class="evsec"><h3>Fuel notes — per lap</h3>';
+  if(d.fuel_notes&&d.fuel_notes.length){html+=evTable(['Car','Lap','Note'],d.fuel_notes.map(function(n){return '<tr><td class="ip">#'+esc(n.car)+'</td><td>'+esc(n.lap)+'</td><td class="ua" title="'+esc(n.note)+'">'+esc(n.note)+'</td></tr>';}));}else{html+='<div class="empty">No lap notes.</div>';}
+  html+='</div>';
+  // Tyres per car + raw
+  html+='<div class="evsec"><h3>Tyres — per car</h3>';
+  if(d.tyres&&d.tyres.length){html+=d.tyres.map(function(t){return '<span class="chip"><b>#'+esc(t.car)+'</b> '+esc(tyreSummary(t.state))+'</span>';}).join('');
+    html+='<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:11px">raw tyre JSON</summary><pre style="white-space:pre-wrap;font-size:10px;max-height:220px;overflow:auto">'+esc(JSON.stringify(d.tyres,null,1))+'</pre></details>';
+  }else{html+='<div class="empty">No tyre state.</div>';}
+  html+='</div>';
+  // Racenotes
+  html+='<div class="evsec"><h3>Race notes</h3>';
+  if(d.racenotes&&d.racenotes.length){html+=evTable(['Car','Lap','Kind','Note'],d.racenotes.map(function(n){return '<tr><td class="ip">#'+esc(n.car)+'</td><td>'+esc(n.lap==null?'':n.lap)+'</td><td>'+esc(n.kind)+'</td><td class="ua" title="'+esc(n.body)+'">'+esc(n.body)+'</td></tr>';}));}else{html+='<div class="empty">No race notes.</div>';}
+  html+='</div>';
+  // Messages
+  if(d.messages&&d.messages.length){html+='<div class="evsec"><h3>Race-control messages</h3>'+evTable(['Car','Class','Message'],d.messages.map(function(m){return '<tr><td class="ip">'+esc(m.car||'—')+'</td><td>'+esc(m.race_class||'—')+'</td><td class="ua" title="'+esc(m.message)+'">'+esc(m.message)+'</td></tr>';}))+'</div>';}
+  body.innerHTML=html;
 }
 
 /* ---- reel-usage monitoring ---- */
