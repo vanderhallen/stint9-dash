@@ -46,13 +46,21 @@ create policy "events anon update" on public.stint9_events for update using (tru
 create policy "events anon delete" on public.stint9_events for delete using (true);
 
 -- ============================================================
---  Automatic archiver (pure SQL + pg_cron) — "automatic by date + schedule label".
---  See the two functions + cron job in the applied migrations
---  (stint9_events_auto_archiver): stint9_event_slug(), stint9_archive_event(),
---  stint9_maybe_archive_events(). Cron `stint9_event_archive` runs hourly and
---  snapshots any finished (last schedule window ended >2h ago), timing-bearing,
---  not-yet-archived event. Slug/label are read from stint9_schedule_windows:
---    "6. NLS-Lauf" / "6h … -Rennen" -> NLS6 ; leading "N." or "NLS N".
+--  Automatic archiver (pure SQL + pg_cron) — "automatic by date".
+--  See the functions + cron job in the applied migrations: stint9_event_slug(),
+--  stint9_archive_event(), stint9_maybe_archive_events(). Cron
+--  `stint9_event_archive` runs hourly and snapshots any finished (last schedule
+--  window ended >2h ago), timing-bearing, not-yet-archived event.
+--
+--  SLUG/NAME resolution (the NLS round number, e.g. NLS6, is NOT in any timing
+--  or schedule field — stint9_schedule_windows only holds session labels):
+--    1. public.stint9_event_rounds (date -> slug/name lookup, seeded from the
+--       NLS calendar: 2026-04-18/19 = NLS4/NLS5, 2026-06-20 = NLS6,
+--       2026-08-01 = NLS7). Add a row when a new round's date is known.
+--    2. else an explicit "NLS n" in the schedule label/name.
+--    3. else EVT-<date> (editable placeholder).
+--  NOTE: the event NAME's own leading number is deliberately NOT used —
+--  "1. ADAC Eifel-Trophy" is NLS6, not NLS1.
 --
 --  Manual one-off (also refreshes the committed events/ backup files):
 --    node tools/archive_event.mjs --date=2026-08-01            (from live_timing)

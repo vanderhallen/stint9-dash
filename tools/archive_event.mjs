@@ -10,10 +10,12 @@
  * window.buildLiveDB — the same path LIVE mode already uses.
  *
  * Usage:
- *   node tools/archive_event.mjs --date=2026-06-20 --from-datajs [--slug=NLS1] [--label="…"]
- *       archive the baked SIM event (timing DB from ../data.js)
- *   node tools/archive_event.mjs --date=2026-08-01 [--slug=NLS7] [--label="…"]
+ *   node tools/archive_event.mjs --date=2026-06-20 --from-datajs
+ *       archive the baked SIM event (timing DB from ../data.js) — slug/name
+ *       resolved from public.stint9_event_rounds (2026-06-20 -> NLS6)
+ *   node tools/archive_event.mjs --date=2026-08-01
  *       archive a live event (timing = raw stint9_live_timing rows for that date)
+ *   (slug comes from stint9_event_rounds by date; override with --slug=NLSn)
  *   node tools/archive_event.mjs --sync-files
  *       (re-)write events/*.json + events/index.json from the stint9_events table
  *
@@ -52,16 +54,24 @@ async function sbUpsert(table, row) {
   if (!r.ok) throw new Error('UPSERT ' + table + ' -> ' + r.status + ' ' + (await r.text()));
 }
 
-// "1. ADAC Eifel-Trophy" -> NLS1 ; else fall back to a date-based slug.
+// Slug from an EXPLICIT "NLS n" pattern only — NOT from the event name's own
+// leading number ("1. ADAC Eifel-Trophy" is NOT NLS1). The NLS round number
+// is not in the timing/schedule data; it comes from the stint9_event_rounds
+// lookup (consulted in archiveOne), with this as the last-resort fallback.
 function deriveSlug(name, label, date) {
   for (const s of [label, name]) {
     if (!s) continue;
-    const m = String(s).match(/^\s*(\d{1,2})\s*\./); // leading "N."
-    if (m) return 'NLS' + m[1];
     const r = String(s).match(/NLS\s*0*(\d{1,2})/i);
     if (r) return 'NLS' + r[1];
   }
   return 'EVT-' + date;
+}
+// Canonical date -> { slug, name } from public.stint9_event_rounds.
+async function lookupRound(date) {
+  try {
+    const rows = await sbGet(`stint9_event_rounds?select=slug,name&event_date=eq.${encodeURIComponent(date)}`);
+    return rows && rows[0] ? rows[0] : null;
+  } catch { return null; }
 }
 
 // Load the baked SIM DB from data.js (single line: `const DB = {…};`).
@@ -155,7 +165,9 @@ async function archiveOne() {
     carCount = new Set(timing.map(r => r.car)).size;
     if (!timing.length) console.warn('⚠ no stint9_live_timing rows for ' + date + ' — timing will be empty');
   }
-  const slug = arg('slug', null) || deriveSlug(name, label, date);
+  const round = await lookupRound(date);          // canonical NLS round for this date
+  if (round && round.name) name = arg('name', null) || round.name || name;
+  const slug = arg('slug', null) || (round && round.slug) || deriveSlug(name, label, date);
   const overlay = await collectOverlay(date, win);
   const meta = { slug, event_date: date, event_end: arg('end', null), label, name,
                  car_count: carCount, archived_at: new Date().toISOString(),
