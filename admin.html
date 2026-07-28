@@ -198,6 +198,9 @@ function toggleOnline(){
 /* ---- race events archive ---- */
 var evDetailCache={};
 function loadEvents(){
+  // ↻ refresh must re-fetch the per-event detail + download bundle too, not just
+  // the list — otherwise an open tab keeps showing a pre-cleanup snapshot.
+  evDetailCache={};evBundleCache={};
   document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
   fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
     .then(function(r){return r.ok?r.json():[];}).then(renderEvents)
