@@ -294,15 +294,16 @@ function drawHeat(data){
   var rs=Object.keys(raceVals).map(Number).sort(function(a,b){return b-a;}); // most races on top
   var cs=Object.keys(ptVals).map(Number).sort(function(a,b){return a-b;});   // low points left
   if(!rs.length||!cs.length){ el.innerHTML='<div class="empty">No data.</div>'; document.getElementById('heatRange').textContent=''; return; }
-  // Colour scale spans only the POPULATED cells of the current (class-filtered)
-  // data, and uses a sqrt curve — race×points is heavily right-skewed (many small,
-  // a few huge), so a linear 0..max scale would crush almost everything to green.
-  var prods=[];
-  rs.forEach(function(r){cs.forEach(function(c){ if(bucket[r+'|'+c]) prods.push(r*c); });});
-  var min=prods.length?Math.min.apply(null,prods):0, max=prods.length?Math.max.apply(null,prods):0;
-  document.getElementById('heatRange').textContent='product '+min+'–'+max;
-  // t=0 -> pure green (hue 120), t=1 -> pure red (hue 0), matching the legend.
-  function col(v){ var t=max>min?Math.sqrt((v-min)/(max-min)):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',70%,45%)'; }
+  // Colour by RANK of the distinct populated products, not by raw value. race×points
+  // is heavily skewed and its span varies wildly per class (e.g. 18–86 vs 0–315), so a
+  // value scale looks washed-out for wide ranges. Ranking spreads pure green→red evenly
+  // across the buckets in EVERY view: lowest product = pure green, highest = pure red.
+  var prodSet={};
+  rs.forEach(function(r){cs.forEach(function(c){ if(bucket[r+'|'+c]) prodSet[r*c]=1; });});
+  var sorted=Object.keys(prodSet).map(Number).sort(function(a,b){return a-b;});
+  var rank={}; sorted.forEach(function(v,i){ rank[v]=sorted.length>1?i/(sorted.length-1):0; });
+  document.getElementById('heatRange').textContent=sorted.length?('product '+sorted[0]+'–'+sorted[sorted.length-1]):'';
+  function col(v){ var t=rank[v]!=null?rank[v]:0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',70%,45%)'; }
   var html='<table class="hm"><thead><tr><th class="corner">races ↓ / points →</th>'+
     cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rs.forEach(function(r){
