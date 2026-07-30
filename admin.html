@@ -123,19 +123,19 @@
   </div>
 
   <div class="card">
-    <h2>Race events archive</h2>
-    <div class="meta" style="margin:0 0 12px">Each finished NLS event is snapshotted to <code>stint9_events</code> (timing + crew fuel/tyre/notes overlay), with a committed <code>events/&lt;slug&gt;.json</code> backup. Open one in the SIM, with or without the crew overlay, or expand to inspect its fuel / tyre / notes.</div>
-    <div class="filters"><button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadEvents()">↻ refresh</button></div>
-    <div id="events"><div class="empty">Loading…</div></div>
-    <div class="meta" id="eventsMeta"></div>
-  </div>
-
-  <div class="card">
     <h2>Driver database</h2>
     <div class="meta" style="margin:0 0 14px">Every driver who competed in the 2026 NLS season — sortable by races, podiums, points in class, best finish/lap, nationality, cars & teams, with a races×points heatmap. Auto-refreshes weekly from the official result PDFs.</div>
     <div class="row" style="justify-content:flex-end">
       <a class="btn" href="driver.html" target="_blank" rel="noopener">Driver database →</a>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Race events archive</h2>
+    <div class="meta" style="margin:0 0 12px">Each finished NLS event is snapshotted to <code>stint9_events</code> (timing + crew fuel/tyre/notes overlay), with a committed <code>events/&lt;slug&gt;.json</code> backup. Open one in the SIM, with or without the crew overlay, or expand to inspect its fuel / tyre / notes.</div>
+    <div class="filters"><button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadEvents()">↻ refresh</button></div>
+    <div id="events"><div class="empty">Loading…</div></div>
+    <div class="meta" id="eventsMeta"></div>
   </div>
 
   <div class="card">
