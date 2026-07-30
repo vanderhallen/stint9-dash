@@ -3818,7 +3818,7 @@ applyWxReel(false);
   let pick='demo';
 
   function classForCar(car){try{return Object.keys(DB.classes).find(c=>DB.classes[c].map(String).indexOf(String(car))>=0);}catch(e){return null;}}
-  function fillLoginClasses(){if(!clsSelL||typeof DB==='undefined')return;clsSelL.innerHTML='';
+  function fillLoginClasses(){if(!clsSelL||typeof DB==='undefined')return;clsSelL.innerHTML='<option value="">— select a class —</option>';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSelL.appendChild(o);});
     fillLoginCars();}
   function fillLoginCars(){if(!carSelL||typeof DB==='undefined')return;
