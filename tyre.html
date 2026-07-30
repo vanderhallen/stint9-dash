@@ -394,23 +394,30 @@ const _tyreSaveT={};
 // ARCHIVE_RO: when the dashboard is replaying an archived event with overlay on,
 // tyre state is pushed in read-only — never save it back over the live board.
 let ARCHIVE_RO=false;
-// LIVE_MODE: only a real (LIVE) race persists the board to Supabase. SIM is a
-// replay — its wear ticks up on screen but must never write to the shared DB
-// (otherwise scrubbing a replay re-seeds every car). The dashboard tells us the
-// mode via the tyreCar / tyreLive messages, mirroring fuel's LIVE-only sync.
+// LIVE_MODE: gates only the REPLAY's automatic km-logging (see onTyreLive) — a
+// SIM replay must never auto-write tyre wear to the shared DB (scrubbing would
+// re-seed cars). MANUAL crew edits (mounting tyres, band/stock edits) always
+// persist per car, in SIM and LIVE, so a setup survives the zoom reload. The
+// dashboard sends the mode via the tyreCar / tyreLive messages.
 let LIVE_MODE=false;
-function scheduleTyreSave(){if(ARCHIVE_RO||!LIVE_MODE||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
+function scheduleTyreSave(){if(ARCHIVE_RO||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
 function flushTyreSave(){
-  clearTimeout(_tyreSaveT.t);if(ARCHIVE_RO||!LIVE_MODE||!CUR_CAR)return;
-  fetch(SB_URL+'/rest/v1/stint9_tyre_state?on_conflict=car',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+  clearTimeout(_tyreSaveT.t);_tyreSaveT.t=0;if(ARCHIVE_RO||!CUR_CAR)return;
+  // keepalive so a flush fired from pagehide (the zoom view reparents & reloads
+  // this iframe) still completes after the document starts unloading.
+  fetch(SB_URL+'/rest/v1/stint9_tyre_state?on_conflict=car',{method:'POST',keepalive:true,headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({car:CUR_CAR,state:collectTyreState(),updated_at:new Date().toISOString()})}).catch(()=>{});
 }
+// Flush any pending edit before this iframe is torn down / reloaded (the zoom
+// view reparents the card, which reloads the board). Without this a fast
+// zoom-close could drop an edit still inside the 500 ms save debounce.
+window.addEventListener('pagehide',()=>{try{if(_tyreSaveT.t)flushTyreSave();}catch(e){}});
 function loadTyreStateDB(car){
   return fetch(SB_URL+'/rest/v1/stint9_tyre_state?select=state&car=eq.'+encodeURIComponent(car),{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
     .then(r=>r.ok?r.json():[]).then(rows=>{applyTyreState(rows&&rows[0]?rows[0].state:TYRE_DEFAULTS);}).catch(()=>{applyTyreState(TYRE_DEFAULTS);});
 }
 function setCurCar(car){car=String(car||'');if(car===CUR_CAR)return;
-  if(CUR_CAR)flushTyreSave();            // persist the outgoing car before switching
+  if(CUR_CAR&&_tyreSaveT.t)flushTyreSave();  // persist the outgoing car only if it has an unsaved edit
   CUR_CAR=car;
   if(car)loadTyreStateDB(car);else applyTyreState(TYRE_DEFAULTS);
 }
@@ -1094,8 +1101,11 @@ function onTyreLive(prog,sectorKm,lap,sec,pit,speed){
   // once playback is back at 1x; "prepare next tyre set" re-arms each lap.
   const _slow=!(speed>=10);
   // --- KM logging: add the km driven since the last sample to each TRACK band ---
+  // LIVE only — a SIM replay must not auto-accumulate wear onto the mounted
+  // tyres or persist it (that was re-seeding cars on every scrub). Manual edits
+  // are unaffected; they save through scheduleTyreSave regardless of mode.
   if(prog!=null){
-    if(_liveProg!=null&&prog>_liveProg&&!isTrackEmpty()){
+    if(LIVE_MODE&&_liveProg!=null&&prog>_liveProg&&!isTrackEmpty()){
       const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
       if(dKm>0){TRACK_BANDS.forEach(b=>{if(EMPTY_BANDS.has(b))return;const e=_boardKmEl(b);if(!e)return;
         if(_trackKm[b]==null)_trackKm[b]=parseInt((e.textContent||'').replace(/\D/g,''),10)||0;
