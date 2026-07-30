@@ -43,6 +43,7 @@
   table.hm th.corner{text-align:left;font-size:10px;text-transform:uppercase}
   table.hm td{padding:0;text-align:center}
   table.hm .cell{min-width:46px;height:34px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.5);position:relative}
+  table.hm .cell.none{color:var(--muted);font-weight:400;border-color:var(--border)}
   table.hm .cell .cnt{position:absolute;top:1px;right:3px;font-size:8px;font-weight:400;opacity:.85}
   table.hm .rowlab{font-weight:700;color:var(--ink);padding-right:10px;text-align:right;white-space:nowrap}
   .legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px}
@@ -311,7 +312,7 @@ function drawHeat(data){
   rs.forEach(function(r){
     html+='<tr><td class="rowlab">'+r+'</td>'+cs.map(function(c){
       var v=r*c, n=bucket[r+'|'+c]||0;
-      return '<td><div class="cell'+(n?' clk':'')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+col(v)+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):'')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
+      return '<td><div class="cell'+(n?' clk':' none')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+(n?col(v):'transparent')+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):' · no drivers')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
     }).join('')+'</tr>';
   });
   html+='</tbody></table>';
