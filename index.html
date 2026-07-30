@@ -345,8 +345,71 @@
   .mstand tr:first-child td{border-top:none}
   .mstand .p{color:var(--muted);width:40px}.mstand .g{text-align:right;color:var(--muted);white-space:nowrap}
   .mstand tr.sel td{color:var(--accent);font-weight:700}
+  /* ---- LOGIN (auth gate) ---- */
+  #authbox{display:flex;align-items:center;gap:8px;margin-left:8px}
+  #authbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;font-weight:600}
+  #authbadge.team{color:#fff;background:var(--accent);border-color:var(--accent)}
+  #loginBtn{display:flex;align-items:center;justify-content:center;height:50px;padding:0 18px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;font-weight:700;cursor:pointer;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff}
+  #loginBtn:hover{filter:brightness(1.06)}
+  #loginModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #loginModal.on{display:flex}
+  .loginCard{position:relative;width:min(420px,92vw);background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:34px 30px 28px;font-family:'Space Grotesk',system-ui,sans-serif}
+  #loginClose{position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
+  #loginClose:hover{background:var(--bg);color:var(--ink)}
+  .loginLogo{text-align:center;margin-bottom:6px}
+  .loginLogo .mark{font-weight:700;font-size:52px;letter-spacing:-2px;line-height:1;color:var(--ink)}
+  .loginLogo .mark b{color:var(--accent)}
+  .loginLogo .tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-top:8px}
+  .loginSub{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:14px 0 20px}
+  .loginOpts{display:flex;gap:12px;margin-bottom:6px}
+  .loginOpt{flex:1 1 0;cursor:pointer;border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:16px 12px;text-align:center;transition:border-color .15s,background .15s}
+  .loginOpt:hover{border-color:var(--accent)}
+  .loginOpt.sel{border-color:var(--accent);background:#fff;box-shadow:0 0 0 2px rgba(224,48,30,.15)}
+  .loginOpt .ot{font-weight:700;font-size:16px;letter-spacing:1px}
+  .loginOpt .od{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4}
+  #teamFields{display:none;margin-top:16px;flex-direction:column;gap:12px}
+  #teamFields.on{display:flex}
+  #teamFields label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+  #teamFields select,#teamFields input{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 12px;height:auto;width:100%}
+  #teamFields select:focus,#teamFields input:focus{outline:none;border-color:var(--accent)}
+  .pwwrap{position:relative;display:block}
+  .pwwrap #loginPass{padding-right:44px}
+  #pwToggle{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--muted);cursor:pointer;padding:0}
+  #pwToggle:hover{color:var(--ink)}
+  #pwToggle svg{width:20px;height:20px;display:block}
+  #loginErr{display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--accent);text-align:center;margin-top:14px}
+  #loginErr.on{display:block}
+  .loginGo{margin-top:20px;width:100%;cursor:pointer;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:13px}
+  .loginGo:hover{filter:brightness(1.06)}
+  .loginGo:disabled{opacity:.45;cursor:not-allowed}
+  /* ---- per-car private-data lock (tyres / fuel / notes) ---- */
+  .privlock{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;padding:18px}
+  .privlock .lk{font-size:30px;line-height:1}
+  .privlock .lt{font-size:12px;letter-spacing:1px;max-width:230px;line-height:1.5}
+  .privlock .lb{margin-top:4px;cursor:pointer;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;padding:8px 14px}
+  .privlock .lb:hover{border-color:var(--accent);color:var(--accent)}
+  body.locked-private .privlock{display:flex}
+  body.locked-private #fuelmini{display:none!important}
 </style></head>
-<body><div class="wrap" style="display:flex;gap:16px;align-items:stretch">
+<body><div id="loginModal" role="dialog" aria-modal="true">
+  <div class="loginCard">
+    <button type="button" id="loginClose" aria-label="Close">&times;</button>
+    <div class="loginLogo"><div class="mark">stint<b>9</b></div><div class="tag">Race Add-on</div></div>
+    <div class="loginSub">Choose how you want to view the dashboard</div>
+    <div class="loginOpts">
+      <div class="loginOpt sel" id="optDemo" data-mode="demo"><div class="ot">DEMO</div><div class="od">View as guest.<br>No tyres or fuel.</div></div>
+      <div class="loginOpt" id="optTeam" data-mode="team"><div class="ot">TEAM</div><div class="od">Pick your car &amp; sign in for tyres &amp; fuel.</div></div>
+    </div>
+    <div id="teamFields">
+      <label>Race class<select id="loginClass"></select></label>
+      <label>Select car<select id="loginCar"><option value="">— select a car —</option></select></label>
+      <label>Password<span class="pwwrap"><input type="password" id="loginPass" autocomplete="off" placeholder="team password"><button type="button" id="pwToggle" aria-label="Show password" title="Show password"></button></span></label>
+    </div>
+    <div id="loginErr">wrong password</div>
+    <button type="button" class="loginGo" id="loginGo" style="display:none">Sign in</button>
+  </div>
+</div>
+<div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
     <div class="sidehd"><span id="gridclock">&mdash;</span><span id="gridnext">&mdash;</span></div>
     <div class="startline" id="gridstartline">START</div>
@@ -364,8 +427,6 @@
     <div class="toolrow" style="margin:0">
       <div class="field"><label for="classsel">Race class</label><select id="classsel"><option value="CUP5">CUP5 · BMW M235i</option></select></div>
       <div class="field"><label for="carsel">Select car</label><select id="carsel"><option value="">— select a car —</option></select></div>
-      <div class="field"><label for="delaythr">Delay %</label><input type="number" id="delaythr" value="50" min="0" step="5"></div>
-      <div class="field"><label for="pacethr">Pace &#916; s</label><input type="number" id="pacethr" value="0.2" min="0" step="0.05"></div>
     </div>
     <div class="card controls" id="controls">
       <div id="simControls" style="display:flex;align-items:center;gap:5px">
@@ -384,6 +445,9 @@
     <div class="modetoggle" id="modetoggle">
       <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
       <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
+    </div>
+    <div id="authbox">
+      <button type="button" id="loginBtn">LOGIN</button>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:stretch;margin-top:6px">
@@ -424,7 +488,7 @@
       </div>
       <div id="reelview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
-          <div class="reelpanel"><div id="fuelpanel" class="fuelpanel">
+          <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Fuel is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="fuelpanel" class="fuelpanel">
             <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
             <div class="fuelset">
               <label class="fcol1"><span class="fkeytxt">capacity</span> <input id="fcap" type="number" step="1"> L</label>
@@ -445,7 +509,7 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
-          <div class="reelpanel"><iframe id="boardframe" src="tyre.html?v=20260730d" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260730d" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg"></svg></div>
@@ -613,7 +677,7 @@ function applyCarFuelSettings(car){
 // tyre state (read-only) instead of the live per-car blob.
 function postTyreCar(car){
   if(window.archiveOverlay&&typeof window.pushTyreArchive==='function'){window.pushTyreArchive(car);return;}
-  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(car||''),live:(window.dataMode==='LIVE')},'*');}catch(e){}}
+  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(car||''),live:(window.dataMode==='LIVE'),ro:(typeof canAccess==='function'?!canAccess(car):true)},'*');}catch(e){}}
 // Per-lap fuel notes only leave the browser while LIVE is on (SIM is just a
 // local CSV replay, nothing worth syncing) — debounced so a full sentence
 // isn't one write per keystroke.
@@ -1818,7 +1882,7 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
       if(_lg){_lap=_lg[0];const _bx=BX[selCar]||{};_sec=5;for(let s=1;s<=5;s++){const tc=_bx[(_lap-1)*5+s];if(tc==null||tc>T){_sec=s;break;}}
         const _ps=(DB.pits&&DB.pits[selCar])||[];for(const pl of _ps){if(pl<=_lap)_pit=pl;}}}
     const _spd=parseFloat((document.getElementById('speed')||{}).value||'1');
-    _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE')},'*');}}}catch(e){}
+    _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:(typeof canAccess==='function'?!canAccess(selCar):true)},'*');}}}catch(e){}
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const selPit=slg?null:pitInfo(selCar,T);
@@ -1883,8 +1947,9 @@ function loop(ts){if(!playing)return;if(!last)last=ts;let dt=(ts-last)/1000;last
   if(playing)requestAnimationFrame(loop);}
 document.getElementById('play').onclick=e=>{playing=!playing;if(playing){if(T>=DB.tmax)T=DB.tmin;last=0;e.target.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}else e.target.innerHTML='&#9654; Play';};
 scrub.oninput=e=>{T=parseFloat(e.target.value);render();};lbls.onchange=render;
-document.getElementById('delaythr').oninput=e=>{thr=Math.max(0,parseFloat(e.target.value||'0'))/100;render();savePrefs();};
-document.getElementById('pacethr').oninput=e=>{paceThr=Math.max(0,parseFloat(e.target.value||'0'));render();savePrefs();};
+// Delay % / Pace Δ inputs removed from the UI; thr/paceThr keep their defaults.
+(function(){const d=document.getElementById('delaythr');if(d)d.oninput=e=>{thr=Math.max(0,parseFloat(e.target.value||'0'))/100;render();savePrefs();};
+const p=document.getElementById('pacethr');if(p)p.oninput=e=>{paceThr=Math.max(0,parseFloat(e.target.value||'0'));render();savePrefs();};})();
 document.getElementById('speed').onchange=()=>{savePrefs();try{if(typeof renderMessages==='function')renderMessages();}catch(e){}};
 /* iPhone crash guard. The page shrinks the 1722px design to fit via
    transform:scale; pinch-zooming it forces iOS Safari to re-rasterize that whole
@@ -1969,7 +2034,7 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
 
 /* dropdown */
 const sel=document.getElementById('carsel');
-sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();};
+sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
 // keep the tyre board's car in sync once the iframe has loaded / on first paint
 (function(){const bf=document.getElementById('boardframe');if(bf)bf.addEventListener('load',()=>postTyreCar(selCar));})();
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
@@ -2412,10 +2477,10 @@ function buildClass(cls){
   if(!DB.cars.some(c=>String(c)===String(selCar)))selCar=DB.cars[0]||'';
   sel.value=selCar;miniEvents=selCar?computeEvents(selCar):[];
   if(!(T>=DB.tmin&&T<=DB.tmax))T=DB.tmin;scrub.value=T;}
-function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:document.getElementById('delaythr').value,pace:document.getElementById('pacethr').value,speed:document.getElementById('speed').value,car:selCar,cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:String(thr*100),pace:String(paceThr),speed:document.getElementById('speed').value,car:selCar,cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
-if(PREFS.delay!=null){document.getElementById('delaythr').value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
-if(PREFS.pace!=null){document.getElementById('pacethr').value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
+if(PREFS.delay!=null){const _d=document.getElementById('delaythr');if(_d)_d.value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
+if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
 if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='30';}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
@@ -2426,7 +2491,7 @@ Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.v
    them — the maincol/rightcol ResizeObserver never fires because rightcol is
    pinned to the old height, so .maincol's stretched flex size doesn't change.
    fitPage does the reset AND the grow in one pass. */
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();};
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
@@ -3698,4 +3763,131 @@ applyWxReel(false);
     <table class="mstand"><tbody id="m_stand"></tbody></table>
   </div>
 </div>
+<script>
+/* ================= LOGIN / per-car access gate =================
+   Client-side gate (deterrence, not hard security — see PROTECTION-PLAN.md).
+   DEMO  = guest: no tyres / fuel / notes for any car.
+   TEAM  = signed in on ONE car: tyres / fuel / notes are viewable AND editable
+           only while THAT car is selected. Other cars stay locked. */
+(function(){
+  // Starter passwords (per car). Extend this map as more cars are added.
+  const TEAM_PASSWORDS={'665':'stint9_665','670':'stint9_670','680':'stint9_680'};
+
+  window.AUTH={mode:'demo',car:null};
+  function loadAuth(){try{const a=JSON.parse(localStorage.getItem('stint9_auth')||'null');
+    if(a&&a.mode==='team'&&a.car!=null&&TEAM_PASSWORDS[String(a.car)])return {mode:'team',car:String(a.car)};}catch(e){}
+    return {mode:'demo',car:null};}
+  function saveAuth(){try{localStorage.setItem('stint9_auth',JSON.stringify(window.AUTH));}catch(e){}}
+  window.canAccess=function(car){return window.AUTH.mode==='team'&&window.AUTH.car!=null&&String(window.AUTH.car)===String(car);};
+
+  const badge=document.getElementById('authbadge'),loginBtnEl=document.getElementById('loginBtn');
+  function updateBadge(){
+    if(window.AUTH.mode==='team'){
+      if(badge){badge.textContent='TEAM';badge.classList.add('team');}
+      if(loginBtnEl){loginBtnEl.textContent='#'+window.AUTH.car;loginBtnEl.classList.add('team');loginBtnEl.title='Signed in on #'+window.AUTH.car+' — click to switch car / sign out';}
+    }else{
+      if(badge){badge.textContent='DEMO';badge.classList.remove('team');}
+      if(loginBtnEl){loginBtnEl.textContent='LOGIN';loginBtnEl.classList.remove('team');loginBtnEl.title='Sign in as a team';}
+    }}
+
+  window.applyAuthGate=function(){
+    const ok=window.canAccess(typeof selCar!=='undefined'?selCar:null);
+    document.body.classList.toggle('locked-private',!ok);
+    ['fcap','fstart','fcons','fform'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!ok;});
+    updateBadge();
+    // refresh the tyre iframe's read-only flag for the current car
+    try{if(typeof postTyreCar==='function')postTyreCar(typeof selCar!=='undefined'?selCar:'');}catch(e){}
+  };
+
+  // ---- modal ----
+  const modal=document.getElementById('loginModal');
+  const optDemo=document.getElementById('optDemo'),optTeam=document.getElementById('optTeam');
+  const teamFields=document.getElementById('teamFields');
+  const clsSelL=document.getElementById('loginClass'),carSelL=document.getElementById('loginCar');
+  const passInp=document.getElementById('loginPass'),errEl=document.getElementById('loginErr');
+  const goBtn=document.getElementById('loginGo');
+  let pick='demo';
+
+  function classForCar(car){try{return Object.keys(DB.classes).find(c=>DB.classes[c].map(String).indexOf(String(car))>=0);}catch(e){return null;}}
+  function fillLoginClasses(){if(!clsSelL||typeof DB==='undefined')return;clsSelL.innerHTML='';
+    Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSelL.appendChild(o);});
+    fillLoginCars();}
+  function fillLoginCars(){if(!carSelL||typeof DB==='undefined')return;
+    const cls=clsSelL.value,cars=(DB.classes[cls]||[]);
+    carSelL.innerHTML='<option value="">— select a car —</option>';
+    cars.forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');carSelL.appendChild(o);});
+    if(typeof updateGoLabel==='function')updateGoLabel();}
+  if(clsSelL)clsSelL.onchange=fillLoginCars;
+
+  // "Log off" when the current team session matches the picked car and no new
+  // password has been typed; otherwise it's a fresh "Sign in".
+  function isLogoff(){return window.AUTH.mode==='team'&&pick==='team'&&String(window.AUTH.car)===String(carSelL.value)&&passInp.value==='';}
+  function updateGoLabel(){if(pick==='team')goBtn.textContent=isLogoff()?'Log off':'Sign in';}
+  function setPick(m){pick=m;
+    optDemo.classList.toggle('sel',m==='demo');optTeam.classList.toggle('sel',m==='team');
+    teamFields.classList.toggle('on',m==='team');
+    goBtn.style.display=m==='team'?'':'none';   // DEMO enters straight from its card — no button
+    updateGoLabel();
+    errEl.classList.remove('on');}
+  function enterDemo(){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();}
+  optDemo.onclick=enterDemo;   // DEMO = "enter as guest" in one click
+  optTeam.onclick=()=>{setPick('team');setTimeout(()=>{try{(carSelL.value?passInp:carSelL).focus();}catch(e){}},30);};
+  carSelL.addEventListener('change',updateGoLabel);
+  passInp.addEventListener('input',updateGoLabel);
+
+  // show/hide password (eyelid icon)
+  const EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYEOFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const pwToggle=document.getElementById('pwToggle');
+  function setPwVisible(v){passInp.type=v?'text':'password';pwToggle.innerHTML=v?EYEOFF:EYE;pwToggle.title=v?'Hide password':'Show password';pwToggle.setAttribute('aria-label',pwToggle.title);}
+  setPwVisible(false);
+  pwToggle.onclick=()=>{setPwVisible(passInp.type==='password');passInp.focus();};
+
+  function openModal(preselect){errEl.classList.remove('on');passInp.value='';if(typeof setPwVisible==='function')setPwVisible(false);
+    fillLoginClasses();
+    if(window.AUTH.mode==='team'){const c=classForCar(window.AUTH.car);if(c){clsSelL.value=c;fillLoginCars();}carSelL.value=window.AUTH.car||'';}
+    setPick(preselect|| (window.AUTH.mode==='team'?'team':'demo'));
+    modal.classList.add('on');}
+  function closeModal(){modal.classList.remove('on');}
+  window.openLogin=openModal;
+
+  // Move the dashboard onto the team's car after a successful sign-in.
+  function selectDashboardCar(car){try{
+    const cls=classForCar(car),dc=document.getElementById('classsel'),dcar=document.getElementById('carsel');
+    if(cls&&dc&&dc.value!==cls){dc.value=cls;if(typeof dc.onchange==='function')dc.onchange({target:dc});}
+    if(dcar){dcar.value=String(car);if(typeof dcar.onchange==='function')dcar.onchange({target:dcar});}
+  }catch(e){}}
+
+  goBtn.onclick=()=>{
+    if(pick==='demo'){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();return;}
+    // already signed in on this car, nothing retyped → log off
+    if(isLogoff()){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();return;}
+    const car=carSelL.value;
+    if(!car){errEl.textContent='select a car';errEl.classList.add('on');return;}
+    if(TEAM_PASSWORDS[String(car)]&&passInp.value===TEAM_PASSWORDS[String(car)]){
+      window.AUTH={mode:'team',car:String(car)};saveAuth();closeModal();
+      selectDashboardCar(car);window.applyAuthGate();
+    }else{
+      // wrong password → message, then continue in DEMO mode
+      errEl.textContent='wrong password';errEl.classList.add('on');
+      window.AUTH={mode:'demo',car:null};saveAuth();window.applyAuthGate();
+      setTimeout(()=>{if(modal.classList.contains('on'))closeModal();},1500);
+    }
+  };
+  passInp.addEventListener('keydown',e=>{if(e.key==='Enter')goBtn.click();});
+
+  document.getElementById('loginBtn').onclick=()=>openModal();
+  document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openModal('team')));
+  // close without changing anything (keeps the current mode — DEMO by default)
+  document.getElementById('loginClose').onclick=closeModal;
+  modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('on'))closeModal();});
+
+  // ---- boot ----
+  window.AUTH=loadAuth();
+  window.applyAuthGate();
+  // Greet with the login window on open, unless a valid team session is stored.
+  if(window.AUTH.mode!=='team')openModal();
+})();
+</script>
 </body></html>

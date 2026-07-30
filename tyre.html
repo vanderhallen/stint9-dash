@@ -1037,7 +1037,7 @@ window.addEventListener('keydown',e=>{
 // forwards a Left/Right press to us
 window.addEventListener('message',e=>{const d=e.data;if(!d)return;
   if(d.type==='tyreArchive'){ARCHIVE_RO=true;CUR_CAR=String(d.car||'');applyTyreState(d.state||TYRE_DEFAULTS);return;}
-  if(d.type==='tyreCar'){ARCHIVE_RO=false;LIVE_MODE=!!d.live;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){LIVE_MODE=!!d.live;if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
+  if(d.type==='tyreCar'){ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.ro!=null)ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
