@@ -75,6 +75,7 @@
   table.rr th.l,table.rr td.l{text-align:left}
   table.rr td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
   table.rr td.strong{font-weight:700}
+  table.rr td.ell{max-width:150px;overflow:hidden;text-overflow:ellipsis}
   table.hm .cell.clk{cursor:pointer}
   table.hm .cell.clk:hover{outline:2px solid var(--ink);outline-offset:-2px}
   /* bucket driver list */
@@ -362,15 +363,15 @@ function openDriver(key){
   var tbl=document.getElementById('mRaces');
   tbl.innerHTML='<thead><tr><th class="l">Race</th><th class="l">Class</th><th>Car#</th><th class="l">Car</th><th class="l">Team</th><th>Overall</th><th>Class</th><th>Laps</th><th>Best lap</th><th>Pts</th></tr></thead><tbody>'+
     rows.map(function(r){
-      var st=r.pos_overall==null?'<span style="color:var(--muted)">'+esc((r.status||'dnf').toUpperCase())+'</span>':r.pos_overall;
+      var st=r.pos_overall==null?'<span style="color:var(--muted)">'+esc((r.status||'dnf').toUpperCase())+'</span>':'P'+r.pos_overall;
       return '<tr>'+
         '<td class="l">'+esc(raceLabel(r.event_date))+'</td>'+
         '<td class="l">'+esc(r.class_full||r.class||'')+'</td>'+
         '<td>'+esc(r.car_no)+'</td>'+
-        '<td class="l">'+esc(r.car_model||'')+'</td>'+
-        '<td class="l">'+esc(r.team||'—')+'</td>'+
+        '<td class="l ell" title="'+esc(r.car_model||'')+'">'+esc(r.car_model||'')+'</td>'+
+        '<td class="l ell" title="'+esc(r.team||'')+'">'+esc(r.team||'—')+'</td>'+
         '<td class="strong">'+st+'</td>'+
-        '<td>'+(r.pos_class!=null?r.pos_class:'—')+'</td>'+
+        '<td>'+(r.pos_class!=null?'P'+r.pos_class:'—')+'</td>'+
         '<td>'+(r.laps!=null?r.laps:'—')+'</td>'+
         '<td>'+lap(r.best_lap_ms)+'</td>'+
         '<td>'+pts(r.pos_class)+'</td>'+
