@@ -116,6 +116,7 @@
         <select id="sort">
           <option value="name">Name (A–Z)</option>
           <option value="nationality">Nationality</option>
+          <option value="lastCar">Last car #</option>
           <option value="races">Races</option>
           <option value="points">Points in class</option>
           <option value="podiums">Podiums</option>
@@ -228,17 +229,21 @@ function aggregate(){
   };});
 }
 
+// tie-break: more points first, then name — so equal rows never bury a
+// higher-scoring driver below a lower-scoring one (alphabetical would).
+function tie(a,b){ return (b.points-a.points) || a.name.localeCompare(b.name); }
 function cmp(a,b){
   var s=state.sort,mul=state.dir==='asc'?1:-1;
   if(s==='name') return a.name.localeCompare(b.name)*mul;
-  if(s==='nationality'){ var an=a.nat||'zz',bn=b.nat||'zz'; return an===bn?a.name.localeCompare(b.name):an.localeCompare(bn)*mul; }
+  if(s==='nationality'){ var an=a.nat||'zz',bn=b.nat||'zz'; return an===bn?tie(a,b):an.localeCompare(bn)*mul; }
   var av,bv;
   if(s==='bestClass'||s==='bestOverall'||s==='bestLap'){ // smaller = better; null last regardless of dir
     av=a[s], bv=b[s];
-    if(av==null&&bv==null) return 0; if(av==null) return 1; if(bv==null) return -1;
+    if(av==null&&bv==null) return tie(a,b); if(av==null) return 1; if(bv==null) return -1;
+    if(av===bv) return tie(a,b);
     return (av-bv)*mul;
   }
-  av=a[s]||0; bv=b[s]||0; if(av===bv) return a.name.localeCompare(b.name); return (av-bv)*mul;
+  av=a[s]||0; bv=b[s]||0; if(av===bv) return tie(a,b); return (av-bv)*mul;
 }
 
 var COLS=[
@@ -449,6 +454,7 @@ function load(){
 }
 
 // wire controls
+document.getElementById('sort').value=state.sort; // keep the dropdown in sync with the initial sort
 document.getElementById('scope').onchange=function(){ state.scope=this.value; render(); };
 document.getElementById('sort').onchange=function(){ state.sort=this.value; render(); };
 document.getElementById('q').oninput=function(){ state.q=this.value; render(); };
