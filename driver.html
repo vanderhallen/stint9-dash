@@ -51,6 +51,29 @@
   .note b{color:var(--ink)}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;letter-spacing:1px;padding:11px 18px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none}
   .toast.show{opacity:1}
+  td.nm{cursor:pointer}
+  td.nm:hover{text-decoration:underline}
+  /* driver modal */
+  #modal{position:fixed;inset:0;background:rgba(16,22,29,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:36px 16px;overflow:auto}
+  #modal.show{display:flex}
+  #modal .box{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:860px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+  #modal .mhead{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border)}
+  #modal .mhead .dnm{font-size:20px;font-weight:700;letter-spacing:1px}
+  #modal .mhead .dflag{font-size:26px;line-height:1.1}
+  #modal .mhead .dsub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:3px}
+  #modal .x{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 6px}
+  #modal .x:hover{color:var(--ink)}
+  #modal .mbody{padding:18px 22px 24px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .chip{background:#eef1f4;border-radius:8px;padding:8px 12px;min-width:78px}
+  .chip .cv{font-size:17px;font-weight:700;letter-spacing:.5px}
+  .chip .cl{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .mbody h3{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  table.rr{width:100%;border-collapse:collapse;font-size:12px}
+  table.rr th{text-align:right;color:var(--muted);font-weight:700;letter-spacing:.5px;padding:6px 8px;border-bottom:2px solid var(--border);text-transform:uppercase;font-size:10px;white-space:nowrap}
+  table.rr th.l,table.rr td.l{text-align:left}
+  table.rr td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+  table.rr td.strong{font-weight:700}
 </style>
 </head>
 <body>
@@ -117,6 +140,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<div id="modal"><div class="box">
+  <div class="mhead">
+    <div class="dflag" id="mFlag"></div>
+    <div>
+      <div class="dnm" id="mName"></div>
+      <div class="dsub" id="mSub"></div>
+    </div>
+    <button class="x" id="mClose" title="close (Esc)">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="chips" id="mChips"></div>
+    <h3>Race by race</h3>
+    <div class="tscroll"><table class="rr" id="mRaces"></table></div>
+  </div>
+</div></div>
+
 <script>
 var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
 var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
@@ -127,6 +166,7 @@ var POINTS=[0,25,18,15,12,10,8,6,4,2,1];
 function pts(posClass){ if(!posClass) return 0; return posClass<POINTS.length?POINTS[posClass]:0; }
 
 var RESULTS=[];              // raw rows from stint9_nls_results
+var RACES={};                // event_date -> {title, round_no, series}
 var state={scope:'__all__',sort:'races',dir:'desc',q:''};
 
 function flag(cc){ if(!cc||cc.length!==2) return ''; try{return String.fromCodePoint.apply(null,[].map.call(cc.toUpperCase(),function(c){return 0x1F1E6+c.charCodeAt(0)-65;}));}catch(e){return '';} }
@@ -208,7 +248,7 @@ function render(){
     return '<tr>'+
       '<td class="l rk">'+(i+1)+'</td>'+
       '<td class="l" title="'+esc(d.nat||'')+'">'+flag(d.nat)+' <span class="dim">'+esc(d.nat||'')+'</span></td>'+
-      '<td class="l nm">'+esc(d.name)+'</td>'+
+      '<td class="l nm" data-key="'+esc(d.key)+'">'+esc(d.name)+'</td>'+
       '<td>'+d.races+'</td>'+
       '<td>'+d.points+'</td>'+
       '<td>'+d.podiums+'</td>'+
@@ -261,8 +301,66 @@ function loadMeta(){
     }).catch(function(){});
 }
 
+// ---- driver detail modal ----
+function raceLabel(dt){ var r=RACES[dt]; if(!r) return dt; return dt+(r.round_no?(' · NLS'+r.round_no):'')+(r.series&&r.series!=='NLS'?(' · '+r.series):''); }
+function openDriver(key){
+  var rows=RESULTS.filter(function(r){return r.driver_key===key;})
+    .sort(function(a,b){return a.event_date<b.event_date?-1:a.event_date>b.event_date?1:0;});
+  if(!rows.length) return;
+  var name=rows[rows.length-1].driver_name, nat=null;
+  rows.forEach(function(r){if(r.nationality)nat=r.nationality;});
+  var events={},cars={},teams={},points=0,bestO=null,bestC=null,bestL=null,podO={},podC={};
+  rows.forEach(function(r){
+    events[r.event_date]=1; if(r.car_model)cars[r.car_model]=1; if(r.team)teams[r.team]=1;
+    if(r.pos_overall!=null){ if(bestO==null||r.pos_overall<bestO)bestO=r.pos_overall; if(r.pos_overall<=3)podO[r.event_date]=1; }
+    if(r.pos_class!=null){ if(bestC==null||r.pos_class<bestC)bestC=r.pos_class; if(r.pos_class<=3)podC[r.event_date]=1; points+=pts(r.pos_class); }
+    if(r.best_lap_ms!=null){ if(bestL==null||r.best_lap_ms<bestL)bestL=r.best_lap_ms; }
+  });
+  document.getElementById('mFlag').textContent=flag(nat);
+  document.getElementById('mName').textContent=name;
+  document.getElementById('mSub').textContent=(nat?nat+' · ':'')+Object.keys(events).length+' race'+(Object.keys(events).length!==1?'s':'')+' in 2026';
+  var chips=[
+    ['Races',Object.keys(events).length],
+    ['Pts in class',points],
+    ['Best overall',bestO!=null?'P'+bestO:'—'],
+    ['Best in class',bestC!=null?'P'+bestC:'—'],
+    ['Podiums (o/c)',Object.keys(podO).length+' / '+Object.keys(podC).length],
+    ['Best lap',lap(bestL)],
+    ['Cars',Object.keys(cars).length],
+    ['Teams',Object.keys(teams).length]
+  ];
+  document.getElementById('mChips').innerHTML=chips.map(function(c){return '<div class="chip"><div class="cv">'+esc(c[1])+'</div><div class="cl">'+esc(c[0])+'</div></div>';}).join('');
+  var tbl=document.getElementById('mRaces');
+  tbl.innerHTML='<thead><tr><th class="l">Race</th><th class="l">Class</th><th>Car#</th><th class="l">Car</th><th class="l">Team</th><th>Overall</th><th>Class</th><th>Laps</th><th>Best lap</th><th>Pts</th></tr></thead><tbody>'+
+    rows.map(function(r){
+      var st=r.pos_overall==null?'<span style="color:var(--muted)">'+esc((r.status||'dnf').toUpperCase())+'</span>':r.pos_overall;
+      return '<tr>'+
+        '<td class="l">'+esc(raceLabel(r.event_date))+'</td>'+
+        '<td class="l">'+esc(r.class_full||r.class||'')+'</td>'+
+        '<td>'+esc(r.car_no)+'</td>'+
+        '<td class="l">'+esc(r.car_model||'')+'</td>'+
+        '<td class="l">'+esc(r.team||'—')+'</td>'+
+        '<td class="strong">'+st+'</td>'+
+        '<td>'+(r.pos_class!=null?r.pos_class:'—')+'</td>'+
+        '<td>'+(r.laps!=null?r.laps:'—')+'</td>'+
+        '<td>'+lap(r.best_lap_ms)+'</td>'+
+        '<td>'+pts(r.pos_class)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody>';
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+document.querySelector('#tbl tbody').addEventListener('click',function(e){
+  var td=e.target.closest('td.nm'); if(td&&td.dataset.key) openDriver(td.dataset.key);
+});
+document.getElementById('mClose').onclick=closeModal;
+document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
+
 function load(){
-  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,best_lap_ms&limit=20000',{headers:H})
+  fetch(SB+'/rest/v1/stint9_nls_races?select=event_date,round_no,title,series',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){ (Array.isArray(j)?j:[]).forEach(function(r){RACES[r.event_date]=r;}); }).catch(function(){});
+  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,status&limit=20000',{headers:H})
     .then(function(r){return r.json();}).then(function(j){
       RESULTS=Array.isArray(j)?j:[];
       buildScope(); render(); loadMeta();
