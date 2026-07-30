@@ -172,7 +172,7 @@
       <div class="zone">
         <span class="zlabel">Front end · GitHub Pages</span>
         <div class="card" data-sys="fe"><span class="tag">index.html</span><h4>The dashboard</h4><p>Map, leaderboard, fuel, positions. Static, ~840 KB, no build step.</p></div>
-        <div class="card" data-sys="fe"><span class="tag">test2.html · iframe</span><h4>Tyre board</h4><p>Self-contained sub-app, talks to the dashboard by postMessage.</p></div>
+        <div class="card" data-sys="fe"><span class="tag">tyre.html · iframe</span><h4>Tyre board</h4><p>Self-contained sub-app, talks to the dashboard by postMessage.</p></div>
       </div>
       <div class="zone">
         <span class="zlabel">Backend · Supabase</span>
@@ -300,7 +300,7 @@
   <!-- 6 · TYRE BOARD -->
   <section>
     <div class="sec-head"><span class="sec-num">06</span><h2>The tyre board is its own app</h2><span class="sec-note">iframe · postMessage</span></div>
-    <p class="lead"><span class="mono k">test2.html</span> runs in an iframe so its ~260 variables and styling can't collide with the dashboard's. They speak over a three-message channel.</p>
+    <p class="lead"><span class="mono k">tyre.html</span> runs in an iframe so its ~260 variables and styling can't collide with the dashboard's. They speak over a three-message channel.</p>
     <div class="two">
       <div class="card" data-sys="fe">
         <span class="tag">dashboard → board</span>

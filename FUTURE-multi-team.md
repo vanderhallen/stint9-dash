@@ -13,7 +13,7 @@ of truth, so a teammate on another device sees the same data):
   stored per-car under `state.set` in the same row, applied when a car is
   selected. Two teams with different tank sizes no longer clash.
 - **Per-lap notes** — `stint9_fuel_notes (event_date, car, lap)`.
-- **Tyre board** (TYRE reel, `test2.html`) — the WHOLE board as one JSON blob per
+- **Tyre board** (TYRE reel, `tyre.html`) — the WHOLE board as one JSON blob per
   car in `stint9_tyre_state (car)`: stock inventory (serials/km/cycles), stock &
   stint moves, empty bands, and board-band highlights. The dashboard sends the
   selected car to the iframe (`postMessage 'tyreCar'`); on car change the board

@@ -445,7 +445,7 @@
             <div id="fnotify" class="fnotify" style="display:none">&#9981; request fuel update?</div>
             <div id="fuellog" class="fuellog"></div>
           </div></div>
-          <div class="reelpanel"><iframe id="boardframe" src="test2.html?v=20260730a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel"><iframe id="boardframe" src="tyre.html?v=20260730a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg"></svg></div>
@@ -471,7 +471,7 @@
       </div>
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
         <div class="reelthumb" data-i="0" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
-        <div class="reelthumb" data-i="1" title="Tyre — ISO board (test2.html)"><span class="thumbcap">TYRE</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="8" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="8" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="43" y="22" width="14" height="28" rx="6" fill="none" stroke="#9aa1a9" stroke-width="3"/></svg></div>
+        <div class="reelthumb" data-i="1" title="Tyre — ISO board (tyre.html)"><span class="thumbcap">TYRE</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="8" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="8" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="43" y="22" width="14" height="28" rx="6" fill="none" stroke="#9aa1a9" stroke-width="3"/></svg></div>
         <div class="reelthumb active" data-i="2" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="3" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="4" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
@@ -2031,7 +2031,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     else if(cur.querySelector&&cur.querySelector('#wxview')){e.preventDefault();setWxReel(wxReelIdx+step);}
   });
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
-/* BOARD reel: scale the embedded test2.html board (logical ~1340x700) to fit
+/* BOARD reel: scale the embedded tyre.html board (logical ~1340x700) to fit
    its reel panel, re-fitting whenever the panel resizes (incl. on zoom). */
 (function initBoardFrame(){
   const f=document.getElementById('boardframe');if(!f)return;
@@ -3524,7 +3524,7 @@ applyWxReel(false);
    so archived replay renders through identical code. overlay=1 also
    applies the crew layer — fuel calculator/entries, per-lap notes,
    race notes, and the per-car tyre board (pushed read-only to the
-   test2.html iframe so a replay never overwrites the live board).
+   tyre.html iframe so a replay never overwrites the live board).
    ============================================================ */
 (function initArchiveEvent(){
   var params=new URLSearchParams(location.search);
