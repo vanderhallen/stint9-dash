@@ -119,7 +119,8 @@
           <option value="races">Races</option>
           <option value="points">Points in class</option>
           <option value="podiums">Podiums</option>
-          <option value="bestFinish">Best finish (overall)</option>
+          <option value="bestClass">Best finish in class</option>
+          <option value="bestOverall">Best finish overall</option>
           <option value="bestLap">Best lap (car, overall)</option>
           <option value="cars">Different cars</option>
           <option value="teams">Different teams</option>
@@ -219,6 +220,8 @@ function aggregate(){
     points:d.points,
     podiums: overall?Object.keys(d.podO).length:Object.keys(d.podC).length,
     bestFinish: overall?d.bestOverall:d.bestClass,
+    bestClass:d.bestClass,
+    bestOverall:d.bestOverall,
     bestLap:d.bestLap,
     cars:Object.keys(d.cars).length,
     teams:Object.keys(d.teams).length
@@ -230,7 +233,7 @@ function cmp(a,b){
   if(s==='name') return a.name.localeCompare(b.name)*mul;
   if(s==='nationality'){ var an=a.nat||'zz',bn=b.nat||'zz'; return an===bn?a.name.localeCompare(b.name):an.localeCompare(bn)*mul; }
   var av,bv;
-  if(s==='bestFinish'||s==='bestLap'){ // smaller = better; null last regardless of dir
+  if(s==='bestClass'||s==='bestOverall'||s==='bestLap'){ // smaller = better; null last regardless of dir
     av=a[s], bv=b[s];
     if(av==null&&bv==null) return 0; if(av==null) return 1; if(bv==null) return -1;
     return (av-bv)*mul;
@@ -245,12 +248,13 @@ var COLS=[
   {k:'races',l:'Races'},
   {k:'points',l:'Pts (cls)'},
   {k:'podiums',l:'Podiums'},
-  {k:'bestFinish',l:'Best fin.'},
+  {k:'bestClass',l:'Best cls'},
+  {k:'bestOverall',l:'Best o/a'},
   {k:'bestLap',l:'Best lap*'},
   {k:'cars',l:'Cars'},
   {k:'teams',l:'Teams'}
 ];
-var SORTKEY={nat:'nationality',name:'name',lastCar:'lastCar',races:'races',points:'points',podiums:'podiums',bestFinish:'bestFinish',bestLap:'bestLap',cars:'cars',teams:'teams'};
+var SORTKEY={nat:'nationality',name:'name',lastCar:'lastCar',races:'races',points:'points',podiums:'podiums',bestClass:'bestClass',bestOverall:'bestOverall',bestLap:'bestLap',cars:'cars',teams:'teams'};
 
 function render(){
   var data=aggregate();
@@ -266,8 +270,8 @@ function render(){
     return '<th class="'+(c.cls||'')+active+'" data-k="'+c.k+'">'+c.l+'</th>';
   }).join('')+'</tr>';
   if(!data.length){ tbody.innerHTML='<tr><td class="empty" colspan="'+(COLS.length+1)+'">No drivers for this class yet.</td></tr>'; drawHeat(); return; }
+  function fin(pos){ if(pos==null) return '—'; var m=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':''; return 'P'+pos+(m?' '+m:''); }
   tbody.innerHTML=data.map(function(d,i){
-    var medal=d.bestFinish===1?'🥇':d.bestFinish===2?'🥈':d.bestFinish===3?'🥉':'';
     return '<tr>'+
       '<td class="l rk">'+(i+1)+'</td>'+
       '<td class="l" title="'+esc(d.nat||'')+'">'+flag(d.nat)+' <span class="dim">'+esc(d.nat||'')+'</span></td>'+
@@ -276,7 +280,8 @@ function render(){
       '<td>'+d.races+'</td>'+
       '<td>'+d.points+'</td>'+
       '<td>'+d.podiums+'</td>'+
-      '<td>'+(d.bestFinish!=null?d.bestFinish+' '+medal:'—')+'</td>'+
+      '<td>'+fin(d.bestClass)+'</td>'+
+      '<td>'+fin(d.bestOverall)+'</td>'+
       '<td>'+lap(d.bestLap)+'</td>'+
       '<td>'+d.cars+'</td>'+
       '<td>'+d.teams+'</td>'+
@@ -452,7 +457,7 @@ document.querySelector('#tbl thead').addEventListener('click',function(e){
   var th=e.target.closest('th'); if(!th||!th.dataset.k) return;
   var k=SORTKEY[th.dataset.k]; if(!k) return;
   if(state.sort===k) state.dir=state.dir==='asc'?'desc':'asc';
-  else { state.sort=k; state.dir=(k==='name'||k==='nationality'||k==='bestFinish'||k==='bestLap')?'asc':'desc'; }
+  else { state.sort=k; state.dir=(k==='name'||k==='nationality'||k==='bestClass'||k==='bestOverall'||k==='bestLap')?'asc':'desc'; }
   document.getElementById('sort').value=k; document.getElementById('dir').textContent=state.dir==='asc'?'▲ asc':'▼ desc';
   render();
 });
