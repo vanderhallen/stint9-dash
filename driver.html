@@ -301,7 +301,8 @@ function drawHeat(data){
   rs.forEach(function(r){cs.forEach(function(c){ if(bucket[r+'|'+c]) prods.push(r*c); });});
   var min=prods.length?Math.min.apply(null,prods):0, max=prods.length?Math.max.apply(null,prods):0;
   document.getElementById('heatRange').textContent='product '+min+'–'+max;
-  function col(v){ var t=max>min?Math.sqrt((v-min)/(max-min)):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',68%,'+(v===0?70:44)+'%)'; }
+  // t=0 -> pure green (hue 120), t=1 -> pure red (hue 0), matching the legend.
+  function col(v){ var t=max>min?Math.sqrt((v-min)/(max-min)):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',70%,45%)'; }
   var html='<table class="hm"><thead><tr><th class="corner">races ↓ / points →</th>'+
     cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rs.forEach(function(r){
