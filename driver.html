@@ -310,7 +310,7 @@ function drawHeat(data){
   rs.forEach(function(r){
     html+='<tr><td class="rowlab">'+r+'</td>'+cs.map(function(c){
       var v=r*c, n=bucket[r+'|'+c]||0;
-      return '<td><div class="cell'+(n?' clk':' none')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+(n?col(v):'transparent')+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):' · no drivers')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
+      return '<td><div class="cell'+(n?' clk':' none')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+(n?col(v):'transparent')+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):' · no drivers')+'">'+(n?v+'<span class="cnt">'+n+'</span>':'')+'</div></td>';
     }).join('')+'</tr>';
   });
   html+='</tbody></table>';
