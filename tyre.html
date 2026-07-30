@@ -391,9 +391,14 @@ const _tyreSaveT={};
 // ARCHIVE_RO: when the dashboard is replaying an archived event with overlay on,
 // tyre state is pushed in read-only — never save it back over the live board.
 let ARCHIVE_RO=false;
-function scheduleTyreSave(){if(ARCHIVE_RO||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
+// LIVE_MODE: only a real (LIVE) race persists the board to Supabase. SIM is a
+// replay — its wear ticks up on screen but must never write to the shared DB
+// (otherwise scrubbing a replay re-seeds every car). The dashboard tells us the
+// mode via the tyreCar / tyreLive messages, mirroring fuel's LIVE-only sync.
+let LIVE_MODE=false;
+function scheduleTyreSave(){if(ARCHIVE_RO||!LIVE_MODE||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
 function flushTyreSave(){
-  clearTimeout(_tyreSaveT.t);if(ARCHIVE_RO||!CUR_CAR)return;
+  clearTimeout(_tyreSaveT.t);if(ARCHIVE_RO||!LIVE_MODE||!CUR_CAR)return;
   fetch(SB_URL+'/rest/v1/stint9_tyre_state?on_conflict=car',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({car:CUR_CAR,state:collectTyreState(),updated_at:new Date().toISOString()})}).catch(()=>{});
 }
@@ -1022,7 +1027,7 @@ window.addEventListener('keydown',e=>{
 // forwards a Left/Right press to us
 window.addEventListener('message',e=>{const d=e.data;if(!d)return;
   if(d.type==='tyreArchive'){ARCHIVE_RO=true;CUR_CAR=String(d.car||'');applyTyreState(d.state||TYRE_DEFAULTS);return;}
-  if(d.type==='tyreCar'){ARCHIVE_RO=false;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
+  if(d.type==='tyreCar'){ARCHIVE_RO=false;LIVE_MODE=!!d.live;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){LIVE_MODE=!!d.live;if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
