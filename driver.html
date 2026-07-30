@@ -54,16 +54,16 @@
   td.nm{cursor:pointer}
   td.nm:hover{text-decoration:underline}
   /* driver modal */
-  #modal{position:fixed;inset:0;background:rgba(16,22,29,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:36px 16px;overflow:auto}
-  #modal.show{display:flex}
-  #modal .box{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:860px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
-  #modal .mhead{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border)}
-  #modal .mhead .dnm{font-size:20px;font-weight:700;letter-spacing:1px}
-  #modal .mhead .dflag{font-size:26px;line-height:1.1}
-  #modal .mhead .dsub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:3px}
-  #modal .x{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 6px}
-  #modal .x:hover{color:var(--ink)}
-  #modal .mbody{padding:18px 22px 24px}
+  .ovl{position:fixed;inset:0;background:rgba(16,22,29,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:36px 16px;overflow:auto}
+  .ovl.show{display:flex}
+  .ovl .box{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:860px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+  .ovl .mhead{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border)}
+  .ovl .mhead .dnm{font-size:20px;font-weight:700;letter-spacing:1px}
+  .ovl .mhead .dflag{font-size:26px;line-height:1.1}
+  .ovl .mhead .dsub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:3px}
+  .ovl .x{margin-left:auto;background:none;border:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 6px}
+  .ovl .x:hover{color:var(--ink)}
+  .ovl .mbody{padding:18px 22px 24px}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
   .chip{background:#eef1f4;border-radius:8px;padding:8px 12px;min-width:78px}
   .chip .cv{font-size:17px;font-weight:700;letter-spacing:.5px}
@@ -74,6 +74,16 @@
   table.rr th.l,table.rr td.l{text-align:left}
   table.rr td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
   table.rr td.strong{font-weight:700}
+  table.hm .cell.clk{cursor:pointer}
+  table.hm .cell.clk:hover{outline:2px solid var(--ink);outline-offset:-2px}
+  /* bucket driver list */
+  .blist{display:flex;flex-direction:column;gap:2px}
+  .brow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  .brow:hover{background:#eef1f4}
+  .brow .bfl{font-size:16px;width:22px;text-align:center}
+  .brow .bnat{color:var(--muted);font-size:11px;width:26px}
+  .brow .bnm{font-weight:700}
+  .brow .bmeta{margin-left:auto;color:var(--muted);font-size:11px}
 </style>
 </head>
 <body>
@@ -141,7 +151,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<div id="modal"><div class="box">
+<div id="modal" class="ovl"><div class="box">
   <div class="mhead">
     <div class="dflag" id="mFlag"></div>
     <div>
@@ -155,6 +165,20 @@
     <h3>Race by race</h3>
     <div class="tscroll"><table class="rr" id="mRaces"></table></div>
     <div class="note" style="margin-top:10px">Best lap &amp; finish are per <b>car</b> (shared with co-drivers) — the result sheet has no per-driver lap data. Two rows on one date = two cars driven that weekend.</div>
+  </div>
+</div></div>
+
+<div id="bucket" class="ovl"><div class="box">
+  <div class="mhead">
+    <div>
+      <div class="dnm" id="bTitle"></div>
+      <div class="dsub" id="bSub"></div>
+    </div>
+    <button class="x" id="bClose" title="close (Esc)">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="blist" id="bList"></div>
+    <div class="note" style="margin-top:12px">Click a driver for their full race-by-race breakdown.</div>
   </div>
 </div></div>
 
@@ -268,8 +292,10 @@ function render(){
 }
 
 // races × points matrix; cell value = races*points, colour green(low)->red(high)
+var HEATDATA=[];
 function drawHeat(data){
   data=data||aggregate();
+  HEATDATA=data;
   var el=document.getElementById('heat');
   var raceVals={}, ptVals={}, bucket={};
   data.forEach(function(d){ raceVals[d.races]=1; ptVals[d.points]=1; var kk=d.races+'|'+d.points; bucket[kk]=(bucket[kk]||0)+1; });
@@ -285,7 +311,7 @@ function drawHeat(data){
   rs.forEach(function(r){
     html+='<tr><td class="rowlab">'+r+'</td>'+cs.map(function(c){
       var v=r*c, n=bucket[r+'|'+c]||0;
-      return '<td><div class="cell" style="background:'+col(v)+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')):'')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
+      return '<td><div class="cell'+(n?' clk':'')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+col(v)+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):'')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
     }).join('')+'</tr>';
   });
   html+='</tbody></table>';
@@ -361,7 +387,35 @@ document.querySelector('#tbl tbody').addEventListener('click',function(e){
 });
 document.getElementById('mClose').onclick=closeModal;
 document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
-document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
+
+// ---- heatmap-bucket popup: drivers in a (races × points) square ----
+function closeBucket(){ document.getElementById('bucket').classList.remove('show'); }
+function openBucket(r,p){
+  var list=HEATDATA.filter(function(d){return d.races===r&&d.points===p;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+  if(!list.length) return;
+  var scopeLbl=state.scope==='__all__'?'overall':state.scope;
+  document.getElementById('bTitle').textContent=r+' race'+(r!==1?'s':'')+' × '+p+' pts in class';
+  document.getElementById('bSub').textContent='product '+(r*p)+' · '+list.length+' driver'+(list.length!==1?'s':'')+' · '+scopeLbl;
+  document.getElementById('bList').innerHTML=list.map(function(d){
+    var meta=(d.bestFinish!=null?'best P'+d.bestFinish:'')+(d.podiums?' · '+d.podiums+' pod':'')+(d.lastCar!=null?' · #'+d.lastCar:'');
+    return '<div class="brow" data-key="'+esc(d.key)+'">'+
+      '<span class="bfl">'+flag(d.nat)+'</span>'+
+      '<span class="bnat">'+esc(d.nat||'')+'</span>'+
+      '<span class="bnm">'+esc(d.name)+'</span>'+
+      '<span class="bmeta">'+esc(meta)+'</span></div>';
+  }).join('');
+  document.getElementById('bucket').classList.add('show');
+}
+document.getElementById('heat').addEventListener('click',function(e){
+  var c=e.target.closest('.cell.clk'); if(c) openBucket(+c.dataset.r,+c.dataset.p);
+});
+document.getElementById('bList').addEventListener('click',function(e){
+  var row=e.target.closest('.brow'); if(row&&row.dataset.key){ closeBucket(); openDriver(row.dataset.key); }
+});
+document.getElementById('bClose').onclick=closeBucket;
+document.getElementById('bucket').addEventListener('click',function(e){ if(e.target===this) closeBucket(); });
+
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeModal(); closeBucket(); } });
 
 function load(){
   fetch(SB+'/rest/v1/stint9_nls_races?select=event_date,round_no,title,series',{headers:H})
