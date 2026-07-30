@@ -793,22 +793,25 @@ function pMakeSet(label,baseId,cond,wear,temp,km,cycle){
   const pos=['vl','vr','hl','hr'],base=parseInt(baseId,10)||0;
   return {label,tyres:pos.map((p,i)=>({pos:p,cond,wear,temp,id:pad4(base+i),km:km+i,cycle}))};
 }
+// Every board starts EMPTY per car — no shared demo inventory. Each car's
+// stock/stint/bands are stored separately in stint9_tyre_state (per-car blob),
+// so a freshly-selected car shows a blank board until this car's crew fills it.
 const STINT_SETS=[
-  pMakeSet('Stint 1 · 0001','0001','dry','used','cold',305,3),
-  pEmptySet('Stint 2 · 0002'),
-  pEmptySet('Stint 3 · 0003'),
-  pEmptySet('Stint 4 · 0004'),
-  pEmptySet('Stint 5 · 0005')
+  pEmptySet('Stint 1'),
+  pEmptySet('Stint 2'),
+  pEmptySet('Stint 3'),
+  pEmptySet('Stint 4'),
+  pEmptySet('Stint 5')
 ];
-// STOCK serials start at 0013 so they never overlap STINT1 (0001-0004),
-// TRACK (0005-0008) or PIT (0009-0012). Each set is 4 consecutive serials.
+// 6 empty STOCK slots keep the fixed 6-column grid; tyres are added per car
+// via the "+" on the placeholder and persist in that car's row.
 const STOCK_SETS=[
-  pMakeSet('Set · 0013','0013','dry','new','cold',0,0),
-  pMakeSet('Set · 0017','0017','dry','new','cold',0,0),
-  pMakeSet('Set · 0021','0021','wet','new','cold',0,0),
-  pMakeSet('Set · 0025','0025','dry','new','cold',0,0),
-  pMakeSet('Set · 0029','0029','wet','new','cold',0,0),
-  pEmptySet('Set · 0033')
+  pEmptySet('Set'),
+  pEmptySet('Set'),
+  pEmptySet('Set'),
+  pEmptySet('Set'),
+  pEmptySet('Set'),
+  pEmptySet('Set')
 ];
 function buildPanel(panelId,titleMain,titleSub,kind,sets,backSide){
   const p=document.getElementById(panelId);p.innerHTML='';   // re-callable (STINT rebuilds after a transfer)
