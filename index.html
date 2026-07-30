@@ -2481,16 +2481,15 @@ function syncRightSplit(){
 function growMaps(){
   const w=document.querySelector('.wrap'),svg=document.getElementById('svg'),rv=document.getElementById('reelview'),wv=document.getElementById('wxview'),agent=document.querySelector('.agentbar');
   if(!w||!svg||!rv||!agent||typeof CH==='undefined')return;
-  // #svg may be relocated inside the zoom modal right now (initFocus's open()
-  // pins it to 2x its pre-zoom size). fitPage() keeps running on its own timers
-  // and on every LIVE 5s poll regardless of the modal, and this function's
-  // math all keys off #svg's live box — while it's detached into the modal
-  // that box means nothing, and forcing width:64% here was overwriting the
-  // modal's pin down to a sliver a few seconds after opening. Bail out whole:
-  // the reel-height budget below also reads svg.clientWidth/clientHeight, so
-  // patching just the two width-reset lines would still leave that budget
-  // computed off the modal's box instead of the page's.
-  if(svg.closest('.card.zoomed'))return;
+  // Bail whenever ANY card is zoomed/focused (the modal covers the page, so the
+  // background layout can wait for close() -> fitPage()). fitPage() keeps running
+  // on its own timers and on every LIVE 5s poll regardless of the modal; if it
+  // runs while a card is zoomed it clobbers the modal's sizing — for the MAP zoom
+  // it forced #svg's width back to 64% (down to a sliver), and for the TYRE reel
+  // zoom line 2497's rv.style.height reset shrank the board back to the small
+  // non-zoomed ratio (the board only looked right again after an up/down
+  // setReel re-applied the zoom height). Checking any .card.zoomed covers both.
+  if(document.querySelector('.card.zoomed'))return;
   const s=__fit||1;
   svg.style.width='64%';svg.style.height='auto';
   syncMapHeights();
