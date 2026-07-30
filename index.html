@@ -390,6 +390,10 @@
   .privlock .lb:hover{border-color:var(--accent);color:var(--accent)}
   body.locked-private .privlock{display:flex}
   body.locked-private #fuelmini{display:none!important}
+  /* hide the underlying content outright so nothing flashes through the lock
+     overlay while the reel scrolls (iframes can paint over absolute siblings
+     mid-transition) */
+  body.locked-private #boardframe,body.locked-private #fuelpanel{visibility:hidden}
 </style></head>
 <body><div id="loginModal" role="dialog" aria-modal="true">
   <div class="loginCard">
@@ -677,7 +681,10 @@ function applyCarFuelSettings(car){
 // tyre state (read-only) instead of the live per-car blob.
 function postTyreCar(car){
   if(window.archiveOverlay&&typeof window.pushTyreArchive==='function'){window.pushTyreArchive(car);return;}
-  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(car||''),live:(window.dataMode==='LIVE'),ro:(typeof canAccess==='function'?!canAccess(car):true)},'*');}catch(e){}}
+  // When locked, send an empty car so the board never even loads another
+  // team's tyre data (defence beyond just hiding the iframe visually).
+  const _ok=(typeof canAccess==='function'&&canAccess(car));
+  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'),ro:!_ok},'*');}catch(e){}}
 // Per-lap fuel notes only leave the browser while LIVE is on (SIM is just a
 // local CSV replay, nothing worth syncing) — debounced so a full sentence
 // isn't one write per keystroke.
@@ -1882,7 +1889,9 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
       if(_lg){_lap=_lg[0];const _bx=BX[selCar]||{};_sec=5;for(let s=1;s<=5;s++){const tc=_bx[(_lap-1)*5+s];if(tc==null||tc>T){_sec=s;break;}}
         const _ps=(DB.pits&&DB.pits[selCar])||[];for(const pl of _ps){if(pl<=_lap)_pit=pl;}}}
     const _spd=parseFloat((document.getElementById('speed')||{}).value||'1');
-    _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:(typeof canAccess==='function'?!canAccess(selCar):true)},'*');}}}catch(e){}
+    // don't stream a car's live tyre progress while it's locked (not our team)
+    if(typeof canAccess==='function'&&canAccess(selCar))
+      _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:false},'*');}}}catch(e){}
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const selPit=slg?null:pitInfo(selCar,T);
