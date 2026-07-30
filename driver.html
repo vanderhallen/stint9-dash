@@ -79,6 +79,7 @@
   table.rr td.ell{max-width:150px;overflow:hidden;text-overflow:ellipsis}
   table.hm .cell.clk{cursor:pointer}
   table.hm .cell.clk:hover{outline:2px solid var(--ink);outline-offset:-2px}
+  table.hm .cell.hl{outline:3px solid var(--ink);outline-offset:-3px;box-shadow:0 0 0 2px #fff,0 0 8px 2px rgba(0,0,0,.35);z-index:3}
   /* bucket driver list */
   .blist{display:flex;flex-direction:column;gap:2px}
   .brow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
@@ -385,6 +386,18 @@ function openDriver(key){
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
 document.querySelector('#tbl tbody').addEventListener('click',function(e){
   var td=e.target.closest('td.nm'); if(td&&td.dataset.key) openDriver(td.dataset.key);
+});
+// hover a name -> highlight that driver's square on the heatmap
+function clearHeatHL(){ var hl=document.querySelectorAll('.hm .cell.hl'); for(var i=0;i<hl.length;i++) hl[i].classList.remove('hl'); }
+document.querySelector('#tbl tbody').addEventListener('mouseover',function(e){
+  var td=e.target.closest('td.nm'); if(!td||!td.dataset.key) return;
+  var d=HEATDATA.filter(function(x){return x.key===td.dataset.key;})[0]; if(!d) return;
+  clearHeatHL();
+  var cell=document.querySelector('.hm .cell[data-r="'+d.races+'"][data-p="'+d.points+'"]');
+  if(cell) cell.classList.add('hl');
+});
+document.querySelector('#tbl tbody').addEventListener('mouseout',function(e){
+  if(e.target.closest('td.nm')) clearHeatHL();
 });
 document.getElementById('mClose').onclick=closeModal;
 document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
