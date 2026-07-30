@@ -96,6 +96,13 @@
   </div>
 
   <div class="card">
+    <h2>Heatmap · races × points-in-class</h2>
+    <div class="note" style="margin-bottom:12px">Rows = number of races, columns = total points in class. Each square shows <b>races × points</b>; colour runs <span style="color:hsl(120,60%,38%)">green (lowest)</span> → <span style="color:hsl(0,70%,45%)">red (highest)</span>. Small number = drivers currently in that bucket (respects the current class filter).</div>
+    <div class="hmscroll"><div id="heat"><div class="empty">…</div></div></div>
+    <div class="legend"><span>low</span><span class="grad"></span><span>high</span><span id="heatRange" style="margin-left:8px"></span></div>
+  </div>
+
+  <div class="card">
     <div class="controls">
       <div class="fld">
         <label for="scope">Class / overall</label>
@@ -132,24 +139,7 @@
     <div class="note" style="margin-top:10px">* <b>Best lap</b> is the <b>car's</b> fastest lap — the result sheet prints only one fastest lap per car, so every co-driver of that car shares it (the sheet never says which driver actually set it). Same reason co-drivers of one car share the same best finish.</div>
   </div>
 
-  <div class="card">
-    <h2>Heatmap · races × points-in-class</h2>
-    <div class="note" style="margin-bottom:12px">Rows = number of races, columns = total points in class. Each square shows <b>races × points</b>; colour runs <span style="color:hsl(120,60%,38%)">green (lowest)</span> → <span style="color:hsl(0,70%,45%)">red (highest)</span>. Small number = drivers currently in that bucket (respects the class filter above).</div>
-    <div class="hmscroll"><div id="heat"><div class="empty">…</div></div></div>
-    <div class="legend"><span>low</span><span class="grad"></span><span>high</span><span id="heatRange" style="margin-left:8px"></span></div>
   </div>
-
-  <div class="card">
-    <h2>About this data</h2>
-    <div class="note">
-      Source: the official <b>Offizielles Ergebnis Rennen</b> PDFs on nuerburgring-langstrecken-serie.de, one per 2026 round, parsed automatically. Refreshes <b>weekly</b> (and on demand via ↻ Update).<br>
-      • <b>Points in class</b> use a fixed class-position scale (1st→25, 2nd→18, 3rd→15, 4th→12, 5th→10, 6th→8, 7th→6, 8th→4, 9th→2, 10th→1) — NLS does not print championship points on the result sheet, so this is a transparent, editable approximation.<br>
-      • <b>Best lap</b> is the car's fastest lap (the result sheet lists one fastest lap per car, not per driver), attributed to each of the car's drivers.<br>
-      • <b>Age</b> is not shown: no NLS entry list or result sheet publishes driver birthdates.<br>
-      • The 24h Nürburgring race is included when its result PDF is reachable (best-effort — that site is bot-protected).
-    </div>
-  </div>
-</div>
 <div class="toast" id="toast"></div>
 
 <div id="modal" class="ovl"><div class="box">
