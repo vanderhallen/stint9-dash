@@ -99,7 +99,7 @@
           <option value="points">Points in class</option>
           <option value="podiums">Podiums</option>
           <option value="bestFinish">Best finish (overall)</option>
-          <option value="bestLap">Best lap (overall)</option>
+          <option value="bestLap">Best lap (car, overall)</option>
           <option value="cars">Different cars</option>
           <option value="teams">Different teams</option>
         </select>
@@ -118,6 +118,7 @@
     <div class="tscroll" style="margin-top:6px">
       <table class="vis" id="tbl"><thead></thead><tbody><tr><td class="empty">Loading…</td></tr></tbody></table>
     </div>
+    <div class="note" style="margin-top:10px">* <b>Best lap</b> is the <b>car's</b> fastest lap — the result sheet prints only one fastest lap per car, so every co-driver of that car shares it (the sheet never says which driver actually set it). Same reason co-drivers of one car share the same best finish.</div>
   </div>
 
   <div class="card">
@@ -153,6 +154,7 @@
     <div class="chips" id="mChips"></div>
     <h3>Race by race</h3>
     <div class="tscroll"><table class="rr" id="mRaces"></table></div>
+    <div class="note" style="margin-top:10px">Best lap &amp; finish are per <b>car</b> (shared with co-drivers) — the result sheet has no per-driver lap data. Two rows on one date = two cars driven that weekend.</div>
   </div>
 </div></div>
 
@@ -226,7 +228,7 @@ var COLS=[
   {k:'points',l:'Pts (cls)'},
   {k:'podiums',l:'Podiums'},
   {k:'bestFinish',l:'Best fin.'},
-  {k:'bestLap',l:'Best lap'},
+  {k:'bestLap',l:'Best lap*'},
   {k:'cars',l:'Cars'},
   {k:'teams',l:'Teams'}
 ];
@@ -329,7 +331,7 @@ function openDriver(key){
     ['Best overall',bestO!=null?'P'+bestO:'—'],
     ['Best in class',bestC!=null?'P'+bestC:'—'],
     ['Podiums (o/c)',Object.keys(podO).length+' / '+Object.keys(podC).length],
-    ['Best lap',lap(bestL)],
+    ['Best lap (car)',lap(bestL)],
     ['Cars',Object.keys(cars).length],
     ['Teams',Object.keys(teams).length]
   ];
