@@ -182,9 +182,10 @@ function aggregate(){
   rows.forEach(function(r){
     var d=by[r.driver_key]||(by[r.driver_key]={key:r.driver_key,name:r.driver_name,nat:r.nationality,
       events:{},cars:{},teams:{},bestOverall:null,bestClass:null,bestLap:null,points:0,
-      podO:{},podC:{}});
+      podO:{},podC:{},lastDate:null,lastCar:null});
     d.name=r.driver_name; if(r.nationality) d.nat=r.nationality;
     d.events[r.event_date]=1;
+    if(d.lastDate==null||r.event_date>=d.lastDate){ d.lastDate=r.event_date; d.lastCar=r.car_no; }
     if(r.car_model) d.cars[r.car_model]=1;
     if(r.team) d.teams[r.team]=1;
     if(r.pos_overall!=null){ if(d.bestOverall==null||r.pos_overall<d.bestOverall) d.bestOverall=r.pos_overall; if(r.pos_overall<=3) d.podO[r.event_date]=1; }
@@ -194,6 +195,7 @@ function aggregate(){
   return Object.keys(by).map(function(k){var d=by[k];return {
     key:d.key,name:d.name,nat:d.nat,
     races:Object.keys(d.events).length,
+    lastCar:d.lastCar,
     points:d.points,
     podiums: overall?Object.keys(d.podO).length:Object.keys(d.podC).length,
     bestFinish: overall?d.bestOverall:d.bestClass,
@@ -219,6 +221,7 @@ function cmp(a,b){
 var COLS=[
   {k:'nat',l:'Nat',cls:'l'},
   {k:'name',l:'Driver',cls:'l'},
+  {k:'lastCar',l:'Last car',cls:'l'},
   {k:'races',l:'Races'},
   {k:'points',l:'Pts (cls)'},
   {k:'podiums',l:'Podiums'},
@@ -227,7 +230,7 @@ var COLS=[
   {k:'cars',l:'Cars'},
   {k:'teams',l:'Teams'}
 ];
-var SORTKEY={nat:'nationality',name:'name',races:'races',points:'points',podiums:'podiums',bestFinish:'bestFinish',bestLap:'bestLap',cars:'cars',teams:'teams'};
+var SORTKEY={nat:'nationality',name:'name',lastCar:'lastCar',races:'races',points:'points',podiums:'podiums',bestFinish:'bestFinish',bestLap:'bestLap',cars:'cars',teams:'teams'};
 
 function render(){
   var data=aggregate();
@@ -249,6 +252,7 @@ function render(){
       '<td class="l rk">'+(i+1)+'</td>'+
       '<td class="l" title="'+esc(d.nat||'')+'">'+flag(d.nat)+' <span class="dim">'+esc(d.nat||'')+'</span></td>'+
       '<td class="l nm" data-key="'+esc(d.key)+'">'+esc(d.name)+'</td>'+
+      '<td class="l dim">'+(d.lastCar!=null?'#'+d.lastCar:'—')+'</td>'+
       '<td>'+d.races+'</td>'+
       '<td>'+d.points+'</td>'+
       '<td>'+d.podiums+'</td>'+
