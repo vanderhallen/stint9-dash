@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STINT9 · driver database</title>
+<style>
+  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
+  .wrap{max-width:1140px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
+  .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
+  a.back{font-size:12px;color:var(--muted);letter-spacing:1px;text-decoration:none}
+  a.back:hover{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  select,input[type=search]{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink)}
+  button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:9px 16px;border-radius:8px;cursor:pointer}
+  button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  button.btn:disabled{opacity:.5;cursor:default}
+  .dir{padding:8px 12px}
+  .stat{font-size:11px;color:var(--muted);letter-spacing:1px}
+  .tscroll{overflow-x:auto}
+  table.vis{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.vis th{text-align:right;color:var(--muted);font-weight:700;letter-spacing:.5px;padding:8px 9px;border-bottom:2px solid var(--border);text-transform:uppercase;font-size:10.5px;white-space:nowrap;cursor:pointer;user-select:none}
+  table.vis th.l,table.vis td.l{text-align:left}
+  table.vis th.active{color:var(--ink)}
+  table.vis td{padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+  table.vis tr:hover td{background:#f8fafc}
+  td.nm{font-weight:700}
+  td.dim{color:var(--muted)}
+  .rk{width:26px;color:var(--muted);text-align:right;font-size:11px}
+  .medal{font-weight:700}
+  .empty{color:var(--muted);font-size:13px;padding:10px 0}
+  /* heatmap */
+  .hmscroll{overflow-x:auto}
+  table.hm{border-collapse:collapse;font-size:11px}
+  table.hm th{padding:6px 8px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-align:center;white-space:nowrap}
+  table.hm th.corner{text-align:left;font-size:10px;text-transform:uppercase}
+  table.hm td{padding:0;text-align:center}
+  table.hm .cell{min-width:46px;height:34px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.5);position:relative}
+  table.hm .cell .cnt{position:absolute;top:1px;right:3px;font-size:8px;font-weight:400;opacity:.85}
+  table.hm .rowlab{font-weight:700;color:var(--ink);padding-right:10px;text-align:right;white-space:nowrap}
+  .legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px}
+  .legend .grad{height:12px;width:150px;border-radius:6px;background:linear-gradient(90deg,hsl(120,70%,45%),hsl(60,70%,45%),hsl(0,70%,45%))}
+  .note{font-size:11px;color:var(--muted);letter-spacing:.3px;line-height:1.6}
+  .note b{color:var(--ink)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;letter-spacing:1px;padding:11px 18px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <a class="back" href="admin.html">← admin</a>
+    <h1 style="margin-top:6px">STINT9 · Driver Database</h1>
+    <div class="sub">Every driver who competed in the 2026 NLS season · built from the official race-result PDFs</div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <div class="fld">
+        <label for="scope">Class / overall</label>
+        <select id="scope"></select>
+      </div>
+      <div class="fld">
+        <label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="name">Name (A–Z)</option>
+          <option value="nationality">Nationality</option>
+          <option value="races">Races</option>
+          <option value="points">Points in class</option>
+          <option value="podiums">Podiums</option>
+          <option value="bestFinish">Best finish (overall)</option>
+          <option value="bestLap">Best lap (overall)</option>
+          <option value="cars">Different cars</option>
+          <option value="teams">Different teams</option>
+        </select>
+      </div>
+      <button class="btn ghost dir" id="dir" title="toggle ascending / descending">▼ desc</button>
+      <div class="fld">
+        <label for="q">Search</label>
+        <input type="search" id="q" placeholder="driver / team…" style="width:170px">
+      </div>
+      <div style="margin-left:auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        <button class="btn" id="update">↻ Update from NLS</button>
+        <div class="stat" id="scrapeMeta"></div>
+      </div>
+    </div>
+    <div class="stat" id="count" style="margin-top:12px"></div>
+    <div class="tscroll" style="margin-top:6px">
+      <table class="vis" id="tbl"><thead></thead><tbody><tr><td class="empty">Loading…</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Heatmap · races × points-in-class</h2>
+    <div class="note" style="margin-bottom:12px">Rows = number of races, columns = total points in class. Each square shows <b>races × points</b>; colour runs <span style="color:hsl(120,60%,38%)">green (lowest)</span> → <span style="color:hsl(0,70%,45%)">red (highest)</span>. Small number = drivers currently in that bucket (respects the class filter above).</div>
+    <div class="hmscroll"><div id="heat"><div class="empty">…</div></div></div>
+    <div class="legend"><span>low</span><span class="grad"></span><span>high</span><span id="heatRange" style="margin-left:8px"></span></div>
+  </div>
+
+  <div class="card">
+    <h2>About this data</h2>
+    <div class="note">
+      Source: the official <b>Offizielles Ergebnis Rennen</b> PDFs on nuerburgring-langstrecken-serie.de, one per 2026 round, parsed automatically. Refreshes <b>weekly</b> (and on demand via ↻ Update).<br>
+      • <b>Points in class</b> use a fixed class-position scale (1st→25, 2nd→18, 3rd→15, 4th→12, 5th→10, 6th→8, 7th→6, 8th→4, 9th→2, 10th→1) — NLS does not print championship points on the result sheet, so this is a transparent, editable approximation.<br>
+      • <b>Best lap</b> is the car's fastest lap (the result sheet lists one fastest lap per car, not per driver), attributed to each of the car's drivers.<br>
+      • <b>Age</b> is not shown: no NLS entry list or result sheet publishes driver birthdates.<br>
+      • The 24h Nürburgring race is included when its result PDF is reachable (best-effort — that site is bot-protected).
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
+var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+var H={apikey:KEY,Authorization:'Bearer '+KEY};
+
+// class-position -> championship points (editable approximation; see "About this data")
+var POINTS=[0,25,18,15,12,10,8,6,4,2,1];
+function pts(posClass){ if(!posClass) return 0; return posClass<POINTS.length?POINTS[posClass]:0; }
+
+var RESULTS=[];              // raw rows from stint9_nls_results
+var state={scope:'__all__',sort:'races',dir:'desc',q:''};
+
+function flag(cc){ if(!cc||cc.length!==2) return ''; try{return String.fromCodePoint.apply(null,[].map.call(cc.toUpperCase(),function(c){return 0x1F1E6+c.charCodeAt(0)-65;}));}catch(e){return '';} }
+function lap(ms){ if(!ms) return '—'; var t=ms/1000,m=Math.floor(t/60),s=(t-m*60); return m+':' + (s<10?'0':'') + s.toFixed(3); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2600); }
+
+// aggregate RESULTS into per-driver rows within the current class scope
+function aggregate(){
+  var overall = state.scope==='__all__';
+  var rows = overall ? RESULTS : RESULTS.filter(function(r){return r.class===state.scope;});
+  var by={};
+  rows.forEach(function(r){
+    var d=by[r.driver_key]||(by[r.driver_key]={key:r.driver_key,name:r.driver_name,nat:r.nationality,
+      events:{},cars:{},teams:{},bestOverall:null,bestClass:null,bestLap:null,points:0,
+      podO:{},podC:{}});
+    d.name=r.driver_name; if(r.nationality) d.nat=r.nationality;
+    d.events[r.event_date]=1;
+    if(r.car_model) d.cars[r.car_model]=1;
+    if(r.team) d.teams[r.team]=1;
+    if(r.pos_overall!=null){ if(d.bestOverall==null||r.pos_overall<d.bestOverall) d.bestOverall=r.pos_overall; if(r.pos_overall<=3) d.podO[r.event_date]=1; }
+    if(r.pos_class!=null){ if(d.bestClass==null||r.pos_class<d.bestClass) d.bestClass=r.pos_class; if(r.pos_class<=3) d.podC[r.event_date]=1; d.points+=pts(r.pos_class); }
+    if(r.best_lap_ms!=null){ if(d.bestLap==null||r.best_lap_ms<d.bestLap) d.bestLap=r.best_lap_ms; }
+  });
+  return Object.keys(by).map(function(k){var d=by[k];return {
+    key:d.key,name:d.name,nat:d.nat,
+    races:Object.keys(d.events).length,
+    points:d.points,
+    podiums: overall?Object.keys(d.podO).length:Object.keys(d.podC).length,
+    bestFinish: overall?d.bestOverall:d.bestClass,
+    bestLap:d.bestLap,
+    cars:Object.keys(d.cars).length,
+    teams:Object.keys(d.teams).length
+  };});
+}
+
+function cmp(a,b){
+  var s=state.sort,mul=state.dir==='asc'?1:-1;
+  if(s==='name') return a.name.localeCompare(b.name)*mul;
+  if(s==='nationality'){ var an=a.nat||'zz',bn=b.nat||'zz'; return an===bn?a.name.localeCompare(b.name):an.localeCompare(bn)*mul; }
+  var av,bv;
+  if(s==='bestFinish'||s==='bestLap'){ // smaller = better; null last regardless of dir
+    av=a[s], bv=b[s];
+    if(av==null&&bv==null) return 0; if(av==null) return 1; if(bv==null) return -1;
+    return (av-bv)*mul;
+  }
+  av=a[s]||0; bv=b[s]||0; if(av===bv) return a.name.localeCompare(b.name); return (av-bv)*mul;
+}
+
+var COLS=[
+  {k:'nat',l:'Nat',cls:'l'},
+  {k:'name',l:'Driver',cls:'l'},
+  {k:'races',l:'Races'},
+  {k:'points',l:'Pts (cls)'},
+  {k:'podiums',l:'Podiums'},
+  {k:'bestFinish',l:'Best fin.'},
+  {k:'bestLap',l:'Best lap'},
+  {k:'cars',l:'Cars'},
+  {k:'teams',l:'Teams'}
+];
+var SORTKEY={nat:'nationality',name:'name',races:'races',points:'points',podiums:'podiums',bestFinish:'bestFinish',bestLap:'bestLap',cars:'cars',teams:'teams'};
+
+function render(){
+  var data=aggregate();
+  var q=state.q.trim().toLowerCase();
+  if(q) data=data.filter(function(d){return d.name.toLowerCase().indexOf(q)>=0||(d.nat||'').toLowerCase().indexOf(q)>=0;});
+  data.sort(cmp);
+  var scopeLbl=state.scope==='__all__'?'overall':state.scope;
+  document.getElementById('count').textContent=data.length+' drivers · '+scopeLbl+(state.scope==='__all__'?' (podiums & best finish = overall)':' (podiums, best finish & points within class)');
+
+  var thead=document.querySelector('#tbl thead'), tbody=document.querySelector('#tbl tbody');
+  thead.innerHTML='<tr><th class="l">#</th>'+COLS.map(function(c){
+    var active=SORTKEY[c.k]===state.sort?' active':'';
+    return '<th class="'+(c.cls||'')+active+'" data-k="'+c.k+'">'+c.l+'</th>';
+  }).join('')+'</tr>';
+  if(!data.length){ tbody.innerHTML='<tr><td class="empty" colspan="'+(COLS.length+1)+'">No drivers for this class yet.</td></tr>'; drawHeat(); return; }
+  tbody.innerHTML=data.map(function(d,i){
+    var medal=d.bestFinish===1?'🥇':d.bestFinish===2?'🥈':d.bestFinish===3?'🥉':'';
+    return '<tr>'+
+      '<td class="l rk">'+(i+1)+'</td>'+
+      '<td class="l" title="'+esc(d.nat||'')+'">'+flag(d.nat)+' <span class="dim">'+esc(d.nat||'')+'</span></td>'+
+      '<td class="l nm">'+esc(d.name)+'</td>'+
+      '<td>'+d.races+'</td>'+
+      '<td>'+d.points+'</td>'+
+      '<td>'+d.podiums+'</td>'+
+      '<td>'+(d.bestFinish!=null?d.bestFinish+' '+medal:'—')+'</td>'+
+      '<td>'+lap(d.bestLap)+'</td>'+
+      '<td>'+d.cars+'</td>'+
+      '<td>'+d.teams+'</td>'+
+    '</tr>';
+  }).join('');
+  drawHeat(data);
+}
+
+// races × points matrix; cell value = races*points, colour green(low)->red(high)
+function drawHeat(data){
+  data=data||aggregate();
+  var el=document.getElementById('heat');
+  var raceVals={}, ptVals={}, bucket={};
+  data.forEach(function(d){ raceVals[d.races]=1; ptVals[d.points]=1; var kk=d.races+'|'+d.points; bucket[kk]=(bucket[kk]||0)+1; });
+  var rs=Object.keys(raceVals).map(Number).sort(function(a,b){return b-a;}); // most races on top
+  var cs=Object.keys(ptVals).map(Number).sort(function(a,b){return a-b;});   // low points left
+  if(!rs.length||!cs.length){ el.innerHTML='<div class="empty">No data.</div>'; document.getElementById('heatRange').textContent=''; return; }
+  var min=Infinity,max=-Infinity;
+  rs.forEach(function(r){cs.forEach(function(c){var v=r*c; if(v<min)min=v; if(v>max)max=v;});});
+  document.getElementById('heatRange').textContent='product '+min+'–'+max;
+  function col(v){ var t=max>min?(v-min)/(max-min):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',68%,'+(v===0?70:44)+'%)'; }
+  var html='<table class="hm"><thead><tr><th class="corner">races ↓ / points →</th>'+
+    cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
+  rs.forEach(function(r){
+    html+='<tr><td class="rowlab">'+r+'</td>'+cs.map(function(c){
+      var v=r*c, n=bucket[r+'|'+c]||0;
+      return '<td><div class="cell" style="background:'+col(v)+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')):'')+'">'+v+(n?'<span class="cnt">'+n+'</span>':'')+'</div></td>';
+    }).join('')+'</tr>';
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function buildScope(){
+  var classes={}; RESULTS.forEach(function(r){ if(r.class) classes[r.class]=(classes[r.class]||0)+1; });
+  var opts=['<option value="__all__">Overall — all classes</option>'];
+  Object.keys(classes).sort().forEach(function(c){ opts.push('<option value="'+esc(c)+'">'+esc(c)+'</option>'); });
+  document.getElementById('scope').innerHTML=opts.join('');
+  document.getElementById('scope').value=state.scope;
+}
+
+function loadMeta(){
+  fetch(SB+'/rest/v1/stint9_nls_scrape_log?select=ok,races_checked,created_at&order=created_at.desc&limit=1',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){
+      if(j&&j[0]){ var d=new Date(j[0].created_at); document.getElementById('scrapeMeta').textContent='last update '+d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+    }).catch(function(){});
+}
+
+function load(){
+  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,best_lap_ms&limit=20000',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){
+      RESULTS=Array.isArray(j)?j:[];
+      buildScope(); render(); loadMeta();
+    }).catch(function(e){
+      document.querySelector('#tbl tbody').innerHTML='<tr><td class="empty">Failed to load: '+esc(e)+'</td></tr>';
+    });
+}
+
+// wire controls
+document.getElementById('scope').onchange=function(){ state.scope=this.value; render(); };
+document.getElementById('sort').onchange=function(){ state.sort=this.value; render(); };
+document.getElementById('q').oninput=function(){ state.q=this.value; render(); };
+document.getElementById('dir').onclick=function(){ state.dir=state.dir==='asc'?'desc':'asc'; this.textContent=state.dir==='asc'?'▲ asc':'▼ desc'; render(); };
+document.querySelector('#tbl thead').addEventListener('click',function(e){
+  var th=e.target.closest('th'); if(!th||!th.dataset.k) return;
+  var k=SORTKEY[th.dataset.k]; if(!k) return;
+  if(state.sort===k) state.dir=state.dir==='asc'?'desc':'asc';
+  else { state.sort=k; state.dir=(k==='name'||k==='nationality'||k==='bestFinish'||k==='bestLap')?'asc':'desc'; }
+  document.getElementById('sort').value=k; document.getElementById('dir').textContent=state.dir==='asc'?'▲ asc':'▼ desc';
+  render();
+});
+document.getElementById('update').onclick=function(){
+  var b=this; b.disabled=true; b.textContent='↻ Updating…'; toast('Scraping NLS result PDFs…');
+  fetch(SB+'/functions/v1/nls-driver-scrape',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H)})
+    .then(function(r){return r.json();}).then(function(j){
+      var ok=(j&&j.results||[]).filter(function(x){return x.status==='ok';}).length;
+      toast('Updated · '+ok+' race'+(ok!==1?'s':'')+' refreshed');
+      return load();
+    }).catch(function(e){ toast('Update failed'); })
+    .finally(function(){ b.disabled=false; b.textContent='↻ Update from NLS'; });
+};
+
+load();
+</script>
+</body>
+</html>
