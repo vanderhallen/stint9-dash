@@ -342,9 +342,10 @@ function openDriver(key){
   if(!rows.length) return;
   var name=rows[rows.length-1].driver_name, nat=null;
   rows.forEach(function(r){if(r.nationality)nat=r.nationality;});
-  var events={},cars={},teams={},points=0,bestO=null,bestC=null,bestL=null,podO={},podC={};
+  var events={},cars={},teams={},points=0,bestO=null,bestC=null,bestL=null,podO={},podC={},lastDate=null,lastCar=null;
   rows.forEach(function(r){
     events[r.event_date]=1; if(r.car_model)cars[r.car_model]=1; if(r.team)teams[r.team]=1;
+    if(lastDate==null||r.event_date>=lastDate){ lastDate=r.event_date; lastCar=r.car_no; }
     if(r.pos_overall!=null){ if(bestO==null||r.pos_overall<bestO)bestO=r.pos_overall; if(r.pos_overall<=3)podO[r.event_date]=1; }
     if(r.pos_class!=null){ if(bestC==null||r.pos_class<bestC)bestC=r.pos_class; if(r.pos_class<=3)podC[r.event_date]=1; points+=pts(r.pos_class); }
     if(r.best_lap_ms!=null){ if(bestL==null||r.best_lap_ms<bestL)bestL=r.best_lap_ms; }
@@ -354,6 +355,7 @@ function openDriver(key){
   document.getElementById('mSub').textContent=(nat?nat+' · ':'')+Object.keys(events).length+' race'+(Object.keys(events).length!==1?'s':'')+' in 2026';
   var chips=[
     ['Races',Object.keys(events).length],
+    ['Last car',lastCar!=null?'#'+lastCar:'—'],
     ['Pts in class',points],
     ['Best overall',bestO!=null?'P'+bestO:'—'],
     ['Best in class',bestC!=null?'P'+bestC:'—'],
