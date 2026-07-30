@@ -37,7 +37,8 @@ create table if not exists public.stint9_nls_results (
   pos_overall  integer,            -- finishing position overall (null = not classified)
   pos_class    integer,            -- finishing position within base class
   laps         integer,
-  best_lap_ms  integer,            -- the CAR's fastest lap (ms); attributed to each driver
+  best_lap_ms  integer,            -- this DRIVER's own fastest lap (ms) from the Lap-by-Lap chart; falls back to the car's fastest if no chart
+  set_fastest  boolean,            -- true = this driver set the car's fastest lap that race (from <date>rl.pdf); null = unknown (no lap chart)
   status       text,               -- classified | dnf | dsq
   unique (event_date, car_no, driver_key)
 );

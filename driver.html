@@ -141,7 +141,7 @@
     <div class="tscroll" style="margin-top:6px">
       <table class="vis" id="tbl"><thead></thead><tbody><tr><td class="empty">Loading…</td></tr></tbody></table>
     </div>
-    <div class="note" style="margin-top:10px">* <b>Best lap</b> is the <b>car's</b> fastest lap — the result sheet prints only one fastest lap per car, so every co-driver of that car shares it (the sheet never says which driver actually set it). Same reason co-drivers of one car share the same best finish.</div>
+    <div class="note" style="margin-top:10px">* <b>Best lap</b> is each driver's <b>own</b> fastest lap, recovered from the official Lap-by-Lap chart (which tags every lap with the on-track driver). Rounds with no lap chart fall back to the car's fastest lap, shared by co-drivers. Open a driver to see ⚡ = the race(s) where they set their car's fastest lap. (Finish position is still per car.)</div>
   </div>
 
   </div>
@@ -160,7 +160,7 @@
     <div class="chips" id="mChips"></div>
     <h3>Race by race</h3>
     <div class="tscroll"><table class="rr" id="mRaces"></table></div>
-    <div class="note" style="margin-top:10px">Best lap &amp; finish are per <b>car</b> (shared with co-drivers) — the result sheet has no per-driver lap data. Two rows on one date = two cars driven that weekend.</div>
+    <div class="note" style="margin-top:10px"><b>Best lap</b> is this driver's own fastest lap (from the Lap-by-Lap chart); ⚡ = they set their car's fastest lap that race. <b>Finish</b> is per car (shared with co-drivers). Two rows on one date = two cars driven that weekend.</div>
   </div>
 </div></div>
 
@@ -369,7 +369,7 @@ function openDriver(key){
     ['Best overall',bestO!=null?'P'+bestO:'—'],
     ['Best in class',bestC!=null?'P'+bestC:'—'],
     ['Podiums (o/c)',Object.keys(podO).length+' / '+Object.keys(podC).length],
-    ['Best lap (car)',lap(bestL)],
+    ['Best lap',lap(bestL)],
     ['Cars',Object.keys(cars).length],
     ['Teams',Object.keys(teams).length]
   ];
@@ -387,7 +387,7 @@ function openDriver(key){
         '<td class="strong">'+st+'</td>'+
         '<td>'+(r.pos_class!=null?'P'+r.pos_class:'—')+'</td>'+
         '<td>'+(r.laps!=null?r.laps:'—')+'</td>'+
-        '<td>'+lap(r.best_lap_ms)+'</td>'+
+        '<td'+(r.set_fastest?' class="strong" title="set the car\'s fastest lap"':'')+'>'+lap(r.best_lap_ms)+(r.set_fastest?' ⚡':'')+'</td>'+
         '<td>'+pts(r.pos_class)+'</td>'+
       '</tr>';
     }).join('')+'</tbody>';
@@ -444,7 +444,7 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeModa
 function load(){
   fetch(SB+'/rest/v1/stint9_nls_races?select=event_date,round_no,title,series',{headers:H})
     .then(function(r){return r.json();}).then(function(j){ (Array.isArray(j)?j:[]).forEach(function(r){RACES[r.event_date]=r;}); }).catch(function(){});
-  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,status&limit=20000',{headers:H})
+  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,set_fastest,status&limit=20000',{headers:H})
     .then(function(r){return r.json();}).then(function(j){
       RESULTS=Array.isArray(j)?j:[];
       buildScope(); render(); loadMeta();

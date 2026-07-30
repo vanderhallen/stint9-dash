@@ -21,10 +21,14 @@
  *      stint9_nls_results for each scraped race (delete-by-event_date then
  *      insert, so a re-scan picks up late-published / corrected results).
  *
- * WHAT THE PDF DOES *NOT* CONTAIN (documented limits, surfaced on driver.html):
+ * PER-DRIVER BEST LAP: the race result sheet lists only the CAR's fastest lap,
+ * but the separate "Lap by Lap" chart (<date>rl.pdf) tags every lap with the
+ * on-track driver's number, so parseLapChart() recovers each driver's own best
+ * lap and set_fastest marks whoever set the car's fastest. If that chart is
+ * missing for a round, all co-drivers fall back to the car's fastest lap.
+ *
+ * WHAT THE PDFs DO *NOT* CONTAIN (documented limits, surfaced on driver.html):
  *   - Driver age / birthdate: never printed anywhere -> no age field.
- *   - Per-driver fastest lap: only the CAR's fastest lap is published, so it is
- *     attributed to every driver of that car (best_lap_ms).
  *   - Championship points: not printed. pos_class is stored; "points in class"
  *     is derived on the client from a documented class-position scale.
  *
@@ -202,8 +206,39 @@ type ResultRow = {
   team: string | null; car_model: string; driver_key: string; driver_name: string;
   nationality: string | null; license_no: string | null;
   pos_overall: number | null; pos_class: number | null; laps: number | null;
-  best_lap_ms: number | null; status: string;
+  best_lap_ms: number | null; set_fastest: boolean | null; status: string;
 };
+
+// Lap-by-lap chart (<date>rl.pdf) -> per car, per driver-NUMBER, that driver's
+// fastest lap (ms). The chart tags every lap with the on-track driver's number
+// in parentheses, e.g. "8:04.370 5(1)" = lap 5 by driver 1. Driver numbers are
+// assigned in the same order drivers are printed on the result sheet, so number
+// N maps to the Nth driver of that car as parseResults lists them. This is what
+// lets each co-driver get their OWN best lap instead of sharing the car's.
+export function parseLapChart(raw: string): Record<string, Record<string, number>> {
+  const text = raw
+    .replace(/No Entrant Driver/g, ' | ') // per-page column header -> block boundary
+    .replace(/Datenservice:[\s\S]*?(?:Rheinbrohl|Meckenheim)/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  // a car block starts at a boundary, then carNo, then non-lap text up to the first "(1)"
+  const HDR = /(?:^|\)|\|)\s*(\d{1,3})\s+(?:(?!\d{1,2}:\d{2}\.\d{3})[^|])*?\(1\)/g;
+  const heads: { carNo: string; idx: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = HDR.exec(text))) heads.push({ carNo: m[1], idx: m.index });
+  const LAP = /(\d{1,2}:\d{2}\.\d{3}) (?:\d+|pit)\((\d+)\)/g;
+  const byCar: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < heads.length; i++) {
+    const seg = text.slice(heads[i].idx, i + 1 < heads.length ? heads[i + 1].idx : text.length);
+    const acc = (byCar[heads[i].carNo] ??= {});
+    let mm: RegExpExecArray | null;
+    LAP.lastIndex = 0;
+    while ((mm = LAP.exec(seg))) {
+      const ms = timeToMs(mm[1]); const dn = mm[2];
+      if (ms != null && (acc[dn] == null || ms < acc[dn])) acc[dn] = ms;
+    }
+  }
+  return byCar;
+}
 
 // Split "SP9 PRO-AM" -> base "SP9" + rating "PRO-AM"; leave "CUP2"/"BMW M2" as base, rating null.
 function splitClass(cls: string): { base: string; rating: string | null } {
@@ -228,8 +263,10 @@ function cleanText(raw: string): string {
     .replace(/\s+/g, ' ').trim();
 }
 
-// Parse an Ergebnis PDF's text into result rows for one event.
-export function parseResults(rawText: string, eventDate: string): ResultRow[] {
+// Parse an Ergebnis PDF's text into result rows for one event. When a parsed
+// lap chart (lapMap) is supplied, each driver gets their own best lap; otherwise
+// every co-driver falls back to the car's single published fastest lap.
+export function parseResults(rawText: string, eventDate: string, lapMap?: Record<string, Record<string, number>>): ResultRow[] {
   const text = cleanText(rawText);
   type Head = { idx: number; tsEnd: number; pos: number | null; carNo: number; cls: string; model: string; laps: number };
   const heads: Head[] = [];
@@ -257,14 +294,19 @@ export function parseResults(rawText: string, eventDate: string): ResultRow[] {
     const drivers = dm ? parseDrivers(after.slice(dm.index)) : [];
     const { base, rating } = splitClass(h.cls);
     const status = /\*+DSQ/i.test(after) ? 'dsq' : (h.pos !== null ? 'classified' : 'dnf');
-    for (const d of drivers) {
+    const carLaps = lapMap ? lapMap[String(h.carNo)] : undefined;
+    const carMin = carLaps ? Math.min(...Object.values(carLaps)) : null;
+    drivers.forEach((d, di) => {
+      const driverLap = carLaps ? carLaps[String(di + 1)] : undefined; // driver number = list order
+      const bestLap = driverLap != null ? driverLap : best;            // fall back to car fastest
+      const setFastest = (carLaps && driverLap != null) ? (driverLap === carMin) : null;
       rows.push({
         event_date: eventDate, car_no: h.carNo, class: base, rating: rating, class_full: h.cls,
         team, car_model: h.model, driver_key: foldKey(d.name), driver_name: d.name,
         nationality: d.nationality, license_no: d.license,
-        pos_overall: h.pos, pos_class: null, laps: h.laps, best_lap_ms: best, status,
+        pos_overall: h.pos, pos_class: null, laps: h.laps, best_lap_ms: bestLap, set_fastest: setFastest, status,
       });
-    }
+    });
   }
   // pos_class: rank classified cars within their base class by pos_overall.
   const byClass: Record<string, { car_no: number; pos: number }[]> = {};
@@ -342,7 +384,15 @@ async function ingestRace(eventDate: string, roundNo: string, title: string, ser
   const entryUrl = `${PDF_BASE}/${eventDate}s.pdf`;
   const text = await fetchPdfText(resultsUrl);
   if (!text) return { eventDate, series, status: 'no_results_pdf' };
-  const rows = parseResults(text, eventDate);
+  // Best-effort lap-by-lap chart for per-driver best laps (NLS only; the 24h
+  // explicit-URL path has no known rl.pdf). A missing/bad chart just falls back
+  // to the car's fastest lap for every co-driver.
+  let lapMap: Record<string, Record<string, number>> | undefined;
+  if (!explicitUrl) {
+    try { const lt = await fetchPdfText(`${PDF_BASE}/${eventDate}rl.pdf`); if (lt) lapMap = parseLapChart(lt); }
+    catch (_) { /* ignore, fall back */ }
+  }
+  const rows = parseResults(text, eventDate, lapMap);
   if (!rows.length) return { eventDate, series, status: 'parsed_zero' };
   // Sanity gate: a well-formed NLS result parses to ~2-4 drivers per car and a
   // healthy set of classified cars. A divergent layout (e.g. the 24h-Qualifiers
