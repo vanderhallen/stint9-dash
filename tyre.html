@@ -362,7 +362,10 @@ function applyBandState(st){if(!st)return;BAND_KEYS.forEach(b=>{const bs=st[b];i
    postMessage. No localStorage — the DB is the single source of truth, so two
    teams on different cars keep entirely separate tyre boards. ---- */
 let CUR_CAR='';
-const TYRE_DEFAULTS={stock:{},stockRemoved:[],stockAdds:[],stockNew:[],stintXfers:[],stintRemoved:[],emptyBands:[],bands:{},trash:[],firstUsed:{}};
+// emptyBands defaults to ALL 8 board bands (4 TRACK corners + 4 PIT) so a fresh
+// car shows an EMPTY board — no template tyres on TRACK/PIT until real ones are
+// mounted (sending stock->PIT and PIT->TRACK explicitly un-empty each slot).
+const TYRE_DEFAULTS={stock:{},stockRemoved:[],stockAdds:[],stockNew:[],stintXfers:[],stintRemoved:[],emptyBands:['tl','tr','bl','br','v1','v2','v3','v4'],bands:{},trash:[],firstUsed:{}};
 function collectTyreState(){
   const bands={};BAND_KEYS.forEach(b=>{bands[b]=readBandState(b);});
   return {stock:STOCK_STATE,stockRemoved:[...STOCK_REMOVED],stockAdds:STOCK_ADDS,stockNew:STOCK_NEW,
