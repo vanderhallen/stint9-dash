@@ -29,6 +29,10 @@
   table.vis th{text-align:right;color:var(--muted);font-weight:700;letter-spacing:.5px;padding:8px 9px;border-bottom:2px solid var(--border);text-transform:uppercase;font-size:10.5px;white-space:nowrap;cursor:pointer;user-select:none}
   table.vis th.l,table.vis td.l{text-align:left}
   table.vis th.active{color:var(--ink)}
+  .arwrap{display:inline-flex;flex-direction:column;line-height:.62;margin-left:4px;vertical-align:middle}
+  .ar{cursor:pointer;color:#c3c8ce;font-size:8px}
+  .ar:hover{color:var(--ink)}
+  .ar.on{color:var(--ink)}
   table.vis td{padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
   table.vis tr:hover td{background:#f8fafc}
   td.nm{font-weight:700}
@@ -58,7 +62,7 @@
   /* driver modal */
   .ovl{position:fixed;inset:0;background:rgba(16,22,29,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:36px 16px;overflow:auto}
   .ovl.show{display:flex}
-  .ovl .box{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:860px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+  .ovl .box{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:1080px;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
   .ovl .mhead{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--border)}
   .ovl .mhead .dnm{font-size:20px;font-weight:700;letter-spacing:1px}
   .ovl .mhead .dflag{font-size:26px;line-height:1.1}
@@ -76,7 +80,7 @@
   table.rr th.l,table.rr td.l{text-align:left}
   table.rr td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
   table.rr td.strong{font-weight:700}
-  table.rr td.ell{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  table.rr td.ell{max-width:260px;overflow:hidden;text-overflow:ellipsis}
   table.hm .cell.clk{cursor:pointer}
   table.hm .cell.clk:hover{outline:2px solid var(--ink);outline-offset:-2px}
   table.hm .cell.hl{outline:3px solid var(--ink);outline-offset:-3px;box-shadow:0 0 0 2px #fff,0 0 8px 2px rgba(0,0,0,.35);z-index:3}
@@ -127,7 +131,6 @@
           <option value="teams">Different teams</option>
         </select>
       </div>
-      <button class="btn ghost dir" id="dir" title="toggle ascending / descending">▼ desc</button>
       <div class="fld">
         <label for="q">Search</label>
         <input type="search" id="q" placeholder="driver / team…" style="width:170px">
@@ -231,7 +234,15 @@ function aggregate(){
 
 // tie-break: more points first, then name — so equal rows never bury a
 // higher-scoring driver below a lower-scoring one (alphabetical would).
-function tie(a,b){ return (b.points-a.points) || a.name.localeCompare(b.name); }
+function tie(a,b){
+  if(b.points!==a.points) return b.points-a.points;            // more points first
+  var al=a.bestLap, bl=b.bestLap;                              // then faster best lap first
+  if(al!=null&&bl!=null&&al!==bl) return al-bl;
+  if(al==null&&bl!=null) return 1; if(bl==null&&al!=null) return -1;
+  return a.name.localeCompare(b.name);
+}
+function defaultDir(k){ return (k==='name'||k==='nationality'||k==='lastCar'||k==='bestClass'||k==='bestOverall'||k==='bestLap')?'asc':'desc'; }
+function syncSortUI(){ var s=document.getElementById('sort'); if(s) s.value=state.sort; }
 function cmp(a,b){
   var s=state.sort,mul=state.dir==='asc'?1:-1;
   if(s==='name') return a.name.localeCompare(b.name)*mul;
@@ -271,8 +282,11 @@ function render(){
 
   var thead=document.querySelector('#tbl thead'), tbody=document.querySelector('#tbl tbody');
   thead.innerHTML='<tr><th class="l">#</th>'+COLS.map(function(c){
-    var active=SORTKEY[c.k]===state.sort?' active':'';
-    return '<th class="'+(c.cls||'')+active+'" data-k="'+c.k+'">'+c.l+'</th>';
+    var sk=SORTKEY[c.k], active=sk===state.sort?' active':'';
+    var up=(sk===state.sort&&state.dir==='asc')?' on':'', dn=(sk===state.sort&&state.dir==='desc')?' on':'';
+    return '<th class="'+(c.cls||'')+active+'" data-k="'+c.k+'">'+c.l+
+      '<span class="arwrap"><span class="ar'+up+'" data-k="'+c.k+'" data-d="asc" title="sort ascending">▲</span>'+
+      '<span class="ar'+dn+'" data-k="'+c.k+'" data-d="desc" title="sort descending">▼</span></span></th>';
   }).join('')+'</tr>';
   if(!data.length){ tbody.innerHTML='<tr><td class="empty" colspan="'+(COLS.length+1)+'">No drivers for this class yet.</td></tr>'; drawHeat(); return; }
   function fin(pos){ if(pos==null) return '—'; var m=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':''; return 'P'+pos+(m?' '+m:''); }
@@ -456,16 +470,18 @@ function load(){
 // wire controls
 document.getElementById('sort').value=state.sort; // keep the dropdown in sync with the initial sort
 document.getElementById('scope').onchange=function(){ state.scope=this.value; render(); };
-document.getElementById('sort').onchange=function(){ state.sort=this.value; render(); };
+document.getElementById('sort').onchange=function(){ state.sort=this.value; state.dir=defaultDir(this.value); render(); };
 document.getElementById('q').oninput=function(){ state.q=this.value; render(); };
-document.getElementById('dir').onclick=function(){ state.dir=state.dir==='asc'?'desc':'asc'; this.textContent=state.dir==='asc'?'▲ asc':'▼ desc'; render(); };
 document.querySelector('#tbl thead').addEventListener('click',function(e){
+  // per-column up/down arrows set the direction explicitly
+  var ar=e.target.closest('.ar');
+  if(ar){ var ak=SORTKEY[ar.dataset.k]; if(!ak) return; state.sort=ak; state.dir=ar.dataset.d; syncSortUI(); render(); return; }
+  // clicking the header label sorts by it (toggling direction if already active)
   var th=e.target.closest('th'); if(!th||!th.dataset.k) return;
   var k=SORTKEY[th.dataset.k]; if(!k) return;
   if(state.sort===k) state.dir=state.dir==='asc'?'desc':'asc';
-  else { state.sort=k; state.dir=(k==='name'||k==='nationality'||k==='bestClass'||k==='bestOverall'||k==='bestLap')?'asc':'desc'; }
-  document.getElementById('sort').value=k; document.getElementById('dir').textContent=state.dir==='asc'?'▲ asc':'▼ desc';
-  render();
+  else { state.sort=k; state.dir=defaultDir(k); }
+  syncSortUI(); render();
 });
 document.getElementById('update').onclick=function(){
   var b=this; b.disabled=true; b.textContent='↻ Updating…'; toast('Scraping NLS result PDFs…');
