@@ -293,10 +293,14 @@ function drawHeat(data){
   var rs=Object.keys(raceVals).map(Number).sort(function(a,b){return b-a;}); // most races on top
   var cs=Object.keys(ptVals).map(Number).sort(function(a,b){return a-b;});   // low points left
   if(!rs.length||!cs.length){ el.innerHTML='<div class="empty">No data.</div>'; document.getElementById('heatRange').textContent=''; return; }
-  var min=Infinity,max=-Infinity;
-  rs.forEach(function(r){cs.forEach(function(c){var v=r*c; if(v<min)min=v; if(v>max)max=v;});});
+  // Colour scale spans only the POPULATED cells of the current (class-filtered)
+  // data, and uses a sqrt curve — race×points is heavily right-skewed (many small,
+  // a few huge), so a linear 0..max scale would crush almost everything to green.
+  var prods=[];
+  rs.forEach(function(r){cs.forEach(function(c){ if(bucket[r+'|'+c]) prods.push(r*c); });});
+  var min=prods.length?Math.min.apply(null,prods):0, max=prods.length?Math.max.apply(null,prods):0;
   document.getElementById('heatRange').textContent='product '+min+'–'+max;
-  function col(v){ var t=max>min?(v-min)/(max-min):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',68%,'+(v===0?70:44)+'%)'; }
+  function col(v){ var t=max>min?Math.sqrt((v-min)/(max-min)):0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',68%,'+(v===0?70:44)+'%)'; }
   var html='<table class="hm"><thead><tr><th class="corner">races ↓ / points →</th>'+
     cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rs.forEach(function(r){
