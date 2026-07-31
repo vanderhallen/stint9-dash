@@ -2852,7 +2852,7 @@ buildStartGrid();
         if(window.__liveLastT===undefined||T!==window.__liveLastT){window.__liveLastT=T;window.__liveAdvMs=Date.now();}
         const _staleS=window.__liveAdvMs?Math.round((Date.now()-window.__liveAdvMs)/1000):0;
         if(_staleS>120){const _m=Math.floor(_staleS/60);
-          liveMsg.textContent='STALE · '+(_m>=1?_m+'m':_staleS+'s')+' behind · '+DB.cars.length+' cars';
+          liveMsg.textContent='STALE · no update '+(_m>=1?_m+'m':_staleS+'s')+' · '+DB.cars.length+' cars';
           liveMsg.style.color='#b45309';
         }else{
           liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(T);
