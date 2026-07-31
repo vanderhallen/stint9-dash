@@ -1838,14 +1838,25 @@ function refreshCarDropdown(T){
 function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
-  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);
+  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y,stale=false;const pit=!lg&&pitInfo(st,T);
     if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);[x,y]=ptAlong(lg[1],f);}
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
+    else if(window.dataMode==='LIVE'){
+      // LIVE frontier: at T=tmax no sector is "ongoing" — a WIGE snapshot only
+      // carries FINISHED sectors, so SIM's activeLeg (needs T inside a leg) finds
+      // nothing here and every car would vanish. Pin the car at its last completed
+      // sector boundary so the field stays visible and steps forward as new
+      // snapshots land. SIM never hits this branch (its playhead is mid-dataset).
+      const a=LEG[st];let li=null;
+      if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
+      if(!li){E.g.style.visibility='hidden';return;}
+      [x,y]=ptAlong(li[1],1);stale=true;
+    }
     else{E.g.style.visibility='hidden';return;}
     const pos=lp[st]||nC;
     const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pit)on++;
-    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(sel?'0.5':'1'));
+    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(stale?'0.6':(sel?'0.5':'1')));
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pit?('#'+st+' PIT'):('#'+st);
     E.dl.style.display=(!pit&&lg&&(lg[3]-lg[2])>DB.avgseg[lg[1]]*(1+thr))?'':'none';
     vis.push({st,x,y,fs,E});});
