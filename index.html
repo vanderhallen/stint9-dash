@@ -2511,7 +2511,11 @@ Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.v
    them — the maincol/rightcol ResizeObserver never fires because rightcol is
    pinned to the old height, so .maincol's stretched flex size doesn't change.
    fitPage does the reset AND the grow in one pass. */
-clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
+clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();
+  // LIVE: remember the chosen class so a refresh restores it instead of snapping
+  // back to the first class (see fillClassDropdown()).
+  if(window.dataMode==='LIVE')try{localStorage.setItem('stint9_liveclass',e.target.value);}catch(_){}
+  if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
 const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
@@ -2819,7 +2823,10 @@ buildStartGrid();
   function snapSim(){if(simSnap)return;simSnap={};RAW_FIELDS.forEach(k=>{if(k in DB)simSnap[k]=DB[k];});}
   function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-    const pick=(cur&&DB.classes[cur])?cur:Object.keys(DB.classes)[0];if(pick)clsSel.value=pick;return pick;}
+    // In LIVE, a saved class (from a prior selection) wins so it survives refresh;
+    // otherwise keep the current pick, else fall back to the first class.
+    let saved=null;if(window.dataMode==='LIVE')try{saved=localStorage.getItem('stint9_liveclass');}catch(_){}
+    const pick=(saved&&DB.classes[saved])?saved:((cur&&DB.classes[cur])?cur:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}}
   function liveTick(){
