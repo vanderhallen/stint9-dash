@@ -1208,19 +1208,23 @@ function animateSeq(moves,done){
     },i*230);
   });
 }
-/* ◀ mount: move each PIT band to its TRACK corner (VL→tl, VR→tr, HL→bl, HR→br) */
+/* ◀ mount: move each PIT band to its TRACK corner (VL→tl, VR→tr, HL→bl, HR→br).
+   PIT slots and TRACK corners are in matching position order (v1↔tl, v2↔tr,
+   v3↔bl, v4↔br), so route by index — a band that has lost its vl/vr/hl/hr
+   position highlight would make posOf() return undefined and silently skip it. */
 function mountPitToTrack(){
   if(animBusy||isPitEmpty()||!isTrackEmpty())return;
   animBusy=true;const moves=[];
-  PIT_BANDS.forEach(v=>{if(EMPTY_BANDS.has(v))return;const corner=CORNER_OF[posOf(readBandState(v))];if(!corner)return;
+  PIT_BANDS.forEach((v,i)=>{if(EMPTY_BANDS.has(v))return;const corner=TRACK_BANDS[i];
     moves.push({tyre:captureTyreRaw(v),from:PIT_XY[v],to:CORNER_XY[corner],land:()=>{copyBandState(v,corner);setBandEmpty(corner,false);setBandEmpty(v,true);}});});
   animateSeq(moves,()=>{animBusy=false;refreshBtns();});
 }
-/* ▶ unmount: move each TRACK corner back to PIT (VL top, VR 2nd, HL 3rd, HR bottom) */
+/* ▶ unmount: move each TRACK corner back to PIT (VL top, VR 2nd, HL 3rd, HR
+   bottom). Routed by index (tl→v1, tr→v2, bl→v3, br→v4) for the same reason. */
 function unmountTrackToPit(){
   if(animBusy||isTrackEmpty()||!isPitEmpty())return;
   animBusy=true;const moves=[];
-  TRACK_BANDS.forEach(c=>{if(EMPTY_BANDS.has(c))return;const slot=PIT_OF[posOf(readBandState(c))];if(!slot)return;
+  TRACK_BANDS.forEach((c,i)=>{if(EMPTY_BANDS.has(c))return;const slot=PIT_BANDS[i];
     moves.push({tyre:captureTyreRaw(c),from:CORNER_XY[c],to:PIT_XY[slot],land:()=>{copyBandState(c,slot);setBandEmpty(slot,false);setBandEmpty(c,true);}});});
   animateSeq(moves,()=>{animBusy=false;refreshBtns();});
 }
