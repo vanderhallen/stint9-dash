@@ -1,5 +1,15 @@
 # Race-day runbook — turning on the LIVE feed
 
+> **When something goes wrong, read [`live/LIVE-TROUBLESHOOTING.md`](live/LIVE-TROUBLESHOOTING.md) first.**
+> Hard-won learnings from the 2026‑07‑31 test day: WIGE **rate-limits over-polling**
+> (don't run extra pollers or spam ⟳ — it serves a frozen snapshot / blocks headless
+> clients while a real browser still works; recover by *stopping*, or use
+> `live/browser-collector.js`); corrupt **garage/pit sector/lap times** can inflate
+> the timeline into the future and freeze the dashboard while the feed is fine (the
+> **admin.html → LIVE data stream** panel tells STREAMING vs STALE vs SILENT apart);
+> and the **event id changes per session** (quali vs race) — discovery adapts, but
+> watch for sessions merging in `stint9_live_timing`.
+
 ## The one true primary path (since 2026-07-13): WIGE direct, fully automatic
 
 The dashboard reads WIGE's live-timing WebSocket directly
