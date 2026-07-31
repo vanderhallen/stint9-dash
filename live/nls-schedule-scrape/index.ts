@@ -127,6 +127,13 @@ function parseZeitplan(html: string): Session[] {
   return out;
 }
 
+// "2026-08-01" -> "2026-07-31" (previous calendar day; midday UTC avoids any DST edge).
+function prevDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 async function upsertSessions(eventDate: string, sessions: Session[]): Promise<number> {
   const rows = sessions
     .map(s => ({ event_date: eventDate, label: s.label, start_ts: toInstant(eventDate, s.start), end_ts: s.end ? toInstant(eventDate, s.end) : null }))
