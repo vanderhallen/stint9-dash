@@ -176,7 +176,14 @@ Deno.serve(async (req) => {
         const sessions = parseZeitplan(pageHtml);
         if (!sessions.some(s => s.label === 'race')) { rounds.push({ ...r, status: 'no_zeitplan_yet', sessionsFound: sessions.length }); continue; }
         const written = await upsertSessions(r.eventDate, sessions);
-        rounds.push({ ...r, status: 'ok', sessionsWritten: written, labels: sessions.map(s => s.label) });
+        // Also open a wide "practice" window on the DAY BEFORE the race, so the
+        // wige-scrape cron catches the Fri/day-before free-driving (Test- und
+        // Einstellfahrten) session too — those aren't in the NLS Zeitplan but are
+        // live on WIGE. Discovery (vln.html) no-ops when nothing's on, so a broad
+        // 07:00-19:00 window just says "check during daytime the day before".
+        const preDate = prevDay(r.eventDate);
+        const preWritten = await upsertSessions(preDate, [{ label: 'practice', start: '07:00', end: '19:00' }]);
+        rounds.push({ ...r, status: 'ok', sessionsWritten: written, labels: sessions.map(s => s.label), practiceDate: preDate, practiceWritten: preWritten });
       } catch (e) {
         rounds.push({ ...r, status: 'error', error: String(e) });
       }
