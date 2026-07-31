@@ -443,6 +443,7 @@
       <div id="liveBar" style="display:none;height:32px;align-items:center;gap:8px;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">
         <button class="btn" id="liveUpdate" title="Pull a fresh snapshot from the WIGE live timing now">&#8635; Update</button>
         <span id="liveEvent" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:600;white-space:nowrap" title="Detected event · track · heat (auto-detected from the live feed)">event —</span>
+        <span id="liveSig" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:700;white-space:nowrap;display:none;transition:color .4s" title="Live-timing data points received (increments each time a sector/lap update arrives from WIGE)">&#9662; 0</span>
         <span id="liveMsg">live feed not connected</span>
       </div>
     </div>
@@ -740,10 +741,19 @@ const CODE60_POLY=DB.poly.map((p,i)=>{const pl=document.createElementNS(SVGNS,'p
 
 /* dots */
 const LEG={};
-// LIVE frontier estimator cap (see render()): once a car has had NO fresh sector
-// data for this many seconds (pit / dropped feed) we stop advancing its estimate
-// and park it, so a stale car doesn't ghost-drive laps ahead of reality.
-const LIVE_EST_CAP_S=90;
+// LIVE frontier estimator cap (see render()): how far past its last real sector
+// crossing we let a car's estimate advance (≈ one long sector) before holding.
+const LIVE_EST_CAP_S=280;
+// Practice/test-session handling. WIGE doesn't flag inpit and cars sit in the
+// garage for hours, so we detect "not circulating" ourselves:
+//  - a car with no boundary crossing within this many seconds of the display
+//    clock is parked in the box (shown at the pit line, "PIT", not ghost-driven).
+//    Kept comfortably above the longest real sector (~280s) so a car genuinely
+//    circulating a long sector is never mistaken for parked.
+const LIVE_RUNNING_WINDOW_S=360;
+//  - a gap at the last common boundary larger than this is two cars that ran at
+//    different times, not a racing gap -> shown as "—" instead of "+15000s".
+const GAP_SANE_MAX_S=900;
 function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
 // last leg the car has already started by T (LEG is sorted by tStart). Used to keep
 // the lap label / car position sensible during a data gap (dropped timing beacon),
@@ -882,7 +892,12 @@ function curDrv(st,T){
   return (dl&&dl[L])||DB.name[st]||'';
 }
 const BX={},BKEYS={};
-function commonGap(ref,other,T){const ks=BKEYS[ref];for(let i=ks.length-1;i>=0;i--){const bi=ks[i],tr=BX[ref][bi];if(tr>T)continue;const to=BX[other][bi];if(to!=null&&to<=T)return tr-to;}return null;}
+function commonGap(ref,other,T){const ks=BKEYS[ref];for(let i=ks.length-1;i>=0;i--){const bi=ks[i],tr=BX[ref][bi];if(tr>T)continue;const to=BX[other][bi];if(to!=null&&to<=T){const g=tr-to;
+  // Practice/test session: two cars' last common boundary crossing can be hours
+  // apart (they ran at different times), so the "gap" is meaningless as a racing
+  // gap — blank it rather than print +15000s. (LIVE only; SIM gaps are real.)
+  if(window.dataMode==='LIVE'&&Math.abs(g)>GAP_SANE_MAX_S)return null;
+  return g;}}return null;}
 function gaps(T,lp){const r={ahead:null,behind:null},p=lp[selCar];if(!p)return r;let ah=null,be=null;
   for(const st in lp){if(lp[st]===p-1)ah=st;if(lp[st]===p+1)be=st;}
   if(ah){const d=commonGap(selCar,ah,T);if(d!=null)r.ahead=Math.abs(d).toFixed(1);}
@@ -952,6 +967,20 @@ function clockOffsetS(){
   }catch(_){return 0;}
 }
 function hmsClock(x){let v=x+clockOffsetS();v=((v%86400)+86400)%86400;return hms(v);}
+// Live-timing "data points in" counter (see liveTick): total sector/lap updates
+// received from WIGE this session, shown next to the event id, flashing green on
+// each fresh batch so you can see the feed is actually ticking.
+function updateSignalCounter(){
+  const el=document.getElementById('liveSig');if(!el)return;
+  if(window.dataMode!=='LIVE'){el.style.display='none';return;}
+  el.style.display='';
+  el.innerHTML='&#9662; '+(window.__wigeCount||0);
+  if(window.__wigeLastInc&&(Date.now()-window.__wigeLastInc<1400)){
+    el.style.color='#16a34a';                       // flash green on a fresh batch
+    clearTimeout(window.__wigeFlash);
+    window.__wigeFlash=setTimeout(()=>{el.style.color='';},700);
+  }
+}
 function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[st]||{};let L=lg?(lg[0]-1):0;
   const full=s=>s&&s.length>=5&&s[0]!=null&&s[1]!=null&&s[2]!=null&&s[3]!=null&&s[4]!=null;
   if(!lg){const ls=Object.keys(stm).map(Number).filter(l=>full(stm[l]));L=ls.length?Math.max.apply(null,ls):0;}
@@ -1856,7 +1885,7 @@ function refreshCarDropdown(T){
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
-  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);
+  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);let parked=false;
     if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);[x,y]=ptAlong(lg[1],f);}
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
@@ -1870,16 +1899,24 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
       const a=LEG[st];let li=null;
       if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
       if(!li){E._px=E._py=null;E.g.style.visibility='hidden';return;}
-      const eff=Math.min(T,li[3]+LIVE_EST_CAP_S);   // cap the estimate horizon (pit/gap → park)
-      let seg=li[1],tc=li[3],done=false;
-      for(let guard=0;guard<8&&!done;guard++){
-        const ns=seg>=5?1:seg+1;                    // next sector to drive (wraps 5→1)
-        const d=(DB.avgseg&&DB.avgseg[ns])||0;      // its expected duration (class avg)
-        if(d<=0){[x,y]=ptAlong(ns,0);done=true;break;}
-        if(eff<tc+d){[x,y]=ptAlong(ns,Math.max(0,Math.min(1,(eff-tc)/d)));done=true;break;}
-        tc+=d;seg=ns;                               // this estimated sector is done → roll on
+      if(T-li[3]>LIVE_RUNNING_WINDOW_S){
+        // No crossing in a long time: the car isn't circulating (pit/garage/stopped
+        // — WIGE won't flag it in practice). Park it at the pit line instead of
+        // ghost-driving it around the estimated track (which put #665 "in sector 3"
+        // while it was actually in the box).
+        parked=true;[x,y]=ptAlong(1,0);
+      }else{
+        const eff=Math.min(T,li[3]+LIVE_EST_CAP_S);   // cap the estimate horizon
+        let seg=li[1],tc=li[3],done=false;
+        for(let guard=0;guard<8&&!done;guard++){
+          const ns=seg>=5?1:seg+1;                    // next sector to drive (wraps 5→1)
+          const d=(DB.avgseg&&DB.avgseg[ns])||0;      // its expected duration (class avg)
+          if(d<=0){[x,y]=ptAlong(ns,0);done=true;break;}
+          if(eff<tc+d){[x,y]=ptAlong(ns,Math.max(0,Math.min(1,(eff-tc)/d)));done=true;break;}
+          tc+=d;seg=ns;                               // this estimated sector is done → roll on
+        }
+        if(!done)[x,y]=ptAlong(seg>=5?1:seg+1,1);
       }
-      if(!done)[x,y]=ptAlong(seg>=5?1:seg+1,1);
     }
     else{E._px=E._py=null;E.g.style.visibility='hidden';return;}
     // Tween (LIVE only): slide the dot toward its new target so a snap — when a real
@@ -1889,16 +1926,17 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
       if(px!=null&&py!=null){const dx=x-px,dy=y-py,dd=Math.hypot(dx,dy);
         if(dd>0.01&&dd<120){x=px+dx*0.28;y=py+dy*0.28;}}
       E._px=x;E._py=y;}
+    const pitlike=pit||parked;   // in the box, either flagged or self-detected (practice)
     const pos=lp[st]||nC;
     const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
-    E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pit)on++;
-    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(sel?'0.5':'1'));
-    const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pit?('#'+st+' PIT'):('#'+st);
+    E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pitlike)on++;
+    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pitlike?'0.35':(sel?'0.5':'1'));
+    const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pitlike?('#'+st+' PIT'):('#'+st);
     // DELAY only for a SLOW-but-plausible sector: between avg×(1+thr) and avg×4.
     // Beyond ×4 the leg is a pit/stopped/garage sector (common in a practice
     // session where WIGE doesn't flag inpit) — not a race delay, so don't badge it.
     {const _a=lg?(DB.avgseg[lg[1]]||0):0,_d=lg?(lg[3]-lg[2]):0;
-     E.dl.style.display=(!pit&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4)?'':'none';}
+     E.dl.style.display=(!pitlike&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4)?'':'none';}
     vis.push({st,x,y,fs,E});});
   // message-board highlight: pulsing ring around our car if an active,
   // undismissed message targets it (see initMessages() below)
@@ -2896,10 +2934,32 @@ buildStartGrid();
         // Null anything implausibly long so it can't corrupt positions/gaps/tmax —
         // a real Nordschleife sector is < ~15min, a lap < ~1h.
         const cap=(v,m)=>(v!=null&&isFinite(+v)&&+v>m)?null:v;
-        const raw=rows.map(r=>({car:String(r.car),lap:r.lap,klass:r.klass,
-          s:[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)],
-          spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
-          tend:r.lap_end_tod,rt:cap(r.lap_time,3600),inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle}));
+        const big=(v,m)=>v!=null&&isFinite(+v)&&+v>m;
+        // Signal counter: count every NEW-or-CHANGED per-lap row we receive (a
+        // fresh sector filling in, or a new lap), accumulated across polls, shown
+        // next to the event id as a live "data points in" heartbeat.
+        {const seen=(window.__wigeSeen||(window.__wigeSeen={}));let inc=0;
+         for(const r of rows){const k=r.car+'|'+r.lap,sig=[r.s1,r.s2,r.s3,r.s4,r.s5,r.lap_time,r.lap_end_tod].join(',');
+           if(seen[k]!==sig){seen[k]=sig;inc++;}}
+         window.__wigeCount=(window.__wigeCount||0)+inc;
+         if(inc)window.__wigeLastInc=Date.now();
+         if(typeof updateSignalCounter==='function')updateSignalCounter();}
+        const raw=rows.map(r=>{
+          // Garage/pit lap: WIGE doesn't flag inpit, but a car sitting in the box
+          // reports absurd sector/lap times (seen: s1=16086s, lap=5241s). Such a
+          // lap's timing is garbage — its partial sectors would scatter the car onto
+          // the track at the wrong place and even scramble leg order (t0=tend-rt goes
+          // wrong) — so null the whole lap and mark it a pit lap. Thresholds sit well
+          // above real racing incl. Code 60 (sector<~5min, lap<~15min), so clean and
+          // merely-slow laps are untouched; buildLiveDB then makes no on-track legs
+          // for it, and render() parks the car in the box instead of ghost-driving.
+          const garage=big(r.lap_time,1200)||big(r.s1,600)||big(r.s2,600)||big(r.s3,600)||big(r.s4,600)||big(r.s5,600);
+          const s=garage?[null,null,null,null,null]
+                        :[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)];
+          return {car:String(r.car),lap:r.lap,klass:r.klass, s,
+            spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
+            tend:r.lap_end_tod,rt:garage?null:cap(r.lap_time,3600),
+            inpit:!!r.inpit||garage,fast:!!r.fastest,drv:r.driver,veh:r.vehicle};});
         // True data frontier = newest actual lap-end time-of-day; robust even if a
         // corrupt leg still pushes the derived DB.tmax into the future.
         liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
@@ -2962,6 +3022,7 @@ buildStartGrid();
       // load this event-day's fuel entries (persisted; reset only on a new day)
       if(typeof loadFuelForLive==='function')loadFuelForLive();
       startLive();
+      if(typeof updateSignalCounter==='function')updateSignalCounter();  // show the data-points badge
     }else{
       stopLive();
       simControls.style.display='flex';liveBar.style.display='none';
