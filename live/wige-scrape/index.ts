@@ -148,6 +148,27 @@ function idRange(spec: string | null): string[] {
   return Array.from({ length: 80 }, (_, i) => String(i + 1));
 }
 
+// P5 (2026-07-31 raceday fix): the WIGE socket only honours ONE event
+// subscription per connection — blasting a whole range of eventIds on a single
+// socket makes the server answer LTS_NOT_FOUND to ALL of them (verified live:
+// event 20 was broadcasting 53 cars, yet a 1..80 mass-subscribe saw nothing and
+// even rejected:[] was empty). That silently broke the default range-scan for
+// its entire life, which is why stint9_live_status was never once `live`.
+//
+// So don't brute-force the socket at all: WIGE's own vln.html embeds the current
+// NLS/VLN event id in its results iframe (…/events/<ID>/results). Read that with
+// one HTTP GET and subscribe to just that id (the reliable single-subscribe
+// path). It also tracks the id automatically if WIGE renumbers it per session.
+const DISCOVER_URL = Deno.env.get('WIGE_DISCOVER_URL') || 'https://livetiming.wige.de/vln.html';
+async function discoverEventId(): Promise<string | null> {
+  try {
+    const res = await fetch(DISCOVER_URL, { headers: { 'user-agent': 'stint9-dash' } });
+    if (!res.ok) return null;
+    const m = (await res.text()).match(/events\/(\d+)\/results/);
+    return m ? m[1] : null;
+  } catch { return null; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   const ed = eventDate();
@@ -157,7 +178,14 @@ Deno.serve(async (req) => {
     let range = url.searchParams.get('range');
     if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; } catch { /* no body */ } }
 
+    // Default path (no explicit eventId/range, i.e. the ⟳ button & pg_cron):
+    // discover the live id from vln.html and subscribe to just it. Only fall
+    // back to the (mass-subscribe) range scan if discovery fails AND a range was
+    // explicitly asked for — a bare range scan is known-broken, see above.
+    if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
     const ids = eventId ? [eventId] : idRange(range);
+    // A discovered/explicit single id is trusted; only gate (TRACKNAME-filter) a
+    // real range scan.
     const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId);
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');

@@ -2776,8 +2776,10 @@ buildStartGrid();
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_status?select=*&event_date=eq.'+encodeURIComponent(liveEventDate()),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(r=>r.ok?r.json():[]).then(a=>{const s=a&&a[0];if(!liveEventEl)return;
         if(!s){liveEventEl.textContent='event —';liveEventEl.style.color='var(--muted)';return;}
-        const bits=[];if(s.event_id)bits.push('event '+s.event_id);if(s.track)bits.push(s.track);if(s.heat&&s.heat!=='null'&&s.heat!=='')bits.push('H'+s.heat);
-        liveEventEl.textContent=bits.length?bits.join(' · '):(s.live?'live':'offline');
+        // Compact badge: just "event N" (track/heat text was too wide). Full
+        // track+heat still available on hover via title.
+        liveEventEl.textContent=s.event_id?('event '+s.event_id):(s.live?'live':'offline');
+        liveEventEl.title=[s.event_id&&('event '+s.event_id),s.track,(s.heat&&s.heat!=='null'&&s.heat!=='')&&('H'+s.heat)].filter(Boolean).join(' · ');
         liveEventEl.style.color=s.live?'#16a34a':'var(--muted)';
       }).catch(()=>{});
   }
@@ -2834,6 +2836,7 @@ buildStartGrid();
 
   function setMode(m){
     window.dataMode=m;
+    try{localStorage.setItem('stint9_datamode',m);}catch(e){} // remember across refresh
     toggle.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
     if(m==='LIVE'){
       wasPlaying=playing;
@@ -2856,6 +2859,11 @@ buildStartGrid();
   }
   toggle.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
   window.dataMode='SIM';
+  // Restore the last-used mode on refresh: a page reload while watching LIVE
+  // should stay in LIVE, not snap back to SIM. SIM is the authored default, so
+  // only actively switch when the saved mode was LIVE.
+  let _savedMode='SIM';try{_savedMode=localStorage.getItem('stint9_datamode')||'SIM';}catch(e){}
+  if(_savedMode==='LIVE')setMode('LIVE');
 })();
 
 /* ============================================================
