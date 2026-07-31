@@ -2828,7 +2828,7 @@ buildStartGrid();
   // Smooth LIVE motion: LIVE renders through SIM's own animation loop; only the
   // clock source differs. liveDispT glides at 1x real-time, trailing the newest
   // data-time (DB.tmax) by ~LIVE_BUFFER_S so cars are inside a sector leg.
-  let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null;const LIVE_BUFFER_S=20,LIVE_MAXLAG_S=90;
+  let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null,liveFrontier=null;const LIVE_BUFFER_S=10,LIVE_MAXLAG_S=90;
   function snapSim(){if(simSnap)return;simSnap={};RAW_FIELDS.forEach(k=>{if(k in DB)simSnap[k]=DB[k];});}
   function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
@@ -2845,13 +2845,26 @@ buildStartGrid();
         if(window.dataMode!=='LIVE')return;
         if(typeof window.buildLiveDB!=='function'){liveMsg.textContent='live feed: build module not loaded';return;}
         if(!rows||!rows.length){liveMsg.textContent='LIVE · waiting for timing data…';return;}
-        const raw=rows.map(r=>({car:String(r.car),lap:r.lap,klass:r.klass,s:[r.s1,r.s2,r.s3,r.s4,r.s5],spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],tend:r.lap_end_tod,rt:r.lap_time,inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle}));
+        // WIGE emits garage/pit "sector" and lap times of many minutes-to-hours (a
+        // car sat in the box). Left raw they inflate the derived timeline into the
+        // future (badge showed 17:54), freeze staleness, and blow up gaps (+20490s).
+        // Null anything implausibly long so it can't corrupt positions/gaps/tmax —
+        // a real Nordschleife sector is < ~15min, a lap < ~1h.
+        const cap=(v,m)=>(v!=null&&isFinite(+v)&&+v>m)?null:v;
+        const raw=rows.map(r=>({car:String(r.car),lap:r.lap,klass:r.klass,
+          s:[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)],
+          spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
+          tend:r.lap_end_tod,rt:cap(r.lap_time,3600),inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle}));
+        // True data frontier = newest actual lap-end time-of-day; robust even if a
+        // corrupt leg still pushes the derived DB.tmax into the future.
+        liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
+        if(!isFinite(liveFrontier))liveFrontier=null;
         const geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
         let live;try{live=window.buildLiveDB(raw,geom,{name:(DB.event&&DB.event.name)||'LIVE',date:liveEventDate()});}catch(e){liveMsg.textContent='live feed: parse error';return;}
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});
         const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
         applyCarFuelSettings(selCar);postTyreCar(selCar);
-        const frontier=DB.tmax;liveSeen=true;   // newest data-time; the smooth loop drives the display clock T
+        const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;liveSeen=true;   // robust newest data-time; drives clock T
         // Staleness: time since the feed's data-time (frontier) last CHANGED —
         // timezone-agnostic. Green running advances it every few seconds; a frozen
         // source (full-course yellow / session end) makes it climb -> amber STALE.
@@ -2877,7 +2890,7 @@ buildStartGrid();
   function liveLoop(ts){
     if(window.dataMode!=='LIVE'){liveRAF=0;return;}
     liveRAF=requestAnimationFrame(liveLoop);
-    const frontier=DB.tmax;
+    const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;
     if(frontier==null||!isFinite(frontier)){liveDispLast=ts;return;}
     if(!liveDispLast)liveDispLast=ts;let dt=(ts-liveDispLast)/1000;liveDispLast=ts;if(dt>0.5)dt=0;
     if(liveDispT==null||!isFinite(liveDispT))liveDispT=frontier-LIVE_BUFFER_S;
