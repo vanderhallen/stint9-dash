@@ -2836,7 +2836,21 @@ buildStartGrid();
         const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
         applyCarFuelSettings(selCar);postTyreCar(selCar);
         T=DB.tmax;if(scrub)scrub.value=T;liveSeen=true;
-        liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(T);
+        // Staleness: measure wall-clock elapsed since the feed's data-time (T) last
+        // CHANGED — timezone-agnostic (no UTC-vs-CEST clock compare). In green
+        // running some car crosses a sector every few seconds so this stays ~0; if
+        // the source freezes (session suspended / full-course yellow) it climbs, and
+        // we flip the badge to amber "STALE · Xm behind" so a frozen feed can't
+        // masquerade as live. 120s clears normal between-crossing gaps.
+        if(window.__liveLastT===undefined||T!==window.__liveLastT){window.__liveLastT=T;window.__liveAdvMs=Date.now();}
+        const _staleS=window.__liveAdvMs?Math.round((Date.now()-window.__liveAdvMs)/1000):0;
+        if(_staleS>120){const _m=Math.floor(_staleS/60);
+          liveMsg.textContent='STALE · '+(_m>=1?_m+'m':_staleS+'s')+' behind · '+DB.cars.length+' cars';
+          liveMsg.style.color='#b45309';
+        }else{
+          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(T);
+          liveMsg.style.color='';
+        }
         render();try{fitPage();}catch(e){} // full re-fit: car count (CH) may have changed
         if(typeof buildStartGrid==='function')buildStartGrid();
         if(typeof renderMessages==='function')renderMessages();
