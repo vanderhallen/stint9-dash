@@ -1838,25 +1838,30 @@ function refreshCarDropdown(T){
 function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
-  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y,stale=false;const pit=!lg&&pitInfo(st,T);
+  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);
     if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);[x,y]=ptAlong(lg[1],f);}
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
-      // LIVE frontier: at T=tmax no sector is "ongoing" — a WIGE snapshot only
-      // carries FINISHED sectors, so SIM's activeLeg (needs T inside a leg) finds
-      // nothing here and every car would vanish. Pin the car at its last completed
-      // sector boundary so the field stays visible and steps forward as new
-      // snapshots land. SIM never hits this branch (its playhead is mid-dataset).
+      // LIVE frontier: the car's CURRENT sector isn't in the feed yet (only FINISHED
+      // sectors are), so SIM's activeLeg finds nothing. Interpolate it the SAME way
+      // SIM interpolates a known sector — ptAlong(seg, f) — but with the sector's end
+      // ESTIMATED from the class's average duration for that sector (DB.avgseg). The
+      // car glides through its in-progress sector at expected pace and snaps to the
+      // real position the instant its crossing lands. SIM has the true end; live has
+      // to predict it — that's the only difference.
       const a=LEG[st];let li=null;
       if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
       if(!li){E.g.style.visibility='hidden';return;}
-      [x,y]=ptAlong(li[1],1);stale=true;
+      const nseg=li[1]>=5?1:li[1]+1;                        // sector the car is now driving
+      const dur=(DB.avgseg&&DB.avgseg[nseg])||0;            // expected duration (class avg)
+      const f=dur>0?Math.min(0.97,Math.max(0,(T-li[3])/dur)):0;  // clamp shy of the line until the real crossing
+      [x,y]=ptAlong(nseg,f);
     }
     else{E.g.style.visibility='hidden';return;}
     const pos=lp[st]||nC;
     const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pit)on++;
-    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(stale?'0.6':(sel?'0.5':'1')));
+    E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(sel?'0.5':'1'));
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pit?('#'+st+' PIT'):('#'+st);
     E.dl.style.display=(!pit&&lg&&(lg[3]-lg[2])>DB.avgseg[lg[1]]*(1+thr))?'':'none';
     vis.push({st,x,y,fs,E});});
@@ -2820,6 +2825,10 @@ buildStartGrid();
   const LIVE_POLL_MS=5000;
   const RAW_FIELDS=['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event','cars','maxN','avgseg','tmin','tmax'];
   let simSnap=null,liveTimer=null,liveSeen=false;
+  // Smooth LIVE motion: LIVE renders through SIM's own animation loop; only the
+  // clock source differs. liveDispT glides at 1x real-time, trailing the newest
+  // data-time (DB.tmax) by ~LIVE_BUFFER_S so cars are inside a sector leg.
+  let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null;const LIVE_BUFFER_S=20,LIVE_MAXLAG_S=90;
   function snapSim(){if(simSnap)return;simSnap={};RAW_FIELDS.forEach(k=>{if(k in DB)simSnap[k]=DB[k];});}
   function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
@@ -2842,29 +2851,46 @@ buildStartGrid();
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});
         const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
         applyCarFuelSettings(selCar);postTyreCar(selCar);
-        T=DB.tmax;if(scrub)scrub.value=T;liveSeen=true;
-        // Staleness: measure wall-clock elapsed since the feed's data-time (T) last
-        // CHANGED — timezone-agnostic (no UTC-vs-CEST clock compare). In green
-        // running some car crosses a sector every few seconds so this stays ~0; if
-        // the source freezes (session suspended / full-course yellow) it climbs, and
-        // we flip the badge to amber "STALE · Xm behind" so a frozen feed can't
-        // masquerade as live. 120s clears normal between-crossing gaps.
-        if(window.__liveLastT===undefined||T!==window.__liveLastT){window.__liveLastT=T;window.__liveAdvMs=Date.now();}
+        const frontier=DB.tmax;liveSeen=true;   // newest data-time; the smooth loop drives the display clock T
+        // Staleness: time since the feed's data-time (frontier) last CHANGED —
+        // timezone-agnostic. Green running advances it every few seconds; a frozen
+        // source (full-course yellow / session end) makes it climb -> amber STALE.
+        if(window.__liveLastT===undefined||frontier!==window.__liveLastT){window.__liveLastT=frontier;window.__liveAdvMs=Date.now();}
         const _staleS=window.__liveAdvMs?Math.round((Date.now()-window.__liveAdvMs)/1000):0;
         if(_staleS>120){const _m=Math.floor(_staleS/60);
           liveMsg.textContent='STALE · no update '+(_m>=1?_m+'m':_staleS+'s')+' · '+DB.cars.length+' cars';
           liveMsg.style.color='#b45309';
         }else{
-          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(T);
+          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(frontier);
           liveMsg.style.color='';
         }
+        if(liveDispT==null){T=frontier;if(scrub)scrub.value=T;}   // first paint until the smooth loop takes over
         render();try{fitPage();}catch(e){} // full re-fit: car count (CH) may have changed
         if(typeof buildStartGrid==='function')buildStartGrid();
         if(typeof renderMessages==='function')renderMessages();
       }).catch(()=>{if(window.dataMode==='LIVE'&&!liveSeen)liveMsg.textContent='LIVE · feed unreachable, retrying…';});
   }
-  function startLive(){snapSim();liveSeen=false;liveMsg.textContent='LIVE · connecting…';liveTick();liveTimer=setInterval(liveTick,LIVE_POLL_MS);}
-  function stopLive(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}}
+  // LIVE motion = SIM's exact renderer (activeLeg + ptAlong interpolation), driven
+  // as a slightly-delayed real-time replay. Same behaviour as SIM; only the clock's
+  // source differs. In a feed gap (pit / frozen source) T catches up to the frontier
+  // and holds, so the car parks at its last sector point until new data arrives.
+  function liveLoop(ts){
+    if(window.dataMode!=='LIVE'){liveRAF=0;return;}
+    liveRAF=requestAnimationFrame(liveLoop);
+    const frontier=DB.tmax;
+    if(frontier==null||!isFinite(frontier)){liveDispLast=ts;return;}
+    if(!liveDispLast)liveDispLast=ts;let dt=(ts-liveDispLast)/1000;liveDispLast=ts;if(dt>0.5)dt=0;
+    if(liveDispT==null||!isFinite(liveDispT))liveDispT=frontier-LIVE_BUFFER_S;
+    liveDispT+=dt;                                              // 1x real-time (same clock units as SIM's T)
+    if(liveDispT>frontier)liveDispT=frontier;                  // never run past the newest data
+    else if(liveDispT<frontier-LIVE_MAXLAG_S)liveDispT=frontier-LIVE_BUFFER_S; // re-anchor after a big data jump
+    if(liveDispT===liveLastDrawn)return;                       // held at frontier (frozen feed) — don't burn frames
+    liveLastDrawn=liveDispT;
+    T=liveDispT;if(scrub)scrub.value=T;
+    render();
+  }
+  function startLive(){snapSim();liveSeen=false;liveDispT=null;liveDispLast=0;liveLastDrawn=null;liveMsg.textContent='LIVE · connecting…';liveTick();if(!liveRAF)liveRAF=requestAnimationFrame(liveLoop);liveTimer=setInterval(liveTick,LIVE_POLL_MS);}
+  function stopLive(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}if(liveRAF){cancelAnimationFrame(liveRAF);liveRAF=0;}liveDispT=null;liveDispLast=0;liveLastDrawn=null;}
 
   function setMode(m){
     window.dataMode=m;
