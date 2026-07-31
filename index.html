@@ -3631,7 +3631,7 @@ function renderTimetable(){
   const heading=multiDay?(SCHEDULE.eventDate+' &ndash; '+SCHEDULE.eventDateEnd):SCHEDULE.eventDate;
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:6px 4px">';
   h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+heading+'</div>';
-  rows.forEach(r=>{h+='<div style="display:flex;justify-content:flex-start;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:150px">'+r[0]+(r[1]?' <span style="color:var(--muted);font-weight:400">('+r[1]+')</span>':'')+'</span><span style="font-weight:600;text-align:left">'+r[2]+(r[3]?('&ndash;'+r[3]):'')+'</span></div>';});
+  rows.forEach(r=>{h+='<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:18px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:130px">'+r[0]+'</span><span style="color:var(--muted);font-weight:400;text-align:right;font-variant-numeric:tabular-nums">'+(r[1]||'')+'</span><span style="font-weight:600;text-align:right;min-width:110px;font-variant-numeric:tabular-nums">'+r[2]+(r[3]?('&ndash;'+r[3]):'')+'</span></div>';});
   h+='</div>';
   el.innerHTML=h;
 }
