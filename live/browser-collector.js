@@ -59,14 +59,14 @@
   };
   const TOD_KEYS = ['TAGESZEIT', 'TIMEOFDAY', 'LASTLAPTIMEOFDAY', 'LASTPASSING', 'CROSSINGTIME'];
   const lapEndTod = (c, rootTod) => { for (const k of TOD_KEYS) if (c[k] != null && c[k] !== '') return todSeconds(c[k]); return rootTod; };
-  function mapCar(c, ed, rootTod, nSectors) {
+  function mapCar(c, ed, evid, rootTod, nSectors) {
     const car = String(c.STNR == null ? '' : c.STNR).trim();
     const lap = Number(c.LAPS != null ? c.LAPS : c.LAP);
     if (!car || !isFinite(lap)) return null;
     const s   = k => (k <= nSectors ? secOrNull(c['S' + k + 'TIME']) : null);
     const spd = k => (k <= nSectors ? secOrNull(c['S' + k + 'SPEED']) : null);
     return {
-      event_date: ed, car, lap, klass: c.CLASSNAME != null ? c.CLASSNAME : null,
+      event_date: ed, event_id: evid || null, car, lap, klass: c.CLASSNAME != null ? c.CLASSNAME : null,
       s1: s(1), s2: s(2), s3: s(3), s4: s(4), s5: s(5),
       s1_kmh: spd(1), s2_kmh: spd(2), s3_kmh: spd(3), s4_kmh: spd(4), s5_kmh: spd(5),
       lap_end_tod: lapEndTod(c, rootTod), lap_time: secOrNull(c.LASTLAPTIME),
@@ -91,7 +91,8 @@
       meta = { event_id: String(m.EXPORTID != null ? m.EXPORTID : EVENT_ID), session: m.SESSION != null ? m.SESSION : null,
                heat: (m.HEAT != null ? m.HEAT : '') + (m.HEATTYPE ? ' [' + m.HEATTYPE + ']' : ''),
                track: m.TRACKNAME != null ? m.TRACKNAME : null, cars: m.RESULT.length };
-      for (const c of m.RESULT) { const r = mapCar(c, ed, rootTod, nSectors); if (r) pending.set(r.car + '|' + r.lap, r); }
+      const evid = String(m.EXPORTID != null ? m.EXPORTID : EVENT_ID);
+      for (const c of m.RESULT) { const r = mapCar(c, ed, evid, rootTod, nSectors); if (r) pending.set(r.car + '|' + r.lap, r); }
     };
     ws.onclose = () => { if (!stopped) { console.log('[stint9] socket closed — reconnecting in 3s'); setTimeout(connect, 3000); } };
     ws.onerror = () => { try { ws.close(); } catch (e) {} };
@@ -108,7 +109,7 @@
     const rows = [...pending.values()]; pending.clear();
     const ed = eventDate();
     try {
-      if (rows.length) await post('stint9_live_timing', rows, 'event_date,car,lap');
+      if (rows.length) await post('stint9_live_timing', rows, 'event_date,event_id,car,lap');
       await post('stint9_live_status', [{
         event_date: ed, live: !!meta, event_id: meta ? meta.event_id : EVENT_ID,
         session: meta ? meta.session : null, heat: meta ? meta.heat : null, track: meta ? meta.track : null,

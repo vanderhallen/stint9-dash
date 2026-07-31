@@ -68,7 +68,7 @@ const TRACK_RE = new RegExp(Deno.env.get('WIGE_TRACK_MATCH') || 'n[uü]rburgring
 function acceptEvent(m: any): boolean { return TRACK_RE.test(String(m.TRACKNAME || '')); }
 
 type TimingRow = {
-  event_date: string; car: string; lap: number; klass: string | null;
+  event_date: string; event_id: string | null; car: string; lap: number; klass: string | null;
   s1: number | null; s2: number | null; s3: number | null; s4: number | null; s5: number | null;
   s1_kmh: number | null; s2_kmh: number | null; s3_kmh: number | null; s4_kmh: number | null; s5_kmh: number | null;
   lap_end_tod: number | null; lap_time: number | null;
@@ -77,7 +77,7 @@ type TimingRow = {
 type Meta = { event_id: string; session: string | null; heat: string | null; track: string | null };
 
 // deno-lint-ignore no-explicit-any
-function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): TimingRow | null {
+function mapCar(c: any, ed: string, evid: string, rootTod: number | null, nSectors: number): TimingRow | null {
   const car = String(c.STNR ?? '').trim();
   const lap = Number(c.LAPS ?? c.LAP);
   if (!car || !Number.isFinite(lap)) return null;
@@ -87,7 +87,7 @@ function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): T
   // Code 60 detector (index.html's code60Sectors()). Kept in sync with ../vds-relay.mjs.
   const spd = (k: number) => (k <= nSectors ? secOrNull(c[`S${k}SPEED`]) : null);
   return {
-    event_date: ed, car, lap,
+    event_date: ed, event_id: evid || null, car, lap,
     klass: c.CLASSNAME ?? null,
     s1: s(1), s2: s(2), s3: s(3), s4: s(4), s5: s(5),
     s1_kmh: spd(1), s2_kmh: spd(2), s3_kmh: spd(3), s4_kmh: spd(4), s5_kmh: spd(5),
@@ -124,7 +124,8 @@ async function collect(ids: string[], gated: boolean): Promise<{ meta: Meta | nu
       const rootTod = m.TOD != null && m.TOD !== '' ? todSeconds(m.TOD) : receipt;
       const nSectors = Math.max(1, Number(m.NROFINTERMEDIATETIMES) || 5);
       if (!meta) meta = { event_id: String(m.EXPORTID ?? ''), session: m.SESSION ?? null, heat: (m.HEAT ?? null) + (m.HEATTYPE ? ` [${m.HEATTYPE}]` : ''), track: m.TRACKNAME ?? null };
-      for (const c of m.RESULT) { const r = mapCar(c, ed, rootTod, nSectors); if (r) timing.set(`${r.car}|${r.lap}`, r); }
+      const evid = String(m.EXPORTID ?? '');
+      for (const c of m.RESULT) { const r = mapCar(c, ed, evid, rootTod, nSectors); if (r) timing.set(`${r.car}|${r.lap}`, r); }
     };
     ws.onerror = () => { clearTimeout(timer); done(); };
   });
@@ -188,7 +189,7 @@ Deno.serve(async (req) => {
     // real range scan.
     const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId);
 
-    const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
+    const nT = await upsert('stint9_live_timing', rows, 'event_date,event_id,car,lap');
     await upsert('stint9_live_status', [{
       event_date: ed, live: !!meta, event_id: meta?.event_id ?? eventId ?? null,
       session: meta?.session ?? null, heat: meta?.heat ?? null, track: meta?.track ?? null,

@@ -2794,7 +2794,11 @@ buildStartGrid();
      is being ingested, so you can verify the auto-detect latched the right one. */
   function refreshStatus(){
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_status?select=*&event_date=eq.'+encodeURIComponent(liveEventDate()),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-      .then(r=>r.ok?r.json():[]).then(a=>{const s=a&&a[0];if(!liveEventEl)return;
+      .then(r=>r.ok?r.json():[]).then(a=>{const s=a&&a[0];
+        // Remember the currently-live session id so LIVE shows only its rows (quali
+        // vs race have different event ids on the same day — see session-split).
+        window.__liveEventId=(s&&s.event_id)?String(s.event_id):null;
+        if(!liveEventEl)return;
         if(!s){liveEventEl.textContent='event —';liveEventEl.style.color='var(--muted)';return;}
         // Compact badge: just "event N" (track/heat text was too wide). Full
         // track+heat still available on hover via title.
@@ -2840,10 +2844,16 @@ buildStartGrid();
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}}
   function liveTick(){
     refreshStatus();
-    fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle,event_id&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(r=>r.ok?r.json():[]).then(rows=>{
         if(window.dataMode!=='LIVE')return;
         if(typeof window.buildLiveDB!=='function'){liveMsg.textContent='live feed: build module not loaded';return;}
+        // Session split: show only the currently-live session's rows (quali & race
+        // share event_date but have different event ids). Graceful — only filter
+        // when rows actually carry event_id AND we know the current one, so it's a
+        // no-op before the migration/scraper populate it.
+        const curEv=window.__liveEventId;
+        if(curEv&&rows&&rows.some(r=>r.event_id!=null))rows=rows.filter(r=>String(r.event_id)===curEv);
         if(!rows||!rows.length){liveMsg.textContent='LIVE · waiting for timing data…';return;}
         // WIGE emits garage/pit "sector" and lap times of many minutes-to-hours (a
         // car sat in the box). Left raw they inflate the derived timeline into the
