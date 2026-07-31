@@ -107,6 +107,22 @@
   </div>
 
   <div class="card">
+    <h2>LIVE data stream <span id="liveRawState" style="font-size:13px;font-weight:600;padding:2px 8px;border-radius:6px;vertical-align:middle">…</span></h2>
+    <div class="row">
+      <div class="meta" style="margin:0">Raw rows the WIGE scraper is writing — use to check the feed is actually streaming.</div>
+      <span>
+        <label style="font-size:13px;margin-right:10px"><input type="checkbox" id="liveRawAuto" checked> auto (4s)</label>
+        <button class="btn" onclick="loadLiveRaw()">↻ Refresh</button>
+      </span>
+    </div>
+    <div class="meta" id="liveRawFresh" style="margin-top:8px">…</div>
+    <div style="overflow:auto;max-height:340px;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px">
+      <table id="liveRawTbl" style="width:100%;border-collapse:collapse;font:12px/1.4 ui-monospace,Menlo,monospace"></table>
+    </div>
+    <div class="meta" id="liveRawMeta" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
     <h2>AI Roundtable</h2>
     <div class="row">
       <div class="meta" style="margin:0">4-way human/AI collaboration board.</div>
@@ -170,7 +186,7 @@ var H={apikey:KEY,Authorization:'Bearer '+KEY};
 var ADMIN_PW='pitwall';
 
 /* ---- login gate ---- */
-function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadEvents();loadUsage();loadVisitors();}
+function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadLiveRaw();loadEvents();loadUsage();loadVisitors();if(!liveRawTimer)liveRawTimer=setInterval(liveRawTick,4000);}
 function tryLogin(){var v=document.getElementById('pw').value;
   if(v===ADMIN_PW){try{sessionStorage.setItem('stint9_admin_ok','1');}catch(e){}unlock();}
   else{document.getElementById('pwerr').textContent='Wrong password';}}
@@ -202,6 +218,47 @@ function toggleOnline(){
     .then(function(r){if(!r.ok)throw 0;loadStatus();})
     .catch(function(){paint(!next,'save failed — try again');});
 }
+
+/* ---- LIVE data stream (raw) — troubleshooting -------------------------------
+   Reads what the WIGE scraper is actually writing (stint9_live_status +
+   stint9_live_timing) so you can tell at a glance whether the feed is streaming,
+   the scraper is silent, or the SOURCE is frozen (writes fresh but data-time
+   stale). Distinguishes those three via the state pill. */
+var liveRawTimer=null;
+function secClock(s){s=Number(s);if(!isFinite(s))return '—';var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x;}
+function agoStr(ms){var s=Math.max(0,Math.round(ms/1000));if(s<60)return s+'s';var m=Math.floor(s/60);return m+'m'+(s%60<10?'0':'')+(s%60)+'s';}
+function setLiveState(txt,bg,fg){var el=document.getElementById('liveRawState');if(el){el.textContent=txt;el.style.background=bg;el.style.color=fg;}}
+function loadLiveRaw(){
+  Promise.all([
+    fetch(SB+'/rest/v1/stint9_live_status?select=*&order=updated_at.desc&limit=1',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];}),
+    fetch(SB+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,driver&order=lap_end_tod.desc.nullslast&limit=40',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];})
+  ]).then(function(res){
+    var st=res[0]&&res[0][0], rows=res[1]||[], now=Date.now();
+    var writeAgo=(st&&st.updated_at)?(now-Date.parse(st.updated_at)):null;   // is the scraper writing at all?
+    var maxTod=rows.length?rows[0].lap_end_tod:null;                          // newest crossing time in the feed
+    var d=new Date(), nowUtcSec=d.getUTCHours()*3600+d.getUTCMinutes()*60+d.getUTCSeconds();
+    var behind=(maxTod!=null)?((nowUtcSec-maxTod+86400)%86400):null;          // how far the SOURCE lags wall clock
+    if(!st||writeAgo==null)             setLiveState('NO WRITES','#fee2e2','#991b1b');
+    else if(writeAgo>150000)            setLiveState('SCRAPER SILENT '+agoStr(writeAgo),'#fee2e2','#991b1b');
+    else if(behind!=null&&behind>150)   setLiveState('SOURCE STALE '+agoStr(behind*1000)+' behind','#fef3c7','#92400e');
+    else if(st.live)                    setLiveState('STREAMING','#dcfce7','#166534');
+    else                                setLiveState('OFFLINE (no event)','#f3f4f6','#374151');
+    var f=[];
+    if(st)f.push('status: live='+st.live+' · event '+(st.event_id||'—')+' · '+(st.cars||0)+' cars · '+(st.heat||'')+' · written '+(writeAgo!=null?agoStr(writeAgo)+' ago':'—'));
+    if(maxTod!=null)f.push('newest data-time '+secClock(maxTod)+' UTC · '+(behind!=null?agoStr(behind*1000)+' behind wall clock':''));
+    document.getElementById('liveRawFresh').innerHTML=f.map(esc).join('<br>');
+    var tb=document.getElementById('liveRawTbl');
+    if(!rows.length){tb.innerHTML='<tr><td class="empty" style="padding:8px">No rows in stint9_live_timing.</td></tr>';}
+    else{
+      var head='<tr>'+['car','lap','class','s1','s2','s3','s4','s5','laptime','tod(UTC)'].map(function(h){return '<th style="position:sticky;top:0;background:#f9fafb;text-align:left;padding:5px 8px;border-bottom:1px solid #e5e7eb">'+h+'</th>';}).join('')+'</tr>';
+      var body=rows.map(function(r){var cells=[r.car,r.lap,(r.klass||''),r.s1,r.s2,r.s3,r.s4,r.s5,r.lap_time,secClock(r.lap_end_tod)];
+        return '<tr>'+cells.map(function(c){return '<td style="padding:3px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap">'+esc(c==null?'':c)+'</td>';}).join('')+'</tr>';}).join('');
+      tb.innerHTML=head+body;
+    }
+    document.getElementById('liveRawMeta').textContent=rows.length+' newest rows · refreshed '+new Date().toLocaleTimeString();
+  });
+}
+function liveRawTick(){var a=document.getElementById('liveRawAuto');if(a&&a.checked)loadLiveRaw();}
 
 /* ---- race events archive ---- */
 var evDetailCache={};
