@@ -1894,7 +1894,11 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pit)on++;
     E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pit?'0.35':(sel?'0.5':'1'));
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pit?('#'+st+' PIT'):('#'+st);
-    E.dl.style.display=(!pit&&lg&&(lg[3]-lg[2])>DB.avgseg[lg[1]]*(1+thr))?'':'none';
+    // DELAY only for a SLOW-but-plausible sector: between avg×(1+thr) and avg×4.
+    // Beyond ×4 the leg is a pit/stopped/garage sector (common in a practice
+    // session where WIGE doesn't flag inpit) — not a race delay, so don't badge it.
+    {const _a=lg?(DB.avgseg[lg[1]]||0):0,_d=lg?(lg[3]-lg[2]):0;
+     E.dl.style.display=(!pit&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4)?'':'none';}
     vis.push({st,x,y,fs,E});});
   // message-board highlight: pulsing ring around our car if an active,
   // undismissed message targets it (see initMessages() below)

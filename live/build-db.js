@@ -110,15 +110,22 @@
 
     const classMaxN = {}, classAvg = {};
     for (const cls of Object.keys(classes)) {
-      let mx = 1; const sums = [0, 0, 0, 0, 0]; let cnt = 0;
+      let mx = 1; const sums = [0, 0, 0, 0, 0], cnts = [0, 0, 0, 0, 0];
       for (const c of classes[cls]) {
         for (const r of bycar[c]) {
           mx = Math.max(mx, r.lap);
-          if (!r.inpit) { for (let k = 0; k < 5; k++) sums[k] += (r.s[k] || 0); cnt++; }
+          // Per-SECTOR average, over present values only. The old code summed
+          // (s[k]||0) but incremented one shared per-LAP counter, so a null sector —
+          // S5 on a 4-sector class like M240i, or a pit sector capped to null
+          // upstream — added 0 to the sum while still growing the divisor, dragging
+          // the average far below the true sector time (M240i S4 came out 113s vs a
+          // real 232s). That understated avgseg made the DELAY badge (leg > avg×1.5)
+          // fire on almost every NORMAL sector. Skip nulls; still skip pit laps.
+          if (!r.inpit) for (let k = 0; k < 5; k++) if (r.s[k] != null) { sums[k] += r.s[k]; cnts[k]++; }
         }
       }
       classMaxN[cls] = mx;
-      classAvg[cls] = cnt ? sums.map(v => Math.round((v / cnt) * 10) / 10) : [0, 0, 0, 0, 0];
+      classAvg[cls] = sums.map((v, k) => cnts[k] ? Math.round((v / cnts[k]) * 10) / 10 : 0);
     }
 
     // ---- carcol: palette cycled within each class ----
