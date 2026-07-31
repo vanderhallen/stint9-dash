@@ -2861,9 +2861,13 @@ buildStartGrid();
   window.dataMode='SIM';
   // Restore the last-used mode on refresh: a page reload while watching LIVE
   // should stay in LIVE, not snap back to SIM. SIM is the authored default, so
-  // only actively switch when the saved mode was LIVE.
-  let _savedMode='SIM';try{_savedMode=localStorage.getItem('stint9_datamode')||'SIM';}catch(e){}
-  if(_savedMode==='LIVE')setMode('LIVE');
+  // only actively switch when the saved mode was LIVE. Deferred to a timeout +
+  // guarded so restoring LIVE runs AFTER the rest of page init and can never
+  // throw during load (which would abort the remaining top-level script).
+  try{
+    if(localStorage.getItem('stint9_datamode')==='LIVE')
+      setTimeout(function(){try{setMode('LIVE');}catch(e){console.error('LIVE restore failed',e);}},0);
+  }catch(e){}
 })();
 
 /* ============================================================
