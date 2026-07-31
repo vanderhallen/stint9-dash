@@ -137,6 +137,10 @@
   .card.zoomed #gridtablewrap th,.card.zoomed #snaptablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #snaptablewrap td,.card.zoomed #drvtablewrap td{padding:6px 10px!important}
   .card.zoomed #gridtablewrap td>div,.card.zoomed #snaptablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
   .card.zoomed #gridtablewrap span,.card.zoomed #snaptablewrap span,.card.zoomed #drvtablewrap span{width:12px!important;height:28px!important;border-radius:2px!important}
+  /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
+     align-items:center centres the (short) table vertically in the tall modal
+     instead of pinning it to the top. max-height keeps it scrollable if ever tall. */
+  .card.zoomed #champreel{height:auto!important;max-height:100%!important}
   .cl{fill:none;stroke-linejoin:round;stroke-linecap:round}
   .axis{fill:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
   .paxis{fill:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600}
