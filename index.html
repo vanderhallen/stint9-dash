@@ -721,8 +721,19 @@ function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reel
   if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=(v.clientWidth*ZOOM_RATIO).toFixed(1)+'px';}
   applyReel(true);if(typeof savePrefs==='function')savePrefs();}
 function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*reelHeightRatio()).toFixed(1)+'px';applyReel(false);
-  /* right (weather/timetable) reel always follows the left reel's rendered height */
-  const wv=document.getElementById('wxview');if(wv){const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';}}
+  /* right (weather/timetable) reel: inline it follows the left reel's rendered
+     height; but when ITS OWN card is zoomed, fill the modal so the reel opens as
+     large as possible instead of inheriting the short inline height. */
+  const wv=document.getElementById('wxview');if(wv){
+    const wc=wv.closest('.card');
+    if(wc&&wc.classList.contains('zoomed')){
+      // Cap just under #focusHost's 95vh max-height so it never clips/overflows.
+      wv.style.height=Math.round(window.innerHeight*0.9)+'px';
+      if(window.__syncWx)setTimeout(window.__syncWx,0); // let Leaflet re-measure at the new size
+    }else{
+      const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';
+    }
+  }}
 let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const cp=(src,dst)=>{const a=document.getElementById(src),b=document.getElementById(dst);if(a&&b){b.setAttribute('viewBox',a.getAttribute('viewBox')||'0 0 1000 400');b.innerHTML=a.innerHTML;}};cp('lapchart','thumb0');cp('ltgraph','thumb1');cp('sectorsvg','thumb3');cp('flowsvg','thumb4');}
 
 /* track */
