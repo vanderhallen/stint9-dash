@@ -938,6 +938,20 @@ function renderChart(T){const shown=[];
 const clock=document.getElementById('clock'),scrub=document.getElementById('scrub'),oncount=document.getElementById('oncount'),lbls=document.getElementById('lbls'),badge=document.getElementById('carbadge'),predsvg=document.getElementById('predsvg');
 let T=DB.tmin,playing=false,last=0;
 function hms(x){const h=Math.floor(x/3600),m=Math.floor((x%3600)/60),s=Math.floor(x%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+// The WIGE live feed carries time-of-day in UTC (see LIVE-TROUBLESHOOTING Lesson 3);
+// SIM's CSV TAGESZEIT is already track-local. So in LIVE we must shift the displayed
+// clock to Europe/Berlin (the track's zone), honouring CEST(+2)/CET(+1) DST; in SIM
+// the value is already local -> no shift. Display-only: leg/gap math stays in the
+// feed's own base.
+function clockOffsetS(){
+  if(window.dataMode!=='LIVE')return 0;
+  try{const d=new Date();
+    const berlin=new Date(d.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
+    const utc=new Date(d.toLocaleString('en-US',{timeZone:'UTC'}));
+    return Math.round((berlin-utc)/1000);
+  }catch(_){return 0;}
+}
+function hmsClock(x){let v=x+clockOffsetS();v=((v%86400)+86400)%86400;return hms(v);}
 function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[st]||{};let L=lg?(lg[0]-1):0;
   const full=s=>s&&s.length>=5&&s[0]!=null&&s[1]!=null&&s[2]!=null&&s[3]!=null&&s[4]!=null;
   if(!lg){const ls=Object.keys(stm).map(Number).filter(l=>full(stm[l]));L=ls.length?Math.max.apply(null,ls):0;}
@@ -1839,7 +1853,7 @@ function refreshCarDropdown(T){
   const sel=document.getElementById('carsel');if(!sel)return;
   for(const o of sel.options){if(!o.value)continue;o.textContent='#'+o.value+'  '+curDrv(o.value,T);}
 }
-function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
+function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);
@@ -2901,7 +2915,7 @@ buildStartGrid();
           liveMsg.textContent='STALE · no update '+(_m>=1?_m+'m':_staleS+'s')+' · '+DB.cars.length+' cars';
           liveMsg.style.color='#b45309';
         }else{
-          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hms(frontier);
+          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hmsClock(frontier);
           liveMsg.style.color='';
         }
         if(liveDispT==null){T=frontier;if(scrub)scrub.value=T;}   // first paint until the smooth loop takes over
