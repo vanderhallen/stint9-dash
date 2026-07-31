@@ -59,7 +59,25 @@
     for (const c of cars) {
       const lg = [], st = {}, pit = [], bt = [], dl = {};
       for (const r of bycar[c]) {
-        const L = r.lap, s = r.s, spd = r.spd;
+        const L = r.lap, spd = r.spd;
+        // Repair a single DROPPED interior sector (S1..S4). WIGE occasionally omits
+        // one sector time from a snapshot; the cumulative walk below would otherwise
+        // just `continue` past the hole, and — the real damage — every LATER sector
+        // of that lap would then start early by the missing sector's length, sliding
+        // the car and inflating gaps. If the lap time (rt) and all four other sectors
+        // are known we can reconstruct the hole exactly (rt − sum(others)). A null S5
+        // on a pit-in lap is legitimate (no crossing) and left alone; ambiguous
+        // multi-hole laps are left as-is (rare).
+        const s = r.s.slice();
+        if (r.rt && s[4] != null) {
+          const miss = [];
+          for (let k = 0; k < 4; k++) if (s[k] == null) miss.push(k);
+          if (miss.length === 1) {
+            let sum = 0; for (let k = 0; k < 5; k++) if (s[k] != null) sum += s[k];
+            const fill = r.rt - sum;
+            if (fill > 0 && fill < 900) s[miss[0]] = r3(fill);  // plausible sector length
+          }
+        }
         let known = 0;
         for (const x of s) if (x != null) known += x;
         const rt = r.rt ? r.rt : known;

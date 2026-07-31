@@ -740,6 +740,10 @@ const CODE60_POLY=DB.poly.map((p,i)=>{const pl=document.createElementNS(SVGNS,'p
 
 /* dots */
 const LEG={};
+// LIVE frontier estimator cap (see render()): once a car has had NO fresh sector
+// data for this many seconds (pit / dropped feed) we stop advancing its estimate
+// and park it, so a stale car doesn't ghost-drive laps ahead of reality.
+const LIVE_EST_CAP_S=90;
 function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
 // last leg the car has already started by T (LEG is sorted by tStart). Used to keep
 // the lap label / car position sensible during a data gap (dropped timing beacon),
@@ -1843,21 +1847,34 @@ function render(){clock.textContent=hms(T);let on=0;const lp=livePos(T);refreshC
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
       // LIVE frontier: the car's CURRENT sector isn't in the feed yet (only FINISHED
-      // sectors are), so SIM's activeLeg finds nothing. Interpolate it the SAME way
-      // SIM interpolates a known sector — ptAlong(seg, f) — but with the sector's end
-      // ESTIMATED from the class's average duration for that sector (DB.avgseg). The
-      // car glides through its in-progress sector at expected pace and snaps to the
-      // real position the instant its crossing lands. SIM has the true end; live has
-      // to predict it — that's the only difference.
+      // sectors are), so SIM's activeLeg finds nothing. SIM has the true sector ends;
+      // here we CHAIN estimated sectors forward from the last real boundary at the
+      // class-average pace (DB.avgseg), rolling smoothly from one sector into the next
+      // instead of freezing just shy of each line (the old 0.97 clamp did the latter,
+      // which is what made cars stall at every transition). Bounded by LIVE_EST_CAP_S
+      // so a pitted / stale-feed car parks rather than ghost-driving ahead of reality.
       const a=LEG[st];let li=null;
       if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
-      if(!li){E.g.style.visibility='hidden';return;}
-      const nseg=li[1]>=5?1:li[1]+1;                        // sector the car is now driving
-      const dur=(DB.avgseg&&DB.avgseg[nseg])||0;            // expected duration (class avg)
-      const f=dur>0?Math.min(0.97,Math.max(0,(T-li[3])/dur)):0;  // clamp shy of the line until the real crossing
-      [x,y]=ptAlong(nseg,f);
+      if(!li){E._px=E._py=null;E.g.style.visibility='hidden';return;}
+      const eff=Math.min(T,li[3]+LIVE_EST_CAP_S);   // cap the estimate horizon (pit/gap → park)
+      let seg=li[1],tc=li[3],done=false;
+      for(let guard=0;guard<8&&!done;guard++){
+        const ns=seg>=5?1:seg+1;                    // next sector to drive (wraps 5→1)
+        const d=(DB.avgseg&&DB.avgseg[ns])||0;      // its expected duration (class avg)
+        if(d<=0){[x,y]=ptAlong(ns,0);done=true;break;}
+        if(eff<tc+d){[x,y]=ptAlong(ns,Math.max(0,Math.min(1,(eff-tc)/d)));done=true;break;}
+        tc+=d;seg=ns;                               // this estimated sector is done → roll on
+      }
+      if(!done)[x,y]=ptAlong(seg>=5?1:seg+1,1);
     }
-    else{E.g.style.visibility='hidden';return;}
+    else{E._px=E._py=null;E.g.style.visibility='hidden';return;}
+    // Tween (LIVE only): slide the dot toward its new target so a snap — when a real
+    // crossing replaces an estimate, or a dropped row lands late — reads as motion,
+    // not a jump. A big move (lap wrap / genuine teleport) snaps instantly instead.
+    if(window.dataMode==='LIVE'){const px=E._px,py=E._py;
+      if(px!=null&&py!=null){const dx=x-px,dy=y-py,dd=Math.hypot(dx,dy);
+        if(dd>0.01&&dd<120){x=px+dx*0.28;y=py+dy*0.28;}}
+      E._px=x;E._py=y;}
     const pos=lp[st]||nC;
     const r=Math.max(6,16*Math.pow(0.95,pos-1)),fs=30;const sel=(st===selCar);if(sel){selXY=[x,y];selR=r;}
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pit)on++;
@@ -2828,7 +2845,17 @@ buildStartGrid();
   // Smooth LIVE motion: LIVE renders through SIM's own animation loop; only the
   // clock source differs. liveDispT glides at 1x real-time, trailing the newest
   // data-time (DB.tmax) by ~LIVE_BUFFER_S so cars are inside a sector leg.
-  let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null,liveFrontier=null;const LIVE_BUFFER_S=10,LIVE_MAXLAG_S=90;
+  let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null,liveFrontier=null;
+  // LIVE_BUFFER_S — how far BEHIND the newest data-time we render. This is the
+  // single knob that decides "smooth vs fresh". For a car to glide on a REAL
+  // sector leg (like SIM) instead of the average-based estimator, the leg
+  // covering time T must already be in the feed — which needs the buffer to
+  // exceed (longest sector time + one poll ≈ 5s). At 10s the buffer was smaller
+  // than a single Nordschleife sector, so nearly the WHOLE field rendered via
+  // the estimator and stalled at every sector line. ~120s covers the typical
+  // sectors on real data; the Fix-2 estimator+tween below smooths the long
+  // sectors (S3/S4) and any dropped rows. Bigger = smoother/laggier.
+  const LIVE_BUFFER_S=120,LIVE_MAXLAG_S=300;
   function snapSim(){if(simSnap)return;simSnap={};RAW_FIELDS.forEach(k=>{if(k in DB)simSnap[k]=DB[k];});}
   function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
