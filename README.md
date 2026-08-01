@@ -1,0 +1,1235 @@
+# STINT9 dash — project docs
+
+> **Single source of truth.** All the project's Markdown notes were merged into
+> this one file (2026-08-01). Old separate docs — `stint9-dashboard-summary.md`,
+> `data-source.md`, `nls-sector-layout.md`, `tools/README.md`,
+> `FUTURE-multi-team.md`, `PROTECTION-PLAN.md`, `RACEDAY.md`,
+> `RACECONTROL-MESSAGES.md`, `STINT9-INFO-REQUEST.md`, and everything under
+> `live/*.md` — were deleted. **Keep only this file going forward**; add new
+> sections here rather than creating new `.md` files.
+
+## Contents
+
+1. [Project summary & handoff](#1-project-summary--handoff)
+2. [Data source](#2-data-source)
+3. [NLS Nordschleife 5-sector layout](#3-nls-nordschleife-5-sector-layout)
+4. [Tools](#4-tools)
+5. [Multi-team sharing — current state & planned work](#5-multi-team-sharing--current-state--planned-work)
+6. [Source protection & monetization plan](#6-source-protection--monetization-plan)
+7. [LIVE feed — race-day runbook](#7-live-feed--race-day-runbook)
+8. [LIVE feed — data flow](#8-live-feed--data-flow)
+9. [LIVE feed — troubleshooting & hard-won learnings](#9-live-feed--troubleshooting--hard-won-learnings)
+10. [Live-timing learnings — 2026-08-01 (NLS 6h race)](#10-live-timing-learnings--2026-08-01-nls-6h-race)
+11. [Race-control messages + LIVE message board](#11-race-control-messages--live-message-board)
+12. [LIVE feed — info to request before race day](#12-live-feed--info-to-request-before-race-day)
+13. [stint9 live-timing API — recovered contract](#13-stint9-live-timing-api--recovered-contract)
+14. [Message to send the stint9 owner](#14-message-to-send-the-stint9-owner)
+
+---
+
+# 1. Project summary & handoff
+
+> **NOW ALL CLASSES:** the dashboard was extended from CUP5-only to all 27 NLS classes (152 cars). The Race-class dropdown rebuilds the whole UI per class via `buildClass(cls)`; DB has `classes`, `classMaxN`, `classAvg` lookups + per-car data. Selected class/car/settings persist in localStorage.
+
+Context doc so a new chat can continue without re-deriving everything. Last updated 2026-07-02.
+
+## What it is
+Single self-contained page **`stint9_dashboard.html`** — a race-intelligence "add-on" that animates NLS (Nürburgring Langstrecken-Serie) sector-timing data for the **CUP5 — BMW M235i Racing Cup** class (16 cars).
+
+- Repo: **vanderhallen/stint9-dash** (moved from vanderhallen/stint9 due to a stuck Pages deploy queue), deployed via **GitHub Pages** → https://vanderhallen.github.io/stint9-dash/ (served as index.html)
+- Linked from **vanderhallen/System** `index.html` (bottom button list).
+- Standing workflow: **auto commit + push after every change** (no build step; plain HTML/JS/SVG, no framework).
+- Backups: `backup/` (2026-07-01) and `backup-2026-07-02/` snapshots.
+
+## Data
+- Source: **`nls sector.CSV`** — encoding **cp1252**, delimiter **`;`**. Key cols: `STNR`, `RUNDE_NR`, `TAGESZEIT`, `RUNDENZEIT`, `SEKTOR1..5_ZEIT`, `KLASSE`, `INPIT`, `PITIN_TIME`, `PITSTOPDURATION`, driver name cols, `DIESCHNELLSTE`.
+- Data embedded in the HTML as `const DB = {...}` (poly, cars, name, carcol, legs, chart[fx,pos,t], sectimes[car][lap]=[s1..s5], lappos, avgseg, cx/cy, gps, maxN, pits, drvtable).
+- **Only CUP5 is in the sector CSV.** The M240i class / #665 exist only in the quali PDF (no sector times) — deferred.
+- 5 NLS sectors defined in [§3 NLS Nordschleife 5-sector layout](#3-nls-nordschleife-5-sector-layout).
+
+### Data choices / caveats
+- **Per-lap driver is NOT in the data** → stints assumed sequential, split at pit stops (`INPIT='J'`). (The driver-stints table was later **removed** from the UI.)
+- **Pit stops**: count is exact = laps where `INPIT='J'` (e.g. #666 = 3, laps 8/16/21) → embedded as `DB.pits`. **Pit-stop duration is NOT derivable** (`PITSTOPDURATION` is empty in the file; no pit-exit timestamp). Pit *time loss* is derivable as an inflated out-lap (`INPIT='A'` = out-lap) — not yet added to UI.
+- Live position = `progress = lap*5 + (seg-1) + frac`, sorted per frame (`livePos`).
+- Gaps between two cars = `commonGap` via their last common sector-boundary crossing times.
+- "Last lap"/"Fastest" per car = last completed lap / min over completed laps (leader and selected car may be on different laps).
+- **Car colours remapped** to a 16-colour palette that excludes yellow/gold, grey/silver, brown/bronze so non-podium dots never look like medals (`DB.carcol` overridden at load; keeps dot↔lap-line colour identity).
+
+## Layout (top → bottom), fit to one screen
+Fixed **1280px design width** (never reflows), scaled by JS (`fitPage`) to fit **both** window width & height, centred horizontally+vertically, **no scrolling** (`__fit` = scale; map/weather height syncs divide by `__fit` to avoid feedback).
+
+1. **Header row (single line):** title `stint9 dash` · Race class (CUP5 only) · Select car · Delay % · playback controls (far right).
+2. **Lap chart (~62%) + Weather radar (~38%)** side by side.
+3. **Main track map + Zoom view** side by side (maps rendered at 80%; zoom height-synced to main).
+4. **Comparison table** (leader vs selected car).
+
+## Features
+
+**Playback controls** — time-of-day clock, Play/Pause, scrubber, speed **1× / 10× / 30× / 60× (default 10×)**, **loops** at end, auto-plays first car on load. Labels toggle removed (labels always on). Flat horizontal, compact.
+
+**Lap chart** — position-over-time, built per sector as time advances (only completed sections drawn). Thin lines (1.15, selected 1.6). Left P1..P16 axis. Right labels: `#car driver ▲/▼<posΔ> PIT <n>` (PIT hidden if 0). `rowH=30`, enlarged fonts.
+
+**Weather radar** — Leaflet + Carto light tiles + **RainViewer** radar (`maxNativeZoom:7` so tiles resolve at the 10 km view), 10 km circle around GPS 50.359/6.960, `fitBounds` framing, **◎ center** reset button. Height synced to the lap chart. Only shows precip when there is rain in the Eifel.
+
+**Main track map** — smoothed 5-sector polyline (Chaikin + moving-average denoise on S1/S2/S3/S5; S4 lighter; all sector boundaries snapped to shared midpoints so segments connect). Animated dots placed on real sector-boundary timestamps, gliding between. Dot radius scales by position (`0.95^(pos-1)`); **#label fixed size 30**; anti-overlap declutter. **DELAY** label (48px) when a section is >threshold% over its average (Delay % input, default 50). Selected car = red outline + 50% translucent + raised on top. **Centre badge**: `#xxx Px Lx` (black) + `−ahead/+behind` gap seconds + driver name; position nudged over the track.
+
+**Zoom view** (circular minimap) — clipped 20%-ish circle centred on the selected car; track slides underneath. Dots sized by position; **#labels (fs 6.2)** placed on the **infield side** of the track, guaranteed clear of all dots (8-direction × 4-distance least-overlap search). **P1/P2/P3 shown inside the top-3 dots**. **Podium dot colours: P1 RAL 1033 `#F9A800`, P2 silver `#C0C0C0`, P3 RAL 8003 `#7E4B26`** (white+halo position text). Dots **z-layered by position** (P1 on top, worse sent to back). **Ahead (▲ top) / Behind (▼ bottom)** neighbour labels (1.5× size) showing last-common-sector **Δ** only (green = selected car faster, red = slower; drops lap/time-vs-time/outside). **GAIN/LOST overtake pills** (green/red) persist 2 sectors.
+
+**Comparison table** — Row 1 = **P1 (leader)**, Row 2 = **selected car** (or **P2** if the selected car is P1). Columns: Pos · Driver · Gap (to selected) · Fastest · Last lap · S1..S5. Row 2 shows **red/green delta triangles** vs P1 on the time columns.
+
+## Theme
+Light background, navy ink `#16202b`, red accent `#e0301e`, fonts **Space Grotesk** + **IBM Plex Mono**, white cards. Removed over time: metabar/eyebrow/subline, all section headings, footer, nav links, driver-stints table.
+
+## Layout goal: no empty top/bottom margin (2026-07-04)
+`fitPage()` used to scale the whole `.wrap` to fit *both* window width and
+height, then centre it — on any viewport whose aspect ratio didn't match the
+design's, that left dead blank strips above and below (or left/right) the
+content. Changed to: scale by **width only**, anchor top-left (`x:0,y:0`), and
+let the page scroll vertically if content is taller than the window. This
+guarantees the full page width is always used and content starts flush at the
+top; a right/bottom margin can still show when the natural (unscaled) design
+is smaller than the window, since we don't upscale past 100% (would blur).
+
+## Message board (added 2026-07-04)
+Right column, bottom ~50% (under Feedback), table `public.stint9_messages`
+(same Supabase project as feedback: `esvvzgxqnfszhttdkuzc`). Filtered by
+selected race class (null class = shown for all classes); dismiss (×) is
+permanent per-browser via localStorage. If a message names the currently
+selected car, that car gets a pulsing orange ring on the main track map
+(`#msgHighlightRing`, driven by `window.msgHighlightActive` inside `render()`).
+
+**Live-timing source:** https://livetiming.wige.de/vln.html → iframe
+`https://livetiming.azurewebsites.net/events/{eventId}/results`. That page is
+a JS SPA (`leaderboard.*.bundle.js`) that pulls data over a **WebSocket**, not
+a plain scrapable HTTP endpoint — found channel numbers in the bundle
+(`messages`=`[3]`, `trackState`/`results`=`[0,4]`, `statistics`=`[9002]`) but
+couldn't find the actual socket URL/protocol in static analysis, and there
+was no live event running to inspect the real traffic against. This note
+predates the WIGE pivot; the scraper is now built — see
+[§7 race-day runbook](#7-live-feed--race-day-runbook) and
+[§11 race-control messages](#11-race-control-messages--live-message-board).
+
+## Open / possible next steps
+- Add per-car **pit-loss estimate** (out-lap minus green-lap baseline).
+- Optional **PIT ×N** indicator for selected car on the maps.
+- Multi-class support if sector data for another class (e.g. M240i) is provided → wire Race-class dropdown to filter.
+- S4/S5 (Döttinger Höhe) labelling correction on the static `NLS 5 sectors.png` (deferred).
+
+---
+
+# 2. Data source
+
+## Live / official source: teilnehmer.vln.de
+
+The official VLN/NLS timekeeping publishes per-event **sector-times CSV** files at:
+
+```
+https://teilnehmer.vln.de/download.php?file=onb/<YYYY-MM-DD>/NÜRBURGRING_LANGSTRECKEN-SERIE$RENNEN$RENNEN_SEKTORZEITEN.CSV
+```
+
+- The `<YYYY-MM-DD>` path segment is the **event date**.
+- The `Ü` and the `$` characters must be URL-encoded when fetching non-interactively
+  (`%C3%9C` for Ü in a UTF-8 URL; `\$` / `%24` for the `$`).
+- Landing page (to find the newest event / browse files): <https://teilnehmer.vln.de>
+
+### Most recent file used (as of 2026-07-04)
+
+- **Event:** 2026-06-20 · 1. ADAC Eifel-Trophy (same event as the quali PDF that
+  drives the starting grid → race + grid are now from one consistent dataset).
+- **URL:** `https://teilnehmer.vln.de/download.php?file=onb/2026-06-20/NÜRBURGRING_LANGSTRECKEN-SERIE$RENNEN$RENNEN_SEKTORZEITEN.CSV`
+- **Saved locally:** `source/vln-2026-06-20-sektorzeiten.CSV` (source/ is gitignored).
+- 2222 data rows · **109 cars** · **19 classes**.
+
+### File format
+
+- **Delimiter:** `;`
+- **Encoding:** ISO-8859-1 / cp1252 (despite the HTTP `charset=UTF-8` header — German
+  umlauts like `Türkei` come through as latin1, so parse as **cp1252**).
+- **9-sector schema** (`SEKTOR1..9_ZEIT`) but only **sectors 1–5 are populated**
+  for NLS — matches the existing 5-sector layout in [§3](#3-nls-nordschleife-5-sector-layout).
+- Much richer than the old `source/nls sector.CSV` (which was CUP5-only). Key columns:
+  - `STNR` (car #), `KLASSEKURZ` / `KLASSE` / `UNTERKLASSE` (class), `FAHRZEUG` (car model),
+    `KUERZEL` (team short), `BEWERBER` / `TEAM`.
+  - `RUNDE_NR` (lap), `TAGESZEIT` (time of day), `RUNDENZEIT` + `RUNDENZEIT_IN_SEKUNDEN`,
+    `DIESCHNELLSTE` (J = fastest lap flag), `RANG` (live rank).
+  - `SEKTOR1..5_ZEIT`, `SEKTOR1..5_BESTE_ZEIT`, `SEKTOR1..5_KMH`, `TOPSPEED_KMH`.
+  - `INPIT`, `CANCELLED`, `PITSTOPDURATION`, `PITIN_TIME`.
+  - `WET`, `PRO`/`PROAM`/`AM`/`AMG`, `STINT`, `LAPINSTINT`, `THEORETISCHE_BESTZEIT`.
+  - Up to **8 drivers** per car: `FAHRER1..8_NAME` / `_VORNAME` / `_NATION` / etc.
+
+### Classes present (KLASSEKURZ)
+
+SP9 PRO, SP9 PRO-, SP9 AM, SP7, SP4, SP3T, SP10, AT 1, VT2-RWD, VT2-F+4W,
+V6, V5, V3, TCR, CUP2, CUP3, BMW M2, BMW M240, BMW 325i.
+
+> Note: these are the **real** class short-names for this event and differ from the
+> older synthetic 27-class set. The Race-class dropdown + starting-grid class-name
+> matching key off these.
+
+## Regenerating the DB from a CSV (`tools/gen_db.py`)
+
+The dashboard's `const DB = {…}` (embedded in `index.html` line ~289 **and** mirrored
+in `data.js`) is generated from the CSV by `tools/gen_db.py`:
+
+1. Download the newest event CSV to `source/` (see URL scheme above).
+2. Point `CSV = …` at it in `tools/gen_db.py`.
+3. `python3 tools/gen_db.py` → writes `tools/newDB.json` and prints a per-class report.
+4. Inject that JSON as `const DB = <json>;` into `index.html` line 289 and overwrite
+   `data.js` with the same line.
+
+What the generator does:
+- **Reuses the Nordschleife track geometry** (`poly/cx/cy/gps/W/H`) from `tools/geom.json`
+  (extracted once from the original `data.js`) — the circuit shape is race-independent.
+- Rebuilds everything else from the CSV: `legs` (per-lap 5-sector segments with absolute
+  second-of-day boundaries; `TAGESZEIT` = lap-END time, so lap L spans
+  `[TAGESZEIT(L-1), TAGESZEIT(L)]`), `sectimes`, `pits` (laps where `INPIT='J'`),
+  within-class track `positions`/`chart`/`lappos` (ranked per sector boundary),
+  `classes`/`classMaxN` (max laps)/`classAvg` (mean green-lap sector times),
+  `name` (FAHRER1 surname), `carcol` (16-colour palette cycled within each class).
+- **Encoding is cp1252** and **only sectors 1–5** of the 9-sector schema are populated.
+
+Current DB = **2026-06-20 event · 106 cars · 19 classes · ~4h21m**.
+
+---
+
+# 3. NLS Nordschleife 5-sector layout
+
+The full NLS configuration (Nürburgring **24h-layout**: Nordschleife + part of the GP circuit / Sprintstrecke) is officially **24.358 km** long — Nordschleife ≈ 20.832 km + the GP section ≈ 3.5 km.
+
+The timing splits each lap into **5 sectors**. The lengths below are **estimated** from the fastest lap-time breakdown (car #28, sum of best sectors = 7:58.675) scaled to 24.358 km.
+
+> **Note:** This is a time-based approximation. Because the average speed differs per sector (slow GP corners vs. the very fast Döttinger Höhe), the real distances can differ by a few hundred metres.
+
+## Sector table
+
+| Sector | Best time (ref.) | Share | Estimated length | Notes |
+|--------|------------------|-------|------------------|-------|
+| S1 | ~1:05.8 | 13.7 % | ≈ 3.3 km | GP section + start of Nordschleife (incl. pit exit) |
+| S2 | ~1:04.0 | 13.4 % | ≈ 3.3 km | |
+| S3 | ~1:57.2 | 24.5 % | ≈ 6.0 km | |
+| S4 | ~3:03.9 | 38.4 % | ≈ 9.4 km | Longest Nordschleife block (incl. Döttinger Höhe) |
+| S5 | ~0:48.2 | 10.1 % | ≈ 2.4 km | Short final sector on the GP circuit to start/finish |
+| **Total** | **7:58.7** | **100 %** | **24.358 km** | |
+
+## Sector boundaries (derived from the timing data)
+
+- **Start/finish + pit lane are on the GP circuit, around the S5 → S1 boundary.**
+  - **The pit entry sits at the END of S5**, just before the start/finish line — *not* at
+    the S4/S5 boundary. A car peeling into the lane drives the whole of S5 but never
+    crosses the S5 beacon on the line, so no S5 split is published for it.
+  - On *in-laps* (`INPIT = J`), **S5 is empty** and a `PITIN_TIME` is present. This means
+    the split is *missing*, **not** that the sector was skipped — the measured hole
+    between S4 and the out-lap's S1 has a median of **65.5s** against a **54.5s** median
+    green S5, i.e. one S5 of driving plus ~11s of pit-entry decel. Were the entry at the
+    S4/S5 boundary the hole would have to swallow the whole stop and run to minutes.
+  - On *out-laps* (`INPIT = A`), **S1 is huge** — median **234.8s** vs a normal **74.6s**.
+    The pit box, the exit and the Code-60 / out zone are all inside S1, so **the stop
+    time lives in S1**, not in the hole.
+- S4 is by far the longest sector in time (the long, fast Nordschleife stretch).
+
+> Measured over the 273 stops in the 2026-06-20 DB (all 285 pit in-laps lack an S5).
+> `index.html` reconstructs the missing in-lap S5 (`withPitS5`) for map positioning
+> only; gap/boundary maths still runs off the real splits in `DB.legs`.
+
+---
+
+# 4. Tools
+
+Helper scripts that support the static dashboard (they are **not** shipped to the
+page — run them locally).
+
+## `gen_db.py`
+Regenerates the embedded `const DB = {…}` (in `index.html` and `data.js`) from an
+official VLN/NLS sector-times CSV. See [§2 Data source](#2-data-source).
+
+## Overtake clips — primary flow is in-browser
+
+Clips of the **selected car**'s on-track overtakes are now cut **in the browser**
+from a locally-selected video, in the dashboard's **VIDEO** reel (4th panel of the
+right-side weather/agenda reel in `index.html`):
+
+1. Let the race play so overtake notes accumulate for the selected car (LIVE saves
+   them to Supabase `public.stint9_racenotes`; SIM keeps them in memory).
+2. Open the **VIDEO** reel (▲▼ next to the timetable) and choose the **race video
+   file** from this computer. The **race clock** is read automatically from the
+   video's burned-in top-left timestamp (OCR); the video is a continuous real-time
+   recording, so that anchors video t=0 to race time-of-day. Set **± sec**
+   (default 20).
+3. Click **ANALYSE & CLIP**. ffmpeg.wasm cuts each overtake ±N s and names it
+   `YYYYMMDD_car_Llap_Ssector_Px_Py.mp4` (e.g. `20260620_665_L2_S3_P4_P3.mp4`).
+   Each clip appears as a **download link in the reel — click to save it locally**,
+   then commit the files into `clips/` yourself (e.g. via VS Code). **Sector 1 is
+   excluded** (pit/out zone).
+
+## `make_clips.py` — offline / batch fallback
+
+Still available for cutting from a full local video without the browser (e.g. a
+huge recording, or no token). It reads specs straight from Supabase (or a
+`jobs.json`) and cuts with local `ffmpeg`:
+
+   ```bash
+   python3 tools/make_clips.py --event 2026-06-20 --video full_race.mp4 \
+           --video-start 12:05:00 --pad 20
+   ```
+
+Requires `ffmpeg` on PATH. Output goes to `./clips/`, named
+`YYYYMMDD_car_Llap_Ssector_Px_Py.mp4` (e.g. `20260620_665_L2_S3_P4_P3.mp4`).
+
+Notes:
+- **Sector 1 is excluded** — it holds the pit lane / out-zone, so passes there are
+  usually a consequence of pit stops, not on-track overtakes.
+- Where in the sector the pass happened is estimated from the gap at the sector
+  entry vs. exit (`f = |g0| / (|g0| + |g1|)`), then ±pad seconds around that point
+  gives the clip window. Sector lengths are the time-based estimates in
+  [§3 NLS Nordschleife 5-sector layout](#3-nls-nordschleife-5-sector-layout).
+- Default is stream-copy (`-c copy`, instant but cuts on keyframes); pass
+  `--reencode` for frame-accurate clips.
+
+---
+
+# 5. Multi-team sharing — current state & planned work
+
+Scenario: two (or more) teams open the shared dashboard, each **select a
+different car**, and fill in fuel / notes / tyres. This tracks what's isolated
+per-car today and what still needs doing before a large-scale rollout.
+
+## ✅ Done — per-car in the database (no localStorage)
+As of 2026-07-13, these are keyed by car and stored in Supabase (single source
+of truth, so a teammate on another device sees the same data):
+
+- **Fuel entries** — `stint9_fuel_state (event_date, car)`.
+- **Fuel calculator settings** (tank capacity, consumption, start, formation) —
+  stored per-car under `state.set` in the same row, applied when a car is
+  selected. Two teams with different tank sizes no longer clash.
+- **Per-lap notes** — `stint9_fuel_notes (event_date, car, lap)`.
+- **Tyre board** (TYRE reel, `tyre.html`) — the WHOLE board as one JSON blob per
+  car in `stint9_tyre_state (car)`: stock inventory (serials/km/cycles), stock &
+  stint moves, empty bands, and board-band highlights. The dashboard sends the
+  selected car to the iframe (`postMessage 'tyreCar'`); on car change the board
+  saves the outgoing car, then loads + re-renders the incoming car's blob (or a
+  fresh default board if that car has none). Replaces all the old localStorage
+  stores (`stint9_stock_state`, `_stock_removed/_adds/_new`, `_stint_xfers/
+  _removed`, `_empty_bands`, `stint9_band_state`).
+
+localStorage is no longer used for any of the above. (Fuel/notes persist only in
+**LIVE**; SIM stays in-memory. The tyre board persists per-car whenever a car is
+selected.)
+
+✅ **Rehearsed in-browser (2026-07-13)** — select car A, edit stock/stint/bands,
+switch to car B (fresh board), switch back to A (edits persisted), and a second
+device on car A sees the same data. All confirmed working.
+
+## Kept global on purpose
+- `stint9_max_km` (max km per band — a tyre spec, same across cars) stays in
+  localStorage as global config.
+- Board layout + sub-reel index (`test2_*`) stay local (per-device UI).
+
+Config that is genuinely global stays global: `stint9_max_km` (max km per band),
+board layout, and sub-reel index.
+
+## ⏳ Planned — team isolation / access control (before large-scale rollout)
+**Right now there is NO separation between teams** — anyone with the link can see
+*and edit* any car's fuel/notes (and, once migrated, tyres). That's fine for a
+couple of trusted teams sharing intentionally, but not for a wider rollout.
+
+Future feature: a lightweight "team" concept so each team only sees/edits its own
+car(s) — e.g. a team key in the URL or a simple picker, plus row scoping by team.
+Until then, treat the shared link as fully open and trusted.
+
+## localStorage intentionally kept (per-browser UI, not shared data)
+UI preferences remain local by design (they're per-device, not race data):
+selected class/car, delay/pace thresholds, playback speed, active reel
+(`stint9_prefs`), dismissed message-board items, and the tyre board's layout.
+
+---
+
+# 6. Source protection & monetization plan
+
+_Last updated: 2026-07-03_
+
+## Goal
+
+Protect stint9-dash from being copied, and set it up so access can be sold —
+users keep using the service instead of cloning or bypassing it.
+
+## The one hard truth
+
+Anything the browser runs (HTML/CSS/JS), the user can read. There is no way to
+fully "shield" a client-side site. The real levers are:
+
+1. Make copying not worth it (deterrence).
+2. Make the valuable part impossible to steal (move it off the client).
+
+## What stint9-dash is today (assessment)
+
+- Single self-contained `index.html` (~900 KB), also duplicated as
+  `stint9_dashboard.html`. Static site, **no backend**.
+- The entire payload is one line: `const DB = {...}` — an ~828 KB JS object
+  holding the digitized Nürburgring track (`poly` polygon = thousands of
+  coordinate points, sector layout, `W/H` dimensions). **This is the crown
+  jewel and it sits in plain text in the browser** — copyable in seconds.
+- External calls: Leaflet, Google Fonts, `api.rainviewer.com` (public weather,
+  no key). All harmless.
+- ✅ No API keys / tokens / passwords / base64 secrets baked in.
+- ✅ `source/` (raw CSV, PDF, backups) is gitignored — not in the repo.
+
+### Two assets, two realities
+
+| Asset | Where it lives | Hideable client-side? |
+|---|---|---|
+| Visuals/animation (SVG render, gauges, flow) | JS in browser | Partly — obfuscation deters casual cloning |
+| Data/logic (`const DB` track model) | JS object in browser | **No** — fully exposed, needs a backend |
+
+## Done — Phase 1 (lock it down now)
+
+- [x] **Repo set to PRIVATE** (2026-07-03) — source, history, comments no longer
+      publicly readable. _(Does nothing for the deployed site's shipped code.)_
+
+### Optional Phase 1 extras (deterrence only — not yet done)
+
+- Obfuscate/minify the deployed HTML — deters copy-paste of the renderer.
+  Downside: complicates editing the 900 KB file. Only buys deterrence.
+- Encode the `const DB` blob — speed bump only; a determined person still dumps
+  it from DevTools memory. Not worth the hassle yet.
+
+> Honest note: none of these hide the data or logic from someone who opens
+> DevTools. Only Phase 2 does that.
+
+## Phase 2 — the real fix (when ready to sell)
+
+Move `const DB` off the client. Browser gets the **renderer**; the **track data**
+comes from a server that only answers paying, logged-in users.
+
+```
+Visitor ──▶ Cloudflare Pages (HTML/JS shell, NO DB)
+              │  fetch('/api/track', with login cookie)
+              ▼
+          Cloudflare Worker ──▶ valid paying user?
+              │ yes                 │ no → 401, empty page
+              ▼
+          KV / R2  (const DB lives here, never shipped to non-users)
+```
+
+### Steps & effort
+
+| Step | Effort | Notes |
+|---|---|---|
+| Split `DB` out of HTML into KV/R2 | ~½ day | Mechanical, low risk |
+| Gatekeeper Worker at `/api/track` | ~½ day | ~50 lines |
+| Login + payments — **buy** (Clerk/Auth0 + Stripe/Lemon Squeezy) | 1–2 days | Fastest, small monthly cost |
+| Login + payments — **build** (Cloudflare Access / Worker + KV sessions) | 3–5 days | Cheaper, more edge cases |
+| Slice-only DB delivery (optional) | +1 day | Skip until piracy actually happens |
+
+**Realistic total: ~2–3 days** using off-the-shelf auth+billing; more if self-built.
+
+### What Phase 2 achieves
+
+- ✅ `const DB` becomes genuinely protected — a copycat must rebuild the whole
+  dataset from scratch.
+- ✅ Access can be sold; non-payers get an empty shell.
+- ⚠️ Renderer JS still copyable — but worthless without the data. Don't
+  over-invest in hiding it.
+- ⚠️ A paying user can still dump the DB from their own browser once. No system
+  stops a legitimate logged-in user. If that ever matters: per-user
+  watermarking / tracking as a deterrent.
+
+### The decision that drives everything
+
+**Buy vs. build** auth + payments — difference between ~2 and ~5 days, and it
+sets the monthly cost structure. Pin this down first when starting Phase 2.
+
+---
+
+# 7. LIVE feed — race-day runbook
+
+Turning on the LIVE feed.
+
+> **When something goes wrong, read [§9 troubleshooting](#9-live-feed--troubleshooting--hard-won-learnings) first.**
+> Hard-won learnings from the 2026‑07‑31 test day: WIGE **rate-limits over-polling**
+> (don't run extra pollers or spam ⟳ — it serves a frozen snapshot / blocks headless
+> clients while a real browser still works; recover by *stopping*, or use
+> `live/browser-collector.js`); corrupt **garage/pit sector/lap times** can inflate
+> the timeline into the future and freeze the dashboard while the feed is fine (the
+> **admin.html → LIVE data stream** panel tells STREAMING vs STALE vs SILENT apart);
+> and the **event id changes per session** (quali vs race) — discovery adapts, but
+> watch for sessions merging in `stint9_live_timing`.
+
+## The one true primary path (since 2026-07-13): WIGE direct, fully automatic
+
+The dashboard reads WIGE's live-timing WebSocket directly
+(`wss://livetiming.azurewebsites.net/` — the same socket vdsmotorsport.com and
+wige.de use, channels `[0,4]`). **No login, no eventId lookup, no manual
+"set the event" step, for anyone.** Both ways of getting data in auto-discover
+the WIGE `eventId` themselves, by scanning eventIds 1..80 and latching onto
+whichever one has a `TRACKNAME` matching Nürburgring/Nordschleife:
+
+1. **Cloud, fully automatic (default, as of 2026-07-21)** — a Supabase
+   `pg_cron` job (`stint9_wige_autoscan`) runs every minute, 24/7, and calls the
+   `wige-scrape` Edge Function *only* while `now()` falls inside a known
+   session window (see "Per-round maintenance" below). No laptop, no relay, no
+   button-click required. This is why the LIVE view can just start filling in
+   near a session's known start time with nobody doing anything.
+2. **Laptop relay (optional, for denser data / as a backup)** — leave
+   `./live/raceday.sh` running (`= vds-relay.mjs --watch`, auto-restarts if it
+   dies) for a full session. Upserts every ~4 s instead of the cloud path's
+   on-demand snapshot. Narrow the scan if unsure of the id range:
+   `./live/raceday.sh --range 1-120`. Pin a known id (skips the scan):
+   `node live/vds-relay.mjs <eventId>`.
+3. **Manual poke (fallback)** — click **⟳ Update** in the LIVE header any time;
+   it invokes `wige-scrape` for one snapshot regardless of the schedule table.
+
+Both #1/#3 (`wige-scrape`) and #2 (`vds-relay.mjs`) write the same tables —
+`stint9_live_timing` (per-lap rows) and `stint9_live_status` (header badge) —
+so they're interchangeable and safe to run at the same time.
+
+**⚠️ Everything below this involving `stint9.com/app`, `live/collector.js`, or
+`live/probe.js` is OLD and SUPERSEDED.** It was the original data source before
+the WIGE pivot and is kept only for historical reference — do not use it as a
+"primary"/"recommended" path; despite how earlier revisions of this file
+labelled it, it is not maintained and stint9-dash does not need it. If you've
+been logging into stint9.com/app to find and set an eventId, that's for
+stint9.com's *own* unrelated eventId/API, not this dashboard's WIGE pipeline —
+you can stop doing that.
+
+## Per-round maintenance: now automatic (2026-07-21)
+
+`public.stint9_schedule_windows` is the single source of truth for both the
+`stint9_wige_autoscan` cron gate above AND `index.html`'s race-day
+timetable/countdown reel (the client fetches it directly — see
+`loadSchedule()`), so the two can no longer drift out of sync with each other.
+
+**Keeping that table populated is itself now automatic.** A second cron job,
+`stint9_nls_schedule_autoscan` (daily, 06:00 UTC), calls the
+`nls-schedule-scrape` Edge Function (`live/nls-schedule-scrape/index.ts`),
+which:
+1. fetches the official NLS calendar page and finds every round's own event
+   page URL,
+2. fetches each upcoming round's page (next ~120 days) and parses its
+   published "Zeitplan" table, if one exists yet,
+3. upserts the parsed session times into `stint9_schedule_windows`.
+
+**It never deletes anything** — a round with no Zeitplan published yet, an
+unparseable page, or a network hiccup just means nothing is written for that
+round *this run*; existing rows (including any manual correction) are left
+alone. A round is only written if its parse found at least a `race` session,
+as a basic sanity check against a garbled parse. Every run logs its outcome to
+`stint9_schedule_scrape_log` (`select * from stint9_schedule_scrape_log order
+by created_at desc limit 5;`) — check there first if the on-page timetable
+ever looks stale.
+
+**This closed a real bug**, not just a hypothetical one: the schedule this
+table was originally seeded with (a "4h round template" guess) had NLS7's race
+ending at 16:00; the real, since-published Zeitplan runs 12:00–18:00 (it's a 6h
+round). The auto-scan would have silently stopped polling 2 hours before the
+race actually ended. The scraper caught and corrected this the same day it was
+built, and now would catch it on its own going forward.
+
+**If a round's page structure ever changes** and the scraper stops finding a
+"Zeitplan" heading/table it recognizes, it just logs `no_zeitplan_yet` (or
+`error`) and leaves that round's rows untouched — fall back to the manual
+insert this section used to describe:
+
+```sql
+insert into public.stint9_schedule_windows (event_date, label, start_ts, end_ts) values
+  ('2026-09-12', 'quali', '2026-09-12T08:30:00+02:00', '2026-09-12T10:00:00+02:00'),
+  ('2026-09-12', 'race',  '2026-09-12T12:00:00+02:00', '2026-09-12T16:00:00+02:00')
+on conflict (event_date, label) do update set start_ts=excluded.start_ts, end_ts=excluded.end_ts;
+```
+(Times are wall-clock Europe/Berlin — `+02:00` CEST / `+01:00` CET, mind the
+late-October DST switch. The cron gate pads 10 min before/15 min after each
+window, so a slightly-early pitlane open or a session overrun is still covered.)
+
+Check the WIGE auto-scan itself is running: `select * from
+cron.job_run_details where jobid = (select jobid from cron.job where
+jobname='stint9_wige_autoscan') order by start_time desc limit 5;`
+
+### The 24h Qualifiers (NLS4/NLS5) — a different source, a different limitation
+
+The 24h Nürburgring weekend's own Zeitplan (multiple qualifying sessions +
+the 24h race itself, spanning 4 calendar days) is only published as a **PDF**
+on `24h-rennen.de`, not on the NLS calendar site. A third cron job,
+`stint9_24h_pdf_autoscan` (daily, 06:15 UTC), calls the `nls-24h-pdf-scrape`
+Edge Function (`live/nls-24h-pdf-scrape/index.ts`), which downloads that PDF
+(text extraction via `unpdf`), keeps only the "ADAC RAVENOL 24h Nürburgring"
+branded sessions (the PDF also lists DHLM/Tourenwagen-Legenden/RCN sessions on
+the same shared weekend — not ours), and upserts them the same way.
+
+**Important difference from the NLS scraper: this one cannot auto-discover a
+new PDF URL.** `24h-rennen.de` sits behind Cloudflare bot-protection that
+blocks everything except a known direct file path — the homepage,
+`robots.txt`, `wp-sitemap.xml`, and a directory listing all 403/429; only the
+exact PDF URL itself 200s. So the URL lives as **data**, in
+`public.stint9_schedule_sources` (`key='24h_zeitplan'`), not in code. The
+scraper re-fetches that known URL daily, so an in-place revision to the SAME
+file (a new "Version" published at an unchanged URL) is picked up
+automatically. A **new URL** — next year's PDF, or a re-versioned filename —
+needs a one-line update:
+
+```sql
+update public.stint9_schedule_sources set url='<new pdf url>' where key='24h_zeitplan';
+```
+
+Session names in the PDF get mapped to: `quali1/2/3`, `topquali1/2/3`,
+`warmup`, `startaufstellung`, `opengrid`, `formation`, and `race` (the PDF's
+separate "Start Rennen" Saturday marker and "Zieleinlauf" Sunday marker are
+combined into one `race` window spanning the full 24 hours). An unrecognized
+session name is skipped, not guessed — check `stint9_schedule_scrape_log` if a
+session seems to be missing after a Zeitplan revision.
+
+## ✅ Race-day checklist
+
+1. Confirm this round's windows are in `stint9_schedule_windows` (above) — do
+   this as soon as the Zeitplan is published, well before race day.
+2. Open the dashboard → click **LIVE**. That's it for the cloud path.
+3. **Read the header badge:**
+   - grey **`offline`** + "waiting for timing data…" → no event live yet (or
+     outside the scheduled window, or the scan hasn't found it yet). Cars on
+     the map are leftover SIM data — not a bug.
+   - green **`event <id> · <track> · H<heat>`** + "LIVE · N cars · <clock>" →
+     you're live. Check the event id/track is the right session — WIGE serves
+     several concurrent series and the `TRACKNAME` gate usually screens the
+     wrong ones out, but if it latched a wrong one, pin the correct id:
+     `node live/vds-relay.mjs <correct-id>`.
+4. Want denser data for a full session? Also start `./live/raceday.sh` (safe
+   to run alongside the cloud path — same tables, both upsert).
+5. **First live snapshot = the one verification.** The relay/edge function log
+   the raw snapshot; if cars sit slightly "late" on the map, that's
+   `lap_end_tod` needing a field-name tweak (see `TOD_KEYS` in
+   `live/vds-relay.mjs`) — everything else maps 1:1.
+6. **After the session:** nothing to stop — the cron job just goes quiet once
+   `now()` leaves the padded window. Optional cleanup of test data:
+   `delete from stint9_live_timing where event_date = current_date;`
+
+## 🔬 Dry-run (do this once, before trusting it on a real round)
+
+A 5-minute test during any live NLS session (practice/quali) proves the chain
+end to end without waiting for race day:
+
+1. Insert a `stint9_schedule_windows` row covering the next few minutes
+   (`start_ts = now() - interval '5 min'`, `end_ts = now() + interval '30
+   min'`), or just click **⟳ Update** directly — it ignores the schedule.
+2. Open the dashboard → **LIVE**. Confirm cars appear on the map and positions
+   look sane.
+3. Clean up: `delete from stint9_live_timing where event_date = current_date;`
+   and delete the test schedule row if you added one.
+
+Rehearsal without any live event at all (replays a real past CSV at speed, so
+you can test the whole render pipeline any day):
+```
+SUPABASE_SERVICE_KEY=<service-role key> node live/mock-replay.mjs --speed 120
+```
+Open the dashboard → flip **LIVE** → the maps/positions fill in and track "now".
+Stop with Ctrl-C. Clean up after: `delete from stint9_live_timing where event_date = <that day>;`
+
+## Known risks
+- **Origin check:** WIGE could in principle reject sockets whose `Origin`
+  isn't its own page. Hasn't been observed as an issue so far (`vds-relay.mjs`
+  and `wige-scrape` both connect fine without setting one) — flag it if a
+  session ever fails to connect and this hasn't already been ruled out.
+- **Concurrent series:** WIGE serves multiple races on the same socket; the
+  `TRACKNAME` regex gate (`TRACK_MATCH` env var to override) is what keeps the
+  scan from latching a non-NLS event. Rejected candidates are logged.
+- **9-sector events (24h):** the table only has `s1..s5`; a warning fires on
+  the first snapshot if the feed reports `NROFINTERMEDIATETIMES` > 5 — the
+  schema needs widening before then.
+
+---
+
+# 8. LIVE feed — data flow
+
+**Purpose:** a plain-language walkthrough of exactly where our LIVE dashboard
+pulls per-lap sector times from on race day, so you can sanity-check that it will
+work during the real session. **We do not touch your writes or scrape your API —
+we read the same public WIGE timing socket the timing screens already use.**
+(Originally written for the stint9 owner / their AI.)
+
+## The chain in one line
+
+```
+WIGE live-timing WebSocket  →  our relay (Node)  →  Supabase table  →  dashboard LIVE view
+```
+
+Nothing runs inside stint9. Our relay is a standalone process on our laptop; the
+dashboard is a static page that polls our own Supabase.
+
+## 1. Source — the WIGE live-timing WebSocket (public, no auth)
+
+- URL: `wss://livetiming.azurewebsites.net/`
+  (this is the WIGE timing backend that both `vdsmotorsport.com` and `wige.de`
+  front-end onto — channels `[0,4]`).
+- On connect we send one subscribe frame:
+  ```json
+  { "eventId": "<id>", "eventPid": [0, 4], "clientLocalTime": <epoch-ms> }
+  ```
+- It pushes leaderboard snapshots shaped like:
+  ```json
+  { "EXPORTID": 24, "SESSION": "...", "HEAT": 1, "TRACKNAME": "...",
+    "RESULT": [ { car... }, { car... }, ... ] }
+  ```
+- Heartbeats (`PID:"LTS_TIMESYNC"`) and "not live yet" (`PID:"LTS_NOT_FOUND"`)
+  frames are ignored.
+
+**eventId discovery:** we don't hard-code it. On race day the relay runs in
+`--watch` mode and scans eventIds 1..80 every 30 s until one returns a live
+`RESULT` array, then latches that id automatically.
+
+### Per-car fields we read from each `RESULT[]` entry
+
+| WIGE field (UPPERCASE) | meaning | our column |
+|---|---|---|
+| `STNR` | start number | `car` |
+| `CLASSNAME` | class | `klass` |
+| `NAME` | driver | `driver` |
+| `CAR` | vehicle model | `vehicle` |
+| `LAPS` (or `LAP`) | lap number | `lap` |
+| `LASTLAPTIME` | lap time | `lap_time` |
+| **`S1TIME`..`S5TIME`** | **sector times (NLS uses 1–5; S6–S9 exist for 24h/9-sector)** | **`s1`..`s5`** |
+| time-of-day of lap end | see note ⚠️ below | `lap_end_tod` |
+
+Sector/lap time parsing accepts `"1:23.456"`, `"83.456"`, a number, or empty/`-`
+→ seconds or null (null is normal for S5 on a pit-in lap).
+
+⚠️ **The one field we're not 100% sure of — please confirm:** the *time-of-day of
+the lap crossing*. We convert it to seconds-of-day and use it to place each car
+on the track map. We look for the first present of these keys on each car object:
+`TAGESZEIT, TIMEOFDAY, TOD, LASTLAPTIMEOFDAY, LASTPASSING, CROSSINGTIME`. If none
+is present we fall back to our receipt time (cars then sit slightly "late" on the
+map but positions/sectors are still correct). **If you know which field carries
+the lap's time-of-day (and whether it's ISO / epoch-ms / "hh:mm:ss"), that's the
+single most useful thing to tell us.** Every raw snapshot is logged to
+`live/logs/` so the first live frame verifies all of this.
+
+## 2. Relay — `live/vds-relay.mjs` (plain Node ≥ 22, no npm deps, no browser)
+
+- Consumes the socket above, maps each snapshot's cars to rows (table below), and
+  **upserts** into Supabase `public.stint9_live_timing`, throttled to ~one write
+  every 4 s.
+- Conflict key: `(event_date, car, lap)` with `merge-duplicates`, so a car's row
+  for a given lap is updated in place as sectors complete — no duplicates.
+- Writes with the **public/publishable Supabase key** only. Read-only against WIGE.
+- `pit` state and the "fastest lap" flag are **recomputed by us downstream**, not
+  taken from the feed.
+
+Run command on the day: `node live/vds-relay.mjs --watch` (or `./live/raceday.sh`,
+which auto-restarts it).
+
+## 3. Store — Supabase table `public.stint9_live_timing`
+
+One row per (car, lap): `event_date, car, lap, klass, s1..s5, lap_end_tod,
+lap_time, inpit, fastest, driver, vehicle, updated_at`. A companion table
+`stint9_live_status` holds one row/day for the header badge (event id / track /
+heat / car count / clock).
+
+## 4. Dashboard LIVE view — `index.html` + `live/build-db.js`
+
+- When the user flips to **LIVE**, the page polls every **5 s**:
+  ```
+  GET /rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,
+      lap_end_tod,lap_time,inpit,fastest,driver,vehicle
+      &event_date=eq.<today>&order=car,lap
+  ```
+- It feeds those raw rows into `buildLiveDB()` (shared, pre-tested), which derives
+  the **exact same data structure** the offline SIM mode renders — per-lap
+  5-sector segments, within-class positions, sector deltas, pit laps, track map
+  placement. So LIVE and SIM render through identical code; only the data source
+  differs.
+- The loop is **read-only** and snapshots/restores SIM data so switching modes is
+  non-destructive.
+
+**Backup / no-laptop path:** a `wige-scrape` Supabase Edge Function is the
+serverless twin of the relay — the LIVE header's **⟳ Update** button calls it to
+pull a single WIGE snapshot into the same table, so the view works even with no
+process running locally.
+
+## What we'd love you to confirm (race-day readiness)
+
+1. **eventId** — is scanning 1..80 on `wss://livetiming.azurewebsites.net/` the
+   right way to find the live NLS event, or is there a cleaner id/endpoint?
+2. **Sector fields** — are `S1TIME..S5TIME` (and `STNR/CLASSNAME/NAME/CAR/LAPS/
+   LASTLAPTIME`) the correct keys during the race, same as practice/quali?
+3. **Lap time-of-day field** ⚠️ — which key carries it, and what format? (see §1)
+4. **Session continuity** — does the same socket/eventId serve practice, quali and
+   race, or does the id change between sessions?
+5. **Etiquette** — any objection to us holding one WebSocket subscription for the
+   session (read-only)? We're not scraping your API or writing anything of yours.
+
+Read-only either way — we're just mirroring the timing feed into our own view.
+
+---
+
+# 9. LIVE feed — troubleshooting & hard-won learnings
+
+Everything we learned wiring the WIGE live feed to the dashboard on 2026‑07‑31
+(NLS7 test day). Read this first when LIVE misbehaves. Companion to
+[§7 race-day runbook](#7-live-feed--race-day-runbook) (the run procedure) and
+[§8 data flow](#8-live-feed--data-flow) (the data chain).
+
+## First move: open admin.html → "LIVE data stream"
+It reads what the scraper is actually writing and shows a state pill that tells
+the failure modes apart at a glance:
+
+| Pill | Meaning | Where the problem is |
+|---|---|---|
+| **STREAMING** | writes fresh **and** data-time near wall clock | healthy |
+| **SOURCE STALE** | writes fresh, but data-time frozen | WIGE paused (yellow / session end) **or** our capture IP is rate-limited (see below) |
+| **SCRAPER SILENT** | nothing written for >2.5min | no capture running (cron not firing / relay down / collector stopped) |
+| **OFFLINE (no event)** | scraper ran, found no live event | between sessions, or wrong/ended event id |
+
+The admin panel reads **raw rows** (not the derived timeline), so if admin says
+STREAMING but the **dashboard** is broken, the bug is in the dashboard's timeline
+derivation — see "corrupt data" below.
+
+## We do NOT depend on stint9.com
+The live pipeline reads WIGE's public socket (`wss://livetiming.azurewebsites.net/`,
+channels `[0,4]`) directly and writes our own Supabase. `stint9.com`'s Clerk-gated
+`/api/worker/*` API is documented in [§13](#13-stint9-live-timing-api--recovered-contract)
+only as recovered *learnings* / a possible fallback — nothing at runtime calls it.
+Keep it that way.
+
+## Lesson 1 — DON'T over-poll WIGE (rate-limit / bot protection)
+**This bit us hard.** A background poller hit event 20 every 60s for an hour plus
+dozens of manual probes. WIGE then started **serving a frozen cached snapshot** to
+the offending IPs and eventually **blocked headless clients entirely** (a fresh
+`ws` connect returned **0 frames**), while a **real browser kept working**.
+
+Symptoms of being rate-limited (vs the session genuinely ending):
+- A fresh headless connect (Node/Deno) returns a **stale, unchanging** snapshot,
+  or **0 frames**, while `livetiming.wige.de` / the leaderboard page still updates
+  live in a normal browser.
+- It recovers on its own after you **stop hammering** (minutes–hours).
+
+Rules:
+- The WIGE‑intended pattern is **one persistent subscription for the session**,
+  not many fresh connects. The relay (`vds-relay.mjs --watch`) holds one socket;
+  prefer it over frequent one-shot pokes.
+- The pg_cron autoscan pokes once/min *inside session windows only* — acceptable.
+  Do **not** run extra pollers alongside it, and don't spam the ⟳ Update button.
+- The dashboard's own 5s polling and the admin panel read **Supabase**, not WIGE —
+  they can't cause a WIGE block. Only the scraper/relay/collector/⟳/cron touch WIGE.
+
+### Fallback when headless is blocked: the browser collector
+`live/browser-collector.js` runs the capture **inside a real browser tab** (which
+WIGE still serves) and upserts to Supabase with the publishable key. Paste it into
+the console of `https://livetiming.azurewebsites.net/events/<id>/results`. See the
+file header for steps. This is the reliable path if the cron/relay get blocked.
+
+## Lesson 2 — corrupt garage/pit times inflate the whole timeline
+WIGE emits **multi-minute-to-hour "sector" and lap times** for cars sitting in the
+box (seen live: `s1=16727s` ≈ 4.6h, `lap=20490s` ≈ 5.7h). Left untreated these:
+- pushed the derived clock **into the future** (badge read `17:54` while the real
+  data-time was `13:16`),
+- **froze the staleness check** — the dashboard showed `STALE · no update 27m`
+  while the feed was streaming perfectly (admin = STREAMING),
+- blew up the **cumulative-gap chart** (`+20490s`).
+
+Fixes now in `index.html` (LIVE path only; SIM is fed clean CSV data):
+- **Cap/null implausible values before `buildLiveDB`**: sector > 15min → null,
+  lap > 1h → null (a real Nordschleife sector < ~15min even wet; lap < ~1h).
+- **Derive the LIVE clock from the newest *actual* `lap_end_tod`** (max over raw
+  rows), not the derived `DB.tmax`, so a single bad leg can't send it to the future.
+
+If gaps/positions ever look wildly wrong again, suspect a new corrupt-value shape
+and check the raw rows in the admin panel (look for absurd s1..s5 / laptime).
+
+## Lesson 3 — the STALE badge measures *time since data advanced*
+The dashboard badge "STALE · no update Xm" = wall-clock since the feed's data-time
+last **changed** (timezone-agnostic — no UTC/CEST compare). Green running advances
+it every few seconds; a real freeze (full-course yellow, session end) makes it
+climb. The admin panel's "Xs behind wall clock" is the *absolute* source lag (it
+assumes the feed's TOD is UTC — true so far).
+
+## Lesson 4 — event id changes per session; don't let sessions merge
+The live **event id is not stable**:
+- It differs day-to-day, and **may change between sessions on the same day**
+  (e.g. quali on one id, race on another).
+- **Discovery already adapts**: `wige-scrape` reads the current id from
+  `livetiming.wige.de/vln.html` on every call; the browser collector reads it from
+  the leaderboard URL. So the cloud path latches whatever id is live. Good.
+
+**The risk:** `stint9_live_timing` is keyed `(event_date, car, lap)` with no session
+id. If quali and race run the same day, race rows **overwrite/merge** quali rows
+for the same `(car, lap)` — a corrupt mix. Two ways to handle it:
+- **Split per session (preferred).** Treat each event id as a separate dataset —
+  e.g. add an `event_id` column to `stint9_live_timing` and filter the LIVE view by
+  the current `stint9_live_status.event_id`; then quali and race are distinct and
+  can be archived/loaded separately (like the `?event=<slug>` SIM loader). Needs a
+  one-column migration + scraper/collector/dashboard tweak.
+- **Clear on session change (quick).** When the discovered event id differs from
+  the last one written, delete the day's `stint9_live_timing` rows before writing
+  the new session, so only the current session is live. Loses in-place history, but
+  the hourly archiver still snapshots each session for later.
+
+Until one of those lands, **manually clear between sessions** if quali data lingers
+into the race: `delete from stint9_live_timing where event_date = current_date;`
+(then let the current session refill it).
+
+## Lesson 5 — smooth motion is SIM's logic + an estimated live sector
+LIVE renders through SIM's exact loop (`activeLeg`+`ptAlong` interpolation). The
+only extra piece: SIM knows each sector's end time; at the live frontier the
+*current* sector isn't finished, so we estimate its length from the class average
+(`DB.avgseg`) and interpolate the same way, snapping to the real position when the
+crossing lands. The display clock trails the newest data by `LIVE_BUFFER_S` (10s —
+must stay **> the 5s poll** or motion stutters). Bump it for smoother/laggier,
+lower it for fresher/choppier.
+
+## Quick checklist when "LIVE looks wrong"
+1. Admin panel pill? STREAMING vs STALE/SILENT/OFFLINE narrows it instantly.
+2. Admin STREAMING but dashboard frozen/weird → timeline corruption (Lesson 2) or
+   you're on a stale browser tab (hard-refresh).
+3. Headless capture dead but browser live → WIGE rate-limit (Lesson 1) → stop
+   pokers, wait, or run the browser collector.
+4. Numbers from a *different* session bleeding in → session-id merge (Lesson 4).
+5. Never add extra WIGE pollers to "fix" it — that's what causes the block.
+
+---
+
+# 10. Live-timing learnings — 2026-08-01 (NLS 6h race)
+
+WIGE event 20. First full race run of the LIVE pipeline under load. What broke,
+what we learned, and where each fix lives. Companion to
+[§7 race-day runbook](#7-live-feed--race-day-runbook) and
+[§9 troubleshooting](#9-live-feed--troubleshooting--hard-won-learnings).
+
+## 1. HOLD mode — one long-held socket instead of once-a-minute pokes
+The cloud path used to `wige-scrape` once per cron minute, so the LIVE ticker
+jumped ~once a minute. Fixed by an opt-in **`?hold=1`** mode: hold ONE WIGE socket
+for ~149s (just under the free-plan 150s Edge cap) and flush changed rows every
+~5s, with a `stint9_live_status.updated_at` freshness guard so overlapping cron
+fires — or a running `vds-relay` — stand down (exactly one collector). The cron
+POSTs `?hold=1` with `timeout_milliseconds:=155000` (must exceed the hold).
+Density from holding the socket longer, NOT connecting more often — WIGE
+rate-limits fresh connects, not held sockets. See the `wige-scrape/index.ts` header.
+
+## 2. WIGE never sends sector S5 — reconstruct it
+The Nordschleife feed reports **4 intermediate splits (S1..S4)**; there is no
+discrete S5 field. Worse: a row's `LASTLAPTIME` is the **previous** lap's time
+(reported while on the current lap), so `lap_time − sum(sectors)` on the SAME row
+mixes two laps (gives negative / 167s garbage). Correct reconstruction:
+
+> **S5(lap N) = lap_time(lap N+1) − (S1+S2+S3+S4 of lap N)**
+
+because lap N's real total is reported as lap N+1's `LASTLAPTIME`. Done in
+`index.html`'s LIVE raw preprocessing (`liveTick`). The newest lap's S5 fills in
+one lap later. SIM is unaffected (CSV has real S5).
+
+## 3. PostgREST `db-max-rows = 1000` silently truncated the LIVE fetch
+The dashboard's LIVE poll fetches all of today's `stint9_live_timing`
+(`order=car,lap`, **no `&limit`**). Once the day passed ~1000 rows, PostgREST's
+hard 1000-row cap truncated it (verified: `&limit=5000` still returned 1000), and
+the high-numbered cars (BMW M240i #650+, BMW M2 #870+, CUP2/CUP3 #9xx) fell past
+row 1000 → **whole classes vanished from the Race-class dropdown mid-race**.
+Fixed by raising the cap (persists in the role):
+```sql
+alter role authenticator set pgrst.db_max_rows = '200000';
+notify pgrst, 'reload config';
+```
+Any "missing cars/classes / truncated data" symptom → re-check this first.
+
+## 4. LIVE class names ≠ offline/championship names
+WIGE labels some classes differently from the offline CSV the static datasets
+were built from: **`BMW M240i`**/`BMW M240`, **`VT2-F+4WD`**/`VT2-F+4W`,
+**`SP9 PRO-AM`**/`SP9 PRO-`. The CHAMPIONSHIP reel (static `NLS_CHAMP`, keyed by
+class) missed on the mismatch → "No championship data". Fixed with an alias map in
+`renderChampionship`. Any other class-keyed lookup against offline data needs the
+same aliasing.
+
+## 5. Admin "SOURCE STALE 961m behind" was a false alarm
+`admin.html`'s LIVE data-stream read had **no `event_date` filter** and ranked by
+`lap_end_tod` (seconds-of-day), so "newest data-time" became the highest
+time-of-day row across ALL days — a prior session's afternoon crossing outranked
+today's live rows — and the lag calc `(nowUtcSec − maxTod + 86400) % 86400`
+wrapped past midnight into a bogus "961m behind" while the feed streamed fine.
+Fixed by filtering the query to today's UTC `event_date`. Old rows also cleaned:
+`delete from stint9_live_timing where event_date < current_date` (archiver has
+snapshotted past sessions to `stint9_events`).
+
+## 6. Finished-race rendering is a frozen final frame, not a bug
+When the feed stops, the display clock holds at the last data-time. The renderer
+already parks non-circulating cars (`LIVE_RUNNING_WINDOW_S = 360` → pit line) and
+caps the frontier estimator (`LIVE_EST_CAP_S = 280`), so retired cars are parked
+(near S/F, hence visually near the leaders) rather than ghost-driven forever; cars
+"stuck in S4" were genuinely there when timing froze; POS "angle lines" are lines
+collapsing to the frozen frontier.
+
+**Built:** a **feed-stopped overlay** — when the LIVE data-time hasn't advanced for
+>180s (session end / red flag / feed cut), the map shows a grey `FEED STOPPED ·
+frozen frame · Xm old` banner (top-right) and dims the car layer (`#dots.stale`),
+so the frozen final frame isn't mistaken for live motion. Purely additive: driven
+by the existing `_staleS` signal, it toggles an overlay + opacity and **does not
+touch car placement** (that's why it was safe to ship without browser verification;
+placement/label changes still need a live or `mock-replay` feed). Cleared on
+leaving LIVE (`stopLive`). Still open (needs visual verification on a real feed):
+correcting a *parked* car's lap label to its own last lap (not the frontier lap),
+and an explicit final-classification view.
+
+## 7. Smaller wins
+- **TIMES reel**: lap columns reversed — newest/last lap leftmost, lap 1 rightmost.
+- **Car search**: header "Find car #" input jumps to any car number across classes.
+- **Race-control messages** (WIGE channel [3] → `stint9_messages`, deduped on
+  `ext_key`) captured in both `wige-scrape` and `vds-relay`.
+
+---
+
+# 11. Race-control messages + LIVE message board
+
+_2026-08-01._ How the dashboard's **MESSAGE BOARD** gets real race-control messages
+(penalties, incidents, flags), and the fixes made on 2026-08-01. Companion to
+[§8 data flow](#8-live-feed--data-flow) (which covers timing) and the schema in
+`racecontrol-messages-supabase.sql`.
+
+## The problem
+
+The board read `public.stint9_messages`, but **nothing ever wrote to it** — the
+scrapers only subscribed to WIGE `eventPid:[0,4]` (leaderboard) and wrote timing.
+So the table was always empty and the board fell back to hardcoded `TEST_MESSAGES`,
+which surfaced fake "Yellow flag / #666 under investigation" placeholders **during a
+real live session** — misleading, since they look like genuine race control.
+
+## The chain now
+
+```
+WIGE WebSocket channel [3]  →  wige-scrape edge fn / vds-relay  →  stint9_messages  →  board
+```
+
+Both write paths cover messages; a status-row freshness guard keeps only one
+collector connected at a time:
+
+| Path | File | Runs |
+|---|---|---|
+| Edge function (serverless) | `live/wige-scrape/index.ts` | per-minute `stint9_wige_autoscan` pg_cron during session windows |
+| Laptop relay (continuous) | `live/vds-relay.mjs` | `node live/vds-relay.mjs --watch` / `raceday.sh` |
+
+### Payload (verified live, event 20, NLS Zeittraining)
+
+Channel `[3]` pushes `PID:"3"` frames:
+
+```json
+{ "PID":"3", "CUP":"...", "HEAT":"Zeittraining",
+  "MESSAGES":[ { "ID":"1", "MESSAGETIME":"09:05:25",
+                 "MESSAGE":"# 718 – overspeeding pitlane under investigation",
+                 "MESSAGEGROUP":"" }, ... ] }
+```
+
+### Mapping rules
+
+- **car** — first `#<number>` in the text (`null` for general messages).
+- **created_at** — `MESSAGETIME` is Europe/Berlin wall-clock → converted to a UTC
+  instant (DST-safe).
+- **message** — stored **verbatim**. The feed replaces non-ASCII (ü, en-dash) with
+  `?`; that is a source limitation we can't recover. Messages are often bilingual
+  DE/EN duplicates — both kept.
+- **race_class** — `null` (feed's `MESSAGEGROUP` is empty → applies to all classes).
+- **ext_key** — `<event_date>|<MESSAGETIME>|<MESSAGE>`, the dedup key. `ID` is a
+  rolling position index (1 = newest), **not stable**, so it can't be used.
+
+### Dedup
+
+`stint9_messages` has a `UNIQUE(ext_key)` index; NULLs are distinct, so manual
+inserts (ext_key NULL) are unaffected. Upserts use `resolution=ignore-duplicates`
+so re-scraping the rolling list never rewrites a row. Idempotent — verified 15 live
+messages, zero duplicates on repeated runs.
+
+## Front-end (index.html message board)
+
+- Real rows are shown in **both SIM and LIVE**; `TEST_MESSAGES` are a SIM/demo
+  affordance only and **never** appear in LIVE (empty LIVE shows "No race-control
+  messages.").
+- **Newest on top**, older drop down, all reachable by scrolling (`.msglist` is
+  `overflow-y:auto`); sorted by `created_at` desc in code so order never depends on
+  fetch order. Fetch cap raised 50 → 300.
+
+## Also fixed this session — reference-lap table in LIVE
+
+The car's reference-lap table (class / car / prev-lap / ETA best) was data-driven
+and only drew when a completed flying lap existed, so it never appeared during a
+LIVE warm-up (0 completed laps). It now **always renders the frame** in both modes,
+showing `—` until data lands. `ETA S/F` stays `—` in LIVE (its future S/F crossing
+can't exist live).
+
+## Commits (2026-08-01, on `main`)
+
+- Message board: never show TEST placeholders in LIVE mode
+- Reference-lap table: always render frame in SIM and LIVE
+- wige-scrape: scrape WIGE race-control messages (channel [3])
+- Message board: newest on top, scroll for the rest, keep more
+- vds-relay: scrape race-control messages too (channel [3] parity)
+
+---
+
+# 12. LIVE feed — info to request before race day
+
+The stint9-dash LIVE pipeline is **built and tested end-to-end** except for one
+thing: the actual live-timing data source. This note lists exactly what we need
+so LIVE lights up on race day with (almost) no coding.
+
+> **Historical note:** this section (and §13/§14) predate the WIGE pivot, when we
+> were still deciding between reverse-engineering WIGE and asking the stint9
+> owner. The WIGE path is now built and proven (see §7–§11). Kept for context.
+
+## What's already done (no input needed)
+- `public.stint9_live_timing` table (raw per-lap rows) — created.
+- `live/build-db.js` — rebuilds the dashboard DB from raw rows; **verified** to
+  reproduce the offline generator exactly (109 cars, all positions match).
+- Dashboard LIVE loop wired: polls the table every 5 s, rebuilds, renders.
+  Falls back to "waiting for timing data…" until rows exist. SIM is untouched.
+- `live/wige-scrape/` — Supabase Edge Function scaffold (mock mode works today).
+- `live/mock-replay.mjs` — replays the 2026-06-20 CSV into the table for a full
+  dress rehearsal without a live event.
+
+## The only gap: where the live data comes from
+We need **one** of these two sources wired into the scraper.
+
+### Option A — WIGE public feed (preferred; no login)
+`livetiming.wige.de` is public. Its leaderboard is a JS app that pulls data over
+a **WebSocket**. We already recovered the channel numbers from its bundle
+(`messages=[3]`, `results/trackState=[0,4]`, `statistics=[9002]`) but not the
+socket URL or payload shape — those can only be seen against a **live event**.
+
+**What to capture (during a running NLS session):** open `livetiming.wige.de`,
+DevTools → Network → **WS** → click the connection, then save:
+1. the `wss://…` **Request URL** + request headers (esp. `Origin`, any tokens);
+2. **Messages** tab → right-click → **Save all as HAR** (30 s is plenty).
+
+### Option B — ask the stint9 site owner
+The stint9 app (the authenticated part at **stint9.com/app**, a Next.js + Clerk
+site) already shows live timing, so it already consumes a feed. If the owner is
+willing to share, ask them:
+
+> **Questions for the stint9 owner:**
+> 1. Where does the `/app` live-timing page get its data — the **WIGE
+>    WebSocket** directly, or your **own API / backend** in front of it?
+> 2. If it's your own API: is there a **URL + auth** (API key / token) we could
+>    use read-only for one car number or class during the event?
+> 3. If it proxies WIGE: can you share the **socket URL and the subscribe
+>    message format** you send, plus one **sample payload** of the results and
+>    messages channels?
+> 4. Is there any **rate limit / Origin restriction** we should respect?
+> 5. Is a per-event **event id** required to subscribe, and where do we read it?
+
+Either option gives us the same three values to fill into
+`live/wige-scrape/config.ts` (`SOCKET_URL`, `SUBSCRIBE`, and the field mapping).
+
+## What we learned inspecting the saved page (2026-07-13)
+The saved "Live Timing · Stint9" file was the **public marketing homepage**
+(`stint9.com`), not the live app — it only contains Clerk auth + landing-page
+chunks, no data endpoint. Useful finding: stint9's static JS **is publicly
+fetchable**, so if the owner can't help, a "Save Page As → **Webpage, Complete**"
+of **stint9.com/app** *while logged in* would pull the real data chunk locally
+and we could extract the endpoint statically — but the cleanest path remains the
+**HAR capture** in Option A during a live session.
+
+## Bottom line for race day
+Once we have the HAR (or the owner's answers): paste 3 values into
+`config.ts`, deploy the Edge Function, and LIVE works. See
+[§7 race-day runbook](#7-live-feed--race-day-runbook).
+
+---
+
+# 13. stint9 live-timing API — recovered contract
+
+_2026-07-13._
+
+> **SUPERSEDED (2026-07-13) → use `live/vds-relay.mjs`.** livetiming.vdsmotorsport.com
+> exposes a **public, auth-free** WebSocket (`wss://livetiming.azurewebsites.net/`,
+> subscribe `{eventId,eventPid:[0,4],clientLocalTime}`) carrying the same leaderboard
+> data with **S1..S9** sectors. That removes the Clerk-cookie blocker below: a plain
+> Node process (`node live/vds-relay.mjs <eventId>`) can consume it and upsert to
+> `stint9_live_timing` directly — no logged-in browser tab, no owner permission. The
+> Clerk/`/api/worker` contract below is kept only as a fallback.
+
+Extracted statically from a **logged-in Web Archive** of `stint9.com/app` (its
+Next.js chunks). This replaced the WIGE-WebSocket plan at the time: stint9 already
+ingests the feed and exposes it as **clean same-origin JSON**, which is far easier
+to consume than reverse-engineering WIGE.
+
+## Endpoints (same-origin, behind Clerk auth)
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/api/worker/events/{eventId}/laps` | `{ laps: [ lapObj, … ] }` — full snapshot |
+| GET | `/api/worker/events/{eventId}/pits`  | pit data |
+| GET (SSE) | `/api/worker/stream?eventId={eventId}` | `EventSource` live deltas; `message` = `{type:"event", kind:"lap", …lapObj}` |
+
+Client flow: fetch `/laps` + `/pits` once, then open the SSE `stream` for
+incremental frames (tracks `lastFrameAt`). Snapshot and stream carry the **same
+lap-object shape**.
+
+## Lap object → our `stint9_live_timing` row
+| stint9 field | our column | note |
+|---|---|---|
+| `stnr` | `car` | start number |
+| `className` | `klass` | |
+| `driverName` | `driver` | |
+| `car` | `vehicle` | vehicle model |
+| `lap` | `lap` | |
+| `lapTime` | `lap_time` | |
+| `s1Time`..`s5Time` | `s1`..`s5` | sector times |
+| `todTs` | `lap_end_tod` | timestamp; `new Date(todTs)` → seconds-of-day = h*3600+m*60+s. Fallback `createdAt`. |
+| `pitStopCount` | (→ `inpit` via delta) | also `/pits` endpoint |
+| `position` / `classRank` | (optional) | stint9's own ranking; we recompute in build-db |
+| `team` | — | not needed |
+
+Our `buildLiveDB` recomputes positions itself, so `stnr + lap + s1..s5 + todTs +
+className + driverName` are the only fields strictly required.
+
+## Auth — the one thing still to solve
+These are same-origin calls that ride the **Clerk session cookie** (`__session`)
+in the logged-in browser. A standalone server scraper can't hold that session
+cleanly (Clerk JWTs are short-lived). Recommended approach:
+
+**Browser-side collector → ingest function.** A small script pasted into the
+logged-in stint9 tab on race day polls `/api/worker/events/{eventId}/laps`
+(rides the cookie automatically) and POSTs the JSON to a Supabase Edge Function
+(`ingest`) guarded by a shared secret, which upserts with the service-role key.
+No Clerk tokens leave the browser, no WIGE work. See `live/wige-scrape/` (to be
+renamed `ingest`) — the upsert half already exists.
+
+Alternatives: ask the owner for a read-only token, or for the raw WIGE socket.
+
+## Still unknown (only matters on race day)
+- The **`eventId`** value — only exists when an event is live (today the page
+  showed "Waiting for feed", no id embedded). Read it from the `/app` URL or a
+  `/api/worker/events` list on the day.
+- Exact `todTs` type (epoch-ms vs ISO) — trivially handled by `new Date()`.
+
+---
+
+# 14. Message to send the stint9 owner
+
+_Historical — from before the WIGE pivot, when we still needed the owner's help._
+
+We built a race-engineering overlay for our team on top of stint9's live timing
+(maps, position chart, sector deltas). It reads stint9's own JSON feed from a
+logged-in browser tab. To finish wiring it we need to confirm a few details of
+the `/api/worker/...` endpoints. You can either **run a tiny read-only probe**
+(Option A) or **just answer the 5 questions** (Option B) — whichever is easier.
+
+## Option A — run the probe (30 seconds, read-only, writes nothing)
+During a **live session** (practice/quali/race), while logged in on the live
+timing page:
+1. Open DevTools → **Console** (⌥⌘I on Mac, F12 on Windows).
+2. Paste the contents of **`probe.js`** (attached) and press Enter.
+3. Copy the whole console output back to us.
+
+It just does the same `GET /api/worker/events/{eventId}/laps` the page already
+does, and prints: the detected `eventId`, one sample lap object, and how `todTs`
+parses. **It sends nothing anywhere and changes nothing** — it's your session,
+your data, read-only.
+
+## Option B — just answer these 5 (you know them by heart)
+1. **eventId** — what's its format, and where does the app get it (route param?
+   an events-list endpoint like `/api/worker/events`)? If handy, the id of a
+   recent or upcoming event so we can test.
+2. **Sample lap** — one raw object from `/api/worker/events/{eventId}/laps`. We
+   think the fields are: `stnr, className, driverName, car, lap, lapTime,
+   s1Time…s5Time, todTs, pitStopCount, position, classRank` — is that right?
+3. **`todTs`** — what is it exactly? epoch-milliseconds, an ISO string, or
+   seconds-of-day? (We convert it to time-of-day to place cars on track.)
+4. **Auth / sessions** — is the feed the same during quali and race, and do the
+   `/api/worker/...` calls need anything beyond the normal Clerk session cookie?
+5. **Etiquette** — any objection to us polling
+   `/api/worker/events/{id}/laps` from a logged-in tab about **every 5 s**
+   during the event (read-only)? Or would you rather give us a read-only token
+   or a lighter endpoint? We don't want to hammer your backend.
+
+Thanks! Read-only either way — we're not scraping WIGE or touching your writes,
+just mirroring the data you already serve us into our own view.
