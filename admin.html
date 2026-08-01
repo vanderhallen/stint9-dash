@@ -271,12 +271,22 @@ function loadEvents(){
     .then(function(r){return r.ok?r.json():[];}).then(renderEvents)
     .catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
 }
+// "3h ago" / "2d ago" — surfaces how fresh each archive is, so a just-finished
+// event that hasn't been snapshotted yet reads as pending, not missing.
+function relTime(iso){
+  var t=Date.parse(iso);if(isNaN(t))return '';
+  var s=Math.max(0,(Date.now()-t)/1000);
+  if(s<90)return 'just now';
+  if(s<5400)return Math.round(s/60)+'m ago';
+  if(s<172800)return Math.round(s/3600)+'h ago';
+  return Math.round(s/86400)+'d ago';
+}
 function renderEvents(rows){
   var box=document.getElementById('events');
-  if(!rows||!rows.length){box.innerHTML='<div class="empty">No events archived yet. They appear here automatically ~1h after an NLS session ends (or run <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>).</div>';document.getElementById('eventsMeta').textContent='';return;}
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent='';return;}
   box.innerHTML=rows.map(function(e){
     var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
-    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||'')].filter(Boolean).join(' · ');
+    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)):'')].filter(Boolean).join(' · ');
     var q='index.html?event='+encodeURIComponent(e.slug);
     return '<div class="ev" id="ev-'+esc(e.slug)+'">'+
       '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+

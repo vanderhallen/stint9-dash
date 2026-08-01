@@ -1,0 +1,51 @@
+name: Mirror event archive
+
+# WHY: pg_cron archives each finished NLS event into the stint9_events table
+# automatically (~1h after it ends), and the admin "Race events archive" card
+# reads that table live — so the card self-updates. But the committed
+# events/<slug>.json backup (used for the "notes file" link, the file-preferred
+# SIM load, and as an offline snapshot) was only ever refreshed by running
+# `node tools/archive_event.mjs --sync-files` by hand. When nobody ran it, the
+# committed files silently lagged the DB (e.g. NLS7). This job closes that loop:
+# it mirrors the DB into the committed files and pushes only when they change.
+#
+# The sync script writes with the public publishable key (same soft gate as the
+# dashboard) — no secrets needed. Committed files are deterministic (generated_at
+# tracks archived_at), so a run with no new archive produces no commit.
+
+on:
+  schedule:
+    - cron: '25 * * * *'   # hourly, ~18 min after the DB archiver's :07 run
+  workflow_dispatch: {}     # allow a manual "sync now"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mirror-event-archive
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync committed events/ from stint9_events
+        run: node tools/archive_event.mjs --sync-files
+
+      - name: Commit & push if the backup changed
+        run: |
+          if git diff --quiet -- events/; then
+            echo "No archive changes — committed backup already up to date."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add events/
+          git commit -m "chore(events): auto-mirror stint9_events → committed backup"
+          git push

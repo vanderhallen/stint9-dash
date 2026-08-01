@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-07-28T14:43:46.619Z",
+  "generated_at": "2026-08-01T18:07:00.025947+00:00",
   "events": [
+    {
+      "slug": "NLS7",
+      "name": "6h ADAC Ruhr-Pokal-Rennen",
+      "label": "race",
+      "date": "2026-08-01",
+      "end": null,
+      "car_count": 136,
+      "archived_at": "2026-08-01T18:07:00.025947+00:00",
+      "file": "events/NLS7.json",
+      "notes": "events/NLS7_notes.json"
+    },
     {
       "slug": "NLS6",
       "name": "1. ADAC Eifel-Trophy",

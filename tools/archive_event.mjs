@@ -118,10 +118,13 @@ async function collectTiming(date) {
 }
 
 // Compact human-readable per-event fuel/tyre/notes file (the "NLS7_notes" ask).
-function notesExtract(slug, meta, o) {
+// generated_at tracks the event's archived_at (NOT wall-clock) so the committed
+// file is deterministic — it only changes when the underlying archive changes,
+// which lets the auto-mirror workflow commit on real archives, not every run.
+function notesExtract(slug, meta, o, archivedAt) {
   return {
     event: { slug, name: meta.name, date: meta.event_date, end: meta.event_end || null, label: meta.label },
-    generated_at: new Date().toISOString(),
+    generated_at: archivedAt || null,
     fuel: (o.fuel_state || []).map(r => ({ car: r.car, state: r.state })),
     fuel_notes: (o.fuel_notes || []).map(r => ({ car: r.car, lap: r.lap, note: r.note })),
     tyres: (o.tyre_state || []).map(r => ({ car: r.car, state: r.state })),
@@ -139,12 +142,14 @@ async function writeFilesFromTable() {
     const b = ev.bundle || {};
     const meta = { slug: ev.slug, event_date: ev.event_date, event_end: ev.event_end, label: ev.label, name: ev.name };
     await writeFile(join(EVENTS_DIR, `${ev.slug}.json`), JSON.stringify({ ...b, meta: { ...(b.meta || {}), ...meta, car_count: ev.car_count, archived_at: ev.archived_at } }));
-    await writeFile(join(EVENTS_DIR, `${ev.slug}_notes.json`), JSON.stringify(notesExtract(ev.slug, meta, b.overlay || {}), null, 2));
+    await writeFile(join(EVENTS_DIR, `${ev.slug}_notes.json`), JSON.stringify(notesExtract(ev.slug, meta, b.overlay || {}, ev.archived_at), null, 2));
     index.push({ slug: ev.slug, name: ev.name, label: ev.label, date: ev.event_date, end: ev.event_end,
                  car_count: ev.car_count, archived_at: ev.archived_at,
                  file: `events/${ev.slug}.json`, notes: `events/${ev.slug}_notes.json` });
   }
-  await writeFile(join(EVENTS_DIR, 'index.json'), JSON.stringify({ generated_at: new Date().toISOString(), events: index }, null, 2));
+  // index.generated_at = the newest archived_at (deterministic — see notesExtract).
+  const latest = index.reduce((a, e) => (e.archived_at && e.archived_at > a ? e.archived_at : a), '');
+  await writeFile(join(EVENTS_DIR, 'index.json'), JSON.stringify({ generated_at: latest || null, events: index }, null, 2));
   console.log(`events/: wrote ${rows.length} event file(s) + index.json`);
 }
 
