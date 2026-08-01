@@ -1,22 +1,41 @@
-/* wige-scrape — Supabase Edge Function powering the LIVE "Update" button.
+/* wige-scrape — Supabase Edge Function powering the LIVE feed / "Update" button.
  * ===========================================================================
  * Per invocation it opens the WIGE timing WebSocket (the same Azure backend that
- * vdsmotorsport.com / wige.de use — see ../vds-relay.mjs), scans a range of
- * eventIds (or a given one), collects one leaderboard snapshot, then upserts:
+ * vdsmotorsport.com / wige.de use — see ../vds-relay.mjs), subscribes to the live
+ * NLS eventId, collects leaderboard snapshots, then upserts:
  *   - public.stint9_live_timing   (one row per car|lap)
  *   - public.stint9_live_status   (single row/day the LIVE header badge reads)
  *
- * Serverless: no laptop/relay needed — the button (or pg_cron) drives it. The
- * long-running relay (../raceday.sh) is the continuous path; this is the on-demand
- * / fallback path. Both write the identical tables.
+ * Two modes (see the docs on ../LIVE-DATA-FLOW.md / ../RACEDAY.md):
+ *
+ *   ONE-SHOT (default — the ⟳ Update button):
+ *     open socket, gather for COLLECT_MS (~7s), one upsert, return. Fast; the
+ *     browser's ⟳ stays responsive. This is the historical behaviour.
+ *
+ *   HOLD (opt-in via ?hold=1 — pg_cron):
+ *     hold ONE socket open for HOLD_MS (~149s, just under the free-plan 150s Edge
+ *     Function wall-clock cap) and flush changed rows to Supabase every FLUSH_MS
+ *     (~5s). This lands LIVE data ~every 5s instead of once per cron minute
+ *     WITHOUT any extra WIGE connects — density comes from holding the one socket
+ *     longer, not from connecting more often (WIGE rate-limits fresh connects, not
+ *     held sockets; see ../LIVE-TROUBLESHOOTING.md Lesson 1). A freshness guard
+ *     (GUARD_STALE_MS) makes an overlapping cron fire — or a running vds-relay —
+ *     stand down, so only ONE collector is ever connected at a time.
  *
  * Deploy: mcp deploy_edge_function (name wige-scrape, verify_jwt:false) or
  *         `supabase functions deploy wige-scrape --project-ref esvvzgxqnfszhttdkuzc`.
  * Secrets SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are injected automatically.
  * Optional WIGE_WS_URL secret overrides the endpoint (a real wige.de socket wins).
  *
- * Call:  POST/GET ?eventId=24        (known id, skips the scan)
- *        POST/GET ?range=1-80        (scan window; default 1-80)
+ * Enable HOLD mode on the cron (do this BETWEEN sessions — deploying alone changes
+ * nothing at runtime since hold is opt-in). Add ?hold=1 to the URL the
+ * `stint9_wige_autoscan` job POSTs to; the 60s cron then just respawns the single
+ * ~149s holder (competing fires exit cheaply via the guard, before touching WIGE):
+ *   -- in the job command: .../functions/v1/wige-scrape?hold=1
+ *
+ * Call:  POST/GET ?eventId=24        (known id, skips discovery)
+ *        POST/GET ?hold=1            (hold mode; discovers the live id)
+ *        POST/GET ?range=1-80        (legacy scan window; one-shot only)
  * ===========================================================================
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
@@ -24,7 +43,11 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 const WS_URL = Deno.env.get('WIGE_WS_URL') || 'wss://livetiming.azurewebsites.net/';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const COLLECT_MS = 7000; // socket collection window per call
+const COLLECT_MS = 7000;       // one-shot (⟳ button) socket window — unchanged
+const HOLD_MS = 149000;        // hold mode: ~149s, just under the free-plan 150s cap
+const FLUSH_MS = 5000;         // hold mode: upsert changed rows to Supabase this often
+const GUARD_STALE_MS = 15000;  // hold mode: if the status row advanced within this,
+                               // another holder/relay is live -> stand down (no WIGE connect)
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -98,19 +121,32 @@ function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): T
   };
 }
 
-// Open the socket, subscribe to ids, gather one snapshot for COLLECT_MS.
+type CollectOpts = {
+  holdMs: number;
+  flushMs?: number;
+  // Called every flushMs with the rows that CHANGED since the last flush and the
+  // full current field size — lets HOLD mode stream to Supabase mid-socket.
+  onFlush?: (rows: TimingRow[], meta: Meta | null, total: number) => void | Promise<void>;
+};
+
+// Open the socket, subscribe to ids, gather snapshots for opts.holdMs. When
+// opts.flushMs/onFlush are set, changed rows are pushed out every flushMs while the
+// socket stays open (HOLD mode); otherwise it's a single gather-then-return.
 // `gated` (range scan) rejects events whose TRACKNAME doesn't match; a single
 // explicit eventId is trusted as-is. Returns rejected candidates for the caller.
-async function collect(ids: string[], gated: boolean): Promise<{ meta: Meta | null; rows: TimingRow[]; rejected: string[] }> {
+async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; rejected: string[] }> {
   const ed = eventDate();
   const receipt = todSeconds(Date.now());
   const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win)
   const rejected = new Set<string>();
   let meta: Meta | null = null;
+  const sig = (r: TimingRow) => `${r.s1},${r.s2},${r.s3},${r.s4},${r.s5},${r.lap_time},${r.lap_end_tod}`;
+  const lastSig = new Map<string, string>(); // key -> last-flushed signature (HOLD mode)
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
-    const done = () => { try { ws.close(); } catch { /* noop */ } resolve(); };
-    const timer = setTimeout(done, COLLECT_MS);
+    let flushTimer: number | undefined;
+    const done = () => { if (flushTimer !== undefined) clearInterval(flushTimer); try { ws.close(); } catch { /* noop */ } resolve(); };
+    const timer = setTimeout(done, opts.holdMs);
     try { ws = new WebSocket(WS_URL); } catch { clearTimeout(timer); return resolve(); }
     ws.onopen = () => { for (const id of ids) ws.send(JSON.stringify({ eventId: id, eventPid: [0, 4], clientLocalTime: Date.now() })); };
     ws.onmessage = (ev) => {
@@ -127,6 +163,16 @@ async function collect(ids: string[], gated: boolean): Promise<{ meta: Meta | nu
       for (const c of m.RESULT) { const r = mapCar(c, ed, rootTod, nSectors); if (r) timing.set(`${r.car}|${r.lap}`, r); }
     };
     ws.onerror = () => { clearTimeout(timer); done(); };
+    // HOLD mode: stream just-changed rows to Supabase every flushMs. Fire-and-forget
+    // (don't await inside the interval) so a slow write can't stack up the ticks; a
+    // dropped tail is harmless — snapshots are full state, refetched next tick.
+    if (opts.flushMs && opts.onFlush) {
+      flushTimer = setInterval(() => {
+        const changed: TimingRow[] = [];
+        for (const [k, r] of timing) { const s = sig(r); if (lastSig.get(k) !== s) { lastSig.set(k, s); changed.push(r); } }
+        if (changed.length) Promise.resolve(opts.onFlush!(changed, meta, timing.size)).catch(() => { /* next tick retries */ });
+      }, opts.flushMs);
+    }
   });
   return { meta, rows: [...timing.values()], rejected: [...rejected] };
 }
@@ -140,6 +186,27 @@ async function upsert(table: string, rows: unknown[], onConflict: string) {
   });
   if (!res.ok) throw new Error(`${table} ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return rows.length;
+}
+
+function statusRow(ed: string, meta: Meta | null, eventId: string, cars: number) {
+  return {
+    event_date: ed, live: !!meta, event_id: meta?.event_id ?? eventId ?? null,
+    session: meta?.session ?? null, heat: meta?.heat ?? null, track: meta?.track ?? null,
+    cars, updated_at: new Date().toISOString(),
+  };
+}
+
+// HOLD mode guard: has the day's status row advanced within staleMs? If so, another
+// holder (a still-running ~149s socket) or the vds-relay is already collecting — so
+// stand down instead of opening a second WIGE socket. One read, before any WIGE contact.
+async function activeHolder(ed: string, staleMs: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/stint9_live_status?select=updated_at&event_date=eq.${ed}`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+    if (!res.ok) return false;
+    const a = await res.json();
+    const u = a?.[0]?.updated_at;
+    return !!u && (Date.now() - new Date(u).getTime()) < staleMs;
+  } catch { return false; }
 }
 
 function idRange(spec: string | null): string[] {
@@ -176,24 +243,42 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     let eventId = url.searchParams.get('eventId') ?? '';
     let range = url.searchParams.get('range');
-    if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; } catch { /* no body */ } }
+    const hp = url.searchParams.get('hold');
+    let hold = hp != null && hp !== '0' && hp !== 'false';
+    if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; if (b.hold != null) hold = !!b.hold; } catch { /* no body */ } }
 
-    // Default path (no explicit eventId/range, i.e. the ⟳ button & pg_cron):
-    // discover the live id from vln.html and subscribe to just it. Only fall
-    // back to the (mass-subscribe) range scan if discovery fails AND a range was
-    // explicitly asked for — a bare range scan is known-broken, see above.
+    // ---- HOLD mode (pg_cron): one long-held socket, flush every ~5s ----------
+    if (hold) {
+      // Another ~149s holder — or the vds-relay — is already streaming: stand down.
+      if (await activeHolder(ed, GUARD_STALE_MS))
+        return Response.json({ ok: true, held: false, reason: 'collector-active', event_date: ed }, { headers: CORS });
+      if (!eventId) eventId = (await discoverEventId()) ?? '';
+      // No live event id: don't hold a doomed socket for 149s — bail fast so the
+      // next cron tick can try again cheaply.
+      if (!eventId)
+        return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
+
+      let flushed = 0;
+      const onFlush = (rows: TimingRow[], meta: Meta | null, total: number) => (async () => {
+        flushed += await upsert('stint9_live_timing', rows, 'event_date,car,lap');
+        await upsert('stint9_live_status', [statusRow(ed, meta, eventId, total)], 'event_date');
+      })();
+      const { meta, rows } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
+      // Final status write with the true field size (last flush carried a batch count).
+      await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
+      return Response.json({ ok: true, held: true, live: !!meta, event_date: ed, event: meta?.event_id ?? eventId, cars: rows.length, timing: flushed }, { headers: CORS });
+    }
+
+    // ---- ONE-SHOT mode (⟳ button / default): unchanged 7s snapshot -----------
+    // Default path: discover the live id from vln.html and subscribe to just it.
+    // Only fall back to the (mass-subscribe) range scan if a range was explicitly
+    // asked for — a bare range scan is known-broken, see above.
     if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
     const ids = eventId ? [eventId] : idRange(range);
-    // A discovered/explicit single id is trusted; only gate (TRACKNAME-filter) a
-    // real range scan.
-    const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId);
+    const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
-    await upsert('stint9_live_status', [{
-      event_date: ed, live: !!meta, event_id: meta?.event_id ?? eventId ?? null,
-      session: meta?.session ?? null, heat: meta?.heat ?? null, track: meta?.track ?? null,
-      cars: rows.length, updated_at: new Date().toISOString(),
-    }], 'event_date');
+    await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
 
     return Response.json(
       { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, rejected },
