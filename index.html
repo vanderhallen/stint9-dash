@@ -3048,6 +3048,9 @@ buildStartGrid();
       if(wasPlaying){playing=true;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
       else render();
     }
+    // Message board's TEST/empty fallback is mode-dependent (see activeMessages) —
+    // re-render so switching modes updates it immediately, not on the next poll.
+    if(typeof renderMessages==='function')renderMessages();
   }
   toggle.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
   window.dataMode='SIM';
@@ -3744,7 +3747,16 @@ applyWxReel(false);
   ];
   let dismissed;try{dismissed=new Set(JSON.parse(localStorage.getItem('stint9_msg_dismissed')||'[]'));}catch(e){dismissed=new Set();}
   function saveDismissed(){try{localStorage.setItem('stint9_msg_dismissed',JSON.stringify(Array.from(dismissed)));}catch(e){}}
-  let MESSAGES=TEST_MESSAGES;
+  // Real race-control rows fetched from Supabase (null = not loaded yet). The
+  // TEST_MESSAGES are a SIM/demo affordance only: they must NEVER show in LIVE,
+  // where fake "Yellow flag / under investigation" placeholders would masquerade
+  // as genuine race control. When no real rows exist we fall back to placeholders
+  // only outside LIVE; in LIVE the board stays empty until the scraper writes rows.
+  let serverRows=null;
+  function activeMessages(){
+    if(serverRows&&serverRows.length)return serverRows;
+    return (window.dataMode==='LIVE')?[]:TEST_MESSAGES;
+  }
   function fmtTime(iso){const d=new Date(iso);const pad=n=>String(n).padStart(2,'0');return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
   const metaOf=m=>fmtTime(m.created_at)+(m.car?(' · #'+m.car):'')+(m.race_class?(' · '+m.race_class):'');
   // popup: shown once per session when a message names the selected car.
@@ -3757,8 +3769,12 @@ applyWxReel(false);
   if(modal)modal.onclick=e=>{if(e.target===modal)closeModal();};   // click backdrop also closes
   window.renderMessages=function renderMessages(){
     const clsSel=document.getElementById('classsel'),curCls=clsSel?clsSel.value:null;
-    const rows=MESSAGES.filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls));
+    const rows=activeMessages().filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls));
     list.innerHTML='';
+    if(!rows.length&&window.dataMode==='LIVE'){
+      const note=document.createElement('div');note.className='msgmeta';note.style.opacity='.7';
+      note.textContent='No race-control messages.';list.appendChild(note);
+    }
     let highlight=false;
     rows.forEach(m=>{
       const isOurs=!!(selCar&&m.car&&String(m.car)===String(selCar));if(isOurs)highlight=true;
@@ -3786,8 +3802,10 @@ applyWxReel(false);
   function loadMessages(){
     fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
       .then(r=>r.ok?r.json():[])
-      .then(rows=>{MESSAGES=(rows&&rows.length)?rows:TEST_MESSAGES;renderMessages();})
-      .catch(()=>{MESSAGES=TEST_MESSAGES;renderMessages();});
+      // Only real rows land in serverRows; the TEST/empty fallback is decided in
+      // activeMessages() by mode, so a transient failure never injects placeholders.
+      .then(rows=>{serverRows=Array.isArray(rows)?rows:[];renderMessages();})
+      .catch(()=>{renderMessages();});
   }
   loadMessages();setInterval(loadMessages,5*60*1000);
 })();
