@@ -440,7 +440,6 @@
     <div class="toolrow" style="margin:0">
       <div class="field"><label for="classsel">Race class</label><select id="classsel"><option value="CUP5">CUP5 · BMW M235i</option></select></div>
       <div class="field"><label for="carsel">Select car</label><select id="carsel"><option value="">— select a car —</option></select></div>
-      <div class="field"><label for="carsearch">Find car #</label><input id="carsearch" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 650" title="Type a car number and press Enter — jumps to that car in any class" style="font-family:'IBM Plex Mono',monospace;font-size:14px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);width:82px;box-sizing:border-box"></div>
     </div>
     <div class="card controls" id="controls">
       <div id="simControls" style="display:flex;align-items:center;gap:5px">
@@ -618,6 +617,10 @@
   <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column">
     <div id="msgcard" class="card sidecard" style="flex:0 0 auto;min-height:0">
       <div class="colhead">Message board</div>
+      <div id="findcarrow" style="display:flex;align-items:center;gap:7px;padding:2px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">
+        <label for="carsearch" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap">Find car #</label>
+        <input id="carsearch" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 650" title="Type a car number and press Enter — jumps to that car in any class" style="font-family:'IBM Plex Mono',monospace;font-size:14px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);flex:1 1 auto;min-width:0;box-sizing:border-box">
+      </div>
       <div id="msglist" class="msglist"></div>
     </div>
     <div id="msgModal"><div class="mbox">
@@ -1234,7 +1237,7 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
    actually completes with a different driver, same idea as every other
    reel only drawing what's actually happened by T. */
 function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)return;
-  const rowH2=30,xL=92,xR=980,yT2=18;
+  const rowH2=30,xL=104,xR=980,yT2=18;
   const CH2=yT2+Math.max(1,DB.cars.length)*rowH2+10;
   svg.setAttribute('viewBox','0 0 1000 '+CH2);
   // laps completed (fractional) for a car at T — active leg draws as a
@@ -1262,7 +1265,10 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   ordered.forEach((st,i)=>{
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
     const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
-    s+='<text x="12" y="'+(cy+4.5).toFixed(1)+'" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
+    // right-anchored in the fixed gutter (ends 8px before xL) so the bars —
+    // which paint after these labels — never cover the tail of a longer '#nnn'
+    // (worst on the selected car's fully-opaque bar).
+    s+='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
