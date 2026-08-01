@@ -231,7 +231,7 @@ function setLiveState(txt,bg,fg){var el=document.getElementById('liveRawState');
 function loadLiveRaw(){
   Promise.all([
     fetch(SB+'/rest/v1/stint9_live_status?select=*&order=updated_at.desc&limit=1',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];}),
-    fetch(SB+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,driver&order=lap_end_tod.desc.nullslast&limit=40',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];})
+    fetch(SB+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,driver&event_date=eq.'+new Date().toISOString().slice(0,10)+'&order=lap_end_tod.desc.nullslast&limit=40',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];})
   ]).then(function(res){
     var st=res[0]&&res[0][0], rows=res[1]||[], now=Date.now();
     var writeAgo=(st&&st.updated_at)?(now-Date.parse(st.updated_at)):null;   // is the scraper writing at all?
