@@ -435,6 +435,7 @@
     <div class="toolrow" style="margin:0">
       <div class="field"><label for="classsel">Race class</label><select id="classsel"><option value="CUP5">CUP5 · BMW M235i</option></select></div>
       <div class="field"><label for="carsel">Select car</label><select id="carsel"><option value="">— select a car —</option></select></div>
+      <div class="field"><label for="carsearch">Find car #</label><input id="carsearch" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 650" title="Type a car number and press Enter — jumps to that car in any class" style="font-family:'IBM Plex Mono',monospace;font-size:14px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);width:82px;box-sizing:border-box"></div>
     </div>
     <div class="card controls" id="controls">
       <div id="simControls" style="display:flex;align-items:center;gap:5px">
@@ -2214,6 +2215,20 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
 /* dropdown */
 const sel=document.getElementById('carsel');
 sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
+/* Find-car search: type a car number, Enter jumps to it in whatever class it's
+   in (switches the class dropdown, then selects the car via the existing
+   onchange chain). Reads DB.classes live, so it works as the field fills in. */
+(function(){const inp=document.getElementById('carsearch');if(!inp)return;
+  function jump(){const car=String(inp.value||'').trim();if(!car)return;
+    const cls=Object.keys(DB.classes||{}).find(c=>DB.classes[c].map(String).indexOf(car)>=0);
+    if(!cls){inp.style.borderColor='#c0392b';return;}                 // no such car in the current data
+    inp.style.borderColor='';
+    const dc=document.getElementById('classsel'),dcar=document.getElementById('carsel');
+    if(dc&&dc.value!==cls){dc.value=cls;if(typeof dc.onchange==='function')dc.onchange({target:dc});}
+    if(dcar){dcar.value=car;if(typeof dcar.onchange==='function')dcar.onchange({target:dcar});}}
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();jump();}});
+  inp.addEventListener('input',()=>{inp.style.borderColor='';});
+})();
 // keep the tyre board's car in sync once the iframe has loaded / on first paint
 (function(){const bf=document.getElementById('boardframe');if(bf)bf.addEventListener('load',()=>postTyreCar(selCar));})();
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
