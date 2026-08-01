@@ -2012,11 +2012,16 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     if(selCar){const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{},pc=DB.pits[selCar]||[],slg=activeLeg(selCar,T),curLap=slg?slg[0]:1e9;
       let lastPit=0;pc.forEach(pl=>{if(pl<curLap&&pl>lastPit)lastPit=pl;});
       let maxL=0;for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(Number(L)-1)*5+5];if(tc==null||tc>T)continue;const nL=Number(L),tt=s[0]+s[1]+s[2]+s[3]+s[4];if(nL>lastPit&&tt<flDrv)flDrv=tt;if(nL>maxL){maxL=nL;prevLap=tt;}}}
-    if(flClass<Infinity)plines.push(['class','#16202b',32,fmt(flClass),flClass]);
-    if(flCar<Infinity)plines.push(['car','#16202b',32,fmt(flCar),flCar]);
+    // Reference-lap rows are ALWAYS emitted so the table frame renders in both
+    // SIM and LIVE — even before a flying lap completes (LIVE warm-up / lap 1),
+    // where the cells sit at '—' and fill in as data arrives. ETA S/F needs the
+    // lap's future S/F crossing, which never exists LIVE, so it stays '—' there.
+    const refFmt=v=>(v!=null&&isFinite(v))?fmt(v):'—';
+    plines.push(['class','#16202b',32,refFmt(flClass<Infinity?flClass:null),flClass<Infinity?flClass:null]);
+    plines.push(['car','#16202b',32,refFmt(flCar<Infinity?flCar:null),flCar<Infinity?flCar:null]);
     if(flDrv<Infinity)plines.push(['driver','#16202b',32,fmt(flDrv),flDrv]);
-    if(prevLap!=null)plines.push(['prev lap','#16202b',32,fmt(prevLap),prevLap]);
-    if(etaTime)plines.push([etaLbl,'#16202b',32,etaTime]);
+    plines.push(['prev lap','#16202b',32,refFmt(prevLap),prevLap]);
+    plines.push([etaLbl||'ETA S/F','#16202b',32,etaTime||'—']);
     while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);
     const mkT=(x,y,anc,txt,col,fsz,wt)=>{const t=document.createElementNS(SVGNS,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('text-anchor',anc);t.setAttribute('font-family','IBM Plex Mono,monospace');t.setAttribute('font-weight','700');t.setAttribute('font-size',fsz||30);t.setAttribute('fill',col);if(wt!=='hdr'){t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','4');t.setAttribute('paint-order','stroke');}t.textContent=txt;predsvg.appendChild(t);};
     const mkR=(x,y,w,h,fill,stroke,sw,rx)=>{const r=document.createElementNS(SVGNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);if(fill)r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width',sw||1);}if(rx)r.setAttribute('rx',rx);predsvg.appendChild(r);};
