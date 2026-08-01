@@ -182,12 +182,19 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
   const messages = new Map<string, MessageRow>(); // ext_key -> row (union across frames)
   const rejected = new Set<string>();
   let meta: Meta | null = null;
-  const sig = (r: TimingRow) => `${r.s1},${r.s2},${r.s3},${r.s4},${r.s5},${r.lap_time},${r.lap_end_tod}`;
+  const sig = (r: TimingRow) => `${r.s1},${r.s2},${r.s3},${r.s4},${r.s5},${r.lap_time},${r.lap_end_tod},${r.inpit}`;
   const lastSig = new Map<string, string>(); // key -> last-flushed signature (HOLD mode)
   const flushedMsg = new Set<string>();       // ext_keys already flushed (HOLD mode)
+  // Pit detection: WIGE's socket has no per-lap pit boolean (that's the VLN CSV's
+  // INPIT='J'); it exposes PITSTOPCOUNT, a cumulative per-car counter. A car pitted
+  // on the lap where its count ticks up, so we diff it across frames (HOLD mode sees
+  // many). No-op if the field is absent (stays inpit=false as before — no regression).
+  const pitCount = new Map<string, number>(); // car -> last PITSTOPCOUNT seen
+  const pitLaps = new Set<string>();          // car|lap flagged as a pit lap
+  let rawLogged = false;                       // TEMP: log one raw frame to learn field names
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
-    let flushTimer: number | undefined;
+    let flushTimer: ReturnType<typeof setInterval> | undefined;
     const done = () => { if (flushTimer !== undefined) clearInterval(flushTimer); try { ws.close(); } catch { /* noop */ } resolve(); };
     const timer = setTimeout(done, opts.holdMs);
     try { ws = new WebSocket(WS_URL); } catch { clearTimeout(timer); return resolve(); }
@@ -202,11 +209,26 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
       if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
       // P1-2: skip wrong-series snapshots while range-scanning.
       if (gated && !acceptEvent(m)) { const id = String(m.EXPORTID ?? ''); if (id) rejected.add(id); return; }
+      // TEMP raw-frame capture: dump the first accepted car object once so get_logs
+      // reveals the exact keys (PITSTOPCOUNT/state, LAPS semantics, sector count).
+      // Remove once the field names are confirmed against a live session.
+      if (!rawLogged) { rawLogged = true; try { console.log('WIGE_RAWFRAME ' + JSON.stringify({ root: { NROFINTERMEDIATETIMES: m.NROFINTERMEDIATETIMES, TOD: m.TOD, SESSION: m.SESSION }, car0: m.RESULT[0] })); } catch { /* noop */ } }
       // P1-4: root TOD (snapshot time); P2: sector count both from the message root.
       const rootTod = m.TOD != null && m.TOD !== '' ? todSeconds(m.TOD) : receipt;
       const nSectors = Math.max(1, Number(m.NROFINTERMEDIATETIMES) || 5);
       if (!meta) meta = { event_id: String(m.EXPORTID ?? ''), session: m.SESSION ?? null, heat: (m.HEAT ?? null) + (m.HEATTYPE ? ` [${m.HEATTYPE}]` : ''), track: m.TRACKNAME ?? null };
-      for (const c of m.RESULT) { const r = mapCar(c, ed, rootTod, nSectors); if (r) timing.set(`${r.car}|${r.lap}`, r); }
+      for (const c of m.RESULT) {
+        const r = mapCar(c, ed, rootTod, nSectors);
+        if (!r) continue;
+        const pc = Number(c.PITSTOPCOUNT);
+        if (Number.isFinite(pc)) {
+          const prev = pitCount.get(r.car);
+          if (prev !== undefined && pc > prev) pitLaps.add(`${r.car}|${r.lap}`); // stop credited on this lap
+          pitCount.set(r.car, pc);
+        }
+        if (pitLaps.has(`${r.car}|${r.lap}`)) r.inpit = true;
+        timing.set(`${r.car}|${r.lap}`, r);
+      }
     };
     ws.onerror = () => { clearTimeout(timer); done(); };
     // HOLD mode: stream just-changed rows to Supabase every flushMs. Fire-and-forget
