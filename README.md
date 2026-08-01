@@ -764,6 +764,29 @@ Everything we learned wiring the WIGE live feed to the dashboard on 2026‑07‑
 [§7 race-day runbook](#7-live-feed--race-day-runbook) (the run procedure) and
 [§8 data flow](#8-live-feed--data-flow) (the data chain).
 
+## ⚠️ OPEN — verify against a live WIGE frame (armed 2026-08-01, do at next NLS session)
+
+`wige-scrape` (v9) logs one raw car object per run as `WIGE_RAWFRAME …` (a TEMP
+`console.log`, first accepted frame only). At the next live session, read it via
+Supabase → Edge Functions logs (or MCP `get_logs` service `edge-function`) and
+resolve three things, then **remove the temp log**:
+
+1. **`inpit` lap-attribution.** v9 derives `inpit` by diffing the per-car
+   **`PITSTOPCOUNT`** across frames and flagging the lap where it ticks up. Confirm
+   that lands on the **in-lap** (what `DB.pits` / `withPitS5` / the racenote PIT-IN
+   note expect) and not the out-lap — adjust to `lap-1` if it's off by one.
+2. **Lap-count inflation.** The stored `lap` (`c.LAPS`) ran **~40 % higher** than
+   WIGE's on-screen session-lap count during the 2026-08-01 6h race (e.g. #650 at
+   DB L33 @15:52 while WIGE showed ~L23). Confirm what `c.LAPS` actually counts.
+3. **Field names / sector count.** Confirm `PITSTOPCOUNT` exists on the socket (not
+   just the VLN CSV) and that `NROFINTERMEDIATETIMES` = 4 for the Nordschleife
+   (why `s5` is always null — the dashboard's 5-sector model vs WIGE's 4 intermediates).
+
+Everything else in the 2026-08-01 batch is shipped: STINT label gutter, Find-car in
+the Message board (+ Enter searches/highlights it), `inpit` via `PITSTOPCOUNT`
+(no-op if the field is absent, so no regression), and racenote LIVE=SIM parity
+(regenerate fresh + dup-safe upsert + `pit` kind allowed).
+
 ## First move: open admin.html → "LIVE data stream"
 It reads what the scraper is actually writing and shows a state pill that tells
 the failure modes apart at a glance:
