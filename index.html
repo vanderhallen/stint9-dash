@@ -764,15 +764,12 @@ const CODE60_POLY=DB.poly.map((p,i)=>{const pl=document.createElementNS(SVGNS,'p
 
 /* dots */
 const LEG={};
-// LIVE frontier estimator cap (see render()): how far past its last real sector
-// crossing we let a car's estimate advance (≈ one long sector) before holding.
-const LIVE_EST_CAP_S=280;
 // Practice/test-session handling. WIGE doesn't flag inpit and cars sit in the
 // garage for hours, so we detect "not circulating" ourselves:
 //  - a car with no boundary crossing within this many seconds of the display
-//    clock is parked in the box (shown at the pit line, "PIT", not ghost-driven).
-//    Kept comfortably above the longest real sector (~280s) so a car genuinely
-//    circulating a long sector is never mistaken for parked.
+//    clock is parked in the box (shown at the pit line, "PIT", not left stranded
+//    mid-track at its last split). Kept comfortably above the longest real sector
+//    (~280s) so a car genuinely circulating a long sector is never mistaken for parked.
 const LIVE_RUNNING_WINDOW_S=360;
 //  - a gap at the last common boundary larger than this is two cars that ran at
 //    different times, not a racing gap -> shown as "—" instead of "+15000s".
@@ -1971,33 +1968,19 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
       // LIVE frontier: the car's CURRENT sector isn't in the feed yet (only FINISHED
-      // sectors are), so SIM's activeLeg finds nothing. SIM has the true sector ends;
-      // here we CHAIN estimated sectors forward from the last real boundary at the
-      // class-average pace (DB.avgseg), rolling smoothly from one sector into the next
-      // instead of freezing just shy of each line (the old 0.97 clamp did the latter,
-      // which is what made cars stall at every transition). Bounded by LIVE_EST_CAP_S
-      // so a pitted / stale-feed car parks rather than ghost-driving ahead of reality.
+      // sectors are), so SIM's activeLeg finds nothing. We DON'T extrapolate the car
+      // forward at class-average pace any more — that estimator ghost-drove retired
+      // cars (e.g. #665) around the map after the race, driven by the global clock
+      // that other cars kept advancing. Instead we FREEZE the car at its last real
+      // beacon crossing; it only moves when a fresh crossing lands (stepwise motion is
+      // the accepted cost of never inventing a position). A car gone quiet for a full
+      // running-window isn't circulating (pit/garage/stopped — WIGE won't flag it), so
+      // park it at the pit line rather than leaving it stranded mid-track.
       const a=LEG[st];let li=null;
       if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
       if(!li){E._px=E._py=null;E.g.style.visibility='hidden';return;}
-      if(T-li[3]>LIVE_RUNNING_WINDOW_S){
-        // No crossing in a long time: the car isn't circulating (pit/garage/stopped
-        // — WIGE won't flag it in practice). Park it at the pit line instead of
-        // ghost-driving it around the estimated track (which put #665 "in sector 3"
-        // while it was actually in the box).
-        parked=true;[x,y]=ptAlong(1,0);
-      }else{
-        const eff=Math.min(T,li[3]+LIVE_EST_CAP_S);   // cap the estimate horizon
-        let seg=li[1],tc=li[3],done=false;
-        for(let guard=0;guard<8&&!done;guard++){
-          const ns=seg>=5?1:seg+1;                    // next sector to drive (wraps 5→1)
-          const d=(DB.avgseg&&DB.avgseg[ns])||0;      // its expected duration (class avg)
-          if(d<=0){[x,y]=ptAlong(ns,0);done=true;break;}
-          if(eff<tc+d){[x,y]=ptAlong(ns,Math.max(0,Math.min(1,(eff-tc)/d)));done=true;break;}
-          tc+=d;seg=ns;                               // this estimated sector is done → roll on
-        }
-        if(!done)[x,y]=ptAlong(seg>=5?1:seg+1,1);
-      }
+      if(T-li[3]>LIVE_RUNNING_WINDOW_S){parked=true;[x,y]=ptAlong(1,0);}
+      else[x,y]=ptAlong(li[1],1);   // frozen at the end of its last completed sector
     }
     else{E._px=E._py=null;E.g.style.visibility='hidden';return;}
     // Tween (LIVE only): slide the dot toward its new target so a snap — when a real

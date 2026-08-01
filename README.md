@@ -863,14 +863,31 @@ Until one of those lands, **manually clear between sessions** if quali data ling
 into the race: `delete from stint9_live_timing where event_date = current_date;`
 (then let the current session refill it).
 
-## Lesson 5 — smooth motion is SIM's logic + an estimated live sector
-LIVE renders through SIM's exact loop (`activeLeg`+`ptAlong` interpolation). The
-only extra piece: SIM knows each sector's end time; at the live frontier the
-*current* sector isn't finished, so we estimate its length from the class average
-(`DB.avgseg`) and interpolate the same way, snapping to the real position when the
-crossing lands. The display clock trails the newest data by `LIVE_BUFFER_S` (10s —
-must stay **> the 5s poll** or motion stutters). Bump it for smoother/laggier,
-lower it for fresher/choppier.
+## Lesson 5 — LIVE motion is SIM's logic; the frontier estimator was REMOVED
+LIVE renders through SIM's exact loop (`activeLeg`+`ptAlong` interpolation). SIM
+knows each sector's end time; at the live frontier the *current* sector isn't
+finished, so `activeLeg` finds no leg for it.
+
+**We used to extrapolate the car forward** across that unfinished sector at the
+class-average pace (`DB.avgseg`), capped at `LIVE_EST_CAP_S` (280s). That gave
+smooth motion but **ghost-drove retired cars around the map after the race**: the
+extrapolation is driven by the global display clock `T` (newest `lap_end_tod`
+across *all* cars), so as long as any car — cool-down laps, in-laps, or WIGE's
+junk garage frames — kept `T` advancing, a car that had stopped sending timing
+(e.g. #665) was still slid forward from its last real beacon. Seen live 2026-08-01:
+"EVENT OVER" yet #665 kept lapping in the track view.
+
+**Removed 2026-08-01** (`index.html`, the `else if(dataMode==='LIVE')` block in
+`render()`). Now a car whose in-progress sector isn't in the feed is **frozen at
+its last real beacon crossing** (`ptAlong(li[1],1)`), and one gone quiet for a
+full `LIVE_RUNNING_WINDOW_S` (360s) parks at the pit line. **Cost:** live motion
+is stepwise — a dot jumps forward only when a real crossing lands (every ~1–4 min
+on the Nordschleife) instead of gliding. That's the accepted trade for never
+inventing a position. `LIVE_EST_CAP_S` and the `DB.avgseg` extrapolation are gone.
+
+The display clock still trails the newest data by `LIVE_BUFFER_S` (10s — must stay
+**> the 5s poll** or motion stutters). Bump it for smoother/laggier, lower it for
+fresher/choppier.
 
 ## Quick checklist when "LIVE looks wrong"
 1. Admin panel pill? STREAMING vs STALE/SILENT/OFFLINE narrows it instantly.
@@ -945,11 +962,15 @@ snapshotted past sessions to `stint9_events`).
 
 ## 6. Finished-race rendering is a frozen final frame, not a bug
 When the feed stops, the display clock holds at the last data-time. The renderer
-already parks non-circulating cars (`LIVE_RUNNING_WINDOW_S = 360` → pit line) and
-caps the frontier estimator (`LIVE_EST_CAP_S = 280`), so retired cars are parked
-(near S/F, hence visually near the leaders) rather than ghost-driven forever; cars
+parks non-circulating cars (`LIVE_RUNNING_WINDOW_S = 360` → pit line); cars
 "stuck in S4" were genuinely there when timing froze; POS "angle lines" are lines
 collapsing to the frozen frontier.
+
+> **Update (2026-08-01):** the frontier estimator that used to keep a car gliding
+> across its unfinished sector (`LIVE_EST_CAP_S = 280`) has since been **removed** —
+> it ghost-drove retired cars around the map after the race (e.g. #665 still lapping
+> under "EVENT OVER"). Cars now freeze at their last real beacon. See
+> [§9 Lesson 5](#9-live-feed--troubleshooting--hard-won-learnings).
 
 **Built:** a **feed-stopped overlay** — when the LIVE data-time hasn't advanced for
 >180s (session end / red flag / feed cut), the map shows a grey `FEED STOPPED ·
