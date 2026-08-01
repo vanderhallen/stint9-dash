@@ -212,13 +212,18 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
     // HOLD mode: stream just-changed rows to Supabase every flushMs. Fire-and-forget
     // (don't await inside the interval) so a slow write can't stack up the ticks; a
     // dropped tail is harmless — snapshots are full state, refetched next tick.
+    // onFlush fires EVERY tick once we have a frame (even with zero changed rows/msgs)
+    // so it heartbeats stint9_live_status — otherwise a quiet stretch (>GUARD_STALE_MS
+    // with no sector changes) would look like a dead holder and let a second cron tick
+    // spawn a duplicate socket. upsert() no-ops on an empty row batch.
     if (opts.flushMs && opts.onFlush) {
       flushTimer = setInterval(() => {
+        if (!meta) return; // no real frame yet — nothing to write or heartbeat
         const changed: TimingRow[] = [];
         for (const [k, r] of timing) { const s = sig(r); if (lastSig.get(k) !== s) { lastSig.set(k, s); changed.push(r); } }
         const newMsgs: MessageRow[] = [];
         for (const [k, r] of messages) { if (!flushedMsg.has(k)) { flushedMsg.add(k); newMsgs.push(r); } }
-        if (changed.length || newMsgs.length) Promise.resolve(opts.onFlush!(changed, meta, timing.size, newMsgs)).catch(() => { /* next tick retries */ });
+        Promise.resolve(opts.onFlush!(changed, meta, timing.size, newMsgs)).catch(() => { /* next tick retries */ });
       }, opts.flushMs);
     }
   });
