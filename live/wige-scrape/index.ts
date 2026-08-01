@@ -2,8 +2,9 @@
  * ===========================================================================
  * Per invocation it opens the WIGE timing WebSocket (the same Azure backend that
  * vdsmotorsport.com / wige.de use — see ../vds-relay.mjs), subscribes to the live
- * NLS eventId, collects leaderboard snapshots, then upserts:
+ * NLS eventId, collects leaderboard + race-control snapshots, then upserts:
  *   - public.stint9_live_timing   (one row per car|lap)
+ *   - public.stint9_messages      (race-control messages, channel [3], deduped)
  *   - public.stint9_live_status   (single row/day the LIVE header badge reads)
  *
  * Two modes (see the docs on ../LIVE-DATA-FLOW.md / ../RACEDAY.md):
@@ -121,12 +122,52 @@ function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): T
   };
 }
 
+// Race-control messages: WIGE channel [3] pushes frames shaped like
+//   { PID:"3", CUP, HEAT, MESSAGES:[{ ID, MESSAGETIME:"HH:MM:SS", MESSAGE, MESSAGEGROUP }] }
+// (verified from a live NLS session 2026-08-01). ID is a rolling position index
+// (1 = newest), NOT stable, so we dedup on <event_date>|<MESSAGETIME>|<MESSAGE>.
+// The feed replaces non-ASCII (ü, en-dash) with '?', so text is stored verbatim.
+type MessageRow = { race_class: string | null; car: string | null; message: string; source: string; created_at?: string; ext_key: string };
+
+// MESSAGETIME is Europe/Berlin wall-clock. Convert (date + HH:MM:SS) -> UTC ISO,
+// DST-safe via the zone-offset subtraction trick. Returns null if unparseable
+// (caller then omits created_at so the column default now() applies).
+function berlinToUtcISO(dateStr: string, hms: string): string | null {
+  if (!/^\d{1,2}:\d{2}:\d{2}$/.test(hms)) return null;
+  const guess = new Date(`${dateStr}T${hms.padStart(8, '0')}Z`);
+  if (isNaN(guess.getTime())) return null;
+  const berlin = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (berlin.getTime() - utc.getTime())).toISOString();
+}
+
+// deno-lint-ignore no-explicit-any
+function mapMessages(items: any[], ed: string): MessageRow[] {
+  const out: MessageRow[] = [];
+  for (const it of items || []) {
+    const message = String(it?.MESSAGE ?? '').trim();
+    if (!message) continue;
+    const mtime = String(it?.MESSAGETIME ?? '').trim();
+    const carM = message.match(/#\s*(\d+)/);            // first car number named, if any
+    const created = berlinToUtcISO(ed, mtime);
+    out.push({
+      race_class: null,                                 // MESSAGEGROUP is empty in the feed; msgs apply to all classes
+      car: carM ? carM[1] : null,
+      message, source: 'wige',
+      ...(created ? { created_at: created } : {}),
+      ext_key: `${ed}|${mtime}|${message}`,
+    });
+  }
+  return out;
+}
+
 type CollectOpts = {
   holdMs: number;
   flushMs?: number;
-  // Called every flushMs with the rows that CHANGED since the last flush and the
-  // full current field size — lets HOLD mode stream to Supabase mid-socket.
-  onFlush?: (rows: TimingRow[], meta: Meta | null, total: number) => void | Promise<void>;
+  // Called every flushMs with the timing rows that CHANGED and any race-control
+  // messages NOT yet flushed since the last tick, plus the full current field
+  // size — lets HOLD mode stream both to Supabase mid-socket.
+  onFlush?: (rows: TimingRow[], meta: Meta | null, total: number, messages: MessageRow[]) => void | Promise<void>;
 };
 
 // Open the socket, subscribe to ids, gather snapshots for opts.holdMs. When
@@ -134,25 +175,30 @@ type CollectOpts = {
 // socket stays open (HOLD mode); otherwise it's a single gather-then-return.
 // `gated` (range scan) rejects events whose TRACKNAME doesn't match; a single
 // explicit eventId is trusted as-is. Returns rejected candidates for the caller.
-async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; rejected: string[] }> {
+async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; messages: MessageRow[]; rejected: string[] }> {
   const ed = eventDate();
   const receipt = todSeconds(Date.now());
   const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win)
+  const messages = new Map<string, MessageRow>(); // ext_key -> row (union across frames)
   const rejected = new Set<string>();
   let meta: Meta | null = null;
   const sig = (r: TimingRow) => `${r.s1},${r.s2},${r.s3},${r.s4},${r.s5},${r.lap_time},${r.lap_end_tod}`;
   const lastSig = new Map<string, string>(); // key -> last-flushed signature (HOLD mode)
+  const flushedMsg = new Set<string>();       // ext_keys already flushed (HOLD mode)
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
     let flushTimer: number | undefined;
     const done = () => { if (flushTimer !== undefined) clearInterval(flushTimer); try { ws.close(); } catch { /* noop */ } resolve(); };
     const timer = setTimeout(done, opts.holdMs);
     try { ws = new WebSocket(WS_URL); } catch { clearTimeout(timer); return resolve(); }
-    ws.onopen = () => { for (const id of ids) ws.send(JSON.stringify({ eventId: id, eventPid: [0, 4], clientLocalTime: Date.now() })); };
+    // eventPid [0,4] = leaderboard/trackState, 3 = race-control messages.
+    ws.onopen = () => { for (const id of ids) ws.send(JSON.stringify({ eventId: id, eventPid: [0, 4, 3], clientLocalTime: Date.now() })); };
     ws.onmessage = (ev) => {
       // deno-lint-ignore no-explicit-any
       let m: any; try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.PID === 'LTS_TIMESYNC' || m.PID === 'LTS_NOT_FOUND') return;
+      // Channel [3]: race-control message frame (no RESULT). Collect & dedup.
+      if (Array.isArray(m.MESSAGES)) { for (const r of mapMessages(m.MESSAGES, ed)) messages.set(r.ext_key, r); return; }
       if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
       // P1-2: skip wrong-series snapshots while range-scanning.
       if (gated && !acceptEvent(m)) { const id = String(m.EXPORTID ?? ''); if (id) rejected.add(id); return; }
@@ -170,18 +216,22 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
       flushTimer = setInterval(() => {
         const changed: TimingRow[] = [];
         for (const [k, r] of timing) { const s = sig(r); if (lastSig.get(k) !== s) { lastSig.set(k, s); changed.push(r); } }
-        if (changed.length) Promise.resolve(opts.onFlush!(changed, meta, timing.size)).catch(() => { /* next tick retries */ });
+        const newMsgs: MessageRow[] = [];
+        for (const [k, r] of messages) { if (!flushedMsg.has(k)) { flushedMsg.add(k); newMsgs.push(r); } }
+        if (changed.length || newMsgs.length) Promise.resolve(opts.onFlush!(changed, meta, timing.size, newMsgs)).catch(() => { /* next tick retries */ });
       }, opts.flushMs);
     }
   });
-  return { meta, rows: [...timing.values()], rejected: [...rejected] };
+  return { meta, rows: [...timing.values()], messages: [...messages.values()], rejected: [...rejected] };
 }
 
-async function upsert(table: string, rows: unknown[], onConflict: string) {
+// resolution: merge-duplicates (default, updates on conflict) or ignore-duplicates
+// (skip existing rows — used for messages so a re-scrape never rewrites created_at).
+async function upsert(table: string, rows: unknown[], onConflict: string, resolution = 'merge-duplicates') {
   if (!rows.length) return 0;
   const res = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
     method: 'POST',
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: `resolution=${resolution},return=minimal` },
     body: JSON.stringify(rows),
   });
   if (!res.ok) throw new Error(`${table} ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -258,15 +308,17 @@ Deno.serve(async (req) => {
       if (!eventId)
         return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
 
-      let flushed = 0;
-      const onFlush = (rows: TimingRow[], meta: Meta | null, total: number) => (async () => {
+      let flushed = 0, msgFlushed = 0;
+      const onFlush = (rows: TimingRow[], meta: Meta | null, total: number, msgs: MessageRow[]) => (async () => {
         flushed += await upsert('stint9_live_timing', rows, 'event_date,car,lap');
+        // Race-control messages -> stint9_messages, deduped on ext_key (ignore-duplicates).
+        msgFlushed += await upsert('stint9_messages', msgs, 'ext_key', 'ignore-duplicates');
         await upsert('stint9_live_status', [statusRow(ed, meta, eventId, total)], 'event_date');
       })();
-      const { meta, rows } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
+      const { meta, rows, messages } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
       // Final status write with the true field size (last flush carried a batch count).
       await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
-      return Response.json({ ok: true, held: true, live: !!meta, event_date: ed, event: meta?.event_id ?? eventId, cars: rows.length, timing: flushed }, { headers: CORS });
+      return Response.json({ ok: true, held: true, live: !!meta, event_date: ed, event: meta?.event_id ?? eventId, cars: rows.length, timing: flushed, messages: msgFlushed, messagesSeen: messages.length }, { headers: CORS });
     }
 
     // ---- ONE-SHOT mode (⟳ button / default): unchanged 7s snapshot -----------
@@ -275,13 +327,15 @@ Deno.serve(async (req) => {
     // asked for — a bare range scan is known-broken, see above.
     if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
     const ids = eventId ? [eventId] : idRange(range);
-    const { meta, rows, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
+    const { meta, rows, messages, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
+    // Race-control messages (channel [3]) -> stint9_messages, deduped on ext_key.
+    const nM = await upsert('stint9_messages', messages, 'ext_key', 'ignore-duplicates');
     await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
 
     return Response.json(
-      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, rejected },
+      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, messages: nM, rejected },
       { headers: CORS },
     );
   } catch (e) {

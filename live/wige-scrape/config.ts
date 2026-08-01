@@ -125,12 +125,16 @@ export function mapResults(msg: any, eventDate: string): TimingRow[] {
 }
 
 export function mapMessages(msg: any): MessageRow[] {
-  // TODO(raceday): replace with the real race-control message payload shape.
-  const items = msg?.messages ?? msg?.items ?? (Array.isArray(msg) ? msg : []);
+  // DONE(raceday 2026-08-01): the real shape was captured live and the mapper now
+  // lives in index.ts (the deployed function). Channel [3] frames look like:
+  //   { PID:"3", CUP, HEAT, MESSAGES:[{ ID, MESSAGETIME:"HH:MM:SS", MESSAGE, MESSAGEGROUP }] }
+  // ID is a rolling position index (NOT stable) → dedup on date|MESSAGETIME|MESSAGE.
+  // This scaffold copy is kept only for reference; index.ts is authoritative.
+  const items = msg?.MESSAGES ?? msg?.messages ?? (Array.isArray(msg) ? msg : []);
   return items.map((m: any) => ({
-    race_class: m?.class ?? null,
-    car: m?.car != null ? String(m.car) : null,
-    message: String(m?.text ?? m?.message ?? ''),
+    race_class: null,
+    car: (String(m?.MESSAGE ?? m?.message ?? '').match(/#\s*(\d+)/) || [])[1] ?? null,
+    message: String(m?.MESSAGE ?? m?.message ?? ''),
     source: 'wige',
   })).filter((m: MessageRow) => m.message);
 }
