@@ -1602,6 +1602,7 @@ function renderSecTab(T){
     if(full){const tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];cells[L].tot=tot;if(tot<bestLap)bestLap=tot;}
   }
   if(!laps.length){ph('no completed sectors yet');return;}
+  laps.reverse();   // newest/last lap leftmost, first lap rightmost
   const activeD=curDrv(selCar,T);
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
   const th0='position:sticky;left:0;top:0;z-index:4;background:#f2f3f6;padding:4px 10px;text-align:left;border-right:1px solid #d5d9df;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
