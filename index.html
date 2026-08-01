@@ -54,6 +54,11 @@
   @keyframes code60pulse{0%,100%{opacity:.15}50%{opacity:.55}}
   .code60banner{position:absolute;top:12px;left:12px;padding:5px 11px;border-radius:8px;background:#ff3b30;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;letter-spacing:1px;display:none;animation:code60pulsebanner 1.1s ease-in-out infinite}
   .code60banner.on{display:block}
+  /* Shown over the map when the LIVE source has stopped advancing (session end /
+     red flag / feed cut): the map is a frozen final frame, not live motion. */
+  .feedbanner{position:absolute;top:12px;right:12px;padding:5px 11px;border-radius:8px;background:#57534e;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:12px;letter-spacing:1px;display:none}
+  .feedbanner.on{display:block}
+  #dots.stale{opacity:.4;transition:opacity .5s}
   @keyframes code60pulsebanner{0%,100%{opacity:.8}50%{opacity:1}}
     .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
@@ -471,7 +476,7 @@
   </div>
   <div class="split" style="margin-top:13px">
     <div class="left">
-      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="code60"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div><div class="code60banner" id="code60banner"></div></div>
+      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="code60"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div><div class="code60banner" id="code60banner"></div><div class="feedbanner" id="feedbanner"></div></div>
     </div>
     <div class="right">
       <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;margin:0 auto;overflow:visible">
@@ -3087,6 +3092,13 @@ buildStartGrid();
           liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hmsClock(frontier);
           liveMsg.style.color='';
         }
+        // Map overlay when the source has clearly stopped (session end / red flag /
+        // feed cut) — the map is a FROZEN final frame, so say so and dim the cars so
+        // they aren't read as live positions. Uses _staleS (time since the data-time
+        // last advanced); higher bar than the 120s STALE badge. Placement untouched.
+        {const fb=document.getElementById('feedbanner'),dg=document.getElementById('dots'),stopped=_staleS>180;
+         if(fb){const _fm=Math.floor(_staleS/60);fb.textContent='FEED STOPPED · frozen frame · '+(_fm>=1?_fm+'m':_staleS+'s')+' old';fb.classList.toggle('on',stopped);}
+         if(dg)dg.classList.toggle('stale',stopped);}
         if(liveDispT==null){T=frontier;if(scrub)scrub.value=T;}   // first paint until the smooth loop takes over
         render();try{fitPage();}catch(e){} // full re-fit: car count (CH) may have changed
         if(typeof buildStartGrid==='function')buildStartGrid();
@@ -3113,7 +3125,10 @@ buildStartGrid();
     render();
   }
   function startLive(){snapSim();liveSeen=false;liveDispT=null;liveDispLast=0;liveLastDrawn=null;liveMsg.textContent='LIVE · connecting…';liveTick();if(!liveRAF)liveRAF=requestAnimationFrame(liveLoop);liveTimer=setInterval(liveTick,LIVE_POLL_MS);}
-  function stopLive(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}if(liveRAF){cancelAnimationFrame(liveRAF);liveRAF=0;}liveDispT=null;liveDispLast=0;liveLastDrawn=null;}
+  function stopLive(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}if(liveRAF){cancelAnimationFrame(liveRAF);liveRAF=0;}liveDispT=null;liveDispLast=0;liveLastDrawn=null;
+    // clear the frozen-frame overlay when leaving LIVE (e.g. switching to SIM)
+    const _fb=document.getElementById('feedbanner');if(_fb)_fb.classList.remove('on');
+    const _dg=document.getElementById('dots');if(_dg)_dg.classList.remove('stale');}
 
   function setMode(m){
     window.dataMode=m;

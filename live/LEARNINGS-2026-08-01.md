@@ -63,10 +63,18 @@ already parks non-circulating cars (`LIVE_RUNNING_WINDOW_S = 360` → pit line) 
 caps the frontier estimator (`LIVE_EST_CAP_S = 280`), so retired cars are parked
 (near S/F, hence visually near the leaders) rather than ghost-driven forever; cars
 "stuck in S4" were genuinely there when timing froze; POS "angle lines" are lines
-collapsing to the frozen frontier. A dedicated **session-ended UX** (freeze/dim the
-map, show final classification, correct parked-car lap labels) is a real
-improvement but must be verified against a live or `mock-replay` feed — do NOT
-tune render logic blind on a finished race.
+collapsing to the frozen frontier.
+
+**Built:** a **feed-stopped overlay** — when the LIVE data-time hasn't advanced for
+>180s (session end / red flag / feed cut), the map shows a grey `FEED STOPPED ·
+frozen frame · Xm old` banner (top-right) and dims the car layer (`#dots.stale`),
+so the frozen final frame isn't mistaken for live motion. Purely additive: driven
+by the existing `_staleS` signal, it toggles an overlay + opacity and **does not
+touch car placement** (that's why it was safe to ship without browser verification;
+placement/label changes still need a live or `mock-replay` feed). Cleared on
+leaving LIVE (`stopLive`). Still open (needs visual verification on a real feed):
+correcting a *parked* car's lap label to its own last lap (not the frontier lap),
+and an explicit final-classification view.
 
 ## 7. Smaller wins
 - **TIMES reel**: lap columns reversed — newest/last lap leftmost, lap 1 rightmost.
