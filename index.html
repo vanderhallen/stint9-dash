@@ -3774,7 +3774,11 @@ applyWxReel(false);
   if(modal)modal.onclick=e=>{if(e.target===modal)closeModal();};   // click backdrop also closes
   window.renderMessages=function renderMessages(){
     const clsSel=document.getElementById('classsel'),curCls=clsSel?clsSel.value:null;
-    const rows=activeMessages().filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls));
+    const rows=activeMessages().filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls))
+      // Newest always on top; older ones drop down, all reachable by scrolling the
+      // list (.msglist is overflow-y:auto). Sort here so ordering never depends on
+      // the fetch/source order.
+      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     list.innerHTML='';
     if(!rows.length&&window.dataMode==='LIVE'){
       const note=document.createElement('div');note.className='msgmeta';note.style.opacity='.7';
@@ -3805,7 +3809,7 @@ applyWxReel(false);
     try{syncRightSplit();}catch(e){}
   };
   function loadMessages(){
-    fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=300',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
       .then(r=>r.ok?r.json():[])
       // Only real rows land in serverRows; the TEST/empty fallback is decided in
       // activeMessages() by mode, so a transient failure never injects placeholders.
