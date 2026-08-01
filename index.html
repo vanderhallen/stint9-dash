@@ -3037,6 +3037,15 @@ buildStartGrid();
           const garage=big(r.lap_time,1200)||big(r.s1,600)||big(r.s2,600)||big(r.s3,600)||big(r.s4,600)||big(r.s5,600);
           const s=garage?[null,null,null,null,null]
                         :[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)];
+          // WIGE only delivers S1..S4 for the Nordschleife (the feed reports 4
+          // intermediate splits, so the scraper caps at 4); the final sector S5 never
+          // arrives, but LASTLAPTIME does include it. Reconstruct S5 = lap-(S1+S2+S3+S4)
+          // on a clean, complete lap so the S5 row, LAP totals and COMP/full-lap views
+          // work. Only fires when all four sectors + a plausible lap time are present.
+          if(!garage&&s[4]==null&&s[0]!=null&&s[1]!=null&&s[2]!=null&&s[3]!=null){
+            const lt=cap(r.lap_time,3600);
+            if(lt!=null){const d5=lt-(s[0]+s[1]+s[2]+s[3]);if(d5>5&&d5<900)s[4]=d5;}
+          }
           return {car:String(r.car),lap:r.lap,klass:r.klass, s,
             spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
             tend:r.lap_end_tod,rt:garage?null:cap(r.lap_time,3600),
