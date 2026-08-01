@@ -3203,7 +3203,7 @@ let rnCar='';                            // the racenote target = the currently 
 const RN_SECKM=[3.3,3.3,6.0,9.4,2.4];   // NLS 5-sector estimated lengths (nls-sector-layout.md)
 const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "gap" note fires
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
-let rnNotes=[],rnSeen=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
+let rnNotes=[],rnSeen=new Set(),rnPosted=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
 function rnEventDate(){return (DB.event&&DB.event.date)||liveEventDate();}
 // the single definition of "an overtake the VIDEO reel can clip": on-track (S2–S5) and
 // carrying the crossing time the clip is cut around. The reel's count and ANALYSE must
@@ -3230,7 +3230,7 @@ function rnEnsure(){
   const tok=car+'|'+(DB.event&&DB.event.date)+'|'+((DB.legs&&DB.legs[car]||[]).length)+'|'+Object.keys(DB.classes||{}).length;
   if(tok===rnTok)return;
   rnTok=tok;rnCar=car;
-  if(!car){rnClass=null;rnCars=[];rnBX={};rnLegs={};rnNotes=[];rnSeen=new Set();rnLoaded=true;rnRenderFeed();return;}
+  if(!car){rnClass=null;rnCars=[];rnBX={};rnLegs={};rnNotes=[];rnSeen=new Set();rnPosted=new Set();rnLoaded=true;rnRenderFeed();return;}
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   rnClass=carClass[car]||null;
   rnCars=rnClass?DB.classes[rnClass].map(String):[car];
@@ -3239,7 +3239,7 @@ function rnEnsure(){
   // read a pitting car as stalled at the S4 boundary. rnBX stays on real splits.
   rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=withPitS5(c,lg.slice().sort((a,b)=>a[2]-b[2]));const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
   // reload persisted notes for this event/car
-  rnLoaded=false;rnNotes=[];rnSeen=new Set();
+  rnLoaded=false;rnNotes=[];rnSeen=new Set();rnPosted=new Set();
   if(!rnLive()){rnLoaded=true;rnRenderFeed();return;}   // SIM: ephemeral, don't load from DB
   const ed=rnEventDate();
   // re-render once notes have loaded so detection + summary run even while paused
@@ -3247,17 +3247,33 @@ function rnEnsure(){
   // having changed again in the meantime (rapid car switching).
   const done=()=>{rnLoaded=true;rnRenderFeed();if(rnTok===tok&&typeof render==='function')render();};
   fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?select=lap,sector,kind,body,tod,nkey,meta&event_date=eq.'+encodeURIComponent(ed)+'&car=eq.'+encodeURIComponent(car)+'&order=tod',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-    .then(r=>r.ok?r.json():[]).then(rows=>{rnNotes=rows||[];rnSeen=new Set(rnNotes.map(n=>n.nkey).filter(Boolean));done();}).catch(()=>{done();});
+    .then(r=>r.ok?r.json():[]).then(rows=>{rows=rows||[];
+      // LIVE parity with SIM: don't DISPLAY the stored auto-notes — regenerate them fresh
+      // from current logic via rnDetect, so LIVE shows exactly what SIM would (no stale
+      // rows from an older detector). Keep only crew-typed manual notes, which rnDetect
+      // can't recreate. rnPosted holds every stored nkey so a regenerated note isn't
+      // re-written (the upsert would no-op anyway, but this skips the request).
+      rnPosted=new Set(rows.map(n=>n.nkey).filter(Boolean));
+      rnNotes=rows.filter(n=>n.kind==='manual');
+      rnSeen=new Set(rnNotes.map(n=>n.nkey).filter(Boolean));
+      done();}).catch(()=>{done();});
 }
 function rnPost(note){
   if(!rnLive())return;                                  // SIM notes are in-memory only
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+  // Upsert on the (event_date,car,nkey) dedup key so a re-posted/regenerated note
+  // can never create a duplicate row (ignore-duplicates: keep the first write).
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?on_conflict=event_date,car,nkey',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates,return=minimal'},
     body:JSON.stringify({event_date:rnEventDate(),car:rnCar,lap:note.lap,sector:note.sector,kind:note.kind,body:note.body,tod:note.tod,nkey:note.nkey,meta:note.meta||{}})}).catch(()=>{});
 }
-function rnEmit(note){                        // auto note: skip if its natural key already exists
+function rnEmit(note){
+  // display-dedup on rnSeen (this session's feed); post-dedup on rnPosted (already in DB
+  // this event/car). A note regenerated live still SHOWS (rnSeen was empty on rebuild)
+  // but isn't re-written if it's already stored.
   if(note.nkey&&rnSeen.has(note.nkey))return false;
   if(note.nkey)rnSeen.add(note.nkey);
-  rnNotes.push(note);rnPost(note);return true;
+  rnNotes.push(note);
+  if(!note.nkey||!rnPosted.has(note.nkey)){rnPost(note);if(note.nkey)rnPosted.add(note.nkey);}
+  return true;
 }
 // scan all resolvable boundaries/laps up to T and emit any not-yet-seen auto notes
 function rnDetect(T){

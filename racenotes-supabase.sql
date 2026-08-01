@@ -42,8 +42,12 @@ comment on table public.stint9_racenotes is
   'Chronological race notes for one car, shown in the stint9-dash left-sidebar racenote panel (index.html, replaces the starting grid after formation lap L0). kind=overtake/fastest/gap/pit are auto-detected from the timing DB as the race evolves; kind=manual is crew-typed. kind=pit fires twice per stop (nkey pitin|<lap> on the pit-lane timing line, pitout|<lap> at the out-lap S1 beacon, which is where the stop time lands). tod = time-of-day seconds of the moment noted (used to locate the highlight on the race video). meta (jsonb) carries passed car, px/py within-class positions, gap_start/gap_end and sector boundary TODs so the video "analyse" step needs no recomputation; for pit notes it carries stop number and lost (out-lap S1 excess over the car''s green S1). nkey = natural dedupe key for auto notes.';
 
 -- one auto note per (event,car,natural-key); manual notes (nkey null) never collide
+-- (nulls are distinct). MUST be NON-partial so PostgREST's on_conflict=event_date,
+-- car,nkey upsert (rnPost) can use it as the arbiter — a partial index can't serve
+-- ON CONFLICT without its predicate. Deployed equivalent: constraint
+-- stint9_racenotes_nkey_uniq (migration racenotes_allow_pit_kind_and_dedup_unique).
 create unique index if not exists stint9_racenotes_nkey_idx
-  on public.stint9_racenotes (event_date, car, nkey) where nkey is not null;
+  on public.stint9_racenotes (event_date, car, nkey);
 create index if not exists stint9_racenotes_feed_idx
   on public.stint9_racenotes (event_date, car, tod);
 
