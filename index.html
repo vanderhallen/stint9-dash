@@ -3612,7 +3612,12 @@ function renderChampionship(){
   const el=document.getElementById('champreel');if(!el)return;
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   const cls=carClass[String(selCar)]||null;
-  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[cls],dnf=(NLS_CHAMP.dnf||{})[cls]||{};
+  // The LIVE feed's WIGE class names differ slightly from the offline/championship
+  // naming (built from the CSV): "BMW M240i"->"BMW M240", "VT2-F+4WD"->"VT2-F+4W",
+  // "SP9 PRO-AM"->"SP9 PRO-". Alias for the NLS_CHAMP lookup; display still uses cls.
+  const CHAMP_ALIAS={'BMW M240i':'BMW M240','VT2-F+4WD':'VT2-F+4W','SP9 PRO-AM':'SP9 PRO-'};
+  const ck=cls?(CHAMP_ALIAS[cls]||cls):null;
+  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[ck],dnf=(NLS_CHAMP.dnf||{})[ck]||{};
   if(!res){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
   const cars={};Object.keys(res).forEach(k=>res[k].forEach(c=>{cars[c]=true;}));
   Object.keys(dnf).forEach(k=>Object.keys(dnf[k]).forEach(c=>{cars[c]=true;}));
