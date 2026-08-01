@@ -4,8 +4,9 @@
  *
  * livetiming.vdsmotorsport.com talks to a PUBLIC WebSocket:
  *     wss://livetiming.azurewebsites.net/
- * Subscribe with { eventId, eventPid:[0,4], clientLocalTime } and it pushes
- * leaderboard snapshots: { EXPORTID, SESSION, HEAT, TRACKNAME, RESULT:[car…] }.
+ * Subscribe with { eventId, eventPid:[0,4,3], clientLocalTime } and it pushes
+ * leaderboard snapshots: { EXPORTID, SESSION, HEAT, TRACKNAME, RESULT:[car…] } on
+ * channels [0,4], plus race-control message frames { PID:"3", MESSAGES:[…] } on [3].
  * No login, no cookie, so a plain Node process can consume it — the exact thing
  * live/stint9-api.md said a standalone scraper *couldn't* do with the stint9 API.
  *
@@ -15,7 +16,8 @@
  *   S1SPEED..S5SPEED→s1_kmh..s5_kmh — the per-sector-boundary speed reading;
  *   same field n24-live-tracker's engine reads for its Code 60 slow-zone
  *   detector, ported here in index.html's code60Sectors().
- * Target: public.stint9_live_timing (same table the LIVE view reads).
+ * Targets: public.stint9_live_timing (leaderboard) + public.stint9_messages
+ * (race-control messages, deduped on ext_key) — same tables the LIVE view reads.
  *
  * USAGE
  *   node live/vds-relay.mjs --watch            # RACE-DAY: scan until an event is
@@ -144,6 +146,44 @@ function mapSnapshot(msg, ed) {
   return rows;
 }
 
+// ---- race-control messages (WIGE channel [3]) -------------------------------
+// Channel [3] pushes PID:"3" frames with a MESSAGES:[{ID,MESSAGETIME,MESSAGE,
+// MESSAGEGROUP}] array (verified live 2026-08-01). ID is a rolling position index
+// (1 = newest), NOT stable, so we dedup on <date>|<MESSAGETIME>|<MESSAGE>. The feed
+// replaces non-ASCII (ü, en-dash) with '?', so text is stored verbatim. Kept in
+// sync with live/wige-scrape/index.ts (the serverless twin).
+const seenMsgKeys = new Set(); // ext_keys already upserted this process (dedup)
+
+// MESSAGETIME is Europe/Berlin wall-clock -> UTC ISO (DST-safe via the zone-offset
+// subtraction trick). null if unparseable → caller omits created_at (default now()).
+function berlinToUtcISO(dateStr, hms) {
+  if (!/^\d{1,2}:\d{2}:\d{2}$/.test(hms)) return null;
+  const guess = new Date(`${dateStr}T${hms.padStart(8, '0')}Z`);
+  if (isNaN(guess.getTime())) return null;
+  const berlin = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (berlin.getTime() - utc.getTime())).toISOString();
+}
+
+function mapMessages(items, ed) {
+  const out = [];
+  for (const it of items || []) {
+    const message = String(it?.MESSAGE ?? '').trim();
+    if (!message) continue;
+    const mtime = String(it?.MESSAGETIME ?? '').trim();
+    const carM = message.match(/#\s*(\d+)/);           // first car number named, if any
+    const created = berlinToUtcISO(ed, mtime);
+    out.push({
+      race_class: null,                                // feed's MESSAGEGROUP is empty; msgs apply to all classes
+      car: carM ? carM[1] : null,
+      message, source: 'wige',
+      ...(created ? { created_at: created } : {}),
+      ext_key: `${ed}|${mtime}|${message}`,
+    });
+  }
+  return out;
+}
+
 // P1-2: WIGE serves multiple series at once, so "first live RESULT" can latch
 // the wrong race. Only latch an event whose TRACKNAME matches NLS/Nordschleife.
 // Override with TRACK_MATCH (e.g. TRACK_MATCH=. to accept anything, or a specific
@@ -165,6 +205,23 @@ async function upsert(rows) {
     });
     if (!res.ok) throw new Error('supabase ' + res.status + ': ' + (await res.text()).slice(0, 200));
   }
+}
+
+// Messages -> stint9_messages, deduped on ext_key (ignore-duplicates so a re-scrape
+// of the rolling list never rewrites created_at). Kept small: caller pre-filters to
+// ext_keys not yet seen this process.
+async function upsertMessages(rows) {
+  if (!rows.length || DRY) return 0;
+  const res = await fetch(SB_URL + '/rest/v1/stint9_messages?on_conflict=ext_key', {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json',
+      Prefer: 'resolution=ignore-duplicates,return=minimal',
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error('supabase messages ' + res.status + ': ' + (await res.text()).slice(0, 200));
+  return rows.length;
 }
 
 async function logRaw(eventId, msg) {
@@ -289,8 +346,9 @@ function connect() {
     backoff = 1000;
     lastMsgAt = Date.now();
     // P2: re-send the subscribe frame on EVERY open, so a reconnect re-joins the feed.
-    ws.send(JSON.stringify({ eventId: activeEventId, eventPid: [0, 4], clientLocalTime: Date.now() }));
-    log(`connected — subscribed to event ${activeEventId} (channel [0,4])`);
+    // eventPid [0,4] = leaderboard/trackState, 3 = race-control messages.
+    ws.send(JSON.stringify({ eventId: activeEventId, eventPid: [0, 4, 3], clientLocalTime: Date.now() }));
+    log(`connected — subscribed to event ${activeEventId} (channels [0,4,3])`);
   });
 
   ws.addEventListener('message', async ev => {
@@ -299,6 +357,17 @@ function connect() {
     if (m.PID === 'LTS_TIMESYNC') return;                 // heartbeat
     if (m.PID === 'LTS_NOT_FOUND') {                      // event not live yet
       if (stat.notFound++ % 20 === 0) log(`event ${activeEventId} not live yet (LTS_NOT_FOUND) — staying subscribed…`);
+      return;
+    }
+    // Channel [3]: race-control message frame (no RESULT). Upsert only ext_keys not
+    // yet seen this process; on failure, un-see them so the next frame retries.
+    if (Array.isArray(m.MESSAGES)) {
+      const fresh = mapMessages(m.MESSAGES, today()).filter(r => !seenMsgKeys.has(r.ext_key));
+      if (fresh.length) {
+        for (const r of fresh) seenMsgKeys.add(r.ext_key);
+        try { const n = await upsertMessages(fresh); if (n) log(`race-control: +${n} message(s) ${DRY ? 'mapped (dry)' : '-> Supabase'}`); }
+        catch (e) { for (const r of fresh) seenMsgKeys.delete(r.ext_key); log('messages upsert error:', e.message); }
+      }
       return;
     }
     if (!Array.isArray(m.RESULT)) return;                 // ignore anything without a leaderboard
@@ -360,4 +429,4 @@ if (INVOKED_AS_SCRIPT) {
   if (DETECT) detect(); else if (WATCH) watch(); else run();
 }
 
-export { mapSnapshot, acceptEvent, lapEndTod, secOrNull, todSeconds };
+export { mapSnapshot, mapMessages, berlinToUtcISO, acceptEvent, lapEndTod, secOrNull, todSeconds };
