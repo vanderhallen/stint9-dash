@@ -3037,19 +3037,19 @@ buildStartGrid();
           const garage=big(r.lap_time,1200)||big(r.s1,600)||big(r.s2,600)||big(r.s3,600)||big(r.s4,600)||big(r.s5,600);
           const s=garage?[null,null,null,null,null]
                         :[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)];
-          // WIGE only delivers S1..S4 for the Nordschleife (the feed reports 4
-          // intermediate splits, so the scraper caps at 4); the final sector S5 never
-          // arrives, but LASTLAPTIME does include it. Reconstruct S5 = lap-(S1+S2+S3+S4)
-          // on a clean, complete lap so the S5 row, LAP totals and COMP/full-lap views
-          // work. Only fires when all four sectors + a plausible lap time are present.
-          if(!garage&&s[4]==null&&s[0]!=null&&s[1]!=null&&s[2]!=null&&s[3]!=null){
-            const lt=cap(r.lap_time,3600);
-            if(lt!=null){const d5=lt-(s[0]+s[1]+s[2]+s[3]);if(d5>5&&d5<900)s[4]=d5;}
-          }
           return {car:String(r.car),lap:r.lap,klass:r.klass, s,
             spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
             tend:r.lap_end_tod,rt:garage?null:cap(r.lap_time,3600),
             inpit:!!r.inpit||garage,fast:!!r.fastest,drv:r.driver,veh:r.vehicle};});
+        // Backfill S5: WIGE never sends the final sector for the Nordschleife. A row's
+        // own lap_time is the PREVIOUS lap's (WIGE's LASTLAPTIME while on the current
+        // lap), so it can't be used directly; but lap N+1's lap_time IS lap N's total.
+        // So S5(N) = lapTime(N+1) - (S1+S2+S3+S4 of N). The newest lap has no N+1 yet,
+        // so its S5/LAP total fills in one lap later. rt is already the capped lap_time.
+        {const byCar={};for(const r of raw){(byCar[r.car]||(byCar[r.car]={}))[r.lap]=r;}
+         for(const r of raw){if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
+           const nx=byCar[r.car][r.lap+1];if(!nx||nx.rt==null)continue;
+           const d5=nx.rt-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}}
         // True data frontier = newest actual lap-end time-of-day; robust even if a
         // corrupt leg still pushes the derived DB.tmax into the future.
         liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
