@@ -213,6 +213,9 @@
   .msgitem .msgtxt{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:pre-wrap;margin-top:2px;word-break:break-word}
   .msgitem.ours{background:#fff3e0}
   .msgitem.ours .msgtxt{color:#b5651a;font-weight:700}
+  /* Find-car search hit in the message board: outline + brief flash on Enter */
+  .msgitem.found{background:#fff8d6;box-shadow:inset 3px 0 0 #d6a417;border-radius:4px;animation:msgflash 1.2s ease-out 1}
+  @keyframes msgflash{0%{background:#ffe89a}100%{background:#fff8d6}}
   .msgdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
   .msgdel:hover{color:#fff;background:var(--accent)}
   /* race-control popup: fired once per session when a message names the
@@ -2213,13 +2216,28 @@ sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[
    in (switches the class dropdown, then selects the car via the existing
    onchange chain). Reads DB.classes live, so it works as the field fills in. */
 (function(){const inp=document.getElementById('carsearch');if(!inp)return;
+  // Search the message board for the keyword; scroll the first hit into view and
+  // flash-highlight every match. Runs on the rendered DOM so it matches whatever
+  // renderMessages last drew (meta carries "· #<car>", so a bare car number hits).
+  function highlightMessages(q){
+    const list=document.getElementById('msglist');if(!list)return false;
+    const items=list.querySelectorAll('.msgitem');const ql=q.toLowerCase();let first=null;
+    items.forEach(it=>it.classList.remove('found'));
+    items.forEach(it=>{if((it.textContent||'').toLowerCase().indexOf(ql)>=0){it.classList.add('found');if(!first)first=it;}});
+    if(first){first.scrollIntoView({block:'nearest',behavior:'smooth'});return true;}
+    return false;}
   function jump(){const car=String(inp.value||'').trim();if(!car)return;
+    // 1) if it names a known car, jump the dashboard to it (switches class first,
+    //    then selects the car via the existing onchange chain — this re-renders the
+    //    message board, so highlight AFTER).
     const cls=Object.keys(DB.classes||{}).find(c=>DB.classes[c].map(String).indexOf(car)>=0);
-    if(!cls){inp.style.borderColor='#c0392b';return;}                 // no such car in the current data
-    inp.style.borderColor='';
-    const dc=document.getElementById('classsel'),dcar=document.getElementById('carsel');
-    if(dc&&dc.value!==cls){dc.value=cls;if(typeof dc.onchange==='function')dc.onchange({target:dc});}
-    if(dcar){dcar.value=car;if(typeof dcar.onchange==='function')dcar.onchange({target:dcar});}}
+    if(cls){const dc=document.getElementById('classsel'),dcar=document.getElementById('carsel');
+      if(dc&&dc.value!==cls){dc.value=cls;if(typeof dc.onchange==='function')dc.onchange({target:dc});}
+      if(dcar){dcar.value=car;if(typeof dcar.onchange==='function')dcar.onchange({target:dcar});}}
+    // 2) search + highlight the message board for the same keyword.
+    const hit=highlightMessages(car);
+    // red only if it matched nothing at all (no car AND no message)
+    inp.style.borderColor=(!cls&&!hit)?'#c0392b':'';}
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();jump();}});
   inp.addEventListener('input',()=>{inp.style.borderColor='';});
 })();
