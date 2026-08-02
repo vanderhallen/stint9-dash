@@ -1969,108 +1969,27 @@ function refreshCarDropdown(T){
   const sel=document.getElementById('carsel');if(!sel)return;
   for(const o of sel.options){if(!o.value)continue;o.textContent='#'+o.value+'  '+curDrv(o.value,T);}
 }
-// ---- LIVE sector-duration prediction (bounded, per-car/per-sector) --------
-// README §15.4a. "How long should this car's NEXT (still in-progress) sector
-// take" — a cascading historical reference, cheapest/most-current first:
-//  1. this car's own most recent NON-PIT lap this session, same sector —
-//     free, already sitting in DB.sectimes (rebuilt every LIVE poll);
-//  2. this car's most recent archived previous race (one cached Supabase
-//     read per LIVE session — see liveArchiveRef below, not per car);
-//  3. the live class average for this sector (DB.avgseg) — already computed
-//     every poll from real, current-session cars.
-// Returns null if nothing is known anywhere yet (render() then falls back to
-// freezing at the last real crossing, unchanged from the 2026-08-01 fix).
-// This value is what BOUNDS the LIVE prediction in render() — capping
-// progress at 1.0 against THIS car's own predicted duration is what stops
-// this from repeating the removed global-clock estimator's ghosting (commit
-// c966ada): a car that's actually stopped simply reads as "at the sector
-// exit, DELAY flagged" within about one predicted sector length, not slid
-// forward indefinitely by other cars' progress.
-function liveRefDuration(car,sectorIdx){
-  const stm=DB.sectimes[car]||{},pits=(DB.pits&&DB.pits[car])||[];
-  const laps=Object.keys(stm).map(Number).sort((a,b)=>b-a);
-  for(const L of laps){
-    if(pits.indexOf(L)!==-1)continue;                    // skip pit in/out laps — not representative pace
-    const s=stm[L];if(s&&s[sectorIdx-1]!=null)return s[sectorIdx-1];
-  }
-  const ar=liveArchiveRef(car,sectorIdx);if(ar!=null)return ar;
-  const av=DB.avgseg&&DB.avgseg[sectorIdx];if(av>0)return av;
-  return null;
-}
-// One cached fetch per LIVE session of the most recent archived events
-// (public.stint9_events — same table+shape admin.html already reads,
-// admin.html:312-319/368-369) — then every car's sector reference is derived
-// from that in-memory list, so this never costs more than one network call
-// per LIVE session regardless of how many cars need tier-2 this early in a
-// race (mainly matters before a car has completed its own first lap).
-let liveArchiveEvents=null,liveArchiveEventsFetching=false;
-const liveArchiveCache={};
-function ensureLiveArchiveEvents(cb){
-  if(liveArchiveEvents){cb(liveArchiveEvents);return;}
-  if(liveArchiveEventsFetching)return;                    // already in flight; caller's next frame will find it cached
-  liveArchiveEventsFetching=true;
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,bundle&order=event_date.desc&limit=3',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-    .then(r=>r.ok?r.json():[])
-    .then(rows=>{liveArchiveEvents=rows||[];liveArchiveEventsFetching=false;cb(liveArchiveEvents);})
-    .catch(()=>{liveArchiveEvents=[];liveArchiveEventsFetching=false;});
-}
-function liveArchiveRef(car,sectorIdx){
-  const c=liveArchiveCache[car];
-  if(c)return c[sectorIdx]!=null?c[sectorIdx]:null;       // cached (even {} = "looked up, nothing found")
-  ensureLiveArchiveEvents(events=>{
-    const out={};
-    for(const ev of events){
-      const b=ev.bundle||{};let sectimes=null,pits=[];
-      if(b.db&&b.db.sectimes&&b.db.sectimes[car]){sectimes=b.db.sectimes[car];pits=(b.db.pits&&b.db.pits[car])||[];}
-      else if(Array.isArray(b.timing)){
-        const rows2=b.timing.filter(r=>String(r.car)===String(car));
-        if(rows2.length){const st={};rows2.forEach(r=>{st[r.lap]=r.s;});sectimes=st;pits=rows2.filter(r=>r.inpit).map(r=>r.lap);}
-      }
-      if(!sectimes)continue;
-      const laps=Object.keys(sectimes).map(Number).sort((a,b2)=>b2-a);
-      for(let k=1;k<=5;k++){
-        if(out[k]!=null)continue;
-        for(const L of laps){if(pits.indexOf(L)!==-1)continue;const s=sectimes[L];if(s&&s[k-1]!=null){out[k]=s[k-1];break;}}
-      }
-      if(Object.keys(out).length===5)break;               // have all 5 sectors — no need to check older events
-    }
-    liveArchiveCache[car]=out;
-  });
-  return null;                                             // not resolved this frame — caller falls through to tier 3
-}
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
-  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);let parked=false,liveOverdue=false;
+  DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);let parked=false;
     if(lg){const f=(T-lg[2])/((lg[3]-lg[2])||1);[x,y]=ptAlong(lg[1],f);}
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
       // LIVE frontier: the car's CURRENT sector isn't in the feed yet (only FINISHED
-      // sectors are), so SIM's activeLeg finds nothing. The real crossing that STARTED
-      // this sector (li[3]) is the one holy anchor; from there we PREDICT progress
-      // through the still-open sector using this car's own historical pace for that
-      // sector (liveRefDuration, defined above render()), capped at the sector's own
-      // exit so a silent car can never be slid past where we actually have evidence.
-      // Bounded per-car/per-sector like this — not by the removed global-clock
-      // estimator (c966ada) that ghost-drove retired cars — a car that's actually
-      // stopped reads as "parked at the exit, DELAY flagged" within about one
-      // predicted sector length, not slid forward indefinitely. The instant a real
-      // crossing lands, activeLeg (checked above) finds it and this branch is never
-      // consulted again for that leg — real data always wins.
+      // sectors are), so SIM's activeLeg finds nothing. We DON'T extrapolate the car
+      // forward at class-average pace any more — that estimator ghost-drove retired
+      // cars (e.g. #665) around the map after the race, driven by the global clock
+      // that other cars kept advancing. Instead we FREEZE the car at its last real
+      // beacon crossing; it only moves when a fresh crossing lands (stepwise motion is
+      // the accepted cost of never inventing a position). A car gone quiet for a full
+      // running-window isn't circulating (pit/garage/stopped — WIGE won't flag it), so
+      // park it at the pit line rather than leaving it stranded mid-track.
       const a=LEG[st];let li=null;
       if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
       if(!li){E._px=E._py=null;E.g.style.visibility='hidden';return;}
-      const elapsed=T-li[3];
-      if(elapsed>LIVE_RUNNING_WINDOW_S){parked=true;[x,y]=ptAlong(1,0);}   // long-quiet: unchanged pit-line park
-      else{
-        const nextSeg=(li[1]>=5)?1:li[1]+1;
-        const predDur=liveRefDuration(st,nextSeg);
-        if(predDur>0){
-          const progress=Math.max(0,Math.min(1,elapsed/predDur));         // capped — never overshoots the sector exit
-          [x,y]=ptAlong(nextSeg,progress);
-          liveOverdue=elapsed>predDur*(1+thr);                             // anomaly signal: Code 60 / yellow / mechanical
-        }else[x,y]=ptAlong(li[1],1);   // no reference anywhere yet — frozen at the last real crossing, unchanged
-      }
+      if(T-li[3]>LIVE_RUNNING_WINDOW_S){parked=true;[x,y]=ptAlong(1,0);}
+      else[x,y]=ptAlong(li[1],1);   // frozen at the end of its last completed sector
     }
     else{E._px=E._py=null;E.g.style.visibility='hidden';return;}
     // Tween (LIVE only): slide the dot toward its new target so a snap — when a real
@@ -2086,13 +2005,11 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     E.g.setAttribute('transform','translate('+x.toFixed(1)+','+y.toFixed(1)+')');E.g.style.visibility='visible';if(!pitlike)on++;
     E.c.setAttribute('r',sel?(r*1.5):r);E.c.setAttribute('stroke',sel?'#e0301e':'#111');E.c.setAttribute('stroke-width',sel?'4':'2');E.c.setAttribute('fill-opacity',pitlike?'0.35':(sel?'0.5':'1'));
     const flip=x>1280;E.t.setAttribute('font-size',fs);E.t.setAttribute('x',flip?-(r+4):(r+4));E.t.setAttribute('text-anchor',flip?'end':'start');E.t.setAttribute('fill',sel?'#e0301e':'#16202b');E.t.textContent=pitlike?('#'+st+' PIT'):('#'+st);
-    // DELAY: either a COMPLETED leg turned out slow-but-plausible (avg×(1+thr)..avg×4;
-    // beyond ×4 it's a pit/stopped/garage sector, not a race delay, so don't badge it),
-    // or — LIVE only — the car hasn't reached its predicted next crossing yet
-    // (liveOverdue, set above): the Code 60 / yellow-flag / mechanical anomaly signal.
+    // DELAY only for a SLOW-but-plausible sector: between avg×(1+thr) and avg×4.
+    // Beyond ×4 the leg is a pit/stopped/garage sector (common in a practice
+    // session where WIGE doesn't flag inpit) — not a race delay, so don't badge it.
     {const _a=lg?(DB.avgseg[lg[1]]||0):0,_d=lg?(lg[3]-lg[2]):0;
-     const _completedDelay=!pitlike&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4;
-     E.dl.style.display=(_completedDelay||(!pitlike&&liveOverdue))?'':'none';}
+     E.dl.style.display=(!pitlike&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4)?'':'none';}
     vis.push({st,x,y,fs,E});});
   // message-board highlight: pulsing ring around our car if an active,
   // undismissed message targets it (see initMessages() below)
@@ -3088,79 +3005,22 @@ buildStartGrid();
      The loop is read-only. See RACEDAY.md / STINT9-INFO-REQUEST.md. */
   const LIVE_POLL_MS=5000;
   const RAW_FIELDS=['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event','cars','maxN','avgseg','tmin','tmax'];
-  let simSnap=null,liveTimer=null,liveSeen=false,liveHasData=false;
+  let simSnap=null,liveTimer=null,liveSeen=false;
   // Smooth LIVE motion: LIVE renders through SIM's own animation loop; only the
   // clock source differs. liveDispT glides at 1x real-time, trailing the newest
-  // data-time by ~LIVE_BUFFER_S.
+  // data-time (DB.tmax) by ~LIVE_BUFFER_S so cars are inside a sector leg.
   let liveDispT=null,liveDispLast=0,liveRAF=0,liveLastDrawn=null,liveFrontier=null;
-  // LIVE_BUFFER_S — how far BEHIND the newest data-time we render. Used to sit at
-  // ~120s (~2min end-to-end lag) so a car's CURRENT sector was usually already a
-  // COMPLETED leg by the time T reached it. README §15.4a: superseded — render()'s
-  // LIVE branch now PREDICTS the still-open sector from this car's own historical
-  // pace (liveRefDuration, bounded/capped per car+sector, real data always wins the
-  // instant it lands), so T no longer needs to lag by a whole sector to look smooth.
-  // Kept small, just above the ~5s poll/flush floor (§10.1), for network/poll jitter
-  // and out-of-order row arrival — minimal delay is the priority, per direction.
-  const LIVE_BUFFER_S=8,LIVE_MAXLAG_S=30;
-  // Staleness thresholds (§15.6 housekeeping — named instead of inline magic
-  // numbers): STALE_S = time since the data-time last advanced before the badge
-  // turns amber; STOPPED_S = the higher bar before the FEED STOPPED map overlay
-  // + dimmed dots kick in. LIVE_RUNNING_WINDOW_S (the per-car pit-line park
-  // threshold) stays defined near activeLeg()/render(), where it's used.
-  const LIVE_STALE_S=120,LIVE_STOPPED_S=180;
+  // LIVE_BUFFER_S — how far BEHIND the newest data-time we render. This is the
+  // single knob that decides "smooth vs fresh". For a car to glide on a REAL
+  // sector leg (like SIM) instead of the average-based estimator, the leg
+  // covering time T must already be in the feed — which needs the buffer to
+  // exceed (longest sector time + one poll ≈ 5s). At 10s the buffer was smaller
+  // than a single Nordschleife sector, so nearly the WHOLE field rendered via
+  // the estimator and stalled at every sector line. ~120s covers the typical
+  // sectors on real data; the Fix-2 estimator+tween below smooths the long
+  // sectors (S3/S4) and any dropped rows. Bigger = smoother/laggier.
+  const LIVE_BUFFER_S=120,LIVE_MAXLAG_S=300;
   function snapSim(){if(simSnap)return;simSnap={};RAW_FIELDS.forEach(k=>{if(k in DB)simSnap[k]=DB[k];});}
-  // Wipes DB to a genuinely EMPTY shape — not hidden, actually absent — so
-  // SIM's data (or a previous LIVE session's leftover data) can never be read
-  // by any panel while LIVE has no real data of its own yet. SIM's own copy is
-  // untouched (already saved aside by snapSim()); restoreSim() on switching
-  // back to SIM is unaffected. README §15.3.
-  function clearLiveDB(){
-    DB.classes={};DB.classMaxN={};DB.classAvg={};DB.legs={};DB.chart={};DB.sectimes={};
-    DB.lappos={};DB.pits={};DB.name={};DB.drvlap={};DB.carcol={};DB.veh={};
-    DB.event={name:'',date:liveEventDate()};
-    // buildClass() is the SAME routine an ordinary class switch uses to rebuild
-    // every per-car DOM/derived structure — reused here (DB.classes is now
-    // empty, so cls resolves to undefined and every DB.cars.forEach inside it
-    // is a no-op) so this clears EVERYTHING buildClass owns: the main track
-    // dots (EL/gd), the zoom-view minimap dots (MEL/miniG), the lap chart
-    // polylines/labels (CLINE/CTIP/CRT/CSEC/CPIT/lc), LEG/BX/BKEYS/POS/BT, the
-    // car-select dropdown, and selCar itself. A hand-rolled partial re-clear
-    // (this fix's first draft) can silently miss a structure — it forgot
-    // MEL/miniG, leaving the zoom view showing leftover SIM cars even though
-    // the main map correctly went empty. Reusing buildClass avoids that whole
-    // class of omission, now and for any future per-car structure added.
-    buildClass(undefined);
-    DB.tmin=0;DB.tmax=0;   // buildClass derives these via Math.min/max.apply(null,[]) on
-                            // an empty car list, i.e. Infinity/-Infinity — sane instead
-    if(scrub){scrub.min=0;scrub.max=0;scrub.value=0;}
-    fillClassDropdown();   // renders empty, harmless
-  }
-  // Staleness/banner bookkeeping (README §15.2), factored out so EVERY liveTick
-  // outcome — real rows, zero rows, or a fetch error — keeps it honest, not just
-  // the successful-with-rows path. Only touches the visible STALE/FEED-STOPPED UI
-  // once liveHasData is true (before that, the caller's own "connecting…"/
-  // "waiting for timing data…" message already says what's needed).
-  function markStale(frontier){
-    if(frontier!=null){
-      if(window.__liveLastT===undefined||frontier!==window.__liveLastT){window.__liveLastT=frontier;window.__liveAdvMs=Date.now();}
-    }
-    const _staleS=window.__liveAdvMs?Math.round((Date.now()-window.__liveAdvMs)/1000):0;
-    if(!liveHasData)return _staleS;
-    if(_staleS>LIVE_STALE_S){const _m=Math.floor(_staleS/60);
-      liveMsg.textContent='STALE · no update '+(_m>=1?_m+'m':_staleS+'s')+' · '+DB.cars.length+' cars';
-      liveMsg.style.color='#b45309';
-    }else{
-      liveMsg.textContent='LIVE · '+DB.cars.length+' cars'+(frontier!=null?(' · '+hmsClock(frontier)):'');
-      liveMsg.style.color='';
-    }
-    // Map overlay when the source has clearly stopped (session end / red flag /
-    // feed cut) — the map is a FROZEN final frame, so say so and dim the cars so
-    // they aren't read as live positions. Higher bar than the STALE badge.
-    {const fb=document.getElementById('feedbanner'),dg=document.getElementById('dots'),stopped=_staleS>LIVE_STOPPED_S;
-     if(fb){const _fm=Math.floor(_staleS/60);fb.textContent='FEED STOPPED · frozen frame · '+(_fm>=1?_fm+'m':_staleS+'s')+' old';fb.classList.toggle('on',stopped);}
-     if(dg)dg.classList.toggle('stale',stopped);}
-    return _staleS;
-  }
   function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
     Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
     // In LIVE, a saved class (from a prior selection) wins so it survives refresh;
@@ -3168,22 +3028,14 @@ buildStartGrid();
     let saved=null;if(window.dataMode==='LIVE')try{saved=localStorage.getItem('stint9_liveclass');}catch(_){}
     const pick=(saved&&DB.classes[saved])?saved:((cur&&DB.classes[cur])?cur:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
-    const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}
-    // clearLiveDB()/startLive() (README §15.3) now blanks the starting grid too —
-    // restore it symmetrically on the way back to SIM, or a LIVE→SIM round-trip
-    // leaves it stuck empty even though every other panel came back correctly.
-    if(typeof buildStartGrid==='function')try{buildStartGrid();}catch(e){}}
+    const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}}
   function liveTick(){
     refreshStatus();
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(r=>r.ok?r.json():[]).then(rows=>{
         if(window.dataMode!=='LIVE')return;
         if(typeof window.buildLiveDB!=='function'){liveMsg.textContent='live feed: build module not loaded';return;}
-        if(!rows||!rows.length){
-          if(!liveHasData)liveMsg.textContent='LIVE · waiting for timing data…';   // DB is already empty — nothing to clear
-          markStale(null);
-          return;
-        }
+        if(!rows||!rows.length){liveMsg.textContent='LIVE · waiting for timing data…';return;}
         // WIGE emits garage/pit "sector" and lap times of many minutes-to-hours (a
         // car sat in the box). Left raw they inflate the derived timeline into the
         // future (badge showed 17:54), freeze staleness, and blow up gaps (+20490s).
@@ -3234,13 +3086,31 @@ buildStartGrid();
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});
         const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
         applyCarFuelSettings(selCar);postTyreCar(selCar);
-        const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;liveSeen=true;liveHasData=true;   // robust newest data-time; drives clock T
-        markStale(frontier);
+        const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;liveSeen=true;   // robust newest data-time; drives clock T
+        // Staleness: time since the feed's data-time (frontier) last CHANGED —
+        // timezone-agnostic. Green running advances it every few seconds; a frozen
+        // source (full-course yellow / session end) makes it climb -> amber STALE.
+        if(window.__liveLastT===undefined||frontier!==window.__liveLastT){window.__liveLastT=frontier;window.__liveAdvMs=Date.now();}
+        const _staleS=window.__liveAdvMs?Math.round((Date.now()-window.__liveAdvMs)/1000):0;
+        if(_staleS>120){const _m=Math.floor(_staleS/60);
+          liveMsg.textContent='STALE · no update '+(_m>=1?_m+'m':_staleS+'s')+' · '+DB.cars.length+' cars';
+          liveMsg.style.color='#b45309';
+        }else{
+          liveMsg.textContent='LIVE · '+DB.cars.length+' cars · '+hmsClock(frontier);
+          liveMsg.style.color='';
+        }
+        // Map overlay when the source has clearly stopped (session end / red flag /
+        // feed cut) — the map is a FROZEN final frame, so say so and dim the cars so
+        // they aren't read as live positions. Uses _staleS (time since the data-time
+        // last advanced); higher bar than the 120s STALE badge. Placement untouched.
+        {const fb=document.getElementById('feedbanner'),dg=document.getElementById('dots'),stopped=_staleS>180;
+         if(fb){const _fm=Math.floor(_staleS/60);fb.textContent='FEED STOPPED · frozen frame · '+(_fm>=1?_fm+'m':_staleS+'s')+' old';fb.classList.toggle('on',stopped);}
+         if(dg)dg.classList.toggle('stale',stopped);}
         if(liveDispT==null){T=frontier;if(scrub)scrub.value=T;}   // first paint until the smooth loop takes over
         render();try{fitPage();}catch(e){} // full re-fit: car count (CH) may have changed
         if(typeof buildStartGrid==='function')buildStartGrid();
         if(typeof renderMessages==='function')renderMessages();
-      }).catch(()=>{if(window.dataMode==='LIVE'){if(!liveSeen)liveMsg.textContent='LIVE · feed unreachable, retrying…';markStale(null);}});
+      }).catch(()=>{if(window.dataMode==='LIVE'&&!liveSeen)liveMsg.textContent='LIVE · feed unreachable, retrying…';});
   }
   // LIVE motion = SIM's exact renderer (activeLeg + ptAlong interpolation), driven
   // as a slightly-delayed real-time replay. Same behaviour as SIM; only the clock's
@@ -3249,11 +3119,8 @@ buildStartGrid();
   function liveLoop(ts){
     if(window.dataMode!=='LIVE'){liveRAF=0;return;}
     liveRAF=requestAnimationFrame(liveLoop);
-    // README §15.1/§15.3: no more `?? DB.tmax` fallback — DB.tmax is meaningless
-    // (and, before clearLiveDB(), used to be leftover SIM/stale-prior-LIVE data)
-    // until liveHasData is true. Nothing to render yet just means nothing renders.
-    if(!liveHasData||liveFrontier==null){liveDispLast=ts;return;}
-    const frontier=liveFrontier;
+    const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;
+    if(frontier==null||!isFinite(frontier)){liveDispLast=ts;return;}
     if(!liveDispLast)liveDispLast=ts;let dt=(ts-liveDispLast)/1000;liveDispLast=ts;if(dt>0.5)dt=0;
     if(liveDispT==null||!isFinite(liveDispT))liveDispT=frontier-LIVE_BUFFER_S;
     liveDispT+=dt;                                              // 1x real-time (same clock units as SIM's T)
@@ -3264,25 +3131,7 @@ buildStartGrid();
     T=liveDispT;if(scrub)scrub.value=T;
     render();
   }
-  function startLive(){
-    snapSim();
-    clearLiveDB();                                              // README §15.3: LIVE starts from a genuinely empty DB, every time
-    liveSeen=false;liveHasData=false;liveFrontier=null;
-    window.__liveAdvMs=Date.now();window.__liveLastT=undefined;  // don't inherit stale staleness state from a previous LIVE entry
-    liveDispT=null;liveDispLast=0;liveLastDrawn=null;
-    liveMsg.textContent='LIVE · connecting…';
-    // render() itself only runs from liveTick's success path or from liveLoop
-    // once liveHasData — neither has fired yet — so without an explicit call
-    // here every OTHER panel (standings table, reference-lap card, starting
-    // grid, message board's car label) would keep showing whatever SIM last
-    // painted, frozen, until real data eventually arrives. One render() call
-    // against the now-cleared DB/selCar blanks all of them immediately too.
-    try{render();}catch(e){}
-    if(typeof buildStartGrid==='function')try{buildStartGrid();}catch(e){}
-    liveTick();
-    if(!liveRAF)liveRAF=requestAnimationFrame(liveLoop);
-    liveTimer=setInterval(liveTick,LIVE_POLL_MS);
-  }
+  function startLive(){snapSim();liveSeen=false;liveDispT=null;liveDispLast=0;liveLastDrawn=null;liveMsg.textContent='LIVE · connecting…';liveTick();if(!liveRAF)liveRAF=requestAnimationFrame(liveLoop);liveTimer=setInterval(liveTick,LIVE_POLL_MS);}
   function stopLive(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}if(liveRAF){cancelAnimationFrame(liveRAF);liveRAF=0;}liveDispT=null;liveDispLast=0;liveLastDrawn=null;
     // clear the frozen-frame overlay when leaving LIVE (e.g. switching to SIM)
     const _fb=document.getElementById('feedbanner');if(_fb)_fb.classList.remove('on');
