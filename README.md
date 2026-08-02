@@ -1085,11 +1085,38 @@ inserts (ext_key NULL) are unaffected. Upserts use `resolution=ignore-duplicates
 so re-scraping the rolling list never rewrites a row. Idempotent — verified 15 live
 messages, zero duplicates on repeated runs.
 
+### `event_date` — added 2026-08-02, scopes messages to one event
+
+`stint9_messages` didn't originally carry `event_date` at all (a global,
+point-in-time table) — the day was only recoverable by parsing `ext_key`'s
+`<event_date>|…` prefix, and both the LIVE view and the event archiver had to
+fall back to a best-effort `created_at`-window heuristic. A real `event_date
+date` column was added (schema in `racecontrol-messages-supabase.sql`;
+existing rows backfilled once from their `ext_key` prefix), and both write
+paths (`live/wige-scrape/index.ts`, `live/vds-relay.mjs`) now stamp it on
+every message the same way they already stamp it on `stint9_live_timing`
+rows. `stint9_archive_event()` (the automatic hourly SQL archiver) and
+`tools/archive_event.mjs` (the manual CLI) both now filter messages by exact
+`event_date = <that event's date>` — falling back to the old window heuristic
+only for legacy/manual rows that predate the column (`event_date is null`).
+
 ## Front-end (index.html message board)
 
 - Real rows are shown in **both SIM and LIVE**; `TEST_MESSAGES` are a SIM/demo
   affordance only and **never** appear in LIVE (empty LIVE shows "No race-control
   messages.").
+- **LIVE is scoped to today's `event_date` only** (added 2026-08-02,
+  `loadMessages()` in `index.html`) — a past event's messages must never
+  linger on the board once that event is over, the same "show nothing until
+  real data" principle §15 established for the map/DB, extended here to the
+  message board. SIM stays unfiltered (all events, all dates), matching the
+  existing "real rows shown in both modes" design. `startLive()`/leaving LIVE
+  now also force an immediate re-fetch (`window.reloadMessagesNow`) instead of
+  waiting up to 5 minutes for the next scheduled poll, so the correctly-scoped
+  list appears the instant you switch modes. Verified against a real live
+  session (2026-08-02, event 20): LIVE showed exactly that day's 181
+  messages, zero from the prior day's 119; SIM showed all 300 (fetch cap),
+  unfiltered.
 - **Newest on top**, older drop down, all reachable by scrolling (`.msglist` is
   `overflow-y:auto`); sorted by `created_at` desc in code so order never depends on
   fetch order. Fetch cap raised 50 → 300.

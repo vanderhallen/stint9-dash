@@ -179,6 +179,7 @@ function mapMessages(items, ed) {
       message, source: 'wige',
       ...(created ? { created_at: created } : {}),
       ext_key: `${ed}|${mtime}|${message}`,
+      event_date: ed,                                   // scopes the LIVE view + event archiver to exactly this event
     });
   }
   return out;

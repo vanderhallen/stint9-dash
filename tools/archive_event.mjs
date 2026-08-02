@@ -2,9 +2,11 @@
 /* tools/archive_event.mjs — snapshot one NLS event into public.stint9_events
  * and mirror every archived event to committed events/<slug>.json files.
  *
- * WHY a snapshot (not live joins): stint9_tyre_state / stint9_band_state /
- * stint9_messages carry NO event_date — they are global / point-in-time. The
- * only faithful archive is a bundle captured at one moment. The timing half is
+ * WHY a snapshot (not live joins): stint9_tyre_state / stint9_band_state carry
+ * NO event_date at all — they are global / point-in-time (stint9_messages now
+ * does carry event_date, added 2026-08-02, but is still a live-growing table
+ * best captured as a snapshot too). The only faithful archive is a bundle
+ * captured at one moment. The timing half is
  * stored either as a pre-built `db` (the baked SIM event, read from data.js) or
  * as raw `timing[]` rows (future live events) that index.html re-derives via
  * window.buildLiveDB — the same path LIVE mode already uses.
@@ -95,10 +97,13 @@ async function collectOverlay(date, win) {
       sbGet(`stint9_laptimes?select=car,driver,lap,laptime_s,temp_c,weather_code&event_date=eq.${enc}&order=car,lap`),
       sbGet(`stint9_live_status?select=*&event_date=eq.${enc}`),
     ]);
-  // messages carry no event_date -> best-effort by created_at window if we have one
-  let messages = [];
-  if (win && win.start) {
-    let q = `stint9_messages?select=race_class,car,message,source,created_at&created_at=gte.${encodeURIComponent(win.start)}`;
+  // messages: prefer the exact event_date match now that scraped rows carry one
+  // (wige-scrape/vds-relay stamp it, same as stint9_live_timing). Fall back to
+  // the old created_at-window heuristic only when the exact match is empty AND
+  // a window is available — covers legacy/manual rows that predate the column.
+  let messages = await sbGet(`stint9_messages?select=race_class,car,message,source,created_at,event_date&event_date=eq.${enc}&order=created_at`);
+  if (!messages.length && win && win.start) {
+    let q = `stint9_messages?select=race_class,car,message,source,created_at,event_date&event_date=is.null&created_at=gte.${encodeURIComponent(win.start)}`;
     if (win.end) q += `&created_at=lte.${encodeURIComponent(win.end)}`;
     messages = await sbGet(q + '&order=created_at');
   }

@@ -8,8 +8,11 @@
 -- upserts here, deduped on ext_key. The dashboard's message board reads it with
 -- the anon key; rows also snapshot into stint9_events on archive.
 --
--- Messages carry NO event_date (they are global / point-in-time); the scrape
--- encodes the day into ext_key so same-text messages on different days coexist.
+-- event_date (added 2026-08-02) lets the LIVE view and the event archiver
+-- scope messages to exactly one event, instead of the old best-effort
+-- created_at-window heuristic that was needed while this column didn't exist.
+-- The scrape also still encodes the day into ext_key (dedup key), so
+-- same-text messages on different days coexist either way.
 -- Idempotent — safe to re-run.
 
 create table if not exists public.stint9_messages (
@@ -19,11 +22,16 @@ create table if not exists public.stint9_messages (
   message    text not null,
   source     text default 'wige',      -- 'wige' = scraped; null/other = manual
   ext_key    text,                     -- '<event_date>|<MESSAGETIME>|<MESSAGE>' for scraped rows; NULL for manual
+  event_date date,                     -- the event day this message belongs to; NULL for manual/legacy rows
   created_at timestamptz default now() -- message time-of-day (Europe/Berlin) as a UTC instant
 );
 
--- If the table predates ext_key, add it.
+-- If the table predates ext_key / event_date, add them.
 alter table public.stint9_messages add column if not exists ext_key text;
+alter table public.stint9_messages add column if not exists event_date date;
+create index if not exists stint9_messages_event_date_idx on public.stint9_messages (event_date);
+comment on column public.stint9_messages.event_date is
+  'Event day the message belongs to. Populated by wige-scrape/vds-relay from the same event-date they stamp on stint9_live_timing; NULL for manual/legacy rows (backfilled once from ext_key''s date prefix where present).';
 
 -- Dedup key for scraped rows. A plain UNIQUE index treats NULLs as distinct, so
 -- unlimited manual inserts (ext_key NULL) are allowed while scraped rows dedup.

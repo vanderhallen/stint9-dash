@@ -3301,6 +3301,10 @@ buildStartGrid();
     // against the now-cleared DB/selCar blanks all of them immediately too.
     try{render();}catch(e){}
     if(typeof buildStartGrid==='function')try{buildStartGrid();}catch(e){}
+    // Force an immediate, event_date-scoped message re-fetch (see loadMessages()
+    // below) instead of waiting up to 5 minutes for the next scheduled poll —
+    // otherwise a previous unfiltered/other-day serverRows set stays on screen.
+    if(typeof window.reloadMessagesNow==='function')try{window.reloadMessagesNow();}catch(e){}
     liveTick();
     if(!liveRAF)liveRAF=requestAnimationFrame(liveLoop);
     liveTimer=setInterval(liveTick,LIVE_POLL_MS);
@@ -3330,6 +3334,9 @@ buildStartGrid();
       if(evdateEl&&DB.event)evdateEl.textContent=DB.event.date;
       // SIM: fuel entries are ephemeral -> reset them
       if(typeof resetFuelEntries==='function')resetFuelEntries();
+      // Restore the unfiltered (all-events) message fetch — LIVE may have just
+      // scoped serverRows down to one day's event_date.
+      if(typeof window.reloadMessagesNow==='function')try{window.reloadMessagesNow();}catch(e){}
       if(wasPlaying){playing=true;last=0;playBtn.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
       else render();
     }
@@ -4114,8 +4121,16 @@ applyWxReel(false);
     if(toAlert&&spd<10){alerted.add(String(toAlert.id));showModal(toAlert);}
     try{syncRightSplit();}catch(e){}
   };
+  // LIVE: scope to TODAY's event_date only — an old event's messages must
+  // never linger on the board once that event is over (README §15's "show
+  // nothing until real data" principle, extended from the map/DB to the
+  // message board). SIM: unfiltered, real rows have always been shown in
+  // both modes by design (see file header) — only the DATE SCOPE changes here.
   function loadMessages(){
-    fetch(SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=300',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    const live=window.dataMode==='LIVE';
+    let url=SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=300';
+    if(live)url+='&event_date=eq.'+encodeURIComponent(liveEventDate());
+    fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
       .then(r=>r.ok?r.json():[])
       // Only real rows land in serverRows; the TEST/empty fallback is decided in
       // activeMessages() by mode, so a transient failure never injects placeholders.
@@ -4123,6 +4138,11 @@ applyWxReel(false);
       .catch(()=>{renderMessages();});
   }
   loadMessages();setInterval(loadMessages,5*60*1000);
+  // Exposed so switching modes can force an immediate, correctly-scoped
+  // re-fetch instead of waiting up to 5 minutes for the next scheduled poll —
+  // entering LIVE with an old, unfiltered serverRows still on screen would
+  // otherwise show yesterday's messages until the next interval tick.
+  window.reloadMessagesNow=loadMessages;
 })();
 
 /* ============================================================

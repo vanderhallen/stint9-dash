@@ -127,7 +127,7 @@ function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): T
 // (verified from a live NLS session 2026-08-01). ID is a rolling position index
 // (1 = newest), NOT stable, so we dedup on <event_date>|<MESSAGETIME>|<MESSAGE>.
 // The feed replaces non-ASCII (ü, en-dash) with '?', so text is stored verbatim.
-type MessageRow = { race_class: string | null; car: string | null; message: string; source: string; created_at?: string; ext_key: string };
+type MessageRow = { race_class: string | null; car: string | null; message: string; source: string; created_at?: string; ext_key: string; event_date: string };
 
 // MESSAGETIME is Europe/Berlin wall-clock. Convert (date + HH:MM:SS) -> UTC ISO,
 // DST-safe via the zone-offset subtraction trick. Returns null if unparseable
@@ -156,6 +156,7 @@ function mapMessages(items: any[], ed: string): MessageRow[] {
       message, source: 'wige',
       ...(created ? { created_at: created } : {}),
       ext_key: `${ed}|${mtime}|${message}`,
+      event_date: ed,                                   // scopes the LIVE view + event archiver to exactly this event
     });
   }
   return out;
