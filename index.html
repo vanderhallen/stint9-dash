@@ -2171,6 +2171,11 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
   if(_tk)updateThumbs();
+  // SIM only: re-render the message board as T advances/rewinds so messages
+  // reveal themselves at their own time-of-day (activeMessages()'s msgTod<=T
+  // gate) instead of all appearing at once. LIVE doesn't need this — its
+  // messages are already only ever "in the past" the moment they exist.
+  if(_tk&&window.dataMode!=='LIVE'&&typeof renderMessages==='function')renderMessages();
   // feed the TYRE board the selected car's live progress so KM ticks up on TRACK.
   // sectorKm = the NLS 5-sector lengths (very unequal: S4 ≈ 9.4 km); the board
   // maps prog->km with them. Also send lap/sector + most-recent pit lap for the
@@ -3046,6 +3051,14 @@ function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg'),src=document.getElementById('gridsource'),clsSel2=document.getElementById('classsel');
   if(!host||!svg)return;
   const curCls=clsSel2?clsSel2.value:null;
+  // REAL_QUALI is the 2026-06-20 (NLS6) quali PDF only — it must ONLY be shown
+  // for THAT event. Showing it for any other event (a different archived race,
+  // or LIVE) coincidentally matches a handful of car numbers that also happen
+  // to race that day, producing a wrong, confusingly-partial grid — reported
+  // 2026-08-02 while testing a LIVE 6h race: "13 started" for real, only ~8
+  // shown (whichever REAL_QUALI cars happened to share a number with this
+  // entirely different entry list). Gate it to the one event it's sourced from.
+  const isNLS6=window.dataMode!=='LIVE'&&DB.event&&DB.event.date==='2026-06-20';
   // Join the quali PDF (REAL_QUALI) to the selected class by CAR NUMBER, not by
   // class string: the CSV's KLASSEKURZ (the dropdown value) is truncated to 8
   // chars (e.g. "BMW M240" vs the PDF's "BMW M240i", "SP9 PRO-" vs "SP9 PRO-AM",
@@ -3053,14 +3066,14 @@ function buildStartGrid(){
   // share car numbers. Look up each quali car's authoritative class from the
   // race data (DB.classes, keyed by the same dropdown value) and match on that.
   const carClass={};Object.keys(DB.classes).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
-  const order=REAL_QUALI.filter(r=>carClass[String(r[1])]===curCls).sort((a,b)=>a[3]-b[3]).map(r=>({car:r[1],classPos:r[3],fieldPos:r[0]}));
+  const order=isNLS6?REAL_QUALI.filter(r=>carClass[String(r[1])]===curCls).sort((a,b)=>a[3]-b[3]).map(r=>({car:r[1],classPos:r[3],fieldPos:r[0]})):[];
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
   if(!N){
     svg.setAttribute('viewBox','0 0 '+boxW+' 120');svg.setAttribute('width',boxW);svg.setAttribute('height',120);
-    svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">no qualifying data</text><text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">for class '+(curCls||'—')+'</text>';
-    if(src)src.textContent='Data: 1. ADAC Eifel-Trophy quali (20.06.2026) — no quali cars for '+(curCls||'—');
+    svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">no qualifying data</text><text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">for '+(isNLS6?('class '+(curCls||'—')):(window.dataMode==='LIVE'?'LIVE':(DB.event&&DB.event.name)||'this event'))+'</text>';
+    if(src)src.textContent=isNLS6?('Data: 1. ADAC Eifel-Trophy quali (20.06.2026) — no quali cars for '+(curCls||'—')):'No qualifying/starting-grid data available for this event.';
     return;
   }
   /* Diagonal cascade (each next car one column right + 60% car-length lower)
@@ -3782,7 +3795,16 @@ function updateRacenote(T){
   // fresh play-through regenerates them from scratch (LIVE keeps its persisted notes).
   if(!rnLive()&&T<=DB.tmin+0.5&&(rnNotes.length||rnSeen.size)){rnNotes=[];rnSeen=new Set();rnRenderFeed();}
   const bx=rnBX[rnCar]||{};
-  const active=(bx[5]!=null&&bx[5]<=T);      // #665 has completed lap 1 => formation lap L0 done
+  // Lap 1 done => formation lap L0 done. Prefer the real S5 crossing (bx[5])
+  // but also accept lap 2's S1 crossing (bx[6]) as sufficient evidence: in
+  // true LIVE mode, WIGE never sends S5 directly — index.html reconstructs it
+  // client-side from the NEXT lap's lap_time, so lap 1's own S5 can lag a
+  // full lap behind lap 1 actually finishing. bx[6] (a normal S1 crossing,
+  // never delayed) already proves lap 1 is over, so the grid->racenotes
+  // handoff doesn't have to wait on the slower signal. (Archived/SIM replay
+  // now has real S5 immediately per the 2026-08-02 archiver fix, so bx[5]
+  // alone is already correct there — bx[6] is purely a LIVE-mode safety net.)
+  const active=(bx[5]!=null&&bx[5]<=T)||(bx[6]!=null&&bx[6]<=T);
   const sl=document.getElementById('gridstartline'),gw=document.getElementById('gridwrap'),gs=document.getElementById('gridsource');
   if(sl)sl.style.display=active?'none':'';
   if(gw)gw.style.display=active?'none':'';
@@ -4096,8 +4118,26 @@ applyWxReel(false);
   // as genuine race control. When no real rows exist we fall back to placeholders
   // only outside LIVE; in LIVE the board stays empty until the scraper writes rows.
   let serverRows=null;
+  // created_at (UTC instant) -> Europe/Berlin seconds-of-day — the same units
+  // as SIM's T (CSV TAGESZEIT is already track-local, no shift needed there;
+  // see clockOffsetS()'s comment). Inverse of berlinToUtcISO() in the scrapers.
+  function msgTod(iso){
+    try{const d=new Date(iso);
+      const berlin=new Date(d.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
+      return berlin.getHours()*3600+berlin.getMinutes()*60+berlin.getSeconds()+berlin.getMilliseconds()/1000;
+    }catch(e){return null;}
+  }
   function activeMessages(){
-    if(serverRows&&serverRows.length)return serverRows;
+    if(serverRows&&serverRows.length){
+      // SIM: reveal each message only once the playback clock T reaches its
+      // own time-of-day — cleared at the start, appearing as it happened
+      // during the race, mirroring how the racenote panel already reveals
+      // auto-generated notes as the scrubber passes their sector boundary.
+      // LIVE never needs this: a message only exists in the table once it's
+      // actually happened, so every row read is already "in the past".
+      if(window.dataMode!=='LIVE')return serverRows.filter(m=>{const t=msgTod(m.created_at);return t==null||t<=T;});
+      return serverRows;
+    }
     return (window.dataMode==='LIVE')?[]:TEST_MESSAGES;
   }
   function fmtTime(iso){const d=new Date(iso);const pad=n=>String(n).padStart(2,'0');return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
@@ -4154,12 +4194,16 @@ applyWxReel(false);
   // LIVE: scope to TODAY's event_date only — an old event's messages must
   // never linger on the board once that event is over (README §15's "show
   // nothing until real data" principle, extended from the map/DB to the
-  // message board). SIM: unfiltered, real rows have always been shown in
-  // both modes by design (see file header) — only the DATE SCOPE changes here.
+  // message board). SIM: scope to the CURRENTLY LOADED event's date — showing
+  // another day's messages makes no sense once the board is time-synced to
+  // THIS event's own clock (activeMessages()'s msgTod<=T reveal, above); real
+  // rows have always been shown in both modes by design (see file header),
+  // only the date scope + SIM's time-reveal are new.
   function loadMessages(){
     const live=window.dataMode==='LIVE';
     let url=SB_URL+'/rest/v1/stint9_messages?select=id,race_class,car,message,created_at&order=created_at.desc&limit=300';
     if(live)url+='&event_date=eq.'+encodeURIComponent(liveEventDate());
+    else if(DB.event&&DB.event.date)url+='&event_date=eq.'+encodeURIComponent(DB.event.date);
     fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
       .then(r=>r.ok?r.json():[])
       // Only real rows land in serverRows; the TEST/empty fallback is decided in
@@ -4210,6 +4254,11 @@ applyWxReel(false);
     try{render();}catch(e){}
     try{fitPage();}catch(e){}
     try{if(typeof buildStartGrid==='function')buildStartGrid();}catch(e){}
+    // Re-fetch messages now that DB.event.date is this archived event's own
+    // date, not whatever it was before — loadMessages() reads DB.event.date
+    // synchronously, and initMessages() may already have fired once (with the
+    // wrong date) before this async load finished.
+    try{if(typeof window.reloadMessagesNow==='function')window.reloadMessagesNow();}catch(e){}
   }
 
   function pushTyreArchive(car){try{var bf=document.getElementById('boardframe');
