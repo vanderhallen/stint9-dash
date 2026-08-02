@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-08-01T18:07:00.025947+00:00",
+  "generated_at": "2026-08-02T15:07:00.020857+00:00",
   "events": [
+    {
+      "slug": "EVT-2026-08-02",
+      "name": "race",
+      "label": "race",
+      "date": "2026-08-02",
+      "end": null,
+      "car_count": 132,
+      "archived_at": "2026-08-02T15:07:00.020857+00:00",
+      "file": "events/EVT-2026-08-02.json",
+      "notes": "events/EVT-2026-08-02_notes.json"
+    },
     {
       "slug": "NLS7",
       "name": "6h ADAC Ruhr-Pokal-Rennen",
