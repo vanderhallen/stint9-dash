@@ -1774,11 +1774,39 @@ deferred, as planned.**
     location) was **not** done — left as-is to keep this change's blast
     radius bounded to what's actually load-bearing for the fix.
 
-**Open before the next live session:** run `live/mock-replay.mjs` (or wait for
-real data) to visually confirm tiers 1/3/4's predicted motion looks right and
-the retuned buffer feels smooth — the browser verification above proves the
-*isolation* fix (nothing shows before real data), not yet the *prediction*
-fix's motion quality with actual moving cars.
+**Update — `mock-replay.mjs` run, 2026-08-02.** The "open before next live
+session" item above is now done: ran `live/mock-replay.mjs` twice (a real
+past CSV replayed into `stint9_live_timing` at speed — the script uses the
+same public publishable key already embedded client-side, `anon` already has
+full insert/update/delete on that table, no service-role secret actually
+needed despite §7's dry-run note assuming one). Confirmed tiers 1/3/4's
+predicted motion for real: cars glide smoothly between real crossings,
+`DELAY` correctly lit for a car mid-pit-stop, standings/lap chart/racenotes
+all populated live, zero console errors.
+
+**Found one more real gap this way** — the kind that only shows up with
+actual moving data, not the zero-rows case: `carXY(st,T)`, a **second,
+separate** position lookup used only by `renderMini()` (the "Zoom view"
+circular minimap), still only knew the old activeLeg/pit cases — never the
+new sector prediction. The moment the selected car entered its first
+predicted sector, `carXY` returned `null`, and `renderMini()` reads "can't
+place the selected car" as "hide the whole minimap" — so the zoom view sat
+blank the entire time real cars were correctly moving on the main map right
+next to it. Root cause was having the prediction logic in two places at all;
+fixed by extracting it into one `liveCarXY(st,T)` (defined next to
+`liveRefDuration`, above `render()`) that both `render()`'s main loop and
+`carXY()` now call — a second hand-written copy can't drift out of sync
+again because there's only one copy. Re-verified after the fix: zoom view
+mirrors the main map through a full replayed race (P1–P3 labels, gap deltas,
+all 6 cars placed), and the zero-rows isolation regression test still passes
+unaffected. One unrelated `409` console error was observed once during the
+2nd (60×) replay, from the existing racenote-upsert POST
+(`index.html:3438`, pre-existing code, not touched by this work) — plausible
+under the artificially rapid concurrent note-posting a 60× replay produces,
+not reproduced on the 1st (120×) run; noted here rather than chased further,
+since it's outside this audit's scope. Test rows written during both runs
+(`stint9_live_timing`, `stint9_racenotes`, `stint9_laptimes`,
+`stint9_weather`, all `event_date=2026-08-02`) were deleted afterward.
 
 No changes made anywhere in §15 touch `live/vds-relay.mjs`, `live/wige-scrape/`,
 or `live/build-db.js` — the single-socket HOLD-mode ingestion and raw Supabase
