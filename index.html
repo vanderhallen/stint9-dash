@@ -2038,6 +2038,33 @@ function liveArchiveRef(car,sectorIdx){
   });
   return null;                                             // not resolved this frame — caller falls through to tier 3
 }
+// LIVE-only position for a car with no completed leg covering T (its current
+// sector isn't in the feed yet). Single source of truth for this — used by
+// BOTH render()'s main per-car loop AND carXY() (which feeds the zoom-view
+// minimap, renderMini). A second hand-written copy of this logic is exactly
+// what caused carXY() to return null — hiding the entire zoom view — for any
+// car in a predicted, not-yet-completed sector: carXY() only knew the OLD
+// activeLeg/pit cases, never this one, so the selected car's own position
+// (needed just to CENTRE the minimap) came back null the moment it entered
+// its first predicted sector. Returns null if nothing can be determined at
+// all (never sent a single crossing); {xy,parked,overdue} otherwise. See
+// render()'s LIVE branch comment (below) for the bounding rationale — this
+// is the same bounded-per-car/per-sector prediction, not the removed
+// c966ada global-clock estimator.
+function liveCarXY(st,T){
+  const a=LEG[st];let li=null;
+  if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
+  if(!li)return null;
+  const elapsed=T-li[3];
+  if(elapsed>LIVE_RUNNING_WINDOW_S)return{xy:ptAlong(1,0),parked:true,overdue:false};
+  const nextSeg=(li[1]>=5)?1:li[1]+1;
+  const predDur=liveRefDuration(st,nextSeg);
+  if(predDur>0){
+    const progress=Math.max(0,Math.min(1,elapsed/predDur));  // capped — never overshoots the sector exit
+    return{xy:ptAlong(nextSeg,progress),parked:false,overdue:elapsed>predDur*(1+thr)};
+  }
+  return{xy:ptAlong(li[1],1),parked:false,overdue:false};    // no reference anywhere yet — frozen at the last real crossing
+}
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
@@ -2046,31 +2073,20 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     else if(pit){[x,y]=ptAlong(1,0);}          // in the lane: park at the line (pit entry/exit sit there) — visible, not "on track"
     else if(window.dataMode==='LIVE'){
       // LIVE frontier: the car's CURRENT sector isn't in the feed yet (only FINISHED
-      // sectors are), so SIM's activeLeg finds nothing. The real crossing that STARTED
-      // this sector (li[3]) is the one holy anchor; from there we PREDICT progress
-      // through the still-open sector using this car's own historical pace for that
-      // sector (liveRefDuration, defined above render()), capped at the sector's own
-      // exit so a silent car can never be slid past where we actually have evidence.
-      // Bounded per-car/per-sector like this — not by the removed global-clock
-      // estimator (c966ada) that ghost-drove retired cars — a car that's actually
-      // stopped reads as "parked at the exit, DELAY flagged" within about one
-      // predicted sector length, not slid forward indefinitely. The instant a real
-      // crossing lands, activeLeg (checked above) finds it and this branch is never
-      // consulted again for that leg — real data always wins.
-      const a=LEG[st];let li=null;
-      if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
-      if(!li){E._px=E._py=null;E.g.style.visibility='hidden';return;}
-      const elapsed=T-li[3];
-      if(elapsed>LIVE_RUNNING_WINDOW_S){parked=true;[x,y]=ptAlong(1,0);}   // long-quiet: unchanged pit-line park
-      else{
-        const nextSeg=(li[1]>=5)?1:li[1]+1;
-        const predDur=liveRefDuration(st,nextSeg);
-        if(predDur>0){
-          const progress=Math.max(0,Math.min(1,elapsed/predDur));         // capped — never overshoots the sector exit
-          [x,y]=ptAlong(nextSeg,progress);
-          liveOverdue=elapsed>predDur*(1+thr);                             // anomaly signal: Code 60 / yellow / mechanical
-        }else[x,y]=ptAlong(li[1],1);   // no reference anywhere yet — frozen at the last real crossing, unchanged
-      }
+      // sectors are), so SIM's activeLeg finds nothing. liveCarXY (defined above
+      // render(), shared with carXY()/the zoom-view minimap) predicts progress
+      // through the still-open sector from this car's own historical pace for that
+      // sector, anchored at the real crossing that STARTED it and capped at the
+      // sector's own exit so a silent car can never be slid past where we actually
+      // have evidence. Bounded per-car/per-sector like this — not by the removed
+      // global-clock estimator (c966ada) that ghost-drove retired cars — a car
+      // that's actually stopped reads as "parked at the exit, DELAY flagged" within
+      // about one predicted sector length, not slid forward indefinitely. The
+      // instant a real crossing lands, activeLeg (checked above) finds it and this
+      // branch is never consulted again for that leg — real data always wins.
+      const res=liveCarXY(st,T);
+      if(!res){E._px=E._py=null;E.g.style.visibility='hidden';return;}
+      [x,y]=res.xy;parked=res.parked;liveOverdue=res.overdue;
     }
     else{E._px=E._py=null;E.g.style.visibility='hidden';return;}
     // Tween (LIVE only): slide the dot toward its new target so a snap — when a real
@@ -2442,6 +2458,12 @@ function carXY(st,T){const lg=activeLeg(st,T);if(lg){const f=(T-lg[2])/((lg[3]-l
   // of S5 and the exit in S1 both sit there) so the car doesn't vanish; otherwise it's
   // genuinely off the timeline.
   if(pitInfo(st,T))return ptAlong(1,0);
+  // LIVE: same bounded sector-prediction render() uses (liveCarXY, above) — without
+  // this, a car mid-way through a still-open (predicted) sector had NO carXY result
+  // at all, which for the SELECTED car meant renderMini() (the zoom-view minimap)
+  // couldn't find where to centre itself and hid the whole panel, even though the
+  // main map was correctly showing that same car predicted and moving.
+  if(window.dataMode==='LIVE'){const res=liveCarXY(st,T);if(res)return res.xy;}
   return null;}
 function fmt(s){const m=Math.floor(s/60);return m>0?(m+':'+(s-60*m).toFixed(1).padStart(4,'0')):s.toFixed(1);}
 let miniEvents=[];
