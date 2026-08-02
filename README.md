@@ -25,6 +25,7 @@
 13. [stint9 live-timing API — recovered contract](#13-stint9-live-timing-api--recovered-contract)
 14. [Message to send the stint9 owner](#14-message-to-send-the-stint9-owner)
 15. [SIM vs LIVE parity audit — 2026-08-02](#15-sim-vs-live-parity-audit--2026-08-02)
+16. [SIM race picker — choose an archived event from a popup](#16-sim-race-picker--choose-an-archived-event-from-a-popup-2026-08-02)
 
 ---
 
@@ -1840,3 +1841,35 @@ or `live/build-db.js` — the single-socket HOLD-mode ingestion and raw Supabase
 storage are untouched; everything here is client-side render logic in
 `index.html` reading from Supabase, per the architecture confirmed correct in
 §15.4a point 1.
+
+---
+
+# 16. SIM race picker — choose an archived event from a popup (2026-08-02)
+
+Previously the only way to replay a specific archived event (`public.stint9_events`
+— see §"event archive" references throughout, and `admin.html`'s "Race events
+archive" card) in SIM was the baked-in dataset by default, or hand-editing
+`?event=<slug>` into the URL. Added a small popup (`#simEventModal`,
+`initSimEventPicker()` in `index.html`) reachable via a **Select race** button
+inside `#simControls` — visible only in SIM (that div is hidden while LIVE is
+active), and **button-triggered only, never auto-opens** (the page already
+auto-shows the login/demo modal on load; a second auto-popup would stack on
+top of it).
+
+- Two dropdowns, **Year** then **Race**, populated from one
+  `stint9_events?select=slug,event_date,label,name` fetch (same fields
+  `admin.html` already reads) — today that's 2026 → NLS6 / NLS7, more as
+  events get archived. An empty-state message covers the case of no archived
+  events yet.
+- **SIMULATE** just navigates to `index.html?event=<slug>` — the exact same
+  URL `admin.html`'s own "open in SIM" links already use, reusing
+  `initArchiveEvent()` (the existing, already-tested archive loader)
+  unchanged. No second rendering path was added; the popup is purely a UI
+  layer in front of a mechanism that already worked.
+- Verified in-browser: button opens the modal, Year shows `["2026"]`, Race
+  shows both `NLS7 — 6h ADAC Ruhr-Pokal-Rennen` and
+  `NLS6 — 1. ADAC Eifel-Trophy`; picking NLS6 and clicking SIMULATE navigates
+  to `?event=NLS6` and loads it correctly (`#evdate` = "2026-06-20 · 1. ADAC
+  Eifel-Trophy", 6 cars rendered); NLS7 verified separately (`#evdate` =
+  "2026-08-01 · 6h ADAC Ruhr-Pokal-Rennen", 7 cars). Zero console errors in
+  both cases.

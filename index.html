@@ -394,6 +394,22 @@
   .loginGo{margin-top:20px;width:100%;cursor:pointer;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:13px}
   .loginGo:hover{filter:brightness(1.06)}
   .loginGo:disabled{opacity:.45;cursor:not-allowed}
+  /* ---- SIM race picker (choose an archived event to replay) ---- */
+  #simEventModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #simEventModal.on{display:flex}
+  .simevCard{position:relative;width:min(380px,92vw);background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:30px 26px 24px;font-family:'Space Grotesk',system-ui,sans-serif}
+  #simevClose{position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
+  #simevClose:hover{background:var(--bg);color:var(--ink)}
+  .simevTitle{font-weight:700;font-size:18px}
+  .simevSub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin:4px 0 18px}
+  .simevFields{display:flex;flex-direction:column;gap:12px}
+  .simevFields label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+  .simevFields select{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 12px;height:auto;width:100%}
+  .simevFields select:focus{outline:none;border-color:var(--accent)}
+  .simevGo{margin-top:20px;width:100%;cursor:pointer;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:13px}
+  .simevGo:hover{filter:brightness(1.06)}
+  .simevGo:disabled{opacity:.45;cursor:not-allowed}
+  .simevEmpty{display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:20px 0}
   /* ---- per-car private-data lock (tyres / fuel / notes) ---- */
   .privlock{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center;padding:18px}
   .privlock .lk{font-size:30px;line-height:1}
@@ -425,6 +441,19 @@
     <button type="button" class="loginGo" id="loginGo" style="display:none">Sign in</button>
   </div>
 </div>
+<div id="simEventModal" role="dialog" aria-modal="true">
+  <div class="simevCard">
+    <button type="button" id="simevClose" aria-label="Close">&times;</button>
+    <div class="simevTitle">Select race to simulate</div>
+    <div class="simevSub">Loads an archived event's data into SIM mode.</div>
+    <div class="simevFields" id="simevFields">
+      <label>Year<select id="simevYear"></select></label>
+      <label>Race<select id="simevRace"></select></label>
+    </div>
+    <div class="simevEmpty" id="simevEmpty">No archived races found yet.</div>
+    <button type="button" class="simevGo" id="simevGo">SIMULATE</button>
+  </div>
+</div>
 <div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
     <div class="sidehd"><span id="gridclock">&mdash;</span><span id="gridnext">&mdash;</span></div>
@@ -451,6 +480,7 @@
         <input type="range" id="scrub" step="0.1">
         <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30" selected>30&times;</option></select>
         <input type="checkbox" id="lbls" checked style="display:none">
+        <button class="btn" id="simEventBtn" title="Choose an archived race to simulate">Select race</button>
       </div>
       <div id="liveBar" style="display:none;height:32px;align-items:center;gap:8px;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">
         <button class="btn" id="liveUpdate" title="Pull a fresh snapshot from the WIGE live timing now">&#8635; Update</button>
@@ -4220,6 +4250,55 @@ applyWxReel(false);
     .catch(function(){return fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(function(r){return r.ok?r.json():[];}).then(function(a){return (a&&a[0]&&a[0].bundle)||null;});})
     .then(buildFromBundle).catch(function(){});
+})();
+
+/* ---- SIM race picker: choose an archived event (admin's "Race events
+   archive") to replay in SIM, instead of always the baked-in dataset or
+   hand-editing ?event=<slug> in the URL. Reuses the exact initArchiveEvent()
+   loader above — SIMULATE just navigates to ?event=<slug>, the same URL
+   admin.html's own "open in SIM" links already use, so there's no second
+   rendering path to keep in sync. Only reachable from SIM (the trigger
+   button lives inside #simControls, hidden while LIVE is active) and never
+   auto-opens — button-triggered only, so it can't collide with the
+   auto-shown login/demo modal on page load. */
+(function initSimEventPicker(){
+  const modal=document.getElementById('simEventModal');
+  if(!modal)return;
+  const openBtn=document.getElementById('simEventBtn'),closeBtn=document.getElementById('simevClose');
+  const yearSel=document.getElementById('simevYear'),raceSel=document.getElementById('simevRace');
+  const fields=document.getElementById('simevFields'),empty=document.getElementById('simevEmpty');
+  const goBtn=document.getElementById('simevGo');
+  let events=null;   // [{slug,event_date,label,name,year}] — fetched once, cached for the page session
+  function openModal(){modal.classList.add('on');if(!events)loadEvents();}
+  function closeModal(){modal.classList.remove('on');}
+  if(openBtn)openBtn.onclick=openModal;
+  if(closeBtn)closeBtn.onclick=closeModal;
+  modal.onclick=e=>{if(e.target===modal)closeModal();};
+  function fillRaces(){
+    raceSel.innerHTML='';
+    (events||[]).filter(e=>String(e.year)===yearSel.value)
+      .forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.slug+' — '+(e.name||e.label||e.event_date);raceSel.appendChild(o);});
+  }
+  yearSel.onchange=fillRaces;
+  function loadEvents(){
+    goBtn.disabled=true;
+    fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label,name&order=event_date.desc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+      .then(r=>r.ok?r.json():[])
+      .then(rows=>{
+        events=(rows||[]).map(r=>({...r,year:new Date(r.event_date).getFullYear()}));
+        if(!events.length){fields.style.display='none';empty.style.display='';goBtn.disabled=true;return;}
+        fields.style.display='';empty.style.display='none';goBtn.disabled=false;
+        const years=Array.from(new Set(events.map(e=>e.year))).sort((a,b)=>b-a);
+        yearSel.innerHTML='';years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;yearSel.appendChild(o);});
+        fillRaces();
+      })
+      .catch(()=>{events=[];fields.style.display='none';empty.textContent='Could not load the race list.';empty.style.display='';goBtn.disabled=true;});
+  }
+  goBtn.onclick=()=>{
+    const slug=raceSel.value;if(!slug)return;
+    closeModal();
+    location.href='index.html?event='+encodeURIComponent(slug);
+  };
 })();
 </script>
 <script>
