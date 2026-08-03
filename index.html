@@ -3034,46 +3034,56 @@ T=DB.tmin;scrub.value=T;
    made most of the field invisible/undiscoverable — reported as "not
    populated"). */
 /* The starting grid is a SEPARATE entity from the main dashboard/CSV replay
-   above — it does not use DB.cars/DB.legs at all. It's real qualifying data:
-   1. ADAC Eifel-Trophy, Nürburgring (20.06.2026), Zeittraining classification
-   — the latest released NLS qualifying result at the time this was built
-   (checked against nuerburgring-langstrecken-serie.de/language/en/result-
-   archives/; re-check there for a newer one before raceday). [fieldPos, car,
-   className, classPos] — classPos = the car's position within its own class
-   (Py); fieldPos = its position across the whole real field, all classes
-   combined (P,overall). The ONLY link to the main dashboard is the class
-   NAME: whichever class is selected in Race class is used to filter this
-   list — if the two datasets don't share that class name (the CSV's classes
-   are a different, synthetic set), there's simply no qualifying data to
-   show for it. */
-const REAL_QUALI=[[1,35,'SP9 PRO',1],[2,47,'SP9 PRO',2],[3,44,'SP9 PRO',3],[4,26,'SP9 PRO-AM',1],[5,23,'SP9 PRO-AM',2],[6,48,'SP9 PRO-AM',3],[7,77,'SP9 PRO',4],[8,17,'SP9 PRO',5],[9,5,'SP9 AM',1],[10,8,'SP9 PRO-AM',4],[11,30,'SP9 PRO',6],[12,32,'SP9 PRO-AM',5],[13,6,'SP9 AM',2],[14,18,'AT 1',1],[15,786,'SP9 AM',3],[16,37,'SP9 AM',4],[17,902,'CUP2',1],[18,900,'CUP2',2],[19,915,'CUP2',3],[20,904,'CUP2',4],[21,50,'SP9 AM',5],[22,33,'SP9 AM',6],[23,901,'CUP2',5],[24,921,'CUP2',6],[25,919,'CUP2',7],[26,11,'AT 1',2],[27,910,'CUP2',8],[28,71,'SP7',1],[29,908,'CUP2',9],[30,906,'CUP2',10],[31,176,'SP10',1],[32,909,'CUP2',11],[33,962,'CUP3',1],[34,953,'CUP3',2],[35,170,'SP10',2],[36,959,'CUP3',3],[37,950,'CUP3',4],[38,961,'CUP3',5],[39,971,'CUP3',6],[40,177,'SP10',3],[41,164,'SP10',4],[42,10,'SP3T',1],[43,913,'CUP2',12],[44,944,'CUP3',7],[45,801,'TCR',1],[46,155,'SP10',5],[47,951,'CUP3',8],[48,189,'SP10',6],[49,969,'CUP3',9],[50,977,'CUP3',10],[51,949,'CUP3',11],[52,982,'CUP3',12],[53,312,'SP3T',2],[54,966,'CUP3',13],[55,941,'CUP3',14],[56,952,'CUP3',15],[57,333,'SP3T',3],[58,945,'CUP3',16],[59,396,'V6',1],[60,667,'BMW M240i',1],[61,877,'BMW M2',1],[62,651,'BMW M240i',2],[63,888,'BMW M2',2],[64,400,'V6',2],[65,870,'BMW M2',3],[66,650,'BMW M240i',3],[67,665,'BMW M240i',4],[68,470,'VT2-F+4WD',1],[69,524,'VT2-RWD',1],[70,670,'BMW M240i',5],[71,82,'SP7',2],[72,500,'VT2-RWD',2],[73,680,'BMW M240i',6],[74,480,'VT2-F+4WD',2],[75,653,'BMW M240i',7],[76,808,'SP3T',4],[77,55,'VT2-RWD',3],[78,878,'BMW M2',4],[79,520,'VT2-RWD',4],[80,898,'BMW M2',5],[81,321,'SP3T',5],[82,494,'VT2-F+4WD',3],[83,491,'VT2-F+4WD',4],[84,514,'VT2-RWD',5],[85,447,'V5',1],[86,444,'V5',2],[87,471,'VT2-F+4WD',5],[88,652,'BMW M240i',8],[89,677,'BMW M240i',9],[90,508,'VT2-RWD',6],[91,100,'BMW 325i',1],[92,505,'VT2-RWD',7],[93,492,'VT2-F+4WD',6],[94,999,'CUP3',17],[95,111,'BMW 325i',2],[96,472,'VT2-F+4WD',7],[97,507,'VT2-RWD',8],[98,250,'SP4',1],[99,300,'SP3T',6],[100,495,'VT2-F+4WD',8],[101,101,'BMW 325i',3],[102,660,'BMW M240i',10],[103,899,'BMW M2',6],[104,506,'VT2-RWD',9],[105,410,'V6',3],[106,102,'BMW 325i',4],[107,529,'V3',1],[108,477,'DNQ',1],[109,112,'DNQ',2]];
+   above — it does not use DB.cars/DB.legs. It's real qualifying data: the
+   official NLS "Ergebnis Zeittraining" classification for the LOADED event,
+   scraped per event into public.stint9_grid by live/nls-driver-scrape (its
+   <date>t.pdf ingest) and fetched here by event_date — DB.event.date in SIM,
+   liveEventDate() in LIVE — so the grid works for EVERY event, not just one
+   hardcoded day (this replaced the old single-event REAL_QUALI array).
+   Each row is {car_no, pos_overall, pos_class, class}; pos_overall = grid slot
+   across the whole field (P). The link to the main dashboard is by CAR NUMBER:
+   the class selected in Race class filters the grid via DB.classes (the CSV's
+   KLASSEKURZ is truncated to 8 chars so the PDF's class strings don't line up,
+   but car numbers do), and the shown cars are numbered 1..n for class position. */
+// Per-event grid cache (event_date -> rows). undefined = not fetched yet
+// (shows "loading"); [] = fetched-empty, i.e. no quali published / no t.pdf.
+const _gridCache={},_gridPending={};
+function gridEventDate(){return window.dataMode==='LIVE'?(typeof liveEventDate==='function'?liveEventDate():''):((DB.event&&DB.event.date)||'');}
+function loadGridFor(date){
+  if(!date||_gridCache[date]!==undefined||_gridPending[date])return;
+  _gridPending[date]=true;
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_grid?select=car_no,class,pos_overall,pos_class&event_date=eq.'+encodeURIComponent(date)+'&order=pos_overall',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{_gridCache[date]=Array.isArray(rows)?rows:[];})
+    .catch(()=>{_gridCache[date]=[];})
+    .finally(()=>{_gridPending[date]=false;try{buildStartGrid();}catch(e){}});
+}
 function buildStartGrid(){
   const host=document.getElementById('gridwrap'),svg=document.getElementById('gridsvg'),src=document.getElementById('gridsource'),clsSel2=document.getElementById('classsel');
   if(!host||!svg)return;
   const curCls=clsSel2?clsSel2.value:null;
-  // REAL_QUALI is the 2026-06-20 (NLS6) quali PDF only — it must ONLY be shown
-  // for THAT event. Showing it for any other event (a different archived race,
-  // or LIVE) coincidentally matches a handful of car numbers that also happen
-  // to race that day, producing a wrong, confusingly-partial grid — reported
-  // 2026-08-02 while testing a LIVE 6h race: "13 started" for real, only ~8
-  // shown (whichever REAL_QUALI cars happened to share a number with this
-  // entirely different entry list). Gate it to the one event it's sourced from.
-  const isNLS6=window.dataMode!=='LIVE'&&DB.event&&DB.event.date==='2026-06-20';
-  // Join the quali PDF (REAL_QUALI) to the selected class by CAR NUMBER, not by
-  // class string: the CSV's KLASSEKURZ (the dropdown value) is truncated to 8
-  // chars (e.g. "BMW M240" vs the PDF's "BMW M240i", "SP9 PRO-" vs "SP9 PRO-AM",
-  // "VT2-F+4W" vs "VT2-F+4WD"), so the strings don't line up — but both datasets
-  // share car numbers. Look up each quali car's authoritative class from the
-  // race data (DB.classes, keyed by the same dropdown value) and match on that.
+  const evDate=gridEventDate();
+  const gridRows=_gridCache[evDate];        // undefined until the fetch resolves
+  if(gridRows===undefined)loadGridFor(evDate);
+  // Join grid rows to the selected class by CAR NUMBER, not by the PDF's class
+  // string: the CSV's KLASSEKURZ (the dropdown value) is truncated to 8 chars
+  // (e.g. "BMW M240" vs the PDF's "BMW M240i", "SP9 PRO-" vs "SP9 PRO-AM"), so
+  // the strings don't line up — but both share car numbers. Look up each grid
+  // car's authoritative class from DB.classes (same dropdown value), keep the
+  // selected class, order by grid slot, and number them 1..n for class position.
   const carClass={};Object.keys(DB.classes).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
-  const order=isNLS6?REAL_QUALI.filter(r=>carClass[String(r[1])]===curCls).sort((a,b)=>a[3]-b[3]).map(r=>({car:r[1],classPos:r[3],fieldPos:r[0]})):[];
+  const order=Array.isArray(gridRows)
+    ? gridRows.filter(r=>carClass[String(r.car_no)]===curCls).sort((a,b)=>a.pos_overall-b.pos_overall).map((r,i)=>({car:r.car_no,classPos:i+1,fieldPos:r.pos_overall}))
+    : [];
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
   if(!N){
+    const loading=gridRows===undefined;    // fetch still in flight
     svg.setAttribute('viewBox','0 0 '+boxW+' 120');svg.setAttribute('width',boxW);svg.setAttribute('height',120);
-    svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">no qualifying data</text><text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">for '+(isNLS6?('class '+(curCls||'—')):(window.dataMode==='LIVE'?'LIVE':(DB.event&&DB.event.name)||'this event'))+'</text>';
-    if(src)src.textContent=isNLS6?('Data: 1. ADAC Eifel-Trophy quali (20.06.2026) — no quali cars for '+(curCls||'—')):'No qualifying/starting-grid data available for this event.';
+    const l1=loading?'loading grid…':'no qualifying data';
+    const l2=loading?'':('for '+(window.dataMode==='LIVE'?'LIVE':((DB.event&&DB.event.name)||'this event')));
+    svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">'+l1+'</text>'+(l2?('<text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">'+l2+'</text>'):'');
+    if(src)src.textContent=loading?'':'No qualifying/starting-grid data available for this event.';
     return;
   }
   /* Diagonal cascade (each next car one column right + 60% car-length lower)
@@ -3100,7 +3110,7 @@ function buildStartGrid(){
   });
   svg.innerHTML=s;
   host.scrollLeft=0;host.scrollTop=0;
-  if(src)src.textContent='Data: 1. ADAC Eifel-Trophy quali (20.06.2026) · '+curCls+' · '+N+' cars';
+  if(src)src.textContent='Data: NLS qualifying ('+(evDate||'—')+') · '+curCls+' · '+N+' cars';
 }
 buildStartGrid();
 
@@ -3437,7 +3447,10 @@ function rnClipNotes(){return rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n
 function rnLive(){return window.dataMode==='LIVE';}
 function rnEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function rnFullLap(car,L){const s=(DB.sectimes[car]||{})[L];return (s&&s.length>=5&&s.every(x=>x!=null))?s[0]+s[1]+s[2]+s[3]+s[4]:null;}
-function rnQualiPos(){if(typeof REAL_QUALI==='undefined')return null;const r=REAL_QUALI.find(x=>String(x[1])===rnCar);return r?r[3]:null;}
+// Qualifying class-position for the racenote panel's car, from the per-event
+// grid cache (public.stint9_grid, loaded by buildStartGrid's loadGridFor). Null
+// until the grid for the loaded event_date is fetched, or if the car didn't qualify.
+function rnQualiPos(){const g=(typeof _gridCache!=='undefined')?_gridCache[gridEventDate()]:null;if(!Array.isArray(g))return null;const r=g.find(x=>String(x.car_no)===rnCar);return r?r.pos_class:null;}
 // local leg lookup / fractional progress (mirror of activeLeg/carProgress but on rnLegs)
 function rnLegOf(car,T){const a=rnLegs[car];if(!a||!a.length)return null;let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return T<g[3]?g:null;}
 function rnProg(car,T){const lg=rnLegOf(car,T);if(lg)return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);const a=rnLegs[car];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--)if(a[i][3]<=T)return a[i][0]*5+a[i][1];return null;}

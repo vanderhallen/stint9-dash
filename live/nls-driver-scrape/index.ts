@@ -20,6 +20,18 @@
  *   5. Upserts stint9_nls_races (one row per race) and replaces
  *      stint9_nls_results for each scraped race (delete-by-event_date then
  *      insert, so a re-scan picks up late-published / corrected results).
+ *   6. STARTING GRID (grid mode — POST ?grid=1 / {grid:true}): fetches the
+ *      qualifying result PDF <base>/ergebnisse/<YYYY-MM-DD>t.pdf ("Ergebnis
+ *      Zeittraining") for each past round and replaces stint9_grid for that
+ *      event (parseQuali -> one row per car: grid position, class, best lap).
+ *      Runs as its OWN pass, not inside the default race run: parsing three PDFs
+ *      per round in a single invocation exceeds the edge worker's compute budget
+ *      (WORKER_RESOURCE_LIMIT), so grids get a separate lightweight pass (own
+ *      cron) that touches only t.pdf. Independent of the race PDF too — quali is
+ *      published before the race runs — so the dashboard's start-grid sidebar
+ *      (index.html buildStartGrid) has data in LIVE on race day (POST
+ *      {grid:true,date}) and in SIM for every archived date. Replaces the former
+ *      hardcoded REAL_QUALI array. ?date=YYYY-MM-DD scopes either mode.
  *
  * PER-DRIVER BEST LAP: the race result sheet lists only the CAR's fastest lap,
  * but the separate "Lap by Lap" chart (<date>rl.pdf) tags every lap with the
@@ -330,6 +342,64 @@ export function parseResults(rawText: string, eventDate: string, lapMap?: Record
   return rows;
 }
 
+/* ---------- qualifying (Zeittraining) -> starting grid ---------- */
+type GridRow = {
+  event_date: string; car_no: number; class: string;
+  pos_overall: number; pos_class: number | null; best_lap_ms: number | null;
+};
+// A quali car header, time-anchored: <pos> <carNo> <class+vehicle…> <Rd>
+// <Bestzeit m:ss.mmm> <avg-speed>. Unlike HDR this needs NO known manufacturer,
+// so it also catches cars HDR misses — an exotic marque not in MANU_ALL
+// (e.g. "BITTER Corsa"), or a model with a "." ("VW Golf 8.5 GTI"). The
+// m:ss.mmm Bestzeit is the anchor: only real car rows carry one (a quali block
+// has no per-driver lap times), so no false positives from headers/driver zones.
+const QHDR = /(?<![\w&/-])(\d{1,3}) (\d{1,3}) ([A-Z][^]*?) (\d{1,3}) (\d{1,2}:\d{2}(?::\d{2})?\.\d{3}) \d{1,3}\.\d{3}(?=\s)/g;
+// Class guess for the loose pass: the label before the vehicle manufacturer,
+// else the leading two tokens. Informational only — the dashboard re-derives a
+// car's class + class-position from its own class map by car number.
+function looseClass(mid: string): string {
+  const cut = mid.search(new RegExp(' (?:' + MANU_ALT + ') '));
+  const head = (cut > 0 ? mid.slice(0, cut) : mid).trim();
+  return head || mid.trim().split(/\s+/).slice(0, 2).join(' ');
+}
+
+// Parse an "Ergebnis Zeittraining" PDF (<date>t.pdf) into one grid row per car.
+// Pass A uses the shared HDR (accurate class label for the ~98% of cars with a
+// known manufacturer); pass B uses QHDR to add any car HDR missed. Both take the
+// Bestzeit straight from the header match. pos_class is ranked within the class
+// label, matching how the old REAL_QUALI table was keyed; car_no + pos_overall
+// are the fields the dashboard actually orders the grid by.
+export function parseQuali(rawText: string, eventDate: string): GridRow[] {
+  const text = cleanText(rawText);
+  const byCar = new Map<number, { pos: number; cls: string; best: number | null }>();
+  let m: RegExpExecArray | null;
+  HDR.lastIndex = 0;
+  while ((m = HDR.exec(text))) {
+    const pos = m[1] ? +m[1] : null;        // no Pl. => not classified => no grid slot
+    if (pos == null) continue;
+    const carNo = +m[2];
+    if (byCar.has(carNo)) continue;          // page headers repeat; first (real) hit wins
+    byCar.set(carNo, { pos, cls: m[3].trim(), best: timeToMs(m[7]) });
+  }
+  QHDR.lastIndex = 0;
+  while ((m = QHDR.exec(text))) {
+    const carNo = +m[2];
+    if (byCar.has(carNo)) continue;          // HDR (precise class) already has it
+    byCar.set(carNo, { pos: +m[1], cls: looseClass(m[3]), best: timeToMs(m[5]) });
+  }
+  const rows: GridRow[] = [...byCar.entries()].map(([car_no, v]) => ({
+    event_date: eventDate, car_no, class: v.cls, pos_overall: v.pos, pos_class: null, best_lap_ms: v.best,
+  }));
+  // pos_class: rank cars within their (full-label) class by grid position.
+  const byClass: Record<string, GridRow[]> = {};
+  for (const r of rows) (byClass[r.class] ??= []).push(r);
+  for (const arr of Object.values(byClass)) {
+    arr.sort((a, b) => a.pos_overall - b.pos_overall);
+    arr.forEach((r, i) => { r.pos_class = i + 1; });
+  }
+  return rows.sort((a, b) => a.pos_overall - b.pos_overall);
+}
+
 /* ---------- Supabase REST helpers ---------- */
 async function sbFetch(path: string, init: RequestInit) {
   return fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -356,6 +426,15 @@ async function replaceResults(eventDate: string, rows: ResultRow[]) {
     const res = await sbFetch('stint9_nls_results', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows.slice(i, i + 500)) });
     if (!res.ok) throw new Error(`insert ${eventDate}: ${res.status} ${(await res.text()).slice(0, 200)}`);
   }
+  return rows.length;
+}
+
+async function replaceGrid(eventDate: string, rows: GridRow[]) {
+  if (!rows.length) return 0;
+  const del = await sbFetch(`stint9_grid?event_date=eq.${eventDate}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  if (!del.ok) throw new Error(`grid delete ${eventDate}: ${del.status}`);
+  const res = await sbFetch('stint9_grid', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) });
+  if (!res.ok) throw new Error(`grid insert ${eventDate}: ${res.status} ${(await res.text()).slice(0, 200)}`);
   return rows.length;
 }
 
@@ -413,11 +492,50 @@ async function ingestRace(eventDate: string, roundNo: string, title: string, ser
   return { eventDate, series, status: 'ok', driverRows: written, drivers, cars: carCount };
 }
 
+// Ingest one round's qualifying grid from <date>t.pdf into stint9_grid. Runs
+// independently of the race result: quali is published (Sat) before the race
+// PDF exists, so this is NOT gated behind ingestRace's r.pdf. A missing t.pdf
+// (quali not run yet) just skips the round this run. Returns a log record.
+async function ingestGrid(eventDate: string) {
+  const url = `${PDF_BASE}/${eventDate}t.pdf`;
+  const text = await fetchPdfText(url);
+  if (!text) return { eventDate, kind: 'grid', status: 'no_quali_pdf' };
+  const rows = parseQuali(text, eventDate);
+  // Sanity gate mirroring ingestRace: a real NLS grid has dozens of cars; a
+  // divergent layout that yields almost nothing is skipped, not written.
+  if (rows.length < 5) return { eventDate, kind: 'grid', status: 'unparseable_or_empty', cars: rows.length };
+  const written = await replaceGrid(eventDate, rows);
+  return { eventDate, kind: 'grid', status: 'ok', cars: written };
+}
+
 if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  // Optional scoping (query string or JSON body):
+  //   grid=1 / {grid:true}   -> ingest ONLY the qualifying grids (one t.pdf per
+  //                             round), not the race results. Much lighter than
+  //                             the default run: parsing r.pdf + rl.pdf + t.pdf
+  //                             for every round in one invocation exceeds the
+  //                             edge worker's compute budget, so grids run as
+  //                             their own pass (own cron; also the LIVE race-day
+  //                             trigger). Default run = race results, unchanged.
+  //   date=YYYY-MM-DD        -> restrict to that one event.
+  const url = new URL(req.url);
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* no/invalid body */ }
+  const wantGrid = url.searchParams.get('grid') === '1' || body.grid === true;
+  const onlyDate = url.searchParams.get('date') || (typeof body.date === 'string' ? body.date : null);
+
   const results: unknown[] = [];
   try {
     const today = new Date().toISOString().slice(0, 10);
+
+    // Fast path: a single date's grid needs no calendar scan at all.
+    if (wantGrid && onlyDate) {
+      try { results.push(await ingestGrid(onlyDate)); }
+      catch (e) { results.push({ eventDate: onlyDate, kind: 'grid', status: 'error', error: String(e) }); }
+      await logRun(true, results.length, { mode: 'grid', results });
+      return Response.json({ ok: true, racesChecked: results.length, results }, { headers: CORS });
+    }
 
     // 1) NLS rounds from the calendar
     const calRes = await fetch(CALENDAR_URL);
@@ -428,22 +546,33 @@ if (import.meta.main) Deno.serve(async (req) => {
       if (r.eventDate > today) continue;              // not raced yet
       if (seen.has(r.eventDate)) continue;             // de-dupe expanded ranges
       seen.add(r.eventDate);
+      if (onlyDate && r.eventDate !== onlyDate) continue;
+      if (wantGrid) {
+        // Grid-only pass: just the qualifying PDF (one fetch/round).
+        try { results.push(await ingestGrid(r.eventDate)); }
+        catch (e) { results.push({ eventDate: r.eventDate, kind: 'grid', status: 'error', error: String(e) }); }
+        continue;
+      }
       try { results.push(await ingestRace(r.eventDate, r.roundNo, r.title, 'NLS')); }
       catch (e) { results.push({ eventDate: r.eventDate, series: 'NLS', status: 'error', error: String(e) }); }
     }
 
-    // 2) 24h best-effort: any pre-seeded series='24h' rows carrying an explicit results_url
-    const h24 = await sbFetch("stint9_nls_races?series=eq.24h&select=event_date,round_no,title,results_url", { method: 'GET' });
-    if (h24.ok) {
-      const rows = await h24.json() as { event_date: string; round_no: string; title: string; results_url: string | null }[];
-      for (const r of rows) {
-        if (!r.results_url || r.event_date > today) continue;
-        try { results.push(await ingestRace(r.event_date, r.round_no, r.title, '24h', r.results_url)); }
-        catch (e) { results.push({ eventDate: r.event_date, series: '24h', status: 'error', error: String(e) }); }
+    // 2) 24h best-effort: any pre-seeded series='24h' rows carrying an explicit
+    // results_url (race-results mode only; the 24h has no NLS-style quali t.pdf).
+    if (!wantGrid) {
+      const h24 = await sbFetch("stint9_nls_races?series=eq.24h&select=event_date,round_no,title,results_url", { method: 'GET' });
+      if (h24.ok) {
+        const rows = await h24.json() as { event_date: string; round_no: string; title: string; results_url: string | null }[];
+        for (const r of rows) {
+          if (!r.results_url || r.event_date > today) continue;
+          if (onlyDate && r.event_date !== onlyDate) continue;
+          try { results.push(await ingestRace(r.event_date, r.round_no, r.title, '24h', r.results_url)); }
+          catch (e) { results.push({ eventDate: r.event_date, series: '24h', status: 'error', error: String(e) }); }
+        }
       }
     }
 
-    await logRun(true, results.length, { results });
+    await logRun(true, results.length, { mode: wantGrid ? 'grid' : 'race', results });
     return Response.json({ ok: true, racesChecked: results.length, results }, { headers: CORS });
   } catch (e) {
     await logRun(false, results.length, { error: String(e), results });

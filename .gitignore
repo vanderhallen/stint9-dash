@@ -1,3 +1,4 @@
 source/
 tools/newDB.json
 live/logs/
+node_modules/
