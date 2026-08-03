@@ -421,7 +421,7 @@
   /* hide the underlying content outright so nothing flashes through the lock
      overlay while the reel scrolls (iframes can paint over absolute siblings
      mid-transition) */
-  body.locked-private #boardframe,body.locked-private #fuelpanel{visibility:hidden}
+  body.locked-private #boardframe,body.locked-private #svcframe,body.locked-private #fuelpanel{visibility:hidden}
 </style></head>
 <body><div id="loginModal" role="dialog" aria-modal="true">
   <div class="loginCard">
@@ -557,6 +557,7 @@
             <div id="fuellog" class="fuellog"></div>
           </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260803b" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
@@ -584,30 +585,31 @@
       <div id="reelfilm" style="flex:0 0 96px;display:flex;flex-direction:column;gap:8px;justify-content:center">
         <div class="reelthumb" data-i="0" title="Fuel overview"><span class="thumbcap">FUEL</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="26" y="16" width="30" height="42" rx="3" fill="none" stroke="#9aa1a9" stroke-width="4"/><rect x="30" y="34" width="22" height="20" fill="#c3c8ce"/><path d="M56 24 h8 a3 3 0 0 1 3 3 v22 a3 3 0 0 0 3 3" fill="none" stroke="#9aa1a9" stroke-width="4"/><line x1="30" y1="24" x2="52" y2="24" stroke="#9aa1a9" stroke-width="4"/></svg></div>
         <div class="reelthumb" data-i="1" title="Tyre — ISO board (tyre.html)"><span class="thumbcap">TYRE</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="8" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="8" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="8" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="72" y="44" width="20" height="20" rx="2" fill="none" stroke="#16202b" stroke-width="3"/><rect x="43" y="22" width="14" height="28" rx="6" fill="none" stroke="#9aa1a9" stroke-width="3"/></svg></div>
-        <div class="reelthumb" data-i="2" title="Sector times — selected car, laps × sectors (numbers only)"><span class="thumbcap">TIMES</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="8" width="88" height="56" rx="3" fill="none" stroke="#cdd2d8" stroke-width="2"/><line x1="6" y1="22" x2="94" y2="22" stroke="#9aa1a9" stroke-width="2"/><line x1="28" y1="8" x2="28" y2="64" stroke="#9aa1a9" stroke-width="2"/><line x1="37" y1="15" x2="45" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="53" y1="15" x2="61" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="69" y1="15" x2="77" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="34" x2="22" y2="34" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="46" x2="22" y2="46" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="58" x2="22" y2="58" stroke="#16202b" stroke-width="2.5"/><line x1="37" y1="34" x2="45" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="34" x2="61" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="34" x2="77" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="46" x2="45" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="46" x2="61" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="46" x2="77" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="58" x2="45" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="58" x2="61" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="58" x2="77" y2="58" stroke="#9aa1a9" stroke-width="2.5"/></svg></div>
-        <div class="reelthumb active" data-i="3" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="4" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="5" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="6" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="7" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
-        <div class="reelthumb" data-i="8" title="Sector-1 comparison — all cars"><span class="thumbcap">COMP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 58 C20 58,22 20,32 20 S44 58,52 58 S64 34,72 34 S84 10,96 10" fill="none" stroke="#2f5fd0" stroke-width="3"/><path d="M4 62 C22 62,26 44,36 44 S50 62,60 62 S76 50,96 50" fill="none" stroke="#e0301e" stroke-width="3"/></svg></div>
-        <div class="reelthumb" data-i="9" title="Sector colours grid — all cars, all laps"><span class="thumbcap">GRID</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
+        <div class="reelthumb" data-i="2" title="Service — component km to next service (service.html)"><span class="thumbcap">SERVE</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><g fill="#9aa1a9"><rect x="46.5" y="11" width="7" height="10" transform="rotate(0 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(45 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(90 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(135 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(180 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(225 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(270 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(315 50 36)"/></g><circle cx="50" cy="36" r="16" fill="none" stroke="#16202b" stroke-width="4"/><circle cx="50" cy="36" r="6" fill="none" stroke="#16202b" stroke-width="4"/></svg></div>
+        <div class="reelthumb" data-i="3" title="Sector times — selected car, laps × sectors (numbers only)"><span class="thumbcap">TIMES</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="8" width="88" height="56" rx="3" fill="none" stroke="#cdd2d8" stroke-width="2"/><line x1="6" y1="22" x2="94" y2="22" stroke="#9aa1a9" stroke-width="2"/><line x1="28" y1="8" x2="28" y2="64" stroke="#9aa1a9" stroke-width="2"/><line x1="37" y1="15" x2="45" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="53" y1="15" x2="61" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="69" y1="15" x2="77" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="34" x2="22" y2="34" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="46" x2="22" y2="46" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="58" x2="22" y2="58" stroke="#16202b" stroke-width="2.5"/><line x1="37" y1="34" x2="45" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="34" x2="61" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="34" x2="77" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="46" x2="45" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="46" x2="61" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="46" x2="77" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="58" x2="45" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="58" x2="61" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="58" x2="77" y2="58" stroke="#9aa1a9" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb active" data-i="4" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="5" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="6" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="7" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="8" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
+        <div class="reelthumb" data-i="9" title="Sector-1 comparison — all cars"><span class="thumbcap">COMP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 58 C20 58,22 20,32 20 S44 58,52 58 S64 34,72 34 S84 10,96 10" fill="none" stroke="#2f5fd0" stroke-width="3"/><path d="M4 62 C22 62,26 44,36 44 S50 62,60 62 S76 50,96 50" fill="none" stroke="#e0301e" stroke-width="3"/></svg></div>
+        <div class="reelthumb" data-i="10" title="Sector colours grid — all cars, all laps"><span class="thumbcap">GRID</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#22B14C"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/><rect x="35" y="10" width="8" height="14" fill="#22B14C"/><rect x="44" y="10" width="8" height="14" fill="#F5C500"/>
           <rect x="8" y="29" width="8" height="14" fill="#F5C500"/><rect x="17" y="29" width="8" height="14" fill="#A020F0"/><rect x="26" y="29" width="8" height="14" fill="#F5C500"/><rect x="35" y="29" width="8" height="14" fill="#F5C500"/><rect x="44" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="8" y="48" width="8" height="14" fill="#22B14C"/><rect x="17" y="48" width="8" height="14" fill="#F5C500"/><rect x="26" y="48" width="8" height="14" fill="#A020F0"/><rect x="35" y="48" width="8" height="14" fill="#F5C500"/><rect x="44" y="48" width="8" height="14" fill="#F5C500"/>
         </svg></div>
-        <div class="reelthumb" data-i="10" title="Sector colours grid — frozen per lap, never recoloured"><span class="thumbcap">SNAP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
+        <div class="reelthumb" data-i="11" title="Sector colours grid — frozen per lap, never recoloured"><span class="thumbcap">SNAP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#F5C500"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/><rect x="35" y="10" width="8" height="14" fill="#22B14C"/><rect x="44" y="10" width="8" height="14" fill="#F5C500"/>
           <rect x="8" y="29" width="8" height="14" fill="#22B14C"/><rect x="17" y="29" width="8" height="14" fill="#22B14C"/><rect x="26" y="29" width="8" height="14" fill="#A020F0"/><rect x="35" y="29" width="8" height="14" fill="#F5C500"/><rect x="44" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="8" y="48" width="8" height="14" fill="#F5C500"/><rect x="17" y="48" width="8" height="14" fill="#A020F0"/><rect x="26" y="48" width="8" height="14" fill="#22B14C"/><rect x="35" y="48" width="8" height="14" fill="#22B14C"/><rect x="44" y="48" width="8" height="14" fill="#F5C500"/>
         </svg></div>
-        <div class="reelthumb" data-i="11" title="Sector colours by driver — selected car only"><span class="thumbcap">DRV</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
+        <div class="reelthumb" data-i="12" title="Sector colours by driver — selected car only"><span class="thumbcap">DRV</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#22B14C"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/>
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="12" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
-        <div class="reelthumb" data-i="13" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
+        <div class="reelthumb" data-i="13" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="14" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -677,7 +679,7 @@ const DB = {"W":1688,"H":1518,"poly":[[[607.5,1120.0],[600.0,1120.0],[599.9,1120
 const SVGNS='http://www.w3.org/2000/svg';
 const SECCOL=['#2ea02c','#17becf','#1f77b4','#7b2fbe','#d62728'];
 let selCar='',thr=0.5,paceThr=0.2;
-let reelIdx=3;const REELN=14;
+let reelIdx=4;const REELN=15;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
 // ENTRIES (cars) are mode-scoped: ephemeral in SIM (reset every session) and
@@ -734,6 +736,12 @@ function postTyreCar(car){
   // team's tyre data (defence beyond just hiding the iframe visually).
   const _ok=(typeof canAccess==='function'&&canAccess(car));
   try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'),ro:!_ok},'*');}catch(e){}}
+// Tell the SERVICE iframe (component km) which car is selected — per-car state,
+// same team-private + read-only rules as the tyre board. Archived replays are
+// pushed read-only (component wear isn't part of the event snapshot).
+function postSvcCar(car){
+  const _ok=(typeof canAccess==='function'&&canAccess(car))&&!window.archiveOverlay;
+  try{const sf=document.getElementById('svcframe');if(sf&&sf.contentWindow)sf.contentWindow.postMessage({type:'svcCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'&&!window.archiveOverlay),ro:!_ok},'*');}catch(e){}}
 // Per-lap fuel notes only leave the browser while LIVE is on (SIM is just a
 // local CSV replay, nothing worth syncing) — debounced so a full sentence
 // isn't one write per keystroke.
@@ -2153,21 +2161,21 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60();
   const _tk=Date.now()-_thT>=300;
   // reel dispatch — order: 0 FUEL, 1 TYRE(board iframe, no render fn),
-  // 2 TIMES, 3 POS, 4 FLOW, 5 SECT, 6 PACE, 7 STINT, 8 COMP, 9 GRID,
-  // 10 SNAP, 11 DRV, 12 DIFF, 13 BARS
+  // 2 SERVICE(component-km iframe, no render fn), 3 TIMES, 4 POS, 5 FLOW,
+  // 6 SECT, 7 PACE, 8 STINT, 9 COMP, 10 GRID, 11 SNAP, 12 DRV, 13 DIFF, 14 BARS
   if(reelIdx===0||_tk)renderFuel(T);
-  if(reelIdx===2||_tk)renderSecTab(T);
-  if(reelIdx===3||_tk)renderChart(T);
-  if(reelIdx===4||_tk)renderFlow(T);
-  if(reelIdx===5||_tk)renderSectors(T);
-  if(reelIdx===6||_tk)renderLapTrace(T);
-  if(reelIdx===7||_tk)renderStints(T);
-  if(reelIdx===8||_tk)renderComp(T);
-  if(reelIdx===9||_tk)renderSectGrid(T);
-  if(reelIdx===10||_tk)renderSectGridFrozen(T);
-  if(reelIdx===11||_tk)renderDrvGrid(T);
-  if(reelIdx===12||_tk)renderP1Comp(T);
-  if(reelIdx===13||_tk)renderP1Bar(T);
+  if(reelIdx===3||_tk)renderSecTab(T);
+  if(reelIdx===4||_tk)renderChart(T);
+  if(reelIdx===5||_tk)renderFlow(T);
+  if(reelIdx===6||_tk)renderSectors(T);
+  if(reelIdx===7||_tk)renderLapTrace(T);
+  if(reelIdx===8||_tk)renderStints(T);
+  if(reelIdx===9||_tk)renderComp(T);
+  if(reelIdx===10||_tk)renderSectGrid(T);
+  if(reelIdx===11||_tk)renderSectGridFrozen(T);
+  if(reelIdx===12||_tk)renderDrvGrid(T);
+  if(reelIdx===13||_tk)renderP1Comp(T);
+  if(reelIdx===14||_tk)renderP1Bar(T);
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
   if(_tk)updateThumbs();
@@ -2187,8 +2195,11 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
         const _ps=(DB.pits&&DB.pits[selCar])||[];for(const pl of _ps){if(pl<=_lap)_pit=pl;}}}
     const _spd=parseFloat((document.getElementById('speed')||{}).value||'1');
     // don't stream a car's live tyre progress while it's locked (not our team)
-    if(typeof canAccess==='function'&&canAccess(selCar))
-      _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:false},'*');}}}catch(e){}
+    if(typeof canAccess==='function'&&canAccess(selCar)){
+      _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:false},'*');
+      // feed the SERVICE iframe the same live progress so component ACTUAL km ticks up
+      const _sf=document.getElementById('svcframe');if(_sf&&_sf.contentWindow)_sf.contentWindow.postMessage({type:'svcLive',prog:_prg,sectorKm:SECTOR_KM,car:String(selCar||''),live:(window.dataMode==='LIVE'),ro:false},'*');
+    }}}}catch(e){}
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const selPit=slg?null:pitInfo(selCar,T);
@@ -2345,7 +2356,7 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
 
 /* dropdown */
 const sel=document.getElementById('carsel');
-sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
+sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);postSvcCar(selCar);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
 /* Find-car search: type a car number, Enter jumps to it in whatever class it's
    in (switches the class dropdown, then selects the car via the existing
    onchange chain). Reads DB.classes live, so it works as the field fills in. */
@@ -2377,6 +2388,7 @@ sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[
 })();
 // keep the tyre board's car in sync once the iframe has loaded / on first paint
 (function(){const bf=document.getElementById('boardframe');if(bf)bf.addEventListener('load',()=>postTyreCar(selCar));})();
+(function(){const sf=document.getElementById('svcframe');if(sf)sf.addEventListener('load',()=>postSvcCar(selCar));})();
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
@@ -3308,7 +3320,7 @@ buildStartGrid();
         let live;try{live=window.buildLiveDB(raw,geom,{name:(DB.event&&DB.event.name)||'LIVE',date:liveEventDate()});}catch(e){liveMsg.textContent='live feed: parse error';return;}
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});
         const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
-        applyCarFuelSettings(selCar);postTyreCar(selCar);
+        applyCarFuelSettings(selCar);postTyreCar(selCar);postSvcCar(selCar);
         const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;liveSeen=true;liveHasData=true;   // robust newest data-time; drives clock T
         markStale(frontier);
         if(liveDispT==null){T=frontier;if(scrub)scrub.value=T;}   // first paint until the smooth loop takes over
@@ -4391,7 +4403,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['FUEL','TYRE','TIMES','POS','FLOW','SECT','PACE','STINT','COMP','GRID','SNAP','DRV','DIFF','BARS'];
+  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','FLOW','SECT','PACE','STINT','COMP','GRID','SNAP','DRV','DIFF','BARS'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
@@ -4498,6 +4510,7 @@ applyWxReel(false);
     updateBadge();
     // refresh the tyre iframe's read-only flag for the current car
     try{if(typeof postTyreCar==='function')postTyreCar(typeof selCar!=='undefined'?selCar:'');}catch(e){}
+    try{if(typeof postSvcCar==='function')postSvcCar(typeof selCar!=='undefined'?selCar:'');}catch(e){}
   };
 
   // ---- modal ----
