@@ -770,6 +770,7 @@ function reelHeightRatio(){
 }
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;
   if(i===1)boardCenter();   // arriving on the TYRE row via the vertical reel: centre it on BOARD
+  if(i===2)svcH(-1);        // arriving on the SERVICE row: always show SERVICE (ARCHIVE only via right arrow)
   // Only re-size on switch while zoomed (all zoom windows share ZOOM_RATIO).
   // Inline, the reel height is owned by growMaps() (grown to fill the page) —
   // don't clobber it back to the short CH/1000 aspect.
