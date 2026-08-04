@@ -146,10 +146,16 @@
   #compmetric .seg:last-child{border-right:none}
   #compmetric .seg:hover{background:#f1f3f5}
   #compmetric .seg.on{background:#16202b;color:#fff}
-  /* zoomed reel tables (GRID/SNAP/DRV): scale up so the big modal fills and reads better */
+  /* zoomed reel tables (GRID/SNAP/DRV/TIMES): scale up so the big modal fills and reads better */
   .card.zoomed #gridtablewrap table,.card.zoomed #snaptablewrap table,.card.zoomed #drvtablewrap table{font-size:19px!important}
-  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #snaptablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child{font-size:16px!important;padding:0 4px 16px!important}
+  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #snaptablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child{font-size:16px!important;padding:0 4px 16px!important}
   .card.zoomed #gridtablewrap th,.card.zoomed #snaptablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #snaptablewrap td,.card.zoomed #drvtablewrap td{padding:6px 10px!important}
+  /* TIMES is only 8 rows, so at its inline size it leaves the modal mostly
+     empty. Scale it harder than the other tables and let the rows breathe —
+     but keep the table content-width: stretching it to 100% blows the row-label
+     column out to half the modal whenever a car has only a few laps in. */
+  .card.zoomed #sectabwrap table{font-size:23px!important}
+  .card.zoomed #sectabwrap th,.card.zoomed #sectabwrap td{padding:14px 20px!important}
   .card.zoomed #gridtablewrap td>div,.card.zoomed #snaptablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
   .card.zoomed #gridtablewrap span,.card.zoomed #snaptablewrap span,.card.zoomed #drvtablewrap span{width:12px!important;height:28px!important;border-radius:2px!important}
   /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
@@ -4297,7 +4303,8 @@ applyWxReel(false);
       Object.keys(DB.classes).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
       if(cur&&DB.classes[cur])pick=cur;clsSel.value=pick;}
     if(pick)buildClass(pick);                       // sets DB.cars/maxN/avgseg/tmin/tmax
-    var evd=document.getElementById('evdate');if(evd)evd.textContent=DB.event.date+' · '+(DB.event.name||slug)+(overlay?' · overlay':'');
+    // date only — the full event name wrapped onto a second line under the logo
+    var evd=document.getElementById('evdate');if(evd)evd.textContent=DB.event.date+(overlay?' · overlay':'');
     T=DB.tmin;var sc=document.getElementById('scrub');if(sc){sc.min=DB.tmin;sc.max=DB.tmax;sc.value=T;}
     try{fillStints(selCar);}catch(e){}
     try{render();}catch(e){}
