@@ -3,8 +3,8 @@
   "events": [
     {
       "slug": "EVT-2026-08-02",
-      "name": "race",
-      "label": "race",
+      "name": "practice NLS7",
+      "label": "practice",
       "date": "2026-08-02",
       "end": null,
       "car_count": 132,

@@ -27,6 +27,7 @@
 15. [SIM vs LIVE parity audit — 2026-08-02](#15-sim-vs-live-parity-audit--2026-08-02)
 16. [SIM race picker — choose an archived event from a popup](#16-sim-race-picker--choose-an-archived-event-from-a-popup-2026-08-02)
 17. [PWA — installable app, offline shell, wake lock](#17-pwa--installable-app-offline-shell-wake-lock-2026-08-04)
+18. [Race notes — S1 overtakes, pit laps, archive parity](#18-race-notes--s1-overtakes-pit-laps-archive-parity-2026-08-04)
 
 ---
 
@@ -2041,3 +2042,102 @@ Result on the shipping commit: **10/10 passed.**
 - **Manifest tags on the sub-pages.** Not needed while `scope: /` keeps them
   inside the app window; only matters if a sub-page should be separately
   installable.
+
+---
+
+# 18. Race notes — S1 overtakes, pit laps, archive parity (2026-08-04)
+
+**Symptom.** Replaying **NLS7** (2026-08-01, the 6h) in SIM, the RACE NOTES panel
+filled with overtakes that never happened, nearly all of them in **S1**, and the
+**PIT IN / PIT OUT black bars were missing**. Replaying **NLS6** (2026-06-20) the
+same panel is clean. Same code, same panel, opposite behaviour.
+
+## 18.1 What was actually wrong
+
+**There was never an S1 exclusion in the code.** `rnDetect`'s overtake loop had no
+S1 guard; the only S1 filter in `index.html` was `rnClipNotes()`, and that guards
+the **VIDEO reel** only. NLS6 looked clean by accident:
+
+| | NLS6 | NLS7 |
+|---|---|---|
+| bundle | pre-built `db` (from `data.js` / VLN CSV) | raw `stint9_live_timing` rows → `buildLiveDB` |
+| `inpit` on the rows | flag present → 285 stops in `DB.pits` | **false on all 4251 rows** → `DB.pits` empty |
+| in-lap S5 split | **absent on 285 of 285 stops** | **present on 515 of 518 stops** |
+| S1 overtake notes, #950/#665 | 1 of 8 | **145 of 180** |
+
+The pit box and the pit exit both sit **inside S1** (§3, and commit `f433ed4`), so
+an out-lap S1 runs ~200s against a ~76s green one. In NLS6 the in-lap carries no S5
+split, so boundary `L*5` is missing and the out-lap S1 pair
+(`bx[idx-1]`/`bx[idx]`) hits the existing `a==null||b==null` guard — the crossing is
+skipped **by accident**. The WIGE-derived rows do carry an in-lap S5, so nothing
+skipped it there, and a 200s stop flips the gap sign against every car in the class
+at once. That is the whole "false overtakes" effect: 573 of the 758 racenotes
+persisted for 2026-08-01 are S1 overtakes (hence `NLS7_notes.json` at 156K against
+NLS6's 4K).
+
+With `DB.pits` empty there was also no PIT note to replace them, and `withPitS5` /
+`secRef` / `pitInfo` / the Code-60 pit skip all silently switched off.
+
+> ⚠️ This contradicts §9's open item 3 and §10.2's "WIGE never sends S5": the
+> archived 2026-08-01 rows have a non-null `s5` on **3962 of 4251** rows. Whether
+> that is `S5TIME` arriving after all, or `vds-relay` vs `wige-scrape` writing
+> different shapes, is still unconfirmed — but the dashboard must not assume the
+> in-lap S5 is missing.
+
+## 18.2 The fix (all in `index.html`, source-independent)
+
+1. **`pitLapsOf(st)`** — one pit-lap source of truth: the union of `DB.pits[st]`
+   *and* laps derived from the out-lap's own S1 (any S1 leg longer than **1.5× and
+   +40s over** that car's median S1 marks the previous lap as the in-lap). Checked
+   against the NLS6 CSV flag as ground truth: **265 of 285** real stops recovered,
+   18 false positives. `pitInfo`, `secRef`, `withPitS5`, the Code-60 pit skip and
+   the racenote PIT IN/OUT notes all read it. Cached per DB build (cleared at the
+   top of `buildClass`) because `pitInfo` runs per car per frame.
+2. **`rnDetect` never reports an S1 overtake** (`if(k===1)continue;`). Deliberate
+   and unconditional, so SIM and LIVE agree whatever the feed publishes; the stop
+   is reported by the PIT bars instead. Genuine S1 passes are given up knowingly —
+   on NLS6 that costs exactly one note across #665 and #650, and it was a false one.
+3. **`window.prepLiveRaw(rows)`** — the LIVE raw clean-up (garage nulling, 900s/3600s
+   caps, S5 backfill) lifted out of `liveTick` and now **also run by the archived-event
+   loader**. It used to hand `bundle.timing` to `buildLiveDB` untouched, so replaying a
+   live-derived event in SIM skipped clean-up LIVE had applied — a 2026-08-01 replay
+   showed a **20442s "sector"** on #665. Same rows in, same numbers out, both modes.
+
+## 18.3 Verified
+
+Offline replay of the committed bundles through the patched functions lifted
+straight out of `index.html`, plus a real headless-Chrome replay of
+`index.html?event=…&overlay=1` driven to `DB.tmax`:
+
+| | before | after |
+|---|---|---|
+| NLS7 #950 notes | 180 (145 in S1) | **52, zero in S1**, 8 PIT bars (`+161.7s`, `+182.3s`, `+164.8s`, `+107.6s`) |
+| NLS7 #953 | 106 (82 in S1) | 24, zero in S1 |
+| NLS6 #665 | 8 (1 in S1) | 7, zero in S1, 8 PIT bars — unchanged otherwise |
+| NLS7 pit laps found | 0 | 585 (`#950` → laps 6, 15, 23, 31) |
+
+## 18.4 Still open
+
+- ~~**`stint9_racenotes` for 2026-08-01 still holds the 573 stale S1 rows.**~~
+  **DONE 2026-08-04.** Deleted (`kind='overtake' and sector=1`): 573 rows, 758 →
+  185. The 6 `fastest` S1 rows are legitimate and were kept, and this event had
+  no `manual` rows.
+
+  The stale notes were baked into the archived bundle too, so they were stripped
+  from `stint9_events.bundle->'overlay'->'racenotes'` with a targeted `jsonb_agg`
+  filter **instead of** re-running `tools/archive_event.mjs --date=2026-08-01`.
+  A full re-archive of an old event is *not* safe here: `stint9_tyre_state` and
+  `stint9_band_state` carry no `event_date` (see the header of
+  `archive_event.mjs`), so re-archiving would have stamped **today's** global
+  tyre/band state into the NLS7 bundle. Only `--sync-files` was run afterwards,
+  to rewrite `events/*.json` from the table. Bundle and table now agree at 185
+  notes / 0 S1 overtakes, and `NLS7_notes.json` is down from 156K to 76K.
+- **NLS7's archived timing spans 9.8h of time-of-day** (23887 → 59297) — qualifying
+  and race merged into one `event_date`. See §9 lesson 4; the `event_id` split
+  landed after that archive was taken. Gaps in that replay are affected regardless
+  of this fix.
+- **The crew-facing pit counts still read `DB.pits` directly** (fuel reel stint
+  maths, `PIT n` labels on the chart, the agent's stop answers). They stay on the
+  feed flag on purpose — a heuristic with ~6% false positives must not move fuel
+  numbers. They therefore still show zero stops on a live-derived event until
+  `inpit` works at the source (§9 open item 1).

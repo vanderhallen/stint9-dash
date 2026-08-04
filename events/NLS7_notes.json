@@ -280,45 +280,10 @@
   "racenotes": [
     {
       "car": "1",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · lost to #35 in S1"
-    },
-    {
-      "car": "1",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #35 in S1"
-    },
-    {
-      "car": "1",
       "lap": 4,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #64 · 32.8s → 26.3s"
-    },
-    {
-      "car": "1",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #64 in S1"
-    },
-    {
-      "car": "1",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · lost to #64 in S1"
-    },
-    {
-      "car": "1",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #64 in S1"
     },
     {
       "car": "100",
@@ -413,41 +378,6 @@
     },
     {
       "car": "470",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #494 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #472 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #480 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #480 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #480 in S1"
-    },
-    {
-      "car": "470",
       "lap": 5,
       "sector": 5,
       "kind": "overtake",
@@ -455,66 +385,10 @@
     },
     {
       "car": "470",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #480 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #494 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #472 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #492 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · lost to #480 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · passed #494 in S1"
-    },
-    {
-      "car": "470",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · passed #472 in S1"
-    },
-    {
-      "car": "470",
       "lap": 7,
       "sector": 3,
       "kind": "overtake",
       "body": "P2→P1 · passed #480 in S3"
-    },
-    {
-      "car": "470",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · passed #492 in S1"
     },
     {
       "car": "5",
@@ -561,20 +435,6 @@
     {
       "car": "5",
       "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P4 · lost to #6 in S1"
-    },
-    {
-      "car": "5",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P4 · lost to #37 in S1"
-    },
-    {
-      "car": "5",
-      "lap": 2,
       "sector": 3,
       "kind": "overtake",
       "body": "P4→P3 · passed #37 in S3"
@@ -596,13 +456,6 @@
     {
       "car": "5",
       "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #6 in S1"
-    },
-    {
-      "car": "5",
-      "lap": 4,
       "sector": 4,
       "kind": "overtake",
       "body": "P3→P2 · passed #6 in S4"
@@ -616,24 +469,10 @@
     },
     {
       "car": "5",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #37 in S1"
-    },
-    {
-      "car": "5",
       "lap": 8,
       "sector": 2,
       "kind": "fastest",
       "body": "class-best S2 · 1:03.6s"
-    },
-    {
-      "car": "5",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P2 · passed #37 in S1"
     },
     {
       "car": "5",
@@ -658,20 +497,6 @@
     },
     {
       "car": "5",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · lost to #6 in S1"
-    },
-    {
-      "car": "5",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P2 · passed #6 in S1"
-    },
-    {
-      "car": "5",
       "lap": 19,
       "sector": 2,
       "kind": "overtake",
@@ -687,23 +512,9 @@
     {
       "car": "5",
       "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #786 in S1"
-    },
-    {
-      "car": "5",
-      "lap": 25,
       "sector": 3,
       "kind": "overtake",
       "body": "P1→P2 · lost to #786 in S3"
-    },
-    {
-      "car": "5",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #2 in S1"
     },
     {
       "car": "650",
@@ -711,13 +522,6 @@
       "sector": 4,
       "kind": "fastest",
       "body": "class-best S4 · 3:31.8s"
-    },
-    {
-      "car": "650",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #665 in S1"
     },
     {
       "car": "650",
@@ -749,262 +553,10 @@
     },
     {
       "car": "650",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #680 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #665 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #661 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #652 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #663 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #667 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #677 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #661 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #663 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #652 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #667 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P1 · passed #677 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P3 · lost to #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P3 · lost to #661 in S1"
-    },
-    {
-      "car": "650",
       "lap": 14,
       "sector": 4,
       "kind": "overtake",
       "body": "P3→P3 · passed #661 in S4"
-    },
-    {
-      "car": "650",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #680 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · lost to #661 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · lost to #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #680 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #661 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #651 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #663 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P6 · lost to #666 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P1 · passed #680 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P1 · passed #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #680 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #661 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #653 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #680 in S1"
     },
     {
       "car": "650",
@@ -1015,52 +567,10 @@
     },
     {
       "car": "650",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · lost to #664 in S1"
-    },
-    {
-      "car": "650",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #680 in S1"
-    },
-    {
-      "car": "650",
       "lap": 36,
       "sector": 4,
       "kind": "overtake",
       "body": "P2→P1 · passed #680 in S4"
-    },
-    {
-      "car": "651",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · lost to #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · passed #663 in S1"
     },
     {
       "car": "651",
@@ -1072,149 +582,9 @@
     {
       "car": "651",
       "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P5 · passed #665 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P5 · passed #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 4,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #661 · 70.2s → 38.4s"
-    },
-    {
-      "car": "651",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #664 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #677 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P7 · lost to #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #664 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P3 · passed #677 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #653 in S1"
     },
     {
       "car": "651",
@@ -1240,27 +610,6 @@
     {
       "car": "651",
       "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #664 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #666 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 10,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #661 · 60.1s → 52.8s"
@@ -1268,23 +617,9 @@
     {
       "car": "651",
       "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P6 · lost to #666 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 11,
       "sector": 4,
       "kind": "overtake",
       "body": "P6→P7 · lost to #663 in S4"
-    },
-    {
-      "car": "651",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P6 · passed #663 in S1"
     },
     {
       "car": "651",
@@ -1323,48 +658,6 @@
     },
     {
       "car": "651",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · passed #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · passed #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #666 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · lost to #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #680 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · lost to #653 in S1"
-    },
-    {
-      "car": "651",
       "lap": 14,
       "sector": 2,
       "kind": "overtake",
@@ -1393,76 +686,6 @@
     },
     {
       "car": "651",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P11 · lost to #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P11 · lost to #680 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P11 · lost to #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P11 · lost to #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P11 · lost to #677 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P6 · passed #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P6 · passed #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P6 · passed #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P6 · passed #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P6 · passed #677 in S1"
-    },
-    {
-      "car": "651",
       "lap": 16,
       "sector": 3,
       "kind": "overtake",
@@ -1483,158 +706,11 @@
       "body": "closing on #661 · 267.5s → 18.8s"
     },
     {
-      "car": "651",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P9 · lost to #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P9 · lost to #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P9 · lost to #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #650 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #653 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #661 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #667 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #663 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #652 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #680 in S1"
-    },
-    {
-      "car": "651",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P1 · passed #664 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #653 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #664 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #664 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #653 in S1"
-    },
-    {
       "car": "652",
       "lap": 3,
       "sector": 5,
       "kind": "fastest",
       "body": "fastest lap so far · 9:21.6"
-    },
-    {
-      "car": "652",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P6 · passed #665 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P6 · lost to #653 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P6 · lost to #651 in S1"
     },
     {
       "car": "652",
@@ -1652,111 +728,6 @@
     },
     {
       "car": "652",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P6 · passed #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P8 · lost to #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P8 · lost to #664 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #650 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #680 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #664 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #650 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #680 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · passed #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P7 · lost to #664 in S1"
-    },
-    {
-      "car": "652",
       "lap": 9,
       "sector": 4,
       "kind": "overtake",
@@ -1771,87 +742,10 @@
     },
     {
       "car": "652",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P9 · passed #667 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P9 · passed #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P9 · lost to #677 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P7 · passed #680 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P7 · lost to #667 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P7 · passed #677 in S1"
-    },
-    {
-      "car": "652",
       "lap": 14,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #650 · 519.0s → 123.7s"
-    },
-    {
-      "car": "652",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P7 · lost to #680 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P7 · passed #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P7 · passed #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P7 · passed #667 in S1"
     },
     {
       "car": "652",
@@ -1868,111 +762,6 @@
       "body": "closing on #661 · 121.3s → 65.3s"
     },
     {
-      "car": "652",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P6 · passed #666 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P6 · passed #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · passed #653 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · lost to #651 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · passed #680 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · lost to #667 in S1"
-    },
-    {
-      "car": "652",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P7 · passed #664 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P6 · passed #652 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P6 · passed #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P6 · lost to #663 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P6 · passed #663 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P6 · lost to #652 in S1"
-    },
-    {
       "car": "653",
       "lap": 3,
       "sector": 5,
@@ -1982,72 +771,9 @@
     {
       "car": "653",
       "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · passed #665 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · passed #652 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 4,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #661 · 67.7s → 37.2s"
-    },
-    {
-      "car": "653",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P6 · lost to #666 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #663 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #650 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #680 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #666 in S1"
     },
     {
       "car": "653",
@@ -2059,58 +785,9 @@
     {
       "car": "653",
       "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #663 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #650 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #680 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #666 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 8,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #661 · 25.0s → 8.5s"
-    },
-    {
-      "car": "653",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #666 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #651 in S1"
     },
     {
       "car": "653",
@@ -2135,122 +812,10 @@
     },
     {
       "car": "653",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · lost to #661 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · passed #661 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #666 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P1 · passed #650 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P1 · passed #666 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P1 · passed #680 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P1 · passed #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #650 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #680 in S1"
-    },
-    {
-      "car": "653",
       "lap": 16,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #680 · 276.3s → 157.2s"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #652 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #663 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #667 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #661 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · lost to #651 in S1"
-    },
-    {
-      "car": "653",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P8 · passed #680 in S1"
     },
     {
       "car": "665",
@@ -2325,163 +890,9 @@
     {
       "car": "665",
       "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #650 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 3,
       "sector": 5,
       "kind": "fastest",
       "body": "fastest lap so far · 9:13.9"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #661 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #680 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #652 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #653 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #651 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #663 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #664 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #666 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #677 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P12 · lost to #667 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #650 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #680 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #661 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #651 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #653 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #663 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #652 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #664 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #666 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #667 in S1"
-    },
-    {
-      "car": "665",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P12→P1 · passed #677 in S1"
     },
     {
       "car": "680",
@@ -2507,135 +918,9 @@
     {
       "car": "680",
       "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P2 · passed #665 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P2 · passed #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 4,
       "sector": 2,
       "kind": "overtake",
       "body": "P2→P1 · passed #650 in S2"
-    },
-    {
-      "car": "680",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #665 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #677 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P2 · passed #677 in S1"
     },
     {
       "car": "680",
@@ -2643,188 +928,6 @@
       "sector": 5,
       "kind": "gap",
       "body": "closing on #650 · 41.2s → 26.5s"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #666 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #651 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 14,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P9 · lost to #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #666 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #651 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P2 · passed #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P9 · lost to #651 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P9 · lost to #666 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P1 · passed #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #661 in S1"
     },
     {
       "car": "680",
@@ -2836,76 +939,6 @@
     {
       "car": "680",
       "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #652 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #666 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 22,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P1 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 22,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P1 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 22,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P1 · passed #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 22,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P1 · passed #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 21,
       "sector": 4,
       "kind": "overtake",
       "body": "P9→P7 · passed #652 in S4"
@@ -2913,65 +946,9 @@
     {
       "car": "680",
       "lap": 22,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P2 · passed #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P5 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 22,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #650 · 314.2s → 225.1s"
-    },
-    {
-      "car": "680",
-      "lap": 23,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P7 · lost to #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P1 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #664 in S1"
     },
     {
       "car": "680",
@@ -2983,58 +960,9 @@
     {
       "car": "680",
       "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P3 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P5 · lost to #651 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P5 · lost to #667 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P5 · lost to #666 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P5 · lost to #663 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 24,
       "sector": 2,
       "kind": "overtake",
       "body": "P6→P5 · passed #663 in S2"
-    },
-    {
-      "car": "680",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P1 · lost to #653 in S1"
     },
     {
       "car": "680",
@@ -3045,20 +973,6 @@
     },
     {
       "car": "680",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P1 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
       "lap": 26,
       "sector": 5,
       "kind": "overtake",
@@ -3066,129 +980,10 @@
     },
     {
       "car": "680",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #651 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · lost to #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P1 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P1 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · lost to #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · lost to #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · lost to #653 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · passed #650 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P7→P2 · passed #664 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 34,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #650 in S1"
-    },
-    {
-      "car": "680",
       "lap": 33,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #650 · 287.0s → 153.9s"
-    },
-    {
-      "car": "680",
-      "lap": 35,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #661 in S1"
-    },
-    {
-      "car": "680",
-      "lap": 35,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #653 in S1"
     },
     {
       "car": "680",
@@ -3207,51 +1002,9 @@
     {
       "car": "941",
       "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P11 · passed #966 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P11 · passed #999 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P11 · passed #952 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P11 · passed #982 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P11 · passed #945 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 2,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #969 · 6.9s → 2.2s"
-    },
-    {
-      "car": "941",
-      "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P10 · passed #949 in S1"
     },
     {
       "car": "941",
@@ -3277,58 +1030,9 @@
     {
       "car": "941",
       "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P10 · lost to #969 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P10 · lost to #949 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 4,
       "sector": 5,
       "kind": "overtake",
       "body": "P10→P9 · passed #944 in S5"
-    },
-    {
-      "car": "941",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P10 · lost to #959 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P10 · passed #959 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P10 · lost to #944 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P8 · passed #944 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P10→P8 · passed #950 in S1"
     },
     {
       "car": "941",
@@ -3336,97 +1040,6 @@
       "sector": 3,
       "kind": "overtake",
       "body": "P8→P7 · passed #969 in S3"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #944 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #969 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #966 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #990 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #982 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #959 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #945 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #952 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #950 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #980 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #999 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #964 in S1"
-    },
-    {
-      "car": "941",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P9→P20 · lost to #951 in S1"
     },
     {
       "car": "950",
@@ -3438,23 +1051,9 @@
     {
       "car": "950",
       "lap": 3,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 3,
       "sector": 2,
       "kind": "fastest",
       "body": "class-best S2 · 1:09.6s"
-    },
-    {
-      "car": "950",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #953 in S1"
     },
     {
       "car": "950",
@@ -3473,93 +1072,9 @@
     {
       "car": "950",
       "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · passed #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 5,
       "sector": 4,
       "kind": "overtake",
       "body": "P6→P9 · lost to #953 in S4"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · passed #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · lost to #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P8→P5 · lost to #961 in S1"
     },
     {
       "car": "950",
@@ -3591,297 +1106,10 @@
     },
     {
       "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #941 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #982 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #966 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #952 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #990 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #945 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P16 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #966 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #990 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #982 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #952 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #945 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P17→P3 · passed #941 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #962 in S1"
-    },
-    {
-      "car": "950",
       "lap": 10,
       "sector": 4,
       "kind": "overtake",
       "body": "P4→P5 · passed #961 in S4"
-    },
-    {
-      "car": "950",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · passed #953 in S1"
     },
     {
       "car": "950",
@@ -3896,20 +1124,6 @@
       "sector": 4,
       "kind": "overtake",
       "body": "P4→P5 · lost to #962 in S4"
-    },
-    {
-      "car": "950",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P3 · passed #961 in S1"
     },
     {
       "car": "950",
@@ -3942,20 +1156,6 @@
     {
       "car": "950",
       "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 13,
       "sector": 2,
       "kind": "overtake",
       "body": "P3→P2 · passed #971 in S2"
@@ -3977,20 +1177,6 @@
     {
       "car": "950",
       "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P3 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 15,
       "sector": 5,
       "kind": "overtake",
       "body": "P3→P4 · lost to #953 in S5"
@@ -4004,283 +1190,10 @@
     },
     {
       "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #969 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #982 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #952 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #990 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #966 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P14 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #982 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #990 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #966 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #952 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · lost to #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P6 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 20,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 20,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 20,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P6→P4 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
       "lap": 20,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #953 · 239.6s → 85.1s"
-    },
-    {
-      "car": "950",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · passed #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · lost to #961 in S1"
     },
     {
       "car": "950",
@@ -4306,62 +1219,6 @@
     {
       "car": "950",
       "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #949 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #990 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P11 · lost to #982 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 24,
       "sector": 4,
       "kind": "overtake",
       "body": "P11→P9 · passed #990 in S4"
@@ -4376,30 +1233,9 @@
     {
       "car": "950",
       "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 25,
       "sector": 3,
       "kind": "overtake",
       "body": "P3→P4 · lost to #961 in S3"
-    },
-    {
-      "car": "950",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #949 in S1"
     },
     {
       "car": "950",
@@ -4411,121 +1247,9 @@
     {
       "car": "950",
       "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 25,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P3 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 25,
       "sector": 5,
       "kind": "gap",
       "body": "closing on #953 · 459.7s → 38.3s"
-    },
-    {
-      "car": "950",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · passed #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 26,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P5 · lost to #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · lost to #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #977 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P4 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P6 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #961 in S1"
     },
     {
       "car": "950",
@@ -4557,27 +1281,6 @@
     },
     {
       "car": "950",
-      "lap": 30,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
       "lap": 31,
       "sector": 3,
       "kind": "overtake",
@@ -4592,48 +1295,6 @@
     },
     {
       "car": "950",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P7 · lost to #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P7 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P7 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #944 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · passed #971 in S1"
-    },
-    {
-      "car": "950",
       "lap": 33,
       "sector": 4,
       "kind": "overtake",
@@ -4645,62 +1306,6 @@
       "sector": 5,
       "kind": "gap",
       "body": "closing on #962 · 359.8s → 143.7s"
-    },
-    {
-      "car": "950",
-      "lap": 34,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 35,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P3 · passed #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 36,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · passed #962 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #959 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · lost to #971 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · passed #953 in S1"
-    },
-    {
-      "car": "950",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P5 · passed #961 in S1"
     },
     {
       "car": "950",
@@ -4767,34 +1372,6 @@
     },
     {
       "car": "953",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
       "lap": 4,
       "sector": 2,
       "kind": "overtake",
@@ -4806,34 +1383,6 @@
       "sector": 5,
       "kind": "overtake",
       "body": "P4→P3 · lost to #950 in S5"
-    },
-    {
-      "car": "953",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P9 · lost to #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P9 · lost to #969 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P9 · lost to #949 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 5,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P9 · lost to #959 in S1"
     },
     {
       "car": "953",
@@ -4858,66 +1407,10 @@
     },
     {
       "car": "953",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #949 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #969 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #959 in S1"
-    },
-    {
-      "car": "953",
       "lap": 5,
       "sector": 5,
       "kind": "fastest",
       "body": "class-best S5 · 50.9s"
-    },
-    {
-      "car": "953",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #961 in S1"
     },
     {
       "car": "953",
@@ -4942,76 +1435,6 @@
     },
     {
       "car": "953",
-      "lap": 8,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #969 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #952 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #959 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #945 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 9,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P10 · lost to #999 in S1"
-    },
-    {
-      "car": "953",
       "lap": 9,
       "sector": 3,
       "kind": "overtake",
@@ -5019,87 +1442,10 @@
     },
     {
       "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #969 in S1"
-    },
-    {
-      "car": "953",
       "lap": 9,
       "sector": 4,
       "kind": "overtake",
       "body": "P12→P13 · passed #971 in S4"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #952 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #959 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · passed #945 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 10,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P11→P2 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 11,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P4 · lost to #950 in S1"
     },
     {
       "car": "953",
@@ -5114,27 +1460,6 @@
       "sector": 4,
       "kind": "overtake",
       "body": "P3→P2 · passed #971 in S4"
-    },
-    {
-      "car": "953",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 12,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P5 · lost to #950 in S1"
     },
     {
       "car": "953",
@@ -5167,13 +1492,6 @@
     {
       "car": "953",
       "lap": 13,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P5→P5 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 13,
       "sector": 3,
       "kind": "overtake",
       "body": "P5→P3 · passed #961 in S3"
@@ -5195,20 +1513,6 @@
     {
       "car": "953",
       "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 15,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P4→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 15,
       "sector": 5,
       "kind": "overtake",
       "body": "P4→P3 · passed #950 in S5"
@@ -5219,153 +1523,6 @@
       "sector": 5,
       "kind": "gap",
       "body": "closing on #962 · 35.1s → 22.1s"
-    },
-    {
-      "car": "953",
-      "lap": 16,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · passed #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 17,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #949 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #952 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 18,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P8 · lost to #959 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #977 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #949 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #959 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 19,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P13→P1 · passed #952 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 20,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P3 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 20,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P3 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 21,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P3→P2 · passed #971 in S1"
     },
     {
       "car": "953",
@@ -5390,136 +1547,10 @@
     },
     {
       "car": "953",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 27,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P4 · lost to #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 28,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #950 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 29,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 31,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 32,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P2→P2 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 33,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
       "lap": 33,
       "sector": 3,
       "kind": "fastest",
       "body": "class-best S3 · 2:07.8s"
-    },
-    {
-      "car": "953",
-      "lap": 36,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P2 · lost to #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 37,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P1 · passed #962 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P7 · lost to #959 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P7 · lost to #971 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P7 · lost to #961 in S1"
-    },
-    {
-      "car": "953",
-      "lap": 38,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P1→P7 · lost to #950 in S1"
     },
     {
       "car": "953",
@@ -5537,52 +1568,10 @@
     },
     {
       "car": "960",
-      "lap": 2,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P18→P19 · lost to #980 in S1"
-    },
-    {
-      "car": "960",
-      "lap": 4,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P19→P18 · passed #959 in S1"
-    },
-    {
-      "car": "960",
       "lap": 4,
       "sector": 4,
       "kind": "overtake",
       "body": "P18→P19 · lost to #959 in S4"
-    },
-    {
-      "car": "960",
-      "lap": 6,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P19→P18 · passed #980 in S1"
-    },
-    {
-      "car": "960",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P19→P21 · lost to #964 in S1"
-    },
-    {
-      "car": "960",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P19→P21 · lost to #951 in S1"
-    },
-    {
-      "car": "960",
-      "lap": 7,
-      "sector": 1,
-      "kind": "overtake",
-      "body": "P19→P21 · lost to #980 in S1"
     }
   ],
   "messages": [
