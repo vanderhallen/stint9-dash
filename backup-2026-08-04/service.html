@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service — component km</title>
+<style>
+  html,body{margin:0;height:100%;background:#fff;font-family:'IBM Plex Mono',ui-monospace,monospace;color:#16202b}
+  body{overflow:hidden}
+  /* two horizontal pages: GRID | ARCHIVE — a link slides between them */
+  #wrap{display:flex;width:200%;height:100%;transition:transform .4s cubic-bezier(.55,.06,.2,1)}
+  body.archive #wrap{transform:translateX(-50%)}
+  .page{flex:0 0 50%;width:50%;height:100%;display:flex;flex-direction:column;min-height:0}
+  .pagehead{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px 6px}
+  .ptitle{font-size:15px;font-weight:800;letter-spacing:2px;color:#16202b}
+  .ptitle small{font-size:11px;font-weight:500;letter-spacing:1px;color:#6b7480;margin-left:8px;text-transform:uppercase}
+  .navlink{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;color:#16202b;background:#eceff2;border:none;border-radius:8px;padding:8px 12px;cursor:pointer}
+  .navlink:hover{background:#dfe4e9}
+  .pagebody{flex:1 1 auto;min-height:0;overflow:auto}
+  #pageGrid .pagebody{overflow:hidden}   /* SERVICE never scrolls — cards scale to fit */
+  /* grid fills the panel: 4 cols × 2 rows share the height so every card (and its
+     SWAP button) is visible without scrolling; cards flex, icon takes the slack */
+  #grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:8px;padding:10px;box-sizing:border-box;height:100%}
+  @media (max-width:760px){#grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;height:auto}.card{height:auto}}
+  .card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px 8px 9px;border:2px solid #e3e7eb;border-radius:12px;
+    background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:0;min-height:0;height:100%;overflow:hidden;position:relative}
+  .card.due{border-color:#e0301e}
+  .cname{font-size:14px;font-weight:700;letter-spacing:1.5px;color:#16202b}
+  .rows{width:100%;display:flex;flex-direction:column;gap:3px;margin-top:1px}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:14px}
+  .rlbl{color:#6b7480;letter-spacing:.5px;font-weight:600}
+  .rval{font-weight:700;color:#16202b;font-variant-numeric:tabular-nums}
+  .rval.km{font-size:20px}
+  /* adjustable service interval — inline editable number field */
+  .svcedit{display:inline-flex;align-items:baseline;gap:3px}
+  /* all three value rows share one number box (fixed width, right-aligned) + a
+     km suffix, so digits and units line up in a column across SERVICE/ACTUAL/LEFT */
+  .svcinp,.vnum{font-family:inherit;font-size:20px;font-weight:700;color:#16202b;text-align:right;
+    width:88px;box-sizing:content-box;padding:1px 2px;margin:0;font-variant-numeric:tabular-nums}
+  .svcinp{border:none;border-bottom:1px dashed #9aa2ab;background:transparent;border-radius:0;cursor:text;-webkit-appearance:none;appearance:none;line-height:normal}
+  .vnum{display:inline-block}
+  .vnum.over{color:#e0301e}
+  .svcinp::placeholder{color:#9aa2ab;font-weight:600;font-size:13px}
+  .svcinp:hover{background:#f0f3f6}
+  .svcinp:focus{outline:none;background:#eef4ef;border-bottom-color:#1e8f3a}
+  .kmsfx{font-size:20px;color:#16202b;font-weight:700}
+  .svcedit.cond .kmsfx{display:none}
+  .rval.over{color:#e0301e}
+  /* progress bar: actual toward the service interval */
+  .bar{width:100%;height:6px;border-radius:4px;background:#eceff2;overflow:hidden;margin-top:1px}
+  .bar>i{display:block;height:100%;width:0;background:#1e8f3a;border-radius:4px;transition:width .3s}
+  .bar>i.warn{background:#e8a71e}
+  .bar>i.over{background:#e0301e}
+  .swap{margin-top:5px;width:100%;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:1.5px;color:#fff;background:#16202b;
+    border:none;border-radius:8px;padding:8px 0;cursor:pointer}
+  .swap:hover{background:#2c3946}
+  .swap:disabled{background:#c3c8ce;cursor:not-allowed}
+  .lastswap{font-size:12px;color:#9aa2ab;letter-spacing:.3px;min-height:14px}
+  /* read-only veil (archive replay / not signed in on this car) */
+  body.ro .swap{display:none}
+  body.ro .svcinp{border-bottom:none;background:transparent;cursor:default}
+  /* ---- ARCHIVE: component life log. Components in columns, part # in rows;
+     each cell = IN date / OUT date (YYYYMMDD) + km used. Scrolls vertically
+     (and horizontally when narrow); header row + part column stay pinned. ---- */
+  #archwrap{padding:6px 14px 18px}
+  .archempty{color:#8a929b;font-size:14px;font-weight:600;letter-spacing:.5px;padding:18px 4px}
+  /* table-layout:fixed + width:100% → 9 columns always fit the panel, never scroll
+     horizontally. Fonts are sized so IN/OUT dates + km fit each narrow column. */
+  table.arch{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;font-size:11px}
+  table.arch thead th{position:sticky;top:0;background:#16202b;color:#fff;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+    padding:8px 4px;white-space:nowrap;text-align:center;z-index:2}
+  table.arch th.rowh{width:34px}
+  table.arch thead th.rowh{position:sticky;left:0;background:#2c3946;text-align:center;z-index:3}
+  table.arch tbody th.rowh{position:sticky;left:0;background:#f2f4f6;color:#16202b;font-weight:800;letter-spacing:.3px;
+    border-bottom:1px solid #e6e9ec;padding:6px 4px;white-space:nowrap;text-align:center;z-index:1}
+  table.arch tbody td{border-bottom:1px solid #e6e9ec;border-right:1px solid #eef1f4;padding:6px 5px;vertical-align:top}
+  table.arch tbody tr:nth-child(even) td{background:#fafbfc}
+  td.empty{color:#cfd4da}
+  /* cell format: IN date over OUT date (YYYYMMDD), then "234 KM" — grey/bold */
+  .pcell2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;line-height:1.15;color:#5b5b5b}
+  /* per part: date1 / odo1 · date2 / odo2 · diff (odo2-odo1, the big number) */
+  .pcell2 .d{font-size:10px;font-weight:700;color:#9aa2ab;font-variant-numeric:tabular-nums;letter-spacing:0;margin-top:4px}
+  .pcell2 .d:first-child{margin-top:0}
+  .pcell2 .d.use{color:#1e8f3a;font-weight:800}
+  .pcell2 .odo{font-size:12px;font-weight:700;color:#16202b;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pcell2 .km{font-size:15px;font-weight:800;color:#16202b;letter-spacing:0;margin-top:5px;white-space:nowrap}
+  /* confirm modal (swap) */
+  .modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(10,16,22,.45)}
+  .mbox{background:#fff;border-radius:12px;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:12px;min-width:260px;max-width:320px}
+  .mbox h4{margin:0;font-size:14px;font-weight:800;letter-spacing:.5px}
+  .mbox p{margin:0;font-size:12px;line-height:1.5;color:#4a545e}
+  .odlbl{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;letter-spacing:1px;color:#16202b}
+  .odinp{font-family:inherit;font-size:22px;font-weight:800;color:#16202b;text-align:right;padding:9px 12px;
+    border:1.5px solid #cfd4da;border-radius:8px;font-variant-numeric:tabular-nums}
+  .odinp:focus{outline:none;border-color:#1e8f3a;background:#f4faf5}
+  .mbtns{display:flex;justify-content:flex-end;gap:10px}
+  .mbtns button{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.5px;padding:8px 16px;border-radius:7px;border:none;cursor:pointer}
+  .mcancel{background:#e6e9ec;color:#16202b}.mcancel:hover{background:#d8dce0}
+  .mok{background:#e0301e;color:#fff}.mok:hover{background:#c0271a}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="page" id="pageGrid">
+    <div class="pagehead"><span class="ptitle">SERVICE<small>component km interval to next service</small></span><button type="button" class="navlink" id="toArchive">ARCHIVE &#9656;</button></div>
+    <div class="pagebody"><div id="grid"></div></div>
+  </div>
+  <div class="page" id="pageArchive">
+    <div class="pagehead"><button type="button" class="navlink back" id="toGrid">&#9666; SERVICE</button><span class="ptitle">ARCHIVE</span></div>
+    <div class="pagebody"><div id="archwrap"></div></div>
+  </div>
+</div>
+<script>
+const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+
+
+/* ---- component definitions (order = display order). Intervals are sensible
+   endurance defaults; each is editable per car and persisted. ---- */
+// interval = km to next service. 0 = "on condition" (no fixed km — inspect &
+// replace; km is still logged but there's no target / no over-service flag).
+const COMPONENTS=[
+  {key:'engine', label:'ENGINE',  interval:50000},
+  {key:'oil',    label:'OIL',     interval:5000},
+  {key:'disc',   label:'DISC',    interval:3000},
+  {key:'pad',    label:'PAD',     interval:1500},
+  {key:'shaft',  label:'SHAFT',   interval:10000},
+  {key:'bearing',label:'BEARING', interval:5000},
+  {key:'turbo',  label:'TURBO',   interval:8000},
+  {key:'diff',   label:'DIFF',    interval:20000}
+];
+function svcText(iv){return iv>0?(fmtKm(iv)+' km'):'on condition';}
+
+/* ---- state: one blob per car in public.stint9_service_state ----
+   state = { comp: { engine:{interval, actual, start}, ... } }
+   `actual` accumulates live km driven; `start` = ISO of the current part's
+   install (set on swap). CUR_CAR comes from the dashboard via postMessage. */
+let CUR_CAR='', LIVE_MODE=false, ARCHIVE_RO=false, RO=false;
+let STATE={comp:{}};
+// odo = odometer reading (car total km) when the current part was installed
+function defState(){const c={};COMPONENTS.forEach(d=>{c[d.key]={interval:d.interval,actual:0,start:null,odo:0};});return {comp:c};}
+function normState(s){s=s||{};const base=defState();if(s.comp)COMPONENTS.forEach(d=>{const o=s.comp[d.key];if(o){base.comp[d.key].interval=(o.interval!=null?o.interval:d.interval);base.comp[d.key].actual=(o.actual!=null?o.actual:0);base.comp[d.key].start=(o.start!=null?o.start:null);base.comp[d.key].odo=(o.odo!=null?o.odo:0);}});return base;}
+
+const _saveT={};
+function scheduleSave(){if(ARCHIVE_RO||RO||!CUR_CAR)return;clearTimeout(_saveT.t);_saveT.t=setTimeout(flushSave,500);}
+function flushSave(){clearTimeout(_saveT.t);_saveT.t=0;if(ARCHIVE_RO||RO||!CUR_CAR)return;
+  fetch(SB_URL+'/rest/v1/stint9_service_state?on_conflict=car',{method:'POST',keepalive:true,
+    headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({car:CUR_CAR,state:STATE,updated_at:new Date().toISOString()})}).catch(()=>{});
+}
+window.addEventListener('pagehide',()=>{try{if(_saveT.t)flushSave();}catch(e){}});
+
+function loadStateDB(car){
+  return fetch(SB_URL+'/rest/v1/stint9_service_state?select=state&car=eq.'+encodeURIComponent(car),{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>{
+      if(rows&&rows[0]){STATE=normState(rows[0].state);}
+      else{STATE=defState();const now=new Date().toISOString();COMPONENTS.forEach(d=>{STATE.comp[d.key].start=now;});scheduleSave();}  // fresh car: stamp install date = now
+      _liveProg=null;render();if(document.body.classList.contains('archive'))buildArchive();
+    })
+    .catch(()=>{STATE=defState();render();});
+}
+function setCurCar(car){car=String(car||'');if(car===CUR_CAR)return;
+  if(CUR_CAR&&_saveT.t)flushSave();
+  CUR_CAR=car;_liveProg=null;
+  if(car)loadStateDB(car);else{STATE=defState();render();}
+}
+
+/* ---- live km: same prog->km mapping as the tyre board. The dashboard posts the
+   selected car's progress; while running (LIVE) every component's ACTUAL km ticks
+   up by the km driven since the last sample. ---- */
+const _SEC_KM=[3.3,3.3,6.0,9.4,2.4];
+function _kmAt(p,sk){const total=sk.reduce((a,b)=>a+b,0);const lap=Math.floor(p/5);const pos=p-lap*5;
+  const si=Math.max(0,Math.min(4,Math.floor(pos))),frac=pos-si;let cum=0;for(let i=0;i<si;i++)cum+=sk[i];
+  return lap*total+cum+frac*sk[si];}
+let _liveProg=null,_persistT=0;
+function onLive(prog,sectorKm){
+  const sk=(sectorKm&&sectorKm.length===5)?sectorKm:_SEC_KM;
+  if(prog==null){_liveProg=null;return;}
+  if(LIVE_MODE&&!RO&&_liveProg!=null&&prog>_liveProg){
+    const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
+    if(dKm>0){COMPONENTS.forEach(d=>{const c=STATE.comp[d.key];if(!c)return;c.actual=(c.actual||0)+dKm;});
+      updateReadouts();
+      const now=Date.now();if(now-_persistT>5000){_persistT=now;scheduleSave();}}
+  }
+  _liveProg=prog;
+}
+
+/* ---- render ---- */
+const grid=document.getElementById('grid');
+function fmtKm(v){return Math.round(v||0).toLocaleString('en-US').replace(/,/g,' ');}
+/* grid order: sort by SERVICE km low→high, row-major — lowest (PAD) top-left,
+   highest (ENGINE) bottom-right. On-condition parts (interval 0) sort last. */
+function orderedComps(){
+  const iv=c=>{const v=(STATE.comp[c.key]&&STATE.comp[c.key].interval)||c.interval;return v>0?v:Infinity;};
+  return COMPONENTS.slice().sort((a,b)=>iv(a)-iv(b));
+}
+function render(){
+  grid.innerHTML='';
+  orderedComps().forEach(d=>{
+    const c=STATE.comp[d.key]||{interval:d.interval,actual:0,start:null};
+    const card=document.createElement('div');card.className='card';card.dataset.key=d.key;
+    card.innerHTML=
+      '<div class="cname">'+d.label+'</div>'+
+      '<div class="rows">'+
+        '<div class="row"><span class="rlbl">SERVICE</span><span class="svcedit"><input class="svcinp" type="text" inputmode="numeric" autocomplete="off" data-k="interval" title="service interval — type km, or blank for on-condition" placeholder="on cond." '+(RO?'readonly ':'')+'value="'+(c.interval>0?fmtKm(c.interval):'')+'"><span class="kmsfx">km</span></span></div>'+
+        '<div class="row"><span class="rlbl">ACTUAL</span><span class="svcedit"><span class="vnum" data-k="actual">'+fmtKm(c.actual)+'</span><span class="kmsfx">km</span></span></div>'+
+        '<div class="row"><span class="rlbl">LEFT</span><span class="svcedit"><span class="vnum" data-k="left">—</span><span class="kmsfx">km</span></span></div>'+
+      '</div>'+
+      '<div class="bar"><i></i></div>'+
+      '<div class="lastswap"></div>'+
+      '<button type="button" class="swap">SWAP</button>';
+    grid.appendChild(card);
+    // adjustable service interval (type km; blank = on condition)
+    const inp=card.querySelector('.svcinp');
+    if(inp&&!RO){
+      const commit=()=>commitInterval(d.key,inp);
+      inp.addEventListener('change',commit);
+      inp.addEventListener('blur',commit);
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}});
+    }
+    card.querySelector('.swap').addEventListener('click',()=>askSwap(d));
+  });
+  updateReadouts();
+}
+function commitInterval(key,inp){
+  const n=parseInt((inp.value||'').replace(/\D/g,''),10);
+  const c=STATE.comp[key];if(!c)return;
+  c.interval=(n>0?n:0);   // blank / 0 → on condition
+  scheduleSave();
+  render();   // re-sort: the card jumps to its new low→high rank
+}
+/* update the numbers/bars in place (no full re-render) so live km ticks smoothly */
+function updateReadouts(){
+  COMPONENTS.forEach(d=>{
+    const c=STATE.comp[d.key];if(!c)return;
+    const card=grid.querySelector('.card[data-key="'+d.key+'"]');if(!card)return;
+    const inp=card.querySelector('.svcinp'),edit=card.querySelector('.svcedit'),act=card.querySelector('[data-k="actual"]'),bar=card.querySelector('.bar>i'),last=card.querySelector('.lastswap');
+    const cond=!(c.interval>0);   // on-condition: no fixed interval
+    if(inp&&document.activeElement!==inp)inp.value=(c.interval>0?fmtKm(c.interval):'');
+    if(edit)edit.classList.toggle('cond',cond);
+    if(act)act.textContent=fmtKm(c.actual);
+    const leftv=card.querySelector('[data-k="left"]');
+    if(leftv){const lwrap=leftv.parentElement;
+      if(cond){leftv.textContent='—';leftv.classList.remove('over');if(lwrap)lwrap.classList.add('cond');}
+      else{const rem=Math.round(c.interval-c.actual);leftv.textContent=fmtKm(rem);leftv.classList.toggle('over',rem<0);if(lwrap)lwrap.classList.remove('cond');}
+    }
+    const pct=cond?0:(c.actual/c.interval);
+    const over=!cond&&pct>=1,warn=!cond&&pct>=0.85;
+    if(bar){bar.style.width=(cond?0:Math.min(100,pct*100))+'%';bar.classList.toggle('warn',warn&&!over);bar.classList.toggle('over',over);
+      if(bar.parentElement)bar.parentElement.style.visibility=cond?'hidden':'';}
+    card.classList.toggle('due',over);
+    if(act)act.classList.toggle('over',over);
+    if(last)last.textContent=c.start?('since '+c.start.slice(0,10)):'';
+  });
+}
+
+/* ---- SWAP: close out the current part's life to the log, reset ACTUAL to 0 ---- */
+let _pendingSwap=null;
+function askSwap(d){
+  const c=STATE.comp[d.key]||{};
+  _pendingSwap=d;
+  const ov=document.createElement('div');ov.className='modal';
+  const odoEst=Math.round((c.odo||0)+(c.actual||0));
+  ov.innerHTML='<div class="mbox"><h4>Swap '+d.label+'</h4>'+
+    '<p>Fit a new '+d.label.toLowerCase()+' and log the one coming off. Enter the car\'s current <b>odometer</b> reading. '+
+    'The part did odometer &minus; '+fmtKm(c.odo||0)+' km (its install reading). '+
+    '(Livetiming estimate: '+fmtKm(odoEst)+' km.)</p>'+
+    '<label class="odlbl">ODOMETER (km)<input type="text" inputmode="numeric" autocomplete="off" class="odinp" value="'+odoEst+'"></label>'+
+    '<div class="mbtns"><button type="button" class="mcancel">Cancel</button><button type="button" class="mok">OK</button></div></div>';
+  document.body.appendChild(ov);
+  const inp=ov.querySelector('.odinp');
+  const close=()=>{ov.remove();_pendingSwap=null;};
+  const ok=()=>{const km=parseInt((inp.value||'').replace(/\D/g,''),10);doSwap(d,isNaN(km)?null:km);ov.remove();_pendingSwap=null;};
+  ov.querySelector('.mcancel').addEventListener('click',close);
+  ov.querySelector('.mok').addEventListener('click',ok);
+  ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ok();}else if(e.key==='Escape'){e.preventDefault();close();}});
+  setTimeout(()=>{inp.focus();inp.select();},20);
+}
+function doSwap(d,odoReading){
+  if(RO||!CUR_CAR)return;
+  const c=STATE.comp[d.key];if(!c)return;
+  const now=new Date().toISOString();
+  const odoIn=Math.round(c.odo||0);
+  // odometer reading at removal (odo_out); fall back to install + livetiming estimate if blank
+  const odoOut=(odoReading!=null&&!isNaN(odoReading))?Math.round(odoReading):Math.round((c.odo||0)+(c.actual||0));
+  const km=odoOut-odoIn;   // km the part did = ODO2 - ODO1
+  fetch(SB_URL+'/rest/v1/stint9_service_log',{method:'POST',keepalive:true,
+    headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({car:CUR_CAR,component:d.key,start_date:c.start,end_date:now,odo_in:odoIn,odo_out:odoOut,km:km,interval_km:c.interval})}).catch(()=>{});
+  // new part: installed now at odo_out; livetiming ACTUAL restarts from 0
+  c.actual=0;c.start=now;c.odo=odoOut;
+  render();flushSave();
+  if(document.body.classList.contains('archive'))buildArchive();
+}
+
+/* ---- messages from the dashboard ---- */
+window.addEventListener('message',e=>{const m=e.data;if(!m)return;
+  if(m.type==='svcArchive'){ARCHIVE_RO=true;RO=true;document.body.classList.add('ro');CUR_CAR=String(m.car||'');STATE=normState(m.state);_liveProg=null;render();return;}
+  if(m.type==='svcCar'){ARCHIVE_RO=!!m.ro;RO=!!m.ro;LIVE_MODE=!!m.live;document.body.classList.toggle('ro',!!m.ro);setCurCar(m.car);return;}
+  if(m.type==='svcLive'){if(m.ro!=null){RO=!!m.ro;ARCHIVE_RO=!!m.ro;document.body.classList.toggle('ro',!!m.ro);}LIVE_MODE=!!m.live;if(m.car!=null)setCurCar(m.car);onLive(m.prog,m.sectorKm);return;}
+  // Left/Right nav forwarded from the dashboard: right → ARCHIVE, left → grid
+  if(m.type==='svcH'){if(m.dir>0)openArchive();else closeArchive();return;}
+});
+// keyboard when focus is inside this iframe: Up/Down step the parent reel;
+// Left/Right flip GRID ↔ ARCHIVE (ignored while typing in the interval field).
+window.addEventListener('keydown',e=>{
+  const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();try{window.parent.postMessage({type:'reelV',dir:e.key==='ArrowDown'?1:-1},'*');}catch(err){}}
+  else if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!typing){e.preventDefault();if(e.key==='ArrowRight')openArchive();else closeArchive();}
+});
+
+/* ---- ARCHIVE view: per-car component life log ----
+   Columns = the 8 components, rows = part number (#1 = first fitted, …). Each
+   cell shows the part's IN date / OUT date (YYYYMMDD) and the km it did. The
+   part currently on the car is the last row of its column (OUT = IN USE, live km). */
+function fmtYmd(iso){if(!iso)return '—';const d=new Date(iso);if(isNaN(d.getTime()))return '—';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function openArchive(){document.body.classList.add('archive');buildArchive();}
+function closeArchive(){document.body.classList.remove('archive');}
+function buildArchive(){
+  const wrap=document.getElementById('archwrap');
+  if(!CUR_CAR){wrap.innerHTML='<div class="archempty">Sign in on a car to view its service archive.</div>';return;}
+  wrap.innerHTML='<div class="archempty">Loading…</div>';
+  fetch(SB_URL+'/rest/v1/stint9_service_log?select=component,start_date,end_date,km,odo_in,odo_out&car=eq.'+encodeURIComponent(CUR_CAR)+'&order=end_date.asc',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+    .then(r=>r.ok?r.json():[]).then(rows=>renderArchive(rows||[])).catch(()=>renderArchive([]));
+}
+function renderArchive(logRows){
+  const byComp={};COMPONENTS.forEach(d=>byComp[d.key]=[]);
+  // retired parts (oldest first, by swap date), then the part currently fitted
+  logRows.forEach(r=>{if(byComp[r.component])byComp[r.component].push({in:r.start_date,out:r.end_date,odoIn:r.odo_in,odoOut:r.odo_out,km:r.km});});
+  COMPONENTS.forEach(d=>{const c=STATE.comp[d.key];if(c)byComp[d.key].push({in:c.start,odoIn:Math.round(c.odo||0),actual:Math.round(c.actual||0),current:true});});
+  const maxRows=Math.max(1,...COMPONENTS.map(d=>byComp[d.key].length));
+  let h='<table class="arch"><thead><tr><th class="rowh">PART</th>'+COMPONENTS.map(d=>'<th>'+d.label+'</th>').join('')+'</tr></thead><tbody>';
+  for(let i=0;i<maxRows;i++){
+    h+='<tr><th class="rowh">#'+(i+1)+'</th>';
+    COMPONENTS.forEach(d=>{const p=byComp[d.key][i];
+      if(!p){h+='<td class="empty"></td>';return;}
+      if(p.current){const odo2=Math.round((p.odoIn||0)+(p.actual||0));
+        h+='<td><div class="pcell2 cur">'+
+          '<span class="d">'+fmtYmd(p.in)+'</span>'+
+          '<span class="odo">'+fmtKm(p.odoIn)+' km</span>'+
+          '<span class="d use">IN USE</span>'+
+          '<span class="odo">~'+fmtKm(odo2)+' km</span>'+
+          '<span class="km">~'+fmtKm(p.actual)+' KM</span></div></td>';
+      }else{
+        h+='<td><div class="pcell2">'+
+          '<span class="d">'+fmtYmd(p.in)+'</span>'+
+          '<span class="odo">'+fmtKm(p.odoIn)+' km</span>'+
+          '<span class="d">'+fmtYmd(p.out)+'</span>'+
+          '<span class="odo">'+fmtKm(p.odoOut)+' km</span>'+
+          '<span class="km">'+fmtKm(p.km)+' KM</span></div></td>';
+      }
+    });
+    h+='</tr>';
+  }
+  h+='</tbody></table>';
+  document.getElementById('archwrap').innerHTML=h;
+}
+document.getElementById('toArchive').addEventListener('click',openArchive);
+document.getElementById('toGrid').addEventListener('click',closeArchive);
+
+STATE=defState();render();
+</script>
+</body>
+</html>

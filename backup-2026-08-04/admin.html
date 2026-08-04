@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STINT9 · admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
+  .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .statebig{font-size:26px;font-weight:700;letter-spacing:2px}
+  .on{color:#1e8f3a}.off{color:#e0301e}
+  .switch{position:relative;width:96px;height:44px;border-radius:24px;border:none;cursor:pointer;transition:background .2s;flex:0 0 auto}
+  .switch.on{background:#1e8f3a}.switch.off{background:#c3c8ce}
+  .knob{position:absolute;top:4px;left:4px;width:36px;height:36px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on .knob{left:56px}
+  .meta{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:10px}
+  a.btn,button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:11px 18px;border-radius:8px;text-decoration:none;display:inline-block;cursor:pointer}
+  a.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  .filters{display:flex;gap:8px;margin-bottom:14px}
+  .filters button{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;padding:7px 13px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer}
+  .filters button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .bar{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .bar .nm{width:56px;font-weight:700;letter-spacing:1px}
+  .bar .track{flex:1 1 auto;height:20px;background:#eef1f4;border-radius:5px;overflow:hidden}
+  .bar .fill{height:100%;background:#2f5fd0;border-radius:5px}
+  .bar .val{width:78px;text-align:right;color:var(--muted);font-size:12px}
+  .rank{width:22px;color:var(--muted);text-align:right;font-size:12px}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0}
+  table.vis{width:100%;border-collapse:collapse;font-size:12px}
+  table.vis th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
+  table.vis td{padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  table.vis td.ip{font-weight:700}
+  table.vis td.ua{max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis;color:var(--muted);white-space:nowrap}
+  .visscroll{overflow-x:auto}
+  /* events archive */
+  .ev{border:1px solid var(--border);border-radius:9px;margin:8px 0;overflow:hidden}
+  .ev .evhead{display:flex;align-items:center;gap:12px;padding:11px 13px;flex-wrap:wrap;cursor:pointer}
+  .ev .evhead:hover{background:#fafbfc}
+  .ev .slug{font-weight:700;letter-spacing:1px;font-size:14px;background:var(--ink);color:#fff;border-radius:6px;padding:3px 9px}
+  .ev .evname{font-weight:700;font-size:13px}
+  .ev .evsub{color:var(--muted);font-size:11px;letter-spacing:.5px}
+  .ev .evacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .ev .evacts a,.ev .evacts button{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 10px;border-radius:6px;text-decoration:none;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink)}
+  .ev .evacts a.prim{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .ev .evbody{display:none;padding:4px 13px 14px;border-top:1px solid var(--border)}
+  .ev.open .evbody{display:block}
+  .ev.open .evhead{background:#f7f9fb}
+  .evsec{margin-top:12px}
+  .evsec h3{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .chip{display:inline-block;font-size:11px;background:#eef1f4;border-radius:5px;padding:3px 8px;margin:0 5px 5px 0}
+  .chip b{color:var(--ink)}
+  .evsec table.vis td,.evsec table.vis th{font-size:11px}
+  .caret{transition:transform .15s;color:var(--muted)}
+  .ev.open .caret{transform:rotate(90deg)}
+  .dlrow{display:flex;gap:7px;flex-wrap:wrap}
+  .dlbtn{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.5px;padding:7px 11px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--ink);cursor:pointer}
+  .dlbtn:hover{background:#f2f5f8}
+  .dlbtn:disabled{opacity:.5;cursor:default}
+  .dlmsg{font-size:11px;color:var(--muted);margin-top:6px;min-height:14px}
+  /* login gate */
+  #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+  #gate .box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px;width:300px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  #gate input{width:100%;font-family:inherit;font-size:15px;padding:10px;border:1px solid var(--border);border-radius:8px;margin:14px 0;text-align:center;letter-spacing:3px}
+  #gate .err{color:#e0301e;font-size:12px;min-height:16px}
+</style>
+</head>
+<body>
+<div id="gate"><div class="box">
+  <div style="font-size:16px;letter-spacing:3px;text-transform:uppercase;font-weight:700">STINT9 admin</div>
+  <input id="pw" type="password" placeholder="password" autofocus>
+  <div class="err" id="pwerr"></div>
+  <button class="btn" style="width:100%" onclick="tryLogin()">Enter</button>
+</div></div>
+
+<div class="wrap" id="app" style="display:none">
+  <div>
+    <h1>STINT9 · Admin</h1>
+    <div class="sub">Race-control panel &middot; stint9-dash</div>
+  </div>
+
+  <div class="card">
+    <h2>Site visibility</h2>
+    <div class="row">
+      <div>
+        <div class="statebig" id="stateLbl">…</div>
+        <div class="meta" id="stateMeta"></div>
+      </div>
+      <button class="switch off" id="sw" onclick="toggleOnline()"><span class="knob"></span></button>
+    </div>
+    <div class="meta">OFFLINE replaces the public dashboard with a blank “countdown until OPEN PITLANE” page.</div>
+  </div>
+
+  <div class="card">
+    <h2>Dashboard</h2>
+    <div class="row">
+      <div class="meta" style="margin:0">Open the live STINT9 dashboard.</div>
+      <a class="btn" href="https://stint9.pages.dev" target="_blank" rel="noopener">Open dashboard →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>LIVE data stream <span id="liveRawState" style="font-size:13px;font-weight:600;padding:2px 8px;border-radius:6px;vertical-align:middle">…</span></h2>
+    <div class="row">
+      <div class="meta" style="margin:0">Raw rows the WIGE scraper is writing — use to check the feed is actually streaming.</div>
+      <span>
+        <label style="font-size:13px;margin-right:10px"><input type="checkbox" id="liveRawAuto"> auto (4s)</label>
+        <button class="btn" onclick="loadLiveRaw()">↻ Refresh</button>
+      </span>
+    </div>
+    <div class="meta" id="liveRawFresh" style="margin-top:8px">…</div>
+    <div style="overflow:auto;max-height:340px;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px">
+      <table id="liveRawTbl" style="width:100%;border-collapse:collapse;font:12px/1.4 ui-monospace,Menlo,monospace"></table>
+    </div>
+    <div class="meta" id="liveRawMeta" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <h2>AI Roundtable</h2>
+    <div class="row">
+      <div class="meta" style="margin:0">4-way human/AI collaboration board.</div>
+      <a class="btn" href="roundtable.html" target="_blank" rel="noopener">Open roundtable →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Backend logic</h2>
+    <div class="meta" style="margin:0 0 14px">Visual schematic of how the data moves — sources, LIVE pipeline, tables, per-car isolation.</div>
+    <div class="row" style="justify-content:flex-end">
+      <a class="btn" href="backend-logic.html" target="_blank" rel="noopener">Backend logic →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Driver database</h2>
+    <div class="meta" style="margin:0 0 14px">Every driver who competed in the 2026 NLS season — sortable by races, podiums, points in class, best finish/lap, nationality, cars & teams, with a races×points heatmap. Auto-refreshes weekly from the official result PDFs.</div>
+    <div class="row" style="justify-content:flex-end">
+      <a class="btn" href="driver.html" target="_blank" rel="noopener">Driver database →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Race events archive</h2>
+    <div class="meta" style="margin:0 0 12px">Each finished NLS event is snapshotted to <code>stint9_events</code> (timing + crew fuel/tyre/notes overlay), with a committed <code>events/&lt;slug&gt;.json</code> backup. Open one in the SIM, with or without the crew overlay, or expand to inspect its fuel / tyre / notes.</div>
+    <div class="filters"><button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadEvents()">↻ refresh</button></div>
+    <div id="events"><div class="empty">Loading…</div></div>
+    <div class="meta" id="eventsMeta"></div>
+  </div>
+
+  <div class="card">
+    <h2>Reel usage — most watched</h2>
+    <div class="filters">
+      <button id="fToday" class="active" onclick="setRange('today')">Today</button>
+      <button id="fAll" onclick="setRange('all')">All time</button>
+      <button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadUsage()">↻ refresh</button>
+    </div>
+    <div id="usage"><div class="empty">Loading…</div></div>
+    <div class="meta" id="usageMeta"></div>
+  </div>
+
+  <div class="card">
+    <h2>Visitor log — index page</h2>
+    <div class="filters">
+      <button id="vToday" onclick="setVisRange('today')">Today</button>
+      <button id="vAll" class="active" onclick="setVisRange('all')">All time</button>
+      <button class="btn ghost" style="margin-left:auto;padding:7px 12px" onclick="loadVisitors()">↻ refresh</button>
+    </div>
+    <div class="visscroll"><div id="visitors"><div class="empty">Loading…</div></div></div>
+    <div class="meta" id="visMeta"></div>
+  </div>
+</div>
+
+<script>
+// Same Supabase project + publishable key the dashboard uses.
+var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
+var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+var H={apikey:KEY,Authorization:'Bearer '+KEY};
+// Client-side shared password (this is a soft gate — the key is in-page anyway).
+var ADMIN_PW='pitwall';
+
+/* ---- login gate ---- */
+function unlock(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='';loadStatus();loadLiveRaw();loadEvents();loadUsage();loadVisitors();if(!liveRawTimer)liveRawTimer=setInterval(liveRawTick,4000);}
+function tryLogin(){var v=document.getElementById('pw').value;
+  if(v===ADMIN_PW){try{sessionStorage.setItem('stint9_admin_ok','1');}catch(e){}unlock();}
+  else{document.getElementById('pwerr').textContent='Wrong password';}}
+document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin();});
+try{if(sessionStorage.getItem('stint9_admin_ok')==='1')unlock();}catch(e){}
+
+/* ---- ONLINE / OFFLINE toggle ---- */
+var curOnline=null;
+function paint(online,meta){
+  curOnline=online;
+  var lbl=document.getElementById('stateLbl'),sw=document.getElementById('sw');
+  lbl.textContent=online?'ONLINE':'OFFLINE';lbl.className='statebig '+(online?'on':'off');
+  sw.className='switch '+(online?'on':'off');
+  document.getElementById('stateMeta').textContent=meta||'';
+}
+function loadStatus(){
+  fetch(SB+'/rest/v1/stint9_site_status?select=online,updated_at,updated_by&id=eq.1',{headers:H})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(rows){var row=rows&&rows[0];if(!row){paint(true,'');return;}
+      paint(row.online!==false,'last change '+fmtWhen(row.updated_at)+(row.updated_by?(' · '+row.updated_by):''));})
+    .catch(function(){paint(true,'(could not read status)');});
+}
+function toggleOnline(){
+  if(curOnline===null)return;var next=!curOnline;
+  paint(next,'saving…');
+  fetch(SB+'/rest/v1/stint9_site_status',{method:'POST',
+    headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({id:1,online:next,updated_at:new Date().toISOString(),updated_by:'admin'})})
+    .then(function(r){if(!r.ok)throw 0;loadStatus();})
+    .catch(function(){paint(!next,'save failed — try again');});
+}
+
+/* ---- LIVE data stream (raw) — troubleshooting -------------------------------
+   Reads what the WIGE scraper is actually writing (stint9_live_status +
+   stint9_live_timing) so you can tell at a glance whether the feed is streaming,
+   the scraper is silent, or the SOURCE is frozen (writes fresh but data-time
+   stale). Distinguishes those three via the state pill. */
+var liveRawTimer=null;
+function secClock(s){s=Number(s);if(!isFinite(s))return '—';var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x;}
+function agoStr(ms){var s=Math.max(0,Math.round(ms/1000));if(s<60)return s+'s';var m=Math.floor(s/60);return m+'m'+(s%60<10?'0':'')+(s%60)+'s';}
+function setLiveState(txt,bg,fg){var el=document.getElementById('liveRawState');if(el){el.textContent=txt;el.style.background=bg;el.style.color=fg;}}
+function loadLiveRaw(){
+  Promise.all([
+    fetch(SB+'/rest/v1/stint9_live_status?select=*&order=updated_at.desc&limit=1',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];}),
+    fetch(SB+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,lap_end_tod,lap_time,driver&event_date=eq.'+new Date().toISOString().slice(0,10)+'&order=lap_end_tod.desc.nullslast&limit=100000',{headers:H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];})
+  ]).then(function(res){
+    var st=res[0]&&res[0][0], rows=res[1]||[], now=Date.now();
+    var writeAgo=(st&&st.updated_at)?(now-Date.parse(st.updated_at)):null;   // is the scraper writing at all?
+    var maxTod=rows.length?rows[0].lap_end_tod:null;                          // newest crossing time in the feed
+    var d=new Date(), nowUtcSec=d.getUTCHours()*3600+d.getUTCMinutes()*60+d.getUTCSeconds();
+    var behind=(maxTod!=null)?((nowUtcSec-maxTod+86400)%86400):null;          // how far the SOURCE lags wall clock
+    if(!st||writeAgo==null)             setLiveState('NO WRITES','#fee2e2','#991b1b');
+    else if(writeAgo>150000)            setLiveState('SCRAPER SILENT '+agoStr(writeAgo),'#fee2e2','#991b1b');
+    else if(behind!=null&&behind>150)   setLiveState('SOURCE STALE '+agoStr(behind*1000)+' behind','#fef3c7','#92400e');
+    else if(st.live)                    setLiveState('STREAMING','#dcfce7','#166534');
+    else                                setLiveState('OFFLINE (no event)','#f3f4f6','#374151');
+    var f=[];
+    if(st)f.push('status: live='+st.live+' · event '+(st.event_id||'—')+' · '+(st.cars||0)+' cars · '+(st.heat||'')+' · written '+(writeAgo!=null?agoStr(writeAgo)+' ago':'—'));
+    if(maxTod!=null)f.push('newest data-time '+secClock(maxTod)+' UTC · '+(behind!=null?agoStr(behind*1000)+' behind wall clock':''));
+    document.getElementById('liveRawFresh').innerHTML=f.map(esc).join('<br>');
+    var tb=document.getElementById('liveRawTbl');
+    if(!rows.length){tb.innerHTML='<tr><td class="empty" style="padding:8px">No rows in stint9_live_timing.</td></tr>';}
+    else{
+      var head='<tr>'+['car','lap','class','s1','s2','s3','s4','s5','laptime','tod(UTC)'].map(function(h){return '<th style="position:sticky;top:0;background:#f9fafb;text-align:left;padding:5px 8px;border-bottom:1px solid #e5e7eb">'+h+'</th>';}).join('')+'</tr>';
+      var body=rows.map(function(r){var cells=[r.car,r.lap,(r.klass||''),r.s1,r.s2,r.s3,r.s4,r.s5,r.lap_time,secClock(r.lap_end_tod)];
+        return '<tr>'+cells.map(function(c){return '<td style="padding:3px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap">'+esc(c==null?'':c)+'</td>';}).join('')+'</tr>';}).join('');
+      tb.innerHTML=head+body;
+    }
+    document.getElementById('liveRawMeta').textContent=rows.length+' rows · refreshed '+new Date().toLocaleTimeString();
+  });
+}
+function liveRawTick(){var a=document.getElementById('liveRawAuto');if(a&&a.checked)loadLiveRaw();}
+
+/* ---- race events archive ---- */
+var evDetailCache={};
+function loadEvents(){
+  // ↻ refresh must re-fetch the per-event detail + download bundle too, not just
+  // the list — otherwise an open tab keeps showing a pre-cleanup snapshot.
+  evDetailCache={};evBundleCache={};
+  document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
+  fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
+    .then(function(r){return r.ok?r.json():[];}).then(renderEvents)
+    .catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
+}
+// "3h ago" / "2d ago" — surfaces how fresh each archive is, so a just-finished
+// event that hasn't been snapshotted yet reads as pending, not missing.
+function relTime(iso){
+  var t=Date.parse(iso);if(isNaN(t))return '';
+  var s=Math.max(0,(Date.now()-t)/1000);
+  if(s<90)return 'just now';
+  if(s<5400)return Math.round(s/60)+'m ago';
+  if(s<172800)return Math.round(s/3600)+'h ago';
+  return Math.round(s/86400)+'d ago';
+}
+function renderEvents(rows){
+  var box=document.getElementById('events');
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent='';return;}
+  box.innerHTML=rows.map(function(e){
+    var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
+    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)):'')].filter(Boolean).join(' · ');
+    var q='index.html?event='+encodeURIComponent(e.slug);
+    return '<div class="ev" id="ev-'+esc(e.slug)+'">'+
+      '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+
+        '<span class="caret">▶</span>'+
+        '<span class="slug">'+esc(e.slug)+'</span>'+
+        '<span><span class="evname">'+esc(e.name||e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evacts" onclick="event.stopPropagation()">'+
+          '<a class="prim" href="'+q+'&overlay=1" target="_blank" rel="noopener">SIM + overlay →</a>'+
+          '<a href="'+q+'" target="_blank" rel="noopener">SIM →</a>'+
+          '<a href="events/'+esc(e.slug)+'_notes.json" target="_blank" rel="noopener">notes file</a>'+
+        '</span>'+
+      '</div>'+
+      '<div class="evbody" id="evbody-'+esc(e.slug)+'"><div class="empty">…</div></div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived';
+}
+function toggleEvent(slug){
+  var el=document.getElementById('ev-'+slug);if(!el)return;
+  el.classList.toggle('open');
+  if(el.classList.contains('open')&&!evDetailCache[slug])loadEventDetail(slug);
+}
+function loadEventDetail(slug){
+  evDetailCache[slug]='loading';
+  // Prefer the lightweight committed notes file; fall back to the DB bundle overlay.
+  fetch('events/'+encodeURIComponent(slug)+'_notes.json',{cache:'no-store'})
+    .then(function(r){if(r.ok)return r.json();throw 0;})
+    .catch(function(){
+      return fetch(SB+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:H})
+        .then(function(r){return r.json();}).then(function(a){var b=(a&&a[0]&&a[0].bundle)||{};var o=b.overlay||{};
+          return {fuel:o.fuel_state||[],fuel_notes:o.fuel_notes||[],tyres:o.tyre_state||[],tyre_bands:o.band_state||[],racenotes:o.racenotes||[],messages:o.messages||[]};});
+    })
+    .then(function(d){evDetailCache[slug]=d;renderEventDetail(slug,d);})
+    .catch(function(){document.getElementById('evbody-'+slug).innerHTML='<div class="empty">Could not load details.</div>';});
+}
+function evTable(head,rows){return '<div class="visscroll"><table class="vis"><tr>'+head.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr>'+rows.join('')+'</table></div>';}
+function tyreSummary(state){if(!state||typeof state!=='object')return '—';
+  var bands=state.bands?Object.keys(state.bands).length:0;
+  var stock=Array.isArray(state.stock)?state.stock.length:(state.stock?Object.keys(state.stock).length:0);
+  var bits=[];if(bands)bits.push(bands+' bands');if(stock)bits.push(stock+' stock');return bits.length?bits.join(' · '):'—';}
+function renderEventDetail(slug,d){
+  var body=document.getElementById('evbody-'+slug);var html='';
+  // Downloads
+  html+='<div class="evsec"><h3>Download</h3><div class="dlrow">'+
+    '<button class="dlbtn" onclick="evDownload(\''+esc(slug)+'\',\'bundle\')">⤓ Full dataset (.json)</button>'+
+    '<button class="dlbtn" onclick="evDownload(\''+esc(slug)+'\',\'notes\')">⤓ Fuel / tyre / notes (.json)</button>'+
+    '<button class="dlbtn" onclick="evDownload(\''+esc(slug)+'\',\'sectors\')">⤓ Sector times (.csv)</button>'+
+    '<button class="dlbtn" onclick="evDownload(\''+esc(slug)+'\',\'laptimes\')">⤓ Lap times (.csv)</button>'+
+    '</div><div class="dlmsg" id="dlmsg-'+esc(slug)+'"></div></div>';
+  // Fuel state per car
+  html+='<div class="evsec"><h3>Fuel — per car</h3>';
+  if(d.fuel&&d.fuel.length){html+=d.fuel.map(function(f){var s=f.state||{};var keys=Object.keys(s).slice(0,4).map(function(k){return k+':'+(typeof s[k]==='object'?'…':s[k]);}).join(' ');return '<span class="chip"><b>#'+esc(f.car)+'</b> '+esc(keys||'—')+'</span>';}).join('');}else{html+='<div class="empty">No fuel state.</div>';}
+  html+='</div>';
+  // Fuel notes (per-lap)
+  html+='<div class="evsec"><h3>Fuel notes — per lap</h3>';
+  if(d.fuel_notes&&d.fuel_notes.length){html+=evTable(['Car','Lap','Note'],d.fuel_notes.map(function(n){return '<tr><td class="ip">#'+esc(n.car)+'</td><td>'+esc(n.lap)+'</td><td class="ua" title="'+esc(n.note)+'">'+esc(n.note)+'</td></tr>';}));}else{html+='<div class="empty">No lap notes.</div>';}
+  html+='</div>';
+  // Tyres per car + raw
+  html+='<div class="evsec"><h3>Tyres — per car</h3>';
+  if(d.tyres&&d.tyres.length){html+=d.tyres.map(function(t){return '<span class="chip"><b>#'+esc(t.car)+'</b> '+esc(tyreSummary(t.state))+'</span>';}).join('');
+    html+='<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:11px">raw tyre JSON</summary><pre style="white-space:pre-wrap;font-size:10px;max-height:220px;overflow:auto">'+esc(JSON.stringify(d.tyres,null,1))+'</pre></details>';
+  }else{html+='<div class="empty">No tyre state.</div>';}
+  html+='</div>';
+  // Racenotes
+  html+='<div class="evsec"><h3>Race notes</h3>';
+  if(d.racenotes&&d.racenotes.length){html+=evTable(['Car','Lap','Kind','Note'],d.racenotes.map(function(n){return '<tr><td class="ip">#'+esc(n.car)+'</td><td>'+esc(n.lap==null?'':n.lap)+'</td><td>'+esc(n.kind)+'</td><td class="ua" title="'+esc(n.body)+'">'+esc(n.body)+'</td></tr>';}));}else{html+='<div class="empty">No race notes.</div>';}
+  html+='</div>';
+  // Messages
+  if(d.messages&&d.messages.length){html+='<div class="evsec"><h3>Race-control messages</h3>'+evTable(['Car','Class','Message'],d.messages.map(function(m){return '<tr><td class="ip">'+esc(m.car||'—')+'</td><td>'+esc(m.race_class||'—')+'</td><td class="ua" title="'+esc(m.message)+'">'+esc(m.message)+'</td></tr>';}))+'</div>';}
+  body.innerHTML=html;
+}
+
+/* ---- per-event downloads ---- */
+var evBundleCache={};
+function fetchBundle(slug){
+  if(evBundleCache[slug])return Promise.resolve(evBundleCache[slug]);
+  return fetch('events/'+encodeURIComponent(slug)+'.json',{cache:'no-store'})
+    .then(function(r){if(r.ok)return r.json();throw 0;})
+    .catch(function(){return fetch(SB+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:H})
+      .then(function(r){return r.ok?r.json():[];}).then(function(a){return (a&&a[0]&&a[0].bundle)||null;});})
+    .then(function(b){if(b)evBundleCache[slug]=b;return b;});
+}
+function blobDownload(filename,text,mime){
+  var blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},150);
+}
+function csvEsc(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+// The "fuel/tyre/notes" JSON (same shape as the committed events/<slug>_notes.json).
+function buildNotes(slug,b){var o=(b&&b.overlay)||{},m=(b&&b.meta)||{};
+  return {event:{slug:slug,name:m.name||null,date:m.event_date||null,label:m.label||null},
+    fuel:(o.fuel_state||[]).map(function(f){return {car:f.car,state:f.state};}),
+    fuel_notes:o.fuel_notes||[],tyres:o.tyre_state||[],tyre_bands:o.band_state||[],
+    racenotes:o.racenotes||[],messages:o.messages||[]};}
+// Per-lap sector times CSV — from raw timing[] (live events) or db.sectimes (baked).
+function timingCsv(b){
+  var head=['car','class','lap','s1','s2','s3','s4','s5','laptime_s','inpit','driver','vehicle'],lines=[head.join(',')];
+  if(b.timing&&b.timing.length){
+    b.timing.forEach(function(r){var s=r.s||[];var lt=r.rt||s.reduce(function(a,x){return a+(x||0);},0);
+      lines.push([r.car,r.klass,r.lap,s[0],s[1],s[2],s[3],s[4],lt?(+lt).toFixed(3):'',r.inpit?1:0,r.drv,r.veh].map(csvEsc).join(','));});
+  }else if(b.db&&b.db.sectimes){
+    var db=b.db,inv={};Object.keys(db.classes||{}).forEach(function(cl){(db.classes[cl]||[]).forEach(function(c){inv[c]=cl;});});
+    Object.keys(db.sectimes).forEach(function(car){var laps=db.sectimes[car]||{},pits=(db.pits&&db.pits[car])||[];
+      Object.keys(laps).map(Number).sort(function(a,c){return a-c;}).forEach(function(L){var s=laps[L]||[];
+        var lt=s.reduce(function(a,x){return a+(x||0);},0);
+        lines.push([car,inv[car]||'',L,s[0],s[1],s[2],s[3],s[4],lt?lt.toFixed(3):'',pits.indexOf(L)>=0?1:0,(db.name&&db.name[car])||'',(db.veh&&db.veh[car])||''].map(csvEsc).join(','));});});
+  }else return null;
+  return lines.length>1?lines.join('\n'):null;
+}
+function laptimesCsv(b){var lt=(b&&b.laptimes)||[];if(!lt.length)return null;
+  var head=['car','driver','lap','laptime_s','temp_c','weather_code'];
+  return [head.join(',')].concat(lt.map(function(r){return [r.car,r.driver,r.lap,r.laptime_s,r.temp_c,r.weather_code].map(csvEsc).join(',');})).join('\n');}
+function evDownload(slug,kind){
+  var msg=document.getElementById('dlmsg-'+slug);if(msg)msg.textContent='Preparing…';
+  fetchBundle(slug).then(function(b){
+    if(!b){if(msg)msg.textContent='No data found for '+slug+'.';return;}
+    if(kind==='bundle'){blobDownload(slug+'.json',JSON.stringify(b),'application/json');}
+    else if(kind==='notes'){blobDownload(slug+'_notes.json',JSON.stringify(buildNotes(slug,b),null,2),'application/json');}
+    else if(kind==='sectors'){var c=timingCsv(b);if(!c){if(msg)msg.textContent='No sector-time data in this event.';return;}blobDownload(slug+'_sectortimes.csv',c,'text/csv');}
+    else if(kind==='laptimes'){var l=laptimesCsv(b);if(!l){if(msg)msg.textContent='No logged lap-time data for this event.';return;}blobDownload(slug+'_laptimes.csv',l,'text/csv');}
+    if(msg)msg.textContent='';
+  }).catch(function(){if(msg)msg.textContent='Download failed — try again.';});
+}
+
+/* ---- reel-usage monitoring ---- */
+var range='today';
+function setRange(r){range=r;
+  document.getElementById('fToday').classList.toggle('active',r==='today');
+  document.getElementById('fAll').classList.toggle('active',r==='all');
+  loadUsage();}
+function todayStr(){var d=new Date(),p=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function fmtDur(s){s=Math.round(s);var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
+  if(m>0)return m+'m '+String(sec).padStart(2,'0')+'s';return sec+'s';}
+function fmtWhen(iso){if(!iso)return '—';try{var d=new Date(iso);return d.toLocaleString();}catch(e){return iso;}}
+function loadUsage(){
+  var url=SB+'/rest/v1/stint9_reel_usage?select=reel,seconds,session_id,event_date';
+  if(range==='today')url+='&event_date=eq.'+encodeURIComponent(todayStr());
+  fetch(url,{headers:H}).then(function(r){return r.ok?r.json():[];}).then(render).catch(function(){
+    document.getElementById('usage').innerHTML='<div class="empty">Could not load usage.</div>';});
+}
+function render(rows){
+  var box=document.getElementById('usage');
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No usage recorded '+(range==='today'?'today':'yet')+'.</div>';document.getElementById('usageMeta').textContent='';return;}
+  var byReel={},sess={};
+  rows.forEach(function(r){byReel[r.reel]=(byReel[r.reel]||0)+(+r.seconds||0);if(r.session_id)sess[r.session_id]=1;});
+  var arr=Object.keys(byReel).map(function(k){return {reel:k,sec:byReel[k]};}).sort(function(a,b){return b.sec-a.sec;});
+  var max=arr[0].sec||1;
+  box.innerHTML=arr.map(function(x,i){var pct=Math.max(2,Math.round(x.sec/max*100));
+    return '<div class="bar"><span class="rank">'+(i+1)+'</span><span class="nm">'+x.reel+'</span>'+
+      '<span class="track"><span class="fill" style="width:'+pct+'%"></span></span>'+
+      '<span class="val">'+fmtDur(x.sec)+'</span></div>';}).join('');
+  document.getElementById('usageMeta').textContent='Suggested reel order for next race: '+arr.map(function(x){return x.reel;}).join(' · ')+'   ('+Object.keys(sess).length+' session'+(Object.keys(sess).length!==1?'s':'')+')';
+}
+
+/* ---- visitor log (IP addresses that opened index.html) ---- */
+var visRange='all';
+function setVisRange(r){visRange=r;
+  document.getElementById('vToday').classList.toggle('active',r==='today');
+  document.getElementById('vAll').classList.toggle('active',r==='all');
+  loadVisitors();}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function loadVisitors(){
+  var url=SB+'/rest/v1/stint9_visit?select=ip,session_id,ua,ts&order=ts.desc&limit=2000';
+  if(visRange==='today')url+='&event_date=eq.'+encodeURIComponent(todayStr());
+  fetch(url,{headers:H}).then(function(r){return r.ok?r.json():[];}).then(renderVisitors).catch(function(){
+    document.getElementById('visitors').innerHTML='<div class="empty">Could not load visitor log.</div>';});
+}
+function renderVisitors(rows){
+  var box=document.getElementById('visitors');
+  if(!rows||!rows.length){box.innerHTML='<div class="empty">No visits recorded '+(visRange==='today'?'today':'yet')+'.</div>';document.getElementById('visMeta').textContent='';return;}
+  var by={};
+  rows.forEach(function(r){var ip=r.ip||'(unknown)';var e=by[ip]||(by[ip]={ip:ip,count:0,last:0,first:0,ua:r.ua});
+    e.count++;var t=r.ts?new Date(r.ts).getTime():0;if(t>e.last)e.last=t;if(!e.first||t<e.first)e.first=t;if(r.ua)e.ua=r.ua;});
+  var arr=Object.keys(by).map(function(k){return by[k];}).sort(function(a,b){return b.last-a.last;});
+  var h='<table class="vis"><tr><th>IP</th><th>Visits</th><th>Last seen</th><th>First seen</th><th>Browser</th></tr>';
+  arr.forEach(function(e){h+='<tr><td class="ip">'+esc(e.ip)+'</td><td>'+e.count+'</td><td>'+fmtWhen(new Date(e.last).toISOString())+'</td><td>'+fmtWhen(new Date(e.first).toISOString())+'</td><td class="ua" title="'+esc(e.ua)+'">'+esc(shortUA(e.ua))+'</td></tr>';});
+  h+='</table>';box.innerHTML=h;
+  document.getElementById('visMeta').textContent=arr.length+' unique IP'+(arr.length!==1?'s':'')+' · '+rows.length+' visit'+(rows.length!==1?'s':'');
+}
+function shortUA(ua){if(!ua)return '—';
+  var m=ua.match(/(Edg|OPR|Chrome|Firefox|Safari)\/[\d.]+/g);var os=/Mac OS X/.test(ua)?'macOS':/Windows/.test(ua)?'Windows':/Android/.test(ua)?'Android':/(iPhone|iPad|iOS)/.test(ua)?'iOS':/Linux/.test(ua)?'Linux':'';
+  var b=m?m[m.length-1].split('/')[0].replace('Edg','Edge').replace('OPR','Opera'):'';
+  return (b?b:'')+(os?(b?' · ':'')+os:'')||ua.slice(0,40);}
+</script>
+</body>
+</html>

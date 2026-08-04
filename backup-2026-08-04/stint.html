@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>stint</title>
+<style>
+  html,body{margin:0;min-height:100%;background:#f4f5f7;font-family:'IBM Plex Mono',ui-monospace,monospace}
+  #stage{display:flex;gap:28px;align-items:center;justify-content:flex-start;min-height:100vh;padding:24px;box-sizing:border-box;overflow-x:auto}
+  /* one "set" = a STINT-n label above 4 band placeholders stacked vertically.
+     Placeholders are empty rounded rectangles (5x3 band proportions) — bands
+     go here later. */
+  .bandset{display:flex;flex-direction:column;gap:20px;flex:0 0 auto}
+  .setlabel{font-size:20px;font-weight:700;color:#16202b;background:#c9ccd1;border-radius:8px;padding:8px 12px;text-align:center}
+  .bandph{width:320px;height:173px;border:2px solid #16202b;border-radius:14px;background:#fff;box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+  const stage=document.getElementById('stage');
+  for(let s=1;s<=5;s++){
+    const set=document.createElement('div');set.className='bandset';
+    const lbl=document.createElement('div');lbl.className='setlabel';lbl.textContent='STINT-'+s;set.appendChild(lbl);
+    for(let b=0;b<4;b++){const ph=document.createElement('div');ph.className='bandph';set.appendChild(ph);}
+    stage.appendChild(set);
+  }
+</script>
+</body>
+</html>
