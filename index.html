@@ -4654,5 +4654,36 @@ applyWxReel(false);
   document.addEventListener('click',acquire,{passive:true});
   acquire();
 })();
+
+// ---- service worker (offline shell) ----
+(function(){
+  if(!('serviceWorker' in navigator))return;
+  // escape hatch: ?nosw=1 unregisters and wipes every cache, for when something
+  // looks wrong at the track and there is no time to debug it
+  if(new URLSearchParams(location.search).has('nosw')){
+    var retried=sessionStorage.getItem('nosw-retry')==='1';
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      return Promise.all(rs.map(function(r){return r.unregister();}));
+    }).then(function(){
+      if(!window.caches)return null;
+      return caches.keys().then(function(ks){
+        return Promise.all(ks.map(function(k){return caches.delete(k);}));
+      });
+    }).then(function(){
+      // a worker that still controls this page can re-create a cache while we are
+      // deleting it; one reload lands here with no controller, where the wipe sticks
+      if(navigator.serviceWorker.controller&&!retried){
+        sessionStorage.setItem('nosw-retry','1');location.reload();
+      }else{
+        sessionStorage.removeItem('nosw-retry');
+      }
+    }).catch(function(){});
+    return;
+  }
+  // register after load so it never competes with the first data fetches
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  });
+})();
 </script>
 </body></html>
