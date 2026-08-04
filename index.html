@@ -841,6 +841,30 @@ function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<
 // where activeLeg returns null between a finished sector and the next recorded one.
 function lastStartedLeg(st,T){const a=LEG[st];if(!a)return null;for(let i=a.length-1;i>=0;i--)if(a[i][2]<=T)return a[i];return null;}
 function nextLeg(st,T){const a=LEG[st];if(!a)return null;for(let i=0;i<a.length;i++)if(a[i][2]>T)return a[i];return null;}
+// The car's pit in-laps, from BOTH available sources — neither covers every event:
+//   • DB.pits — the timing feed's own flag. The baked CSV events (data.js / NLS6) carry
+//     it; the WIGE live feed does NOT. inpit was false on all 4251 rows of the
+//     2026-08-01 archive, so on a live-derived event that list is empty and every
+//     pit-aware path below silently switches off.
+//   • the out-lap's own S1 — the box and the pit exit both sit inside S1, so a stop
+//     inflates it far past the car's own pace (2026-08-01: 518 S1 legs over 150s
+//     against a 75.9s median). An S1 leg longer than 1.5x AND 40s over that car's
+//     median S1 marks the PREVIOUS lap as the in-lap. Checked against the 2026-06-20
+//     CSV flag as ground truth: recovers 265 of 285 real stops, 18 false positives.
+// Union of the two, so a feed that flags pits keeps every one of them, and a feed that
+// doesn't still gets PIT notes, withPitS5 and secRef. Cached per DB build (cleared at
+// the top of buildClass) because pitInfo runs per car per frame.
+let _pitLapCache={};
+function pitLapsOf(st){
+  st=String(st);const hit=_pitLapCache[st];if(hit)return hit;
+  const set=new Set((DB.pits&&DB.pits[st])||[]);
+  const s1=(DB.legs[st]||[]).filter(g=>g[1]===1);
+  if(s1.length>=3){
+    const d=s1.map(g=>g[3]-g[2]).sort((a,b)=>a-b),med=d[d.length>>1];
+    if(med>0)s1.forEach(g=>{const v=g[3]-g[2];if(g[0]>1&&v>1.5*med&&v>med+40)set.add(g[0]-1);});
+  }
+  return (_pitLapCache[st]=Array.from(set).sort((a,b)=>a-b));
+}
 // A car in a between-legs gap whose preceding lap is a recorded pit lap is IN THE
 // PIT LANE. The pit entry sits at the END of S5, just before start/finish, so a
 // car peeling in drives the whole of S5 but never crosses the S5 beacon on the
@@ -854,8 +878,7 @@ function nextLeg(st,T){const a=LEG[st];if(!a)return null;for(let i=0;i<a.length;
 function pitInfo(st,T){if(activeLeg(st,T))return null;
   const prev=lastStartedLeg(st,T);if(!prev)return null;      // before the car's first lap
   if(!nextLeg(st,T))return null;                             // after the last leg (finished/retired)
-  const pits=(DB.pits&&DB.pits[st])||[];
-  return pits.indexOf(prev[0])>=0?{lap:prev[0]}:null;}
+  return pitLapsOf(st).indexOf(prev[0])>=0?{lap:prev[0]}:null;}
 // --- Code 60 detection ------------------------------------------------------
 // Faithful port of n24-live-tracker's engine (github.com/arthurbes/n24-live-tracker,
 // backend/src/services/timingFeed.js getCode60Sectors()): a sector is Code 60 if
@@ -897,8 +920,7 @@ function code60Sectors(){
       const speed=lg[4];if(speed==null)continue;  // no speed on this leg (e.g. SIM data)
       const lap=lg[0],lastSector=lg[1];
       if(lap<=1)continue;                                        // grid/rolling-start S1 (our addition, see above)
-      const pits=DB.pits[st]||[];
-      if(pits.indexOf(lap)>=0)continue;                          // pit lap (our addition, see above)
+      if(pitLapsOf(st).indexOf(lap)>=0)continue;                   // pit lap (our addition, see above)
       const curSector=(lastSector%5)+1;           // sector the car is now driving, n24-style
       const safeSpeed=Math.max(speed,10);          // n24's own floor, avoids a divide-by-near-zero
       const expectedMs=(SECTOR_KM[curSector-1]/safeSpeed)*3600*1000;
@@ -923,7 +945,7 @@ function renderCode60(){
 // remains. The class is resolved from DB.classes, not from the ambient DB.avgseg: that
 // tracks the class currently on the reel, and rnEnsure builds legs for the selected
 // car's class, which need not be the same one.
-function secRef(st,k){const d=[],p=(DB.pits&&DB.pits[st])||[];
+function secRef(st,k){const d=[],p=pitLapsOf(st);
   (DB.legs[st]||[]).forEach(g=>{if(g[1]!==k)return;
     if(k===5&&p.indexOf(g[0])>=0)return;                // in-lap S5
     if(k===1&&p.indexOf(g[0]-1)>=0)return;              // out-lap S1 (carries the stop)
@@ -939,7 +961,7 @@ function secRef(st,k){const d=[],p=(DB.pits&&DB.pits[st])||[];
 // Code-60 crawl) stays in the lane rather than stretching S5 into slow motion.
 // Position-only: BX/rnBX are built from DB.legs so no estimate reaches gap maths.
 // Used by both buildClass (map/livePos) and rnEnsure (racenotes progress).
-function withPitS5(st,legs){const p=(DB.pits&&DB.pits[st])||[];if(!p.length)return legs;
+function withPitS5(st,legs){const p=pitLapsOf(st);if(!p.length)return legs;
   const ref=secRef(st,5);if(!(ref>0))return legs;
   const idx={};legs.forEach(g=>idx[g[0]*5+g[1]]=g);
   const out=legs.slice();
@@ -2823,6 +2845,7 @@ setInterval(logLaps,15000);
 function buildClass(cls){
   DB.cars=DB.classes[cls]||[];maxN=DB.maxN=DB.classMaxN[cls]||1;DB.avgseg=[0].concat(DB.classAvg[cls]||[0,0,0,0,0]);nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
   stintDrvColor={};resetGridFreeze();
+  _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
   DB.cars.forEach((st,i)=>{DB.carcol[st]=SAFE[i%SAFE.length];});
   for(const k in LEG)delete LEG[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
@@ -3296,6 +3319,47 @@ buildStartGrid();
     // restore it symmetrically on the way back to SIM, or a LIVE→SIM round-trip
     // leaves it stuck empty even though every other panel came back correctly.
     if(typeof buildStartGrid==='function')try{buildStartGrid();}catch(e){}}
+  // Clean raw timing rows before buildLiveDB. Shared with the ARCHIVED-EVENT loader
+  // (?event=<slug>), which replays the very same stint9_live_timing rows: it used to
+  // hand them to buildLiveDB untouched, so a live-derived event replayed in SIM kept
+  // the garage laps LIVE nulls and missed the S5 backfill LIVE applies — a 2026-08-01
+  // replay showed a 20442s "sector" on #665. Same rows in, same rows out, both modes.
+  // Input/output shape: {car,lap,klass,s:[s1..s5],spd:[..],tend,rt,inpit,fast,drv,veh}
+  // with RAW (uncapped) times in.
+  window.prepLiveRaw=function(rows){
+    // WIGE emits garage/pit "sector" and lap times of many minutes-to-hours (a
+    // car sat in the box). Left raw they inflate the derived timeline into the
+    // future (badge showed 17:54), freeze staleness, and blow up gaps (+20490s).
+    // Null anything implausibly long so it can't corrupt positions/gaps/tmax —
+    // a real Nordschleife sector is < ~15min, a lap < ~1h.
+    const cap=(v,m)=>(v!=null&&isFinite(+v)&&+v>m)?null:v;
+    const big=(v,m)=>v!=null&&isFinite(+v)&&+v>m;
+    const raw=(rows||[]).map(r=>{
+      // Garage/pit lap: WIGE doesn't flag inpit, but a car sitting in the box
+      // reports absurd sector/lap times (seen: s1=16086s, lap=5241s). Such a
+      // lap's timing is garbage — its partial sectors would scatter the car onto
+      // the track at the wrong place and even scramble leg order (t0=tend-rt goes
+      // wrong) — so null the whole lap and mark it a pit lap. Thresholds sit well
+      // above real racing incl. Code 60 (sector<~5min, lap<~15min), so clean and
+      // merely-slow laps are untouched; buildLiveDB then makes no on-track legs
+      // for it, and render() parks the car in the box instead of ghost-driving.
+      const s0=r.s||[];
+      const garage=big(r.rt,1200)||big(s0[0],600)||big(s0[1],600)||big(s0[2],600)||big(s0[3],600)||big(s0[4],600);
+      const s=garage?[null,null,null,null,null]:[cap(s0[0],900),cap(s0[1],900),cap(s0[2],900),cap(s0[3],900),cap(s0[4],900)];
+      return {car:String(r.car),lap:r.lap,klass:r.klass,s,spd:r.spd||[null,null,null,null,null],
+        tend:r.tend,rt:garage?null:cap(r.rt,3600),
+        inpit:!!r.inpit||garage,fast:!!r.fast,drv:r.drv,veh:r.veh};});
+    // Backfill S5: WIGE never sends the final sector for the Nordschleife. A row's
+    // own lap_time is the PREVIOUS lap's (WIGE's LASTLAPTIME while on the current
+    // lap), so it can't be used directly; but lap N+1's lap_time IS lap N's total.
+    // So S5(N) = lapTime(N+1) - (S1+S2+S3+S4 of N). The newest lap has no N+1 yet,
+    // so its S5/LAP total fills in one lap later. rt is already the capped lap_time.
+    {const byCar={};for(const r of raw){(byCar[r.car]||(byCar[r.car]={}))[r.lap]=r;}
+     for(const r of raw){if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
+       const nx=byCar[r.car][r.lap+1];if(!nx||nx.rt==null)continue;
+       const d5=nx.rt-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}}
+    return raw;
+  };
   function liveTick(){
     refreshStatus();
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
@@ -3307,13 +3371,6 @@ buildStartGrid();
           markStale(null);
           return;
         }
-        // WIGE emits garage/pit "sector" and lap times of many minutes-to-hours (a
-        // car sat in the box). Left raw they inflate the derived timeline into the
-        // future (badge showed 17:54), freeze staleness, and blow up gaps (+20490s).
-        // Null anything implausibly long so it can't corrupt positions/gaps/tmax —
-        // a real Nordschleife sector is < ~15min, a lap < ~1h.
-        const cap=(v,m)=>(v!=null&&isFinite(+v)&&+v>m)?null:v;
-        const big=(v,m)=>v!=null&&isFinite(+v)&&+v>m;
         // Signal counter: count every NEW-or-CHANGED per-lap row we receive (a
         // fresh sector filling in, or a new lap), accumulated across polls, shown
         // next to the event id as a live "data points in" heartbeat.
@@ -3323,31 +3380,12 @@ buildStartGrid();
          window.__wigeCount=(window.__wigeCount||0)+inc;
          if(inc)window.__wigeLastInc=Date.now();
          if(typeof updateSignalCounter==='function')updateSignalCounter();}
-        const raw=rows.map(r=>{
-          // Garage/pit lap: WIGE doesn't flag inpit, but a car sitting in the box
-          // reports absurd sector/lap times (seen: s1=16086s, lap=5241s). Such a
-          // lap's timing is garbage — its partial sectors would scatter the car onto
-          // the track at the wrong place and even scramble leg order (t0=tend-rt goes
-          // wrong) — so null the whole lap and mark it a pit lap. Thresholds sit well
-          // above real racing incl. Code 60 (sector<~5min, lap<~15min), so clean and
-          // merely-slow laps are untouched; buildLiveDB then makes no on-track legs
-          // for it, and render() parks the car in the box instead of ghost-driving.
-          const garage=big(r.lap_time,1200)||big(r.s1,600)||big(r.s2,600)||big(r.s3,600)||big(r.s4,600)||big(r.s5,600);
-          const s=garage?[null,null,null,null,null]
-                        :[cap(r.s1,900),cap(r.s2,900),cap(r.s3,900),cap(r.s4,900),cap(r.s5,900)];
-          return {car:String(r.car),lap:r.lap,klass:r.klass, s,
-            spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
-            tend:r.lap_end_tod,rt:garage?null:cap(r.lap_time,3600),
-            inpit:!!r.inpit||garage,fast:!!r.fastest,drv:r.driver,veh:r.vehicle};});
-        // Backfill S5: WIGE never sends the final sector for the Nordschleife. A row's
-        // own lap_time is the PREVIOUS lap's (WIGE's LASTLAPTIME while on the current
-        // lap), so it can't be used directly; but lap N+1's lap_time IS lap N's total.
-        // So S5(N) = lapTime(N+1) - (S1+S2+S3+S4 of N). The newest lap has no N+1 yet,
-        // so its S5/LAP total fills in one lap later. rt is already the capped lap_time.
-        {const byCar={};for(const r of raw){(byCar[r.car]||(byCar[r.car]={}))[r.lap]=r;}
-         for(const r of raw){if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
-           const nx=byCar[r.car][r.lap+1];if(!nx||nx.rt==null)continue;
-           const d5=nx.rt-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}}
+        // DB columns -> the raw shape prepLiveRaw/buildLiveDB take, then the shared
+        // clean-up (garage nulling, caps, S5 backfill) the archive replay runs too.
+        const raw=window.prepLiveRaw(rows.map(r=>({
+          car:String(r.car),lap:r.lap,klass:r.klass,
+          s:[r.s1,r.s2,r.s3,r.s4,r.s5],spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
+          tend:r.lap_end_tod,rt:r.lap_time,inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle})));
         // True data frontier = newest actual lap-end time-of-day; robust even if a
         // corrupt leg still pushes the derived DB.tmax into the future.
         liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
@@ -3475,7 +3513,10 @@ buildStartGrid();
 
    Auto notes (deduped by a natural key `nkey`):
      • overtake — the car's within-class order vs another class car
-       flips across a sector (S1 excluded downstream = pit/out).
+       flips across a sector. S2–S5 only: S1 is where the pit stop
+       lands, so it reports the box, not racing (see rnDetect).
+     • pit      — PIT IN / PIT OUT, the black bar that replaces the
+       S1 overtakes a stop used to fabricate.
      • fastest  — new personal-best lap, or a class-best sector.
      • gap      — closing on the car directly ahead lap-on-lap.
    All persist to public.stint9_racenotes.
@@ -3565,9 +3606,17 @@ function rnDetect(T){
   // highest #665 boundary crossed by T
   let maxIdx=0;Object.keys(bx).forEach(k=>{if(bx[k]<=T&&+k>maxIdx)maxIdx=+k;});
   // -- overtakes: same-boundary time gap to each class rival flips sign across a sector --
+  // S1 is never reported. The pit box and the pit exit both sit inside S1, so an out-lap
+  // S1 runs ~200s against a ~75s green one: every class rival's gap flips sign and the
+  // feed fills with passes that never happened (2026-08-01 #950: 145 of 180 notes in S1).
+  // It only LOOKED clean on the baked CSV events, where the in-lap carries no S5 split —
+  // the missing boundary made the pair below unresolvable, so the S1 crossing was skipped
+  // by accident, not by design. The WIGE live feed does publish an in-lap S5, so nothing
+  // skipped it there. The stop is reported by the PIT IN/OUT notes (black bar) instead.
   for(let idx=2;idx<=maxIdx;idx++){
     const a=bx[idx-1],b=bx[idx];if(a==null||b==null||b>T)continue;
     const L=Math.floor((idx-1)/5)+1,k=((idx-1)%5)+1;
+    if(k===1)continue;
     rnCars.forEach(X=>{if(X===rnCar)return;const xb=rnBX[X]||{},ax=xb[idx-1],bx2=xb[idx];
       if(ax==null||bx2==null||ax>T||bx2>T)return;
       const g0=a-ax,g1=b-bx2;                 // >0 => #665 behind X at that fixed track point
@@ -3604,7 +3653,7 @@ function rnDetect(T){
   // resolve. The in-lap carries no S5 boundary (see pitInfo), so neither end can come
   // from rnBX: the out-lap's S1 leg brackets the whole stop — it opens on the pit-lane
   // timing line (box-in) and closes at the S1 beacon once the car is back up to speed.
-  const pr=(rnRank(T)!=null),pl=(DB.pits&&DB.pits[rnCar])||[];
+  const pr=(rnRank(T)!=null),pl=pitLapsOf(rnCar);
   if(pr)pl.forEach((L,i)=>{
     const s1=(rnLegs[rnCar]||[]).find(g=>g[0]===L+1&&g[1]===1);
     if(!s1)return;                                       // still in the box / race ended there
@@ -4065,17 +4114,32 @@ function renderTimetable(){
     topquali1:'Top Qualifying 1',topquali2:'Top Qualifying 2',topquali3:'Top Qualifying 3',
     warmup:'Warm-up',opengrid:'Open Grid',lineup:'Lineup',startaufstellung:'Startaufstellung',formation:'Formation',race:'Race'};
   const label=l=>LABELS[l]||(l.charAt(0).toUpperCase()+l.slice(1));
-  const multiDay=!!SCHEDULE.eventDateEnd;
   // A session (e.g. the 24h race, Sat 15:00 -> Sun 15:00) can end on a LATER
   // calendar day than it starts -- flag that in the end-time text, or
   // "15:00-15:00" reads as zero-duration instead of 24 hours.
   const dstr=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const endTxt=r=>{if(!r.end)return '';const days=Math.round((new Date(dstr(r.end))-new Date(dstr(r.start)))/86400000);return fmtHM(r.end)+(days>0?' (+'+days+'d)':'');};
-  const rows=SCHEDULE.rows.map(r=>[label(r.label),multiDay?r.date.slice(5):null,fmtHM(r.start),endTxt(r)]);
-  const heading=multiDay?(SCHEDULE.eventDate+' &ndash; '+SCHEDULE.eventDateEnd):SCHEDULE.eventDate;
+  // ONE DAY AT A TIME. A double-header weekend (NLS8 Sat + NLS9 Sun, each with
+  // its own quali/pitwalk/race at the same clock times) rendered as one merged
+  // list reads as a doubled schedule -- every session appears twice. Show only
+  // the day in progress, then the following day's plan as a clearly separated
+  // block at the end, so nobody reads a Sunday session as a Saturday one.
+  const days=[];
+  SCHEDULE.rows.forEach(r=>{let d=days.find(x=>x.date===r.date);if(!d){d={date:r.date,rows:[]};days.push(d);}d.rows.push(r);});
+  const now=Date.now();
+  // the day in progress = the first with anything still to come; once the whole
+  // weekend is over keep showing its last day rather than an empty card
+  let di=days.findIndex(d=>d.rows.some(r=>(r.end||r.start).getTime()>now));
+  if(di<0)di=days.length-1;
+  const day=days[di],next=days[di+1]||null;
+  const rowHtml=(r,dim)=>'<div style="display:grid;grid-template-columns:1fr auto;column-gap:18px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border)'+(dim?';color:var(--muted)':'')+'"><span style="min-width:130px">'+label(r.label)+'</span><span style="font-weight:600;text-align:right;min-width:110px;font-variant-numeric:tabular-nums">'+fmtHM(r.start)+(endTxt(r)?('&ndash;'+endTxt(r)):'')+'</span></div>';
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:6px 4px">';
-  h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+heading+'</div>';
-  rows.forEach(r=>{h+='<div style="display:grid;grid-template-columns:1fr auto auto;column-gap:18px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border)"><span style="min-width:130px">'+r[0]+'</span><span style="color:var(--muted);font-weight:400;text-align:right;font-variant-numeric:tabular-nums">'+(r[1]||'')+'</span><span style="font-weight:600;text-align:right;min-width:110px;font-variant-numeric:tabular-nums">'+r[2]+(r[3]?('&ndash;'+r[3]):'')+'</span></div>';});
+  h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+day.date+'</div>';
+  day.rows.forEach(r=>{h+=rowHtml(r,false);});
+  if(next){
+    h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;font-size:13px;border-top:2px solid var(--border);padding-top:12px">Next day &middot; '+next.date+'</div>';
+    next.rows.forEach(r=>{h+=rowHtml(r,true);});
+  }
   h+='</div>';
   el.innerHTML=h;
 }
@@ -4342,7 +4406,10 @@ applyWxReel(false);
     if(b.db)built=b.db;
     else if(b.timing&&b.timing.length&&typeof window.buildLiveDB==='function'){
       var geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
-      try{built=window.buildLiveDB(b.timing,geom,{name:meta.name,date:meta.event_date});}catch(e){built=null;}
+      // Same clean-up LIVE runs on these very rows (garage nulling, caps, S5 backfill),
+      // or the replay renders different numbers than the race did — see prepLiveRaw.
+      var rows=(typeof window.prepLiveRaw==='function')?window.prepLiveRaw(b.timing):b.timing;
+      try{built=window.buildLiveDB(rows,geom,{name:meta.name,date:meta.event_date});}catch(e){built=null;}
     }
     if(!built){var ed=document.getElementById('evdate');if(ed)ed.textContent='archive '+slug+': no timing data';return;}
     applyDB(built,meta);

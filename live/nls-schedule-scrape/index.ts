@@ -148,6 +148,23 @@ async function upsertSessions(eventDate: string, sessions: Session[]): Promise<n
   return rows.length;
 }
 
+// Name lookup for the archiver: public.stint9_event_rounds maps a date to
+// {slug, name}, which is how an archived event becomes "NLS7" rather than
+// "EVT-2026-08-01". The round number only exists here, on the calendar page,
+// so write it here instead of re-seeding that table by hand every season.
+async function upsertRounds(rows: { event_date: string; slug: string; name: string }[]): Promise<number> {
+  if (!rows.length) return 0;
+  const res = await fetch(`${SB_URL}/rest/v1/stint9_event_rounds?on_conflict=event_date`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows),
+  });
+  // never fatal: a missing round name only costs a prettier slug, and must not
+  // stop the schedule itself (which gates race-day polling) from being written
+  if (!res.ok) { console.error('upsertRounds failed:', res.status, (await res.text()).slice(0, 200)); return 0; }
+  return rows.length;
+}
+
 async function logRun(ok: boolean, roundsChecked: number, detail: unknown) {
   try {
     const res = await fetch(`${SB_URL}/rest/v1/stint9_schedule_scrape_log`, {
@@ -188,9 +205,22 @@ Deno.serve(async (req) => {
         // Einstellfahrten) session too — those aren't in the NLS Zeitplan but are
         // live on WIGE. Discovery (vln.html) no-ops when nothing's on, so a broad
         // 07:00-19:00 window just says "check during daytime the day before".
+        // ...but NOT when the day before is itself a race day. On a double-header
+        // weekend (2026: NLS8 Sat 09-12, NLS9 Sun 09-13) that would lay a wide
+        // 07:00-19:00 "practice" window straight across the previous day's race.
+        // There is no test day before NLS9 — that day IS the NLS8 race.
         const preDate = prevDay(r.eventDate);
-        const preWritten = await upsertSessions(preDate, [{ label: 'practice', start: '07:00', end: '19:00' }]);
-        rounds.push({ ...r, status: 'ok', sessionsWritten: written, labels: sessions.map(s => s.label), practiceDate: preDate, practiceWritten: preWritten });
+        const preIsRaceDay = allRounds.some(o => o.eventDate === preDate);
+        const preWritten = preIsRaceDay
+          ? 0
+          : await upsertSessions(preDate, [{ label: 'practice', start: '07:00', end: '19:00' }]);
+
+        await upsertRounds([
+          { event_date: r.eventDate, slug: `NLS${r.roundNo}`, name: r.title },
+          ...(preIsRaceDay ? [] : [{ event_date: preDate, slug: `NLS${r.roundNo}-practice`, name: `practice NLS${r.roundNo}` }]),
+        ]);
+
+        rounds.push({ ...r, status: 'ok', sessionsWritten: written, labels: sessions.map(s => s.label), practiceDate: preIsRaceDay ? null : preDate, practiceWritten: preWritten, preIsRaceDay });
       } catch (e) {
         rounds.push({ ...r, status: 'error', error: String(e) });
       }
