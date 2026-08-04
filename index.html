@@ -494,7 +494,7 @@
         <div class="clock"><span id="clock"></span></div>
         <button class="btn" id="play">&#9654; Play</button>
         <input type="range" id="scrub" step="0.1">
-        <select id="speed"><option value="1">1&times;</option><option value="10">10&times;</option><option value="30" selected>30&times;</option></select>
+        <select id="speed"><option value="1">1&times;</option><option value="10" selected>10&times;</option><option value="30">30&times;</option></select>
         <input type="checkbox" id="lbls" checked style="display:none">
         <button class="btn" id="simEventBtn" title="Choose an archived race to simulate">Select race</button>
       </div>
@@ -2843,7 +2843,10 @@ setInterval(logLaps,15000);
 
 /* default: pre-select first car in the list, then auto-play from the start (user can pause / change) */
 function buildClass(cls){
-  DB.cars=DB.classes[cls]||[];maxN=DB.maxN=DB.classMaxN[cls]||1;DB.avgseg=[0].concat(DB.classAvg[cls]||[0,0,0,0,0]);nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
+  const _all=(cls===ALL_CLS);
+  DB.cars=_all?allClassCars():(DB.classes[cls]||[]);
+  maxN=DB.maxN=_all?allClassMaxN():(DB.classMaxN[cls]||1);
+  DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
   stintDrvColor={};resetGridFreeze();
   _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
@@ -2898,11 +2901,42 @@ function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({del
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.delay!=null){const _d=document.getElementById('delaythr');if(_d)_d.value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
 if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
-if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='30';}
+if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='10';}
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
-const clsSel=document.getElementById('classsel');clsSel.innerHTML='';
-Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
+/* "ALL CLASSES" — a dropdown entry that shows the whole field at once instead
+   of one class at a time.
+
+   It is deliberately NOT written into DB.classes. Plenty of code walks that
+   object to answer "which class is car X in?" (classOf, the agent's car lookup)
+   or builds a car->class map from it (buildStartGrid's carClass), and a synthetic
+   entry containing every car would poison all of them — carClass in particular
+   would end up labelling every car "ALL CLASSES". So it exists only as a value
+   buildClass() understands, and the dropdowns add it as an extra option. */
+// var, not const: buildClass() above references it, and a const would be in the
+// temporal dead zone (which `typeof` does not shield against) if anything ever
+// calls buildClass before this line runs.
+var ALL_CLS='ALL CLASSES';
+function allClassCars(){
+  const seen={},out=[];
+  Object.keys(DB.classes||{}).forEach(c=>(DB.classes[c]||[]).forEach(st=>{if(!seen[st]){seen[st]=1;out.push(st);}}));
+  return out;
+}
+function allClassMaxN(){return Object.keys(DB.classes||{}).reduce((m,c)=>Math.max(m,(DB.classMaxN||{})[c]||1),1);}
+function allClassAvg(){ // sector reference for the whole field = mean of the per-class averages
+  const avg=[0,0,0,0,0];let n=0;
+  Object.keys(DB.classes||{}).forEach(c=>{const a=(DB.classAvg||{})[c];if(a&&a.length>=5){for(let i=0;i<5;i++)avg[i]+=a[i];n++;}});
+  return n?avg.map(v=>v/n):[0,0,0,0,0];
+}
+const isAllCls=c=>c===ALL_CLS;
+const clsExists=c=>isAllCls(c)||!!(DB.classes||{})[c];
+const clsCount=c=>isAllCls(c)?allClassCars().length:((DB.classes[c]||[]).length);
+// ALL CLASSES first, then the real classes in their existing order
+function classOptionKeys(){return [ALL_CLS].concat(Object.keys(DB.classes||{}));}
+function fillClassSelect(sel){if(!sel)return;sel.innerHTML='';
+  classOptionKeys().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+clsCount(c)+')';sel.appendChild(o);});}
+const clsSel=document.getElementById('classsel');
+fillClassSelect(clsSel);
 /* fitPage (not bare syncReel): a class change alters CH, and syncReel alone
    resets the reels to the short CH/1000 aspect without anything re-growing
    them — the maincol/rightcol ResizeObserver never fires because rightcol is
@@ -2913,7 +2947,7 @@ clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPa
   // back to the first class (see fillClassDropdown()).
   if(window.dataMode==='LIVE')try{localStorage.setItem('stint9_liveclass',e.target.value);}catch(_){}
   if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
-const startClass=(PREFS.cls&&DB.classes[PREFS.cls])?PREFS.cls:Object.keys(DB.classes)[0];
+const startClass=(PREFS.cls&&clsExists(PREFS.cls))?PREFS.cls:Object.keys(DB.classes)[0];
 if(PREFS.car!=null)selCar=PREFS.car;
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
@@ -3307,12 +3341,11 @@ buildStartGrid();
      if(dg)dg.classList.toggle('stale',stopped);}
     return _staleS;
   }
-  function fillClassDropdown(){const cur=clsSel.value;clsSel.innerHTML='';
-    Object.keys(DB.classes).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
+  function fillClassDropdown(){const cur=clsSel.value;fillClassSelect(clsSel);
     // In LIVE, a saved class (from a prior selection) wins so it survives refresh;
     // otherwise keep the current pick, else fall back to the first class.
     let saved=null;if(window.dataMode==='LIVE')try{saved=localStorage.getItem('stint9_liveclass');}catch(_){}
-    const pick=(saved&&DB.classes[saved])?saved:((cur&&DB.classes[cur])?cur:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
+    const pick=(saved&&clsExists(saved))?saved:((cur&&clsExists(cur))?cur:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}
     // clearLiveDB()/startLive() (README §15.3) now blanks the starting grid too —
@@ -4352,9 +4385,13 @@ applyWxReel(false);
 (function initArchiveEvent(){
   var params=new URLSearchParams(location.search);
   var slug=params.get('event');
-  if(!slug)return;
+  // No ?event= → replay the most recent archived race day instead of the baked
+  // dataset. SIM has no start button (playback auto-starts on load), so opening
+  // the dashboard cold should land on the latest race rather than a fixed one.
+  // Resolved below; a failed lookup just leaves the baked dataset in place.
+  var AUTO=!slug;
   var overlay=(params.get('overlay')==='1'||params.get('overlay')==='true');
-  window.archiveSlug=slug;window.archiveOverlay=overlay;
+  window.archiveSlug=slug;window.archiveOverlay=overlay;   // slug is re-set below when AUTO resolves it
 
   var RAW=['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh'];
   function applyDB(built,meta){
@@ -4363,13 +4400,16 @@ applyWxReel(false);
     window.archiveEventDate=DB.event.date;
     var clsSel=document.getElementById('classsel');
     var pick=Object.keys(DB.classes)[0];
-    if(clsSel){var cur=clsSel.value;clsSel.innerHTML='';
-      Object.keys(DB.classes).forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c+' ('+DB.classes[c].length+')';clsSel.appendChild(o);});
-      if(cur&&DB.classes[cur])pick=cur;clsSel.value=pick;}
+    if(clsSel){var cur=clsSel.value;fillClassSelect(clsSel);
+      if(cur&&clsExists(cur))pick=cur;clsSel.value=pick;}
     if(pick)buildClass(pick);                       // sets DB.cars/maxN/avgseg/tmin/tmax
     // date only — the full event name wrapped onto a second line under the logo
     var evd=document.getElementById('evdate');if(evd)evd.textContent=DB.event.date+(overlay?' · overlay':'');
     T=DB.tmin;var sc=document.getElementById('scrub');if(sc){sc.min=DB.tmin;sc.max=DB.tmax;sc.value=T;}
+    // The boot auto-play may already have run (and stopped, if the baked dataset
+    // was short) before this bundle arrived. SIM has no start button — mobile
+    // never had one — so a replay that lands after that would sit frozen at L0.
+    if(!playing){playing=true;last=0;var _pb=document.getElementById('play');if(_pb)_pb.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
     try{fillStints(selCar);}catch(e){}
     try{render();}catch(e){}
     try{fitPage();}catch(e){}
@@ -4417,11 +4457,24 @@ applyWxReel(false);
   }
 
   // committed file first (fast, offline), then the DB row as fallback
-  fetch('events/'+encodeURIComponent(slug)+'.json',{cache:'no-store'})
-    .then(function(r){if(r.ok)return r.json();throw 0;})
-    .catch(function(){return fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(slug),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-      .then(function(r){return r.ok?r.json():[];}).then(function(a){return (a&&a[0]&&a[0].bundle)||null;});})
-    .then(buildFromBundle).catch(function(){});
+  function load(s){
+    return fetch('events/'+encodeURIComponent(s)+'.json',{cache:'no-store'})
+      .then(function(r){if(r.ok)return r.json();throw 0;})
+      .catch(function(){return fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=bundle&slug=eq.'+encodeURIComponent(s),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+        .then(function(r){return r.ok?r.json():[];}).then(function(a){return (a&&a[0]&&a[0].bundle)||null;});})
+      .then(buildFromBundle).catch(function(){});
+  }
+
+  if(!AUTO){load(slug);return;}
+  // newest archived event by date. Nothing to load (offline, empty table, error)
+  // simply leaves the baked-in dataset showing — exactly today's behaviour.
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date&order=event_date.desc&limit=1',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(a){
+      if(!a||!a[0]||!a[0].slug)return;
+      slug=a[0].slug;window.archiveSlug=slug;
+      return load(slug);
+    }).catch(function(){});
 })();
 
 /* ---- SIM race picker: choose an archived event (admin's "Race events

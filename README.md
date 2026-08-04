@@ -28,6 +28,7 @@
 16. [SIM race picker — choose an archived event from a popup](#16-sim-race-picker--choose-an-archived-event-from-a-popup-2026-08-02)
 17. [PWA — installable app, offline shell, wake lock](#17-pwa--installable-app-offline-shell-wake-lock-2026-08-04)
 18. [Race notes — S1 overtakes, pit laps, archive parity](#18-race-notes--s1-overtakes-pit-laps-archive-parity-2026-08-04)
+19. [SIM autoplay + ALL CLASSES](#19-sim-autoplay--all-classes-2026-08-04)
 
 ---
 
@@ -2141,3 +2142,57 @@ straight out of `index.html`, plus a real headless-Chrome replay of
   feed flag on purpose — a heuristic with ~6% false positives must not move fuel
   numbers. They therefore still show zero stops on a live-derived event until
   `inpit` works at the source (§9 open item 1).
+
+---
+
+# 19. SIM autoplay + ALL CLASSES (2026-08-04)
+
+Two small SIM/UI changes.
+
+## 19.1 SIM opens on the latest race day and plays at 10×
+
+SIM has **no start button on mobile**, and doesn't need one — playback already
+auto-starts on `load` (§the deferred `go()` after `T=DB.tmin`). Two gaps around
+that:
+
+- **It always replayed the baked-in dataset.** `initArchiveEvent()` returned
+  early with no `?event=`. It now treats "no slug" as *auto*: one
+  `stint9_events?select=slug&order=event_date.desc&limit=1` lookup, then the
+  normal loader. A failed lookup (offline, empty table) simply leaves the baked
+  dataset showing — i.e. exactly the old behaviour, so this cannot leave a blank
+  dashboard.
+- **A bundle arriving after the boot autoplay could land frozen at L0.** The
+  archived-event loader now restarts the RAF loop if `playing` went false while
+  the bundle was in flight.
+
+Default speed is now **10×** (was 30×). A saved `stint9_prefs.speed` still wins —
+an explicit user choice should not be overridden — so a browser that has already
+picked 30× keeps it until changed once.
+
+## 19.2 ALL CLASSES
+
+The class dropdown gets an **`ALL CLASSES (n)`** entry, first in the list, on
+every platform (the mobile picker mirrors `#classsel`'s markup, so it inherits it
+for free).
+
+**It is deliberately NOT written into `DB.classes`.** That object is walked
+elsewhere to answer "which class is car X in?" (`classOf`, the agent's car
+lookup) and to build a car→class map in `buildStartGrid` — a synthetic entry
+holding every car would have made `carClass` label *every* car "ALL CLASSES".
+Instead it exists only as a value `buildClass()` understands:
+
+| | ALL CLASSES |
+|---|---|
+| `DB.cars` | union of every class, de-duplicated (`allClassCars`) |
+| `DB.maxN` | max of the per-class `classMaxN` |
+| `DB.avgseg` | mean of the per-class `classAvg` (sector reference for the field) |
+
+`ALL_CLS` is declared with `var`, not `const`, because `buildClass()` is defined
+above it and a `const` would sit in the temporal dead zone — which `typeof` does
+**not** shield against — if anything ever called `buildClass` before that line.
+
+Verified in headless Chrome with localStorage cleared: `ALL CLASSES (132)` first
+of 26 options; selecting it gives `cars=132, maxN=41, avgseg=[0,83,77,142,237,0]`
+with zero console errors; the `carClass` map stays clean (**0 of 132** polluted);
+speed `10`; `playing=true` from `tmin`; `window.archiveSlug` resolved to
+`EVT-2026-08-02`, the newest archived event.
