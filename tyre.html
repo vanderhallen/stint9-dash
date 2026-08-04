@@ -1121,7 +1121,7 @@ function onTyreLive(prog,sectorKm,lap,sec,pit,speed){
     if(_seenPit===undefined)_seenPit=pit;                 // ignore pits already past at load
     else if(pit>_seenPit){_seenPit=pit;_pendingPit=pit;_remindedPit=null;}
   }
-  if(_slow&&_pendingPit!=null&&lap!=null&&(lap>_pendingPit+1||(lap===_pendingPit+1&&sec>=2))&&_remindedPit!==_pendingPit){
+  if(LIVE_MODE&&_slow&&_pendingPit!=null&&lap!=null&&(lap>_pendingPit+1||(lap===_pendingPit+1&&sec>=2))&&_remindedPit!==_pendingPit){
     _remindedPit=_pendingPit;alert('update tyres');
   }
   // current sector drives the mount button state (only mountable in S1)
@@ -1130,7 +1130,8 @@ function onTyreLive(prog,sectorKm,lap,sec,pit,speed){
     _curSec=sec;
     if(typeof refreshBtns==='function')refreshBtns();
     // entering S3 with an empty PIT -> remind to get the next set ready
-    if(_slow&&enteringS3&&isPitEmpty())alert('prepare next tyre set');
+    // (LIVE only — a SIM replay must not pop race-ops reminders)
+    if(LIVE_MODE&&_slow&&enteringS3&&isPitEmpty())alert('prepare next tyre set');
   }
 }
 /* every serial currently in use across TRACK, PIT, STINT and STOCK (visible
