@@ -4624,4 +4624,25 @@ applyWxReel(false);
   if(window.AUTH.mode!=='team')openModal();
 })();
 </script>
+
+<script>
+// ---- keep the screen awake (pit wall) ----
+(function(){
+  if(!('wakeLock' in navigator))return;
+  var lock=null;
+  function acquire(){
+    if(lock||document.hidden)return;
+    navigator.wakeLock.request('screen').then(function(l){
+      lock=l;
+      // the browser drops the lock on its own (tab hidden, battery saver) — clear it so we can re-ask
+      l.addEventListener('release',function(){lock=null;});
+    }).catch(function(){lock=null;});
+  }
+  // hiding the tab always releases the lock; take it back when we come forward again
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)acquire();});
+  // a tap doubles as the user gesture some browsers want before granting
+  document.addEventListener('click',acquire,{passive:true});
+  acquire();
+})();
+</script>
 </body></html>
