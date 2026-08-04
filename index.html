@@ -1162,8 +1162,13 @@ function driverColor(name){
 // always reflects current knowledge. done[car][lap] = [col0..col4];
 // overallBest/personalBest are the running minimums as of the last
 // processed (chronologically) event, only ever updated forward.
+// `T` is the clock the frozen state was built up to. It only ever grows while
+// playing, but SIM can scrub BACKWARDS — and then every cell frozen after the new
+// clock is a lap that hasn't happened yet. Freezing is deterministic (replay the
+// events in boundary order), so renderSectGridFrozen just throws the state away and
+// rebuilds it from T on a backward move.
 let gridFreeze=null;
-function resetGridFreeze(){gridFreeze={done:{},overallBest:[Infinity,Infinity,Infinity,Infinity,Infinity],personalBest:{}};}
+function resetGridFreeze(){gridFreeze={done:{},overallBest:[Infinity,Infinity,Infinity,Infinity,Infinity],personalBest:{},T:-Infinity};}
 resetGridFreeze();
 function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!panel)return;
   const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
@@ -1369,6 +1374,12 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
 // Catmull-Rom -> cubic-bezier conversion (tension 1/6) — smooth curve through
 // every point instead of straight polyline segments, no external lib needed.
 function smoothPath(pts){
+  // A single point still has to produce a moveto: two callers close the curve into an
+  // area fill by appending " L…,base L…,base Z", and on '' that path would start with
+  // an L — invalid, so the browser drops the whole element and logs "Expected moveto
+  // path command". One point yields a zero-width (invisible) sliver, which is what an
+  // area under a one-lap trace should be. Empty stays empty.
+  if(pts.length===1)return 'M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1);
   if(pts.length<2)return '';
   if(pts.length===2)return 'M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' L'+pts[1][0].toFixed(1)+','+pts[1][1].toFixed(1);
   let d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' ';
@@ -1535,6 +1546,11 @@ function renderSectGrid(T){
    cell — unlike GRID, which always reflects current knowledge. */
 function renderSectGridFrozen(T){
   const wrap=document.getElementById('snaptablewrap');if(!wrap)return;
+  // scrubbed back: drop the frozen state and re-freeze from the start up to T, so the
+  // table can't keep showing laps that are now in the future (forward play is untouched
+  // — it stays incremental, only the events that crossed since the last call are added).
+  if(T<gridFreeze.T-1e-6)resetGridFreeze();
+  gridFreeze.T=T;
   const newEvents=[];
   DB.cars.forEach(st=>{
     const stm=DB.sectimes[st]||{},bx=BX[st]||{};
@@ -3559,11 +3575,19 @@ const RN_SECKM=[3.3,3.3,6.0,9.4,2.4];   // NLS 5-sector estimated lengths (nls-s
 const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "gap" note fires
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
 let rnNotes=[],rnSeen=new Set(),rnPosted=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
+// The feed is rendered against the playback clock, not against everything detected so
+// far: SIM lets you scrub back, and a note whose tod is still in the future must not be
+// on screen. rnNotes keeps them (they were already detected, and rnSeen stops a re-emit),
+// rnRenderFeed just hides them until the clock reaches them again. rnFeedN = how many
+// were visible at the last paint, so the feed repaints as the clock passes each one.
+let rnT=Infinity,rnFeedN=-1;
 function rnEventDate(){return (DB.event&&DB.event.date)||liveEventDate();}
 // the single definition of "an overtake the VIDEO reel can clip": on-track (S2–S5) and
 // carrying the crossing time the clip is cut around. The reel's count and ANALYSE must
 // read from this same list, or the header promises clips that analyse then can't place.
-function rnClipNotes(){return rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null);}
+// It is also clock-bound, like the feed (rnVisible): after a scrub back the reel must not
+// count — nor ANALYSE cut — overtakes that, at the displayed clock, haven't happened yet.
+function rnClipNotes(){return rnNotes.filter(n=>n.kind==='overtake'&&n.sector&&n.sector!==1&&n.meta&&n.meta.tcross!=null&&rnVisible(n));}
 // LIVE persists racenotes to Supabase (the real race). SIM is a replay/demo, so its
 // notes are ephemeral: kept in memory only and reset each time the replay restarts.
 function rnLive(){return window.dataMode==='LIVE';}
@@ -3701,9 +3725,13 @@ function rnDetect(T){
   });
   return dirty;
 }
+// a note belongs on screen once the playback clock has reached it (a note with no tod —
+// nothing the detector emits — is always shown, it can't be placed on the clock)
+function rnVisible(n){return n.tod==null||n.tod<=rnT+1e-6;}
 function rnRenderFeed(){
   const feed=document.getElementById('rn-feed');if(!feed)return;
-  const ns=rnNotes.slice().sort((a,b)=>(a.tod||0)-(b.tod||0));
+  const ns=rnNotes.filter(rnVisible).sort((a,b)=>(a.tod||0)-(b.tod||0));
+  rnFeedN=ns.length;
   if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';return;}
   feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hms(n.tod):'';
     const ls=(n.lap!=null?('L'+n.lap):'')+(n.sector!=null?(' · S'+n.sector):'');
@@ -3955,7 +3983,13 @@ function updateRacenote(T){
   box.style.display=active?'flex':'none';
   if(!active||!rnLoaded)return;
   const rc=box.querySelector('.rncar');if(rc)rc.textContent='#'+rnCar;   // header follows the selected car
-  if(Date.now()-rnLastScan>350){rnLastScan=Date.now();if(rnDetect(T))rnRenderFeed();}
+  rnT=T;
+  let dirty=false;
+  if(Date.now()-rnLastScan>350){rnLastScan=Date.now();dirty=rnDetect(T);}
+  // repaint when the detector found something OR when the clock moved across a note
+  // boundary — scrubbing back hides the notes ahead of T, playing forward reveals them.
+  let vis=0;for(let i=0;i<rnNotes.length;i++)if(rnVisible(rnNotes[i]))vis++;
+  if(dirty||vis!==rnFeedN)rnRenderFeed();
   rnRenderSummary(T);
  }catch(e){/* never let the racenote break the main render loop */}
 }
@@ -4587,7 +4621,12 @@ applyWxReel(false);
   function flush(keepalive){
     var date=(typeof liveEventDate==='function')?liveEventDate():new Date().toISOString().slice(0,10);
     Object.keys(totals).forEach(function(nm){if(!(totals[nm]>0))return;
-      fetch(SB+'/rest/v1/stint9_reel_usage',{method:'POST',keepalive:!!keepalive,
+      // on_conflict names the UNIQUE (session_id,reel,event_date) index. Without it
+      // merge-duplicates resolves against the PRIMARY KEY (id) instead, so the second
+      // flush of a session hit that unique constraint and 409'd — every flush after the
+      // first 15s was dropped (silently: the .catch() below swallows it), which is why
+      // a session's `seconds` never grew past its first tick.
+      fetch(SB+'/rest/v1/stint9_reel_usage?on_conflict=session_id,reel,event_date',{method:'POST',keepalive:!!keepalive,
         headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
         body:JSON.stringify({event_date:date,session_id:sess,reel:nm,seconds:totals[nm],updated_at:new Date().toISOString()})}).catch(function(){});
     });

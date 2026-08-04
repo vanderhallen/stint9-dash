@@ -29,6 +29,7 @@
 17. [PWA — installable app, offline shell, wake lock](#17-pwa--installable-app-offline-shell-wake-lock-2026-08-04)
 18. [Race notes — S1 overtakes, pit laps, archive parity](#18-race-notes--s1-overtakes-pit-laps-archive-parity-2026-08-04)
 19. [SIM autoplay + ALL CLASSES](#19-sim-autoplay--all-classes-2026-08-04)
+20. [Scrubbing back in SIM — panels that ignored the clock](#20-scrubbing-back-in-sim--panels-that-ignored-the-clock-2026-08-04)
 
 ---
 
@@ -2196,3 +2197,156 @@ of 26 options; selecting it gives `cars=132, maxN=41, avgseg=[0,83,77,142,237,0]
 with zero console errors; the `carClass` map stays clean (**0 of 132** polluted);
 speed `10`; `playing=true` from `tmin`; `window.archiveSlug` resolved to
 `EVT-2026-08-02`, the newest archived event.
+
+---
+
+# 20. Scrubbing back in SIM — panels that ignored the clock (2026-08-04)
+
+Almost everything on the dashboard re-derives itself from `T` every render, so
+dragging the scrubber back just works. Two panels didn't: both kept a **forward-only
+accumulator** that nothing rewound, so they went on showing a part of the race that,
+at the displayed clock, hadn't happened yet — and a third, the VIDEO reel's count, fell
+out of the sweep that went looking for more of them (§20.4).
+
+## 20.1 Race notes
+
+**Symptom.** In SIM, drag the scrubber back and press play: the RACE NOTES feed
+still shows every note from *later* in the race — passes, pit stops and fastest
+laps that, at the displayed clock, have not happened yet. Everything else on the
+dashboard (standings, map, summary line) had already re-derived itself from `T`.
+
+**Cause.** `rnNotes` was an append-only log of everything the detector had ever
+emitted, and `rnRenderFeed()` painted all of it. `rnDetect(T)` only ever *adds*
+notes at or before `T`, so playing forward looked right — but nothing removed a
+note when the clock moved back behind it. The single reset (`T <= DB.tmin+0.5`,
+"replay is back at the start") only covered scrubbing all the way home.
+
+**The fix** (`index.html`, racenote section):
+
+- `rnT` holds the clock the feed is painted against; `updateRacenote(T)` sets it
+  every frame.
+- `rnVisible(n)` = `n.tod == null || n.tod <= rnT`. `rnRenderFeed()` filters
+  through it, so the feed is a **view of `rnNotes` at `T`**, not a transcript.
+- Detected notes are *hidden*, never dropped. `rnSeen` therefore stays intact, so
+  scrubbing back and playing forward re-reveals the identical notes instead of
+  re-running detection (and, in LIVE, re-POSTing them).
+- `rnFeedN` records how many were visible at the last paint. `updateRacenote`
+  repaints when the detector is dirty **or** that count changed — which is what
+  makes a note appear at the moment the clock crosses it and disappear when it
+  scrubs back past it. Notes carry no tod-less rows today; the `tod == null`
+  branch just means a note that cannot be placed on the clock is always shown.
+
+LIVE is unaffected in practice: `T` is the live clock, so every stored note is
+already behind it.
+
+**Verified** in headless Chrome against the archived **NLS7** bundle
+(`?event=NLS7`, car #5, playback paused, scrubber driven directly):
+
+| | notes shown | notes dated after the clock |
+|---|---|---|
+| scrub to 14:12:21 | 27 | 0 |
+| scrub back to 11:38:27 (**before**) | 27 | **12** |
+| scrub back to 11:38:27 (**after**) | 15 | 0 |
+| scrub forward to 14:12:21 again | 27 | 0 |
+
+## 20.2 The SNAP reel
+
+**Symptom.** Same drag, same shape of bug: the SNAP table kept every lap column it
+had ever drawn — 23 lap columns at a clock where the field was on lap 6.
+
+**Cause.** SNAP is the *frozen* twin of GRID (§ the reel is deliberately not
+recomputed: a cell keeps the colour it had the moment that sector was set). That
+freeze lives in `gridFreeze.done[car][lap]`, which by design is only ever written
+forward — and `lapsSoFar` is derived from it, not from `T`. Nothing dropped a cell
+when the clock moved back behind it. GRID isn't affected: it recomputes from `T`
+every render by construction.
+
+**The fix.** `gridFreeze` now carries the clock `T` it was built up to.
+`renderSectGridFrozen(T)` calls `resetGridFreeze()` when `T` moves backwards and
+re-freezes from the start. That is safe because freezing is deterministic — the
+events are replayed in boundary order through the running bests — so a rebuilt state
+is identical to the incremental one. Forward play is untouched and stays incremental
+(only the sectors that crossed since the last call are processed); the rebuild costs
+one extra pass over cars × laps, and only on a backward scrub.
+
+**Verified** the same way (`?event=NLS7`, SNAP reel, paused, scrubber driven):
+
+| | lap columns | selected car's filled cells |
+|---|---|---|
+| scrub to 13:33:52 | 23 | 23 |
+| scrub back to 10:59:59 (**before**) | **23** | **23** |
+| scrub back to 10:59:59 (**after**) | 6 | 6 |
+| scrub forward to 13:33:52 again | 23 | 23, **cell-for-cell identical colours** |
+
+## 20.3 The VIDEO reel count (and what ANALYSE would cut)
+
+Found by the sweep below, not by eye: the reel header read **"12 overtakes ready"** at
+a clock where only 7 had happened. `rnClipNotes()` — the single definition of "an
+on-track overtake the reel can clip", and deliberately the same list ANALYSE cuts from
+— filtered `rnNotes` by kind and sector but not by the clock, so it counted (and would
+have cut video for) passes still in the future. It now also filters on `rnVisible`, so
+the header, the feed and ANALYSE all agree at any scrubber position.
+
+## 20.4 How the rest was checked — `tools/rewind-audit.mjs`
+
+Rather than reason panel-by-panel about which renderer keeps state, the audit is
+mechanical and rerunnable: render **one clock two ways** — straight to `T`, versus out
+to a late clock and back — and diff the DOM of every panel. Anything that differs is
+carrying state a rewind doesn't undo. A second pass flags panels that render
+*identically at an early and a late clock*, which catches the opposite flavour ("shows
+the whole race regardless of `T`"). Run it exactly like the PWA self-test (§17.7),
+CDP-driven headless Chrome, no npm deps:
+
+```
+python3 -m http.server 8791 --bind 127.0.0.1 &
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+   --headless=new --remote-debugging-port=9222 \
+   --user-data-dir=/tmp/rw-chrome --no-first-run about:blank &
+node tools/rewind-audit.mjs
+```
+
+With the three fixes reverted it fails on exactly `rn-feed`, `snaptablewrap` and
+`vr-count`; with them in place **all 35 panels match**. What it cleared:
+
+- **GRID, DRV, TIMES, POS, FLOW, SECT, PACE, STINT, COMP, DIFF, BARS**, the map, the
+  standings, the gap chart, the mini-map and the whole mobile view — all rebuild from
+  `T` every render.
+- **The FUEL log** already *removes* a lap's row when its condition stops holding at
+  `T` (`fuelS5Set` / `fuelPitSet` map lap → row for exactly that reason).
+- **The race-control board** gates on `msgTod(created_at) <= T` in SIM, so messages
+  hide again on a rewind.
+- **The TYRE and SERVICE iframes** only accumulate km when `LIVE_MODE` — the SIM guard
+  that stopped scrub-back from re-seeding wear.
+- **`_loggedLaps`** (lap-time logging) is LIVE-only, and LIVE never rewinds.
+
+Two known non-findings, both deliberate:
+
+- **STINT driver colours.** `stintDrvColor` hands out a palette colour the first time a
+  driver is drawn, so *which* colour a driver gets depends on how far the replay has
+  run. A colour is never reassigned, so nothing changes on screen mid-session — the
+  audit normalizes STINT's fills and still compares its geometry and labels.
+- **`#gridclock`** counts down to the next race weekend off the wall clock, so it is
+  meant to differ between two runs; the audit ignores it.
+
+## 20.5 Two errors the same run surfaced
+
+Console/network errors found while auditing, both silent to the user and both fixed:
+
+- **`<path> attribute d: Expected moveto path command`** (twice, on any clock with one
+  lap of data). `smoothPath()` returned `''` for a single point, and two callers close
+  the curve into an area fill by appending `" L…,base L…,base Z"` — so the path began
+  with an `L`, the browser rejected it and dropped the element. `smoothPath` now emits a
+  bare `M x,y` for one point; the fill degenerates to a zero-width (invisible) sliver,
+  which is what the area under a one-lap trace should be. Empty input still gives `''`.
+- **HTTP 409 on every `stint9_reel_usage` flush after the first.** The table's PK is
+  `(id)` but its unique index is `(session_id, reel, event_date)`, and the POST asked
+  for `resolution=merge-duplicates` without naming a conflict target — so PostgREST
+  resolved against the PK and the unique constraint rejected the row. The `.catch()`
+  swallowed it, so a session's `seconds` silently froze at its first 15s tick. The URL
+  now carries `?on_conflict=session_id,reel,event_date` (the same shape the racenote
+  upsert already used). Verified against the real table: one headless session merged
+  15 → 30 → 45 s on a single row, no 409s.
+
+The remaining `ERR_ABORTED` lines in a headless run — Carto basemap tiles and the
+`keepalive` analytics beacons — are teardown artifacts of closing the browser
+mid-flight, not defects.
