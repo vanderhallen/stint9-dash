@@ -557,7 +557,7 @@
             <div id="fuellog" class="fuellog"></div>
           </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260803b" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
@@ -2438,6 +2438,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     // Left/Right flip the TYRE board's horizontal sub-reel (STINT|BOARD|STOCK)
     if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
       if(cur.id==='reelcard'&&reelIdx===1){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
+      else if(cur.id==='reelcard'&&reelIdx===2){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
       return;
     }
     // while a reel is zoomed/focused, Up/Down arrows step through its reels
@@ -2468,6 +2469,23 @@ function boardH(dir){const f=document.getElementById('boardframe');if(f&&f.conte
 /* centre the TYRE board on its middle panel (BOARD) — used when the vertical reel
    lands on the TYRE row so it always shows the centred board, not a side panel. */
 function boardCenter(){const f=document.getElementById('boardframe');if(f&&f.contentWindow)f.contentWindow.postMessage({type:'tyreHcenter'},'*');}
+/* SERVICE reel scales like the TYRE board: service.html renders at a fixed
+   logical 1340x700 and is transform:scaled to fit its panel (small inline or
+   large zoomed), so it looks the same either way instead of squashing. */
+(function initSvcFrame(){
+  const f=document.getElementById('svcframe');if(!f)return;
+  const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
+  const LW=1340,LH=700;
+  function fit(){const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
+    const s=Math.min(pw/LW,ph/LH);
+    f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.left='50%';f.style.top='50%';
+    f.style.transform='translate(-50%,-50%) scale('+s+')';}
+  f.addEventListener('load',fit);
+  try{new ResizeObserver(fit).observe(panel);}catch(e){window.addEventListener('resize',fit);}
+  fit();
+})();
+/* forward Left/Right to the SERVICE iframe (right → ARCHIVE, left → grid) */
+function svcH(dir){const f=document.getElementById('svcframe');if(f&&f.contentWindow)f.contentWindow.postMessage({type:'svcH',dir},'*');}
 /* the reverse: when focus is inside the TYRE board iframe (after a click there),
    it forwards Up/Down back to us so the vertical reel keeps working. */
 window.addEventListener('message',e=>{const d=e.data;if(d&&d.type==='reelV')setReel(reelIdx+(d.dir>0?1:-1));});
@@ -2482,6 +2500,7 @@ document.addEventListener('keydown',e=>{
   if(document.querySelector('.card.zoomed'))return;
   if(isV){e.preventDefault();setReel(reelIdx+(e.key==='ArrowDown'?1:-1));return;}
   if(reelIdx===1){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
+  else if(reelIdx===2){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
 });
 (function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;

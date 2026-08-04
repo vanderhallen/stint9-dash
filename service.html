@@ -347,9 +347,16 @@ window.addEventListener('message',e=>{const m=e.data;if(!m)return;
   if(m.type==='svcArchive'){ARCHIVE_RO=true;RO=true;document.body.classList.add('ro');CUR_CAR=String(m.car||'');STATE=normState(m.state);_liveProg=null;render();return;}
   if(m.type==='svcCar'){ARCHIVE_RO=!!m.ro;RO=!!m.ro;LIVE_MODE=!!m.live;document.body.classList.toggle('ro',!!m.ro);setCurCar(m.car);return;}
   if(m.type==='svcLive'){if(m.ro!=null){RO=!!m.ro;ARCHIVE_RO=!!m.ro;document.body.classList.toggle('ro',!!m.ro);}LIVE_MODE=!!m.live;if(m.car!=null)setCurCar(m.car);onLive(m.prog,m.sectorKm);return;}
+  // Left/Right nav forwarded from the dashboard: right → ARCHIVE, left → grid
+  if(m.type==='svcH'){if(m.dir>0)openArchive();else closeArchive();return;}
 });
-// forward Up/Down to the parent's vertical reel when focus is inside this iframe
-window.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();try{window.parent.postMessage({type:'reelV',dir:e.key==='ArrowDown'?1:-1},'*');}catch(err){}}});
+// keyboard when focus is inside this iframe: Up/Down step the parent reel;
+// Left/Right flip GRID ↔ ARCHIVE (ignored while typing in the interval field).
+window.addEventListener('keydown',e=>{
+  const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();try{window.parent.postMessage({type:'reelV',dir:e.key==='ArrowDown'?1:-1},'*');}catch(err){}}
+  else if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!typing){e.preventDefault();if(e.key==='ArrowRight')openArchive();else closeArchive();}
+});
 
 /* ---- ARCHIVE view: per-car component life log ----
    Columns = the 8 components, rows = part number (#1 = first fitted, …). Each
