@@ -1933,6 +1933,17 @@ copy of something. **Two rules in `sw.js` make that unreachable:**
    fallback for when the network fails or hangs. A stale `index.html` on the
    pit wall is therefore not a state the worker can produce.
 
+3. **Images are left to the browser too** — added 2026-08-04 to fix a real
+   regression, not as an optimisation. `renderGauge()` rebuilds its SVG (which
+   contains `<image href="topview.png">`) on a `requestAnimationFrame` loop, so
+   the image element is destroyed and recreated *every frame*. The browser
+   normally repaints those repeats straight from its in-memory cache; routing
+   them through a worker made every frame an async round trip and the car
+   visibly blinked. **Any** interception causes this — cache-first would have
+   too. So the fetch handler returns early for `req.destination === 'image'`
+   and for image file extensions. The cost is that images are not available
+   offline; the shell still is.
+
 On top of that:
 
 - **Navigation timeout, 4s** (`NAV_TIMEOUT`). A connection that hangs rather
@@ -1985,6 +1996,7 @@ worker stops controlling on the next navigation, so the reload lands with
 | Screen still dims | Battery saver / low-power mode refuses wake locks, or the browser has no `wakeLock` support. | Nothing to fix in code; disable low-power mode. |
 | Timing data looks frozen or stale | The worker cannot cause this — it never touches Supabase (rule 1). | Go to §9 (LIVE troubleshooting) and `admin.html` → "LIVE data stream". |
 | Page loads but is oddly slow to appear offline | Working as designed: it waits up to 4s for the network before falling back. | Lower `NAV_TIMEOUT` in `sw.js` if that feels long. |
+| Car image blinks / flickers every frame | A service worker intercepting images — see rule 3. Should not recur; `tools/sw-selftest.mjs` guards it. | Confirm with `?nosw=1`: if the blink stops, an image is being intercepted again. |
 | Something is wrong and there is no time | — | `?nosw=1`. |
 | Worker seems stuck on an old version | Rare; `skipWaiting()` normally prevents it. | Bump `VERSION`, redeploy, then `?nosw=1` once. |
 
@@ -1995,7 +2007,7 @@ website — every feature is behind a capability check.
 ## 17.7 Re-running the self-test
 
 `tools/sw-selftest.mjs` drives real headless Chrome over the DevTools Protocol
-and asserts all nine guarantees above. No npm dependencies (node ≥ 22 has a
+and asserts all ten guarantees above. No npm dependencies (node ≥ 22 has a
 global `WebSocket`). **Run it after any edit to `sw.js`.** From the repo root:
 
 ```sh
@@ -2014,7 +2026,7 @@ backend or an internet connection. The test also rewrites a probe file on disk
 mid-run to prove a redeploy beats the cache while online, and uses CDP network
 emulation to prove the shell still renders offline.
 
-Result on the shipping commit: **9/9 passed.**
+Result on the shipping commit: **10/10 passed.**
 
 ## 17.8 Deliberately not done yet
 
