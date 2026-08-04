@@ -21,14 +21,11 @@
   /* grid fills the panel: 4 cols × 2 rows share the height so every card (and its
      SWAP button) is visible without scrolling; cards flex, icon takes the slack */
   #grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:8px;padding:10px;box-sizing:border-box;height:100%}
-  @media (max-width:760px){#grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;height:auto}.card{height:auto}.cicon{flex:none;height:70px}}
-  .card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 8px 9px;border:2px solid #e3e7eb;border-radius:12px;
+  @media (max-width:760px){#grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;height:auto}.card{height:auto}}
+  .card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px 8px 9px;border:2px solid #e3e7eb;border-radius:12px;
     background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:0;min-height:0;height:100%;overflow:hidden;position:relative}
   .card.due{border-color:#e0301e}
   .cname{font-size:14px;font-weight:700;letter-spacing:1.5px;color:#16202b}
-  /* icon area flexes: it absorbs any spare height so the rows + SWAP always fit */
-  .cicon{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
-  .cicon svg,.cicon img{max-width:100%;max-height:100%;width:auto;height:auto;display:block;object-fit:contain}
   .rows{width:100%;display:flex;flex-direction:column;gap:3px;margin-top:1px}
   .row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:14px}
   .rlbl{color:#6b7480;letter-spacing:.5px;font-weight:600}
@@ -116,48 +113,6 @@
 <script>
 const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
 
-/* ---- inline SVG icons (black line-art, matching the tyre board's icon set) ---- */
-const IK='#16202b';
-const ICONS={
-  engine:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
-    <rect x="21" y="8" width="22" height="5" rx="2.5" fill="${IK}" stroke="none"/><rect x="29.5" y="12" width="5" height="7" fill="${IK}" stroke="none"/>
-    <path d="M8 30 h5 v-8 h9 l4 -4 h13 v8 h6 v-4 h7 l5 5 v6 h4 v7 h-4 v6 l-5 5 h-7 v-4 h-6 v8 h-13 l-4 -4 h-9 v-8 h-5 z"/></g></svg>`,
-  oil:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="4" stroke-linecap="round">
-    <path d="M14 20 a22 22 0 0 1 38 -4"/><polygon points="52,8 52,19 41,15" fill="${IK}" stroke="none"/>
-    <path d="M50 44 a22 22 0 0 1 -38 4"/><polygon points="12,56 12,45 23,49" fill="${IK}" stroke="none"/></g>
-    <path fill="${IK}" d="M22 30 l3 -6 4 1 1 3 12 4 a2 2 0 0 1 0 4 l-16 3 a3 3 0 0 1 -3 -1 z"/>
-    <path fill="${IK}" d="M42 40 c-3 4 -3 7 0 7 s3 -3 0 -7 z"/></svg>`,
-  disc:`<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="${IK}" stroke-width="3.5"/>
-    <circle cx="32" cy="32" r="12" fill="none" stroke="${IK}" stroke-width="3.5"/>
-    <g fill="${IK}"><circle cx="32" cy="26" r="2.1"/><circle cx="37" cy="30" r="2.1"/><circle cx="35" cy="36" r="2.1"/><circle cx="29" cy="36" r="2.1"/><circle cx="27" cy="30" r="2.1"/></g>
-    <g stroke="${IK}" stroke-width="3" stroke-linecap="round"><line x1="32" y1="8" x2="32" y2="15"/><line x1="49" y1="19" x2="44" y2="24"/><line x1="54" y1="40" x2="47" y2="38"/><line x1="40" y1="53" x2="38" y2="46"/><line x1="18" y1="50" x2="22" y2="44"/><line x1="10" y1="30" x2="17" y2="31"/></g>
-    <g fill="${IK}"><circle cx="24" cy="14" r="1.3"/><circle cx="21" cy="18" r="1.3"/><circle cx="18" cy="23" r="1.3"/><circle cx="47" cy="47" r="1.3"/><circle cx="44" cy="50" r="1.3"/><circle cx="50" cy="28" r="1.3"/><circle cx="52" cy="24" r="1.3"/></g></svg>`,
-  pad:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="4" stroke-linejoin="round">
-    <rect x="30" y="6" width="7" height="6" fill="${IK}" stroke="none"/>
-    <path d="M26 12 h12 c6 14 6 26 0 40 h-12 v-9 h-4 a9 9 0 0 0 0 -22 h4 z"/>
-    <line x1="26" y1="32" x2="40" y2="32"/><rect x="30" y="52" width="7" height="6" fill="${IK}" stroke="none"/></g></svg>`,
-  shaft:`<svg viewBox="0 0 64 64"><g transform="rotate(45 32 32)">
-    <g fill="none" stroke="${IK}" stroke-width="3.5" stroke-linecap="round">
-    <line x1="26" y1="32" x2="38" y2="32"/>
-    <g stroke-width="3"><ellipse cx="20" cy="32" rx="4" ry="8"/><ellipse cx="15.5" cy="32" rx="4" ry="6.5"/><ellipse cx="11.5" cy="32" rx="3.2" ry="5"/>
-    <ellipse cx="44" cy="32" rx="4" ry="8"/><ellipse cx="48.5" cy="32" rx="4" ry="6.5"/><ellipse cx="52.5" cy="32" rx="3.2" ry="5"/></g>
-    <rect x="6" y="29.5" width="4" height="5" rx="1" fill="${IK}" stroke="none"/><rect x="54" y="29.5" width="4" height="5" rx="1" fill="${IK}" stroke="none"/></g></g></svg>`,
-  bearing:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="3" stroke-linejoin="round">
-    <ellipse cx="32" cy="20" rx="24" ry="9"/><ellipse cx="32" cy="20" rx="14" ry="5"/>
-    <path d="M8 20 v10 a24 9 0 0 0 48 0 v-10"/>
-    <g fill="${IK}" stroke="none"><circle cx="14" cy="18" r="1.8"/><circle cx="50" cy="18" r="1.8"/><circle cx="32" cy="13" r="1.8"/><circle cx="24" cy="24" r="1.8"/><circle cx="40" cy="24" r="1.8"/></g>
-    <line x1="24" y1="40" x2="24" y2="52"/><line x1="40" y1="40" x2="40" y2="52"/></g></svg>`,
-  turbo:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="3.2" stroke-linejoin="round">
-    <path d="M30 8 a24 24 0 1 0 16 6 l8 -6 a4 4 0 0 1 5 6 l-9 8"/>
-    <circle cx="28" cy="34" r="15"/><circle cx="28" cy="34" r="4"/>
-    <g stroke-width="2.6"><path d="M28 34 q6 -10 11 -6"/><path d="M28 34 q10 4 8 10"/><path d="M28 34 q-4 11 -11 8"/><path d="M28 34 q-10 -5 -6 -12"/></g>
-    <circle cx="12" cy="20" r="3"/><circle cx="12" cy="48" r="3"/><circle cx="44" cy="46" r="3"/></g></svg>`,
-  diff:`<svg viewBox="0 0 64 64"><g fill="none" stroke="${IK}" stroke-width="3.2" stroke-linejoin="round">
-    <circle cx="26" cy="34" r="17"/><circle cx="26" cy="34" r="7"/>
-    <g stroke-width="2.6">${Array.from({length:12}).map((_,i)=>{const a=i*30*Math.PI/180,cx=26,cy=34;const r1=17,r2=21;return `<line x1="${(cx+r1*Math.cos(a)).toFixed(1)}" y1="${(cy+r1*Math.sin(a)).toFixed(1)}" x2="${(cx+r2*Math.cos(a)).toFixed(1)}" y2="${(cy+r2*Math.sin(a)).toFixed(1)}"/>`;}).join('')}</g>
-    <circle cx="50" cy="18" r="6"/><g stroke-width="2.4">${Array.from({length:8}).map((_,i)=>{const a=i*45*Math.PI/180,cx=50,cy=18;const r1=6,r2=9;return `<line x1="${(cx+r1*Math.cos(a)).toFixed(1)}" y1="${(cy+r1*Math.sin(a)).toFixed(1)}" x2="${(cx+r2*Math.cos(a)).toFixed(1)}" y2="${(cy+r2*Math.sin(a)).toFixed(1)}"/>`;}).join('')}</g>
-    <line x1="43" y1="34" x2="56" y2="34"/></g></svg>`
-};
 
 /* ---- component definitions (order = display order). Intervals are sensible
    endurance defaults; each is editable per car and persisted. ---- */
@@ -174,9 +129,6 @@ const COMPONENTS=[
   {key:'diff',   label:'DIFF',    interval:20000}
 ];
 function svcText(iv){return iv>0?(fmtKm(iv)+' km'):'on condition';}
-// use the exact supplied PNG icons (service-icons/<key>.png) in place of the
-// inline SVG fallbacks defined above.
-COMPONENTS.forEach(d=>{ICONS[d.key]='<img src="service-icons/'+d.key+'.png?v=2" alt="'+d.label+'" draggable="false">';});
 
 /* ---- state: one blob per car in public.stint9_service_state ----
    state = { comp: { engine:{interval, actual, start}, ... } }
@@ -248,7 +200,6 @@ function render(){
     const card=document.createElement('div');card.className='card';card.dataset.key=d.key;
     card.innerHTML=
       '<div class="cname">'+d.label+'</div>'+
-      '<div class="cicon">'+ICONS[d.key]+'</div>'+
       '<div class="rows">'+
         '<div class="row"><span class="rlbl">SERVICE</span><span class="svcedit"><input class="svcinp" type="text" inputmode="numeric" autocomplete="off" data-k="interval" title="service interval — type km, or blank for on-condition" placeholder="on cond." '+(RO?'readonly ':'')+'value="'+(c.interval>0?fmtKm(c.interval):'')+'"><span class="kmsfx">km</span></span></div>'+
         '<div class="row"><span class="rlbl">ACTUAL</span><span class="svcedit"><span class="vnum" data-k="actual">'+fmtKm(c.actual)+'</span><span class="kmsfx">km</span></span></div>'+
