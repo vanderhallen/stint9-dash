@@ -26,6 +26,7 @@
 14. [Message to send the stint9 owner](#14-message-to-send-the-stint9-owner)
 15. [SIM vs LIVE parity audit — 2026-08-02](#15-sim-vs-live-parity-audit--2026-08-02)
 16. [SIM race picker — choose an archived event from a popup](#16-sim-race-picker--choose-an-archived-event-from-a-popup-2026-08-02)
+17. [PWA — installable app, offline shell, wake lock](#17-pwa--installable-app-offline-shell-wake-lock-2026-08-04)
 
 ---
 
@@ -1873,3 +1874,158 @@ top of it).
   Eifel-Trophy", 6 cars rendered); NLS7 verified separately (`#evdate` =
   "2026-08-01 · 6h ADAC Ruhr-Pokal-Rennen", 7 cars). Zero console errors in
   both cases.
+
+---
+
+# 17. PWA — installable app, offline shell, wake lock (2026-08-04)
+
+The dashboard stays a plain static site on Cloudflare Pages. Three additions
+make it behave like an installed app on a phone or tablet at the pit wall,
+with **no build step, no framework and no change to how it is deployed** —
+`git push` to `main` still ships it.
+
+Backup taken before this work: `backup-2026-08-04/` (8 pages, verified
+byte-identical before committing).
+
+## 17.1 What was added
+
+| File | Purpose |
+|---|---|
+| `manifest.json` | Makes the site installable. `display: standalone`, `scope: /`, `start_url: /`. |
+| `icons/` | `icon-192.png`, `icon-512.png` (both `any maskable`), `apple-touch-icon.png` (180), `favicon-32.png`. Red "S9" on `#16202b`. |
+| `sw.js` | Service worker: offline shell, network-first. |
+| `index.html` (head) | `<link rel=manifest>`, `theme-color`, apple-touch-icon, `apple-mobile-web-app-*` meta. |
+| `index.html` (foot) | Two small IIFEs: the wake lock, and the service-worker registration + `?nosw=1` escape hatch. |
+| `tools/sw-selftest.mjs` | Re-runnable end-to-end test of everything below. |
+
+Only `index.html` carries the tags. Because `scope` is `/`, navigating from
+the installed app to `service.html`, `tyre.html`, `driver.html` etc. stays
+inside the app window.
+
+## 17.2 Screen wake lock
+
+`navigator.wakeLock.request('screen')` — the tablet stops dimming and sleeping
+while the dashboard is open. Three details that are easy to get wrong:
+
+- The browser **always** releases the lock when the tab is hidden. Without a
+  `visibilitychange` re-acquire it works once and then silently stops for the
+  rest of the session. That re-acquire is the whole trick.
+- Some browsers only grant it after a user gesture, so a `click` listener
+  re-tries as well.
+- It is feature-detected and fully `.catch()`ed. Battery saver refusing the
+  lock is a normal outcome, not an error worth surfacing.
+
+It only holds while the tab is visible and in the foreground — it cannot drain
+the battery in someone's pocket.
+
+## 17.3 The service worker contract — why this is safe on race day
+
+The one real danger of a service worker on a live dashboard is serving a stale
+copy of something. **Two rules in `sw.js` make that unreachable:**
+
+1. **Cross-origin requests are never intercepted.** The `fetch` handler
+   returns early unless `url.origin === self.location.origin`. Supabase,
+   Leaflet and the Google fonts never touch the worker, so live timing data
+   can *never* come out of a cache. This is the load-bearing line — if
+   anything in `sw.js` is ever edited, this is the property to re-verify.
+2. **Same-origin requests are network-first.** While there is a network, the
+   response is always the freshly deployed file. The cache is only ever a
+   fallback for when the network fails or hangs. A stale `index.html` on the
+   pit wall is therefore not a state the worker can produce.
+
+On top of that:
+
+- **Navigation timeout, 4s** (`NAV_TIMEOUT`). A connection that hangs rather
+  than fails — the normal Eifel failure mode — would otherwise leave a blank
+  screen for 30s. Instead the cached shell is shown, and it then fetches its
+  own live data as usual.
+- **`admin.html` is never cached** (`NEVER` list): team-gated, and not
+  something to leave on a shared tablet.
+- **Only complete same-origin 200s are stored** (`res.status === 200 &&
+  res.type === 'basic'`) — no redirects, no partials, no opaque responses.
+- **Install cannot get stuck.** Precaching uses `Promise.allSettled`, not
+  `cache.addAll`; one missing file would otherwise fail the whole install and
+  leave the worker permanently "installing".
+
+## 17.4 Deploying a change
+
+Nothing special: `git push` to `main`, Pages rebuilds. Because of rule 2 the
+next load online already gets the new file — **you do not need to bump
+anything for normal deploys.**
+
+Bump `VERSION` in `sw.js` (`'v1'` → `'v2'`) only when you want to *drop every
+cached copy*, e.g. after changing what gets precached, or if you ever suspect
+the cache. On activation the worker deletes every `stint9-*` cache that is not
+the current one.
+
+The worker itself updates on its own: browsers re-check `sw.js` on navigation,
+and `skipWaiting()` + `clients.claim()` mean a new one takes over promptly
+instead of waiting for every tab to close.
+
+## 17.5 The escape hatch — `?nosw=1`
+
+Open **any** page with `?nosw=1` (e.g. `https://…/index.html?nosw=1`) and the
+page unregisters every service worker and deletes every cache, then behaves as
+a plain website again. Use it first if anything looks wrong at the track;
+diagnose afterwards.
+
+**It reloads the page once, on purpose.** A worker that still controls the
+page can re-create a cache *while* the page is deleting it — this was a real
+bug caught by the self-test, not a theoretical one. After `unregister()` the
+worker stops controlling on the next navigation, so the reload lands with
+`navigator.serviceWorker.controller === null`, where the wipe sticks. A
+`sessionStorage` flag (`nosw-retry`) guarantees it reloads at most once.
+
+## 17.6 Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| "I don't get an Add to Home Screen option" | iOS only offers it from **Safari** (not Chrome), via Share → Add to Home Screen. Android needs the manifest to load over HTTPS. | Check `/manifest.json` returns 200 `application/json` and `/icons/icon-192.png` returns 200. |
+| Site shows an old version after a deploy | Almost certainly **not** the worker — it is network-first. Suspect the Cloudflare edge cache or the browser HTTP cache first. | Hard-reload. If it persists, confirm with `?nosw=1`: if the old version *still* shows, the worker was never the cause. |
+| Screen still dims | Battery saver / low-power mode refuses wake locks, or the browser has no `wakeLock` support. | Nothing to fix in code; disable low-power mode. |
+| Timing data looks frozen or stale | The worker cannot cause this — it never touches Supabase (rule 1). | Go to §9 (LIVE troubleshooting) and `admin.html` → "LIVE data stream". |
+| Page loads but is oddly slow to appear offline | Working as designed: it waits up to 4s for the network before falling back. | Lower `NAV_TIMEOUT` in `sw.js` if that feels long. |
+| Something is wrong and there is no time | — | `?nosw=1`. |
+| Worker seems stuck on an old version | Rare; `skipWaiting()` normally prevents it. | Bump `VERSION`, redeploy, then `?nosw=1` once. |
+
+Browser support: iOS 16.4+ for both wake lock and installed-PWA behaviour;
+Chrome/Edge/Android throughout. Anything older silently gets today's plain
+website — every feature is behind a capability check.
+
+## 17.7 Re-running the self-test
+
+`tools/sw-selftest.mjs` drives real headless Chrome over the DevTools Protocol
+and asserts all nine guarantees above. No npm dependencies (node ≥ 22 has a
+global `WebSocket`). **Run it after any edit to `sw.js`.** From the repo root:
+
+```sh
+python3 -m http.server 8791 --bind 127.0.0.1 &                       # the site
+mkdir -p /tmp/sw-other && echo '{"ok":1}' > /tmp/sw-other/ping.json
+python3 -m http.server 8792 --bind 127.0.0.1 --directory /tmp/sw-other &
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/sw-chrome --no-first-run about:blank &
+node tools/sw-selftest.mjs
+```
+
+Port **8792 is a second origin standing in for Supabase** — that is how the
+"cross-origin is never intercepted" rule is proven without needing the real
+backend or an internet connection. The test also rewrites a probe file on disk
+mid-run to prove a redeploy beats the cache while online, and uses CDP network
+emulation to prove the shell still renders offline.
+
+Result on the shipping commit: **9/9 passed.**
+
+## 17.8 Deliberately not done yet
+
+- **Web Push for race-control messages.** The obvious next step — the
+  messages are already in Supabase on a cron (§11). Worth noting that on iOS,
+  Web Push *only* works for a site installed to the home screen, which is the
+  strongest reason the manifest above exists.
+- **Caching the CDN assets** (Leaflet, Google Fonts). Cross-origin, so
+  currently untouched by rule 1; offline they fall back to system fonts and
+  the map tiles are absent. Cacheable later, but only by deliberately relaxing
+  rule 1 for two known hosts — do it carefully or not at all.
+- **Manifest tags on the sub-pages.** Not needed while `scope: /` keeps them
+  inside the app window; only matters if a sub-page should be separately
+  installable.
