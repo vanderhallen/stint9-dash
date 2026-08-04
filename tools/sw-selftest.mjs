@@ -112,14 +112,25 @@ check('cross-origin (Supabase stand-in) bypasses the worker',
   cross.length > 0 && !cross.some(e => e.params.response.fromServiceWorker),
   cross.length + ' response(s)');
 
-// 5. same-origin does go through it
+// 5. same-origin non-image does go through it
 events.length = 0;
-await evaluate(`fetch('/icons/icon-192.png',{cache:'no-store'}).then(()=>1)`);
+await evaluate(`fetch('/manifest.json',{cache:'no-store'}).then(()=>1)`);
 await sleep(600);
 check('same-origin request is handled by the worker',
   events.some(e => e.method === 'Network.responseReceived'
-    && e.params.response.url.endsWith('/icons/icon-192.png')
+    && e.params.response.url.endsWith('/manifest.json')
     && e.params.response.fromServiceWorker));
+
+// 5b. regression guard: images must NOT be intercepted, or the gap-gauge car
+// blinks once per animation frame (see README §17.9)
+events.length = 0;
+await evaluate(`fetch('/icons/icon-192.png',{cache:'no-store'}).then(()=>1)`);
+await sleep(600);
+const imgHits = events.filter(e => e.method === 'Network.responseReceived'
+  && e.params.response.url.endsWith('/icons/icon-192.png'));
+check('images bypass the worker (no per-frame blink)',
+  imgHits.length > 0 && !imgHits.some(e => e.params.response.fromServiceWorker),
+  imgHits.length + ' response(s)');
 
 // 6. network-first: a redeploy is picked up immediately, cache never goes stale
 await evaluate(`fetch('/swprobe.txt',{cache:'no-store'}).then(r=>r.text())`);

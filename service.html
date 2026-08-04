@@ -21,11 +21,14 @@
   /* grid fills the panel: 4 cols × 2 rows share the height so every card (and its
      SWAP button) is visible without scrolling; cards flex, icon takes the slack */
   #grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:8px;padding:10px;box-sizing:border-box;height:100%}
-  @media (max-width:760px){#grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;height:auto}.card{height:auto}}
-  .card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px 8px 9px;border:2px solid #e3e7eb;border-radius:12px;
+  @media (max-width:760px){#grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;height:auto}.card{height:auto}.cicon{flex:none;height:70px}}
+  .card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 8px 9px;border:2px solid #e3e7eb;border-radius:12px;
     background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:0;min-height:0;height:100%;overflow:hidden;position:relative}
   .card.due{border-color:#e0301e}
   .cname{font-size:14px;font-weight:700;letter-spacing:1.5px;color:#16202b}
+  /* icon area flexes: it absorbs any spare height so the rows + SWAP always fit */
+  .cicon{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+  .cicon svg,.cicon img{max-width:100%;max-height:100%;width:auto;height:auto;display:block;object-fit:contain}
   .rows{width:100%;display:flex;flex-direction:column;gap:3px;margin-top:1px}
   .row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:14px}
   .rlbl{color:#6b7480;letter-spacing:.5px;font-weight:600}
@@ -113,6 +116,9 @@
 <script>
 const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
 
+/* ---- icons: the supplied PNGs in service-icons/<key>.png. Filled in from
+   COMPONENTS below, once the keys are known. ---- */
+const ICONS={};
 
 /* ---- component definitions (order = display order). Intervals are sensible
    endurance defaults; each is editable per car and persisted. ---- */
@@ -129,6 +135,8 @@ const COMPONENTS=[
   {key:'diff',   label:'DIFF',    interval:20000}
 ];
 function svcText(iv){return iv>0?(fmtKm(iv)+' km'):'on condition';}
+// the card icons: one PNG per component.
+COMPONENTS.forEach(d=>{ICONS[d.key]='<img src="service-icons/'+d.key+'.png?v=2" alt="'+d.label+'" draggable="false">';});
 
 /* ---- state: one blob per car in public.stint9_service_state ----
    state = { comp: { engine:{interval, actual, start}, ... } }
@@ -200,6 +208,7 @@ function render(){
     const card=document.createElement('div');card.className='card';card.dataset.key=d.key;
     card.innerHTML=
       '<div class="cname">'+d.label+'</div>'+
+      '<div class="cicon">'+ICONS[d.key]+'</div>'+
       '<div class="rows">'+
         '<div class="row"><span class="rlbl">SERVICE</span><span class="svcedit"><input class="svcinp" type="text" inputmode="numeric" autocomplete="off" data-k="interval" title="service interval — type km, or blank for on-condition" placeholder="on cond." '+(RO?'readonly ':'')+'value="'+(c.interval>0?fmtKm(c.interval):'')+'"><span class="kmsfx">km</span></span></div>'+
         '<div class="row"><span class="rlbl">ACTUAL</span><span class="svcedit"><span class="vnum" data-k="actual">'+fmtKm(c.actual)+'</span><span class="kmsfx">km</span></span></div>'+

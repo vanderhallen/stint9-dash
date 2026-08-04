@@ -12,18 +12,13 @@
    Bump VERSION to drop every cached copy on the next deploy.
    Escape hatch: load any page with ?nosw=1 to unregister and wipe the caches. */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'stint9-' + VERSION;
 
-/* served from cache only when the network fails or hangs */
-const PRECACHE = [
-  '/',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
-  '/icons/favicon-32.png'
-];
+/* served from cache only when the network fails or hangs. No images here on
+   purpose — see the image bypass in the fetch handler; they would never be
+   served from this cache anyway. */
+const PRECACHE = ['/', '/manifest.json'];
 
 /* a hung connection in the Eifel should not mean a blank screen: if a page
    navigation has not answered in this long, show the last good copy instead */
@@ -61,6 +56,15 @@ self.addEventListener('fetch', event => {
   // left entirely to the browser
   if (url.origin !== self.location.origin) return;
   if (NEVER.some(re => re.test(url.pathname))) return;
+
+  // Images are left to the browser as well, and this is not an optimisation —
+  // it is a correctness fix. renderGauge() rebuilds its SVG (which contains
+  // <image href="topview.png">) on a requestAnimationFrame loop, so the image
+  // element is destroyed and recreated every frame. The browser normally
+  // repaints those repeats straight from its in-memory cache; routing them
+  // through a worker makes every frame an async round trip, and the car
+  // visibly blinks. Any interception causes this — cache-first would too.
+  if (req.destination === 'image' || /\.(png|jpe?g|gif|svg|webp|avif|ico)$/i.test(url.pathname)) return;
 
   event.respondWith(networkFirst(req, req.mode === 'navigate'));
 });
