@@ -330,7 +330,11 @@ function renderField(){
   var mine=meas.filter(function(x){return x.cls===myCls;});
   var pool=mine.length>=2?mine:meas;
   var scope=mine.length>=2?esc(myCls):'measured field';
-  sub.textContent='five furthest each way · '+meas.length+' measured of '+F.length+' cars';
+  // The cards rank inside the class; the list below ranks the whole measured
+  // field. Say which is which on every heading, or the class winner reads as a
+  // contradiction of the field row sitting under the same words.
+  var scopeIn=mine.length>=2?('in '+esc(myCls)):'in the measured field';
+  sub.textContent='cards '+scopeIn+' · list over '+meas.length+' measured of '+F.length+' cars';
   var closest=null;
   pool.forEach(function(x){if(!closest||Math.abs(x.m)<Math.abs(closest.m))closest=x;});
   // "Under" only exists where our table is not the car's own -- so if nobody in
@@ -355,20 +359,27 @@ function renderField(){
     card('self','Selected car',own,
       own?('our car · '+(own.real?'measured':'stop times estimated'))
          :(R.car?('#'+esc(R.car)+' — no stops yet'):'pick a car on the STOPS page'))+
-    card('best','Closest to the minimum',closest,'tightest execution · '+scope)+
-    card('under','Furthest under the minimum',under,
+    card('best','Closest to the minimum '+scopeIn,closest,'tightest execution · '+scope)+
+    card('under','Furthest under the minimum '+(underWide?'in the measured field':scopeIn),under,
       underWide?'outside this class — proof our table is not theirs'
                :'below our own table — check for a penalty');
 
-  // Scale the bars to the measured spread, not to a garage repair -- one 2905s
-  // estimate would otherwise flatten every real margin to an invisible sliver.
-  var mx=Math.max.apply(null,(meas.length?meas:F).map(function(x){return Math.abs(x.m);}))||1;
   // Ninety-odd rows is a scroll nobody does mid-stint. Only the two ends of the
-  // ranking say anything: who gave time away, and who is under. Estimates are
-  // ranked out for the same reason the cards ignore them.
+  // ranking say anything. Estimates are ranked out for the same reason the
+  // cards ignore them.
   var srt=meas.slice().sort(function(a,b){return a.m-b.m;});
-  var lo=srt.slice(0,5),
-      hi=srt.slice(Math.max(lo.length,srt.length-5)).reverse();   // never the same car twice
+  // Under and over are two different questions, so they get two different
+  // rankings: furthest below the minimum is a penalty to go looking for, but
+  // above it the interesting end is the tight one -- the execution to match,
+  // which is what the green card reads inside our class. Splitting on the sign
+  // also means the two ends can never share a car.
+  var lo=srt.filter(function(x){return x.m<0;}).slice(0,5),
+      hi=srt.filter(function(x){return x.m>=0;}).slice(0,5);
+  // Scale the bars to the rows actually on screen, not to the whole spread: the
+  // field's +635s outlier would flatten five margins of twenty-odd seconds into
+  // invisible slivers. Our own row is in the set even when it is in neither end.
+  var bars=lo.concat(hi);if(own&&own.real)bars=bars.concat([own]);
+  var mx=Math.max.apply(null,(bars.length?bars:F).map(function(x){return Math.abs(x.m);}))||1;
   function row(x){
     var w=Math.min(50,100*Math.abs(x.m)/mx/2), left=x.m>=0?50:(50-w);
     var klass=(x.car===R.car)?'self':(x.cls===myCls?'mine':'other');
@@ -384,8 +395,9 @@ function renderField(){
   function sect(lbl){return '<tr class="sect"><td colspan="7">'+lbl+'</td></tr>';}
   var h='<table><thead><tr><th class="l">Car</th><th class="l">Class</th><th>Stops</th><th>Stopped</th>'+
     '<th>Minimum</th><th>Margin</th><th class="l">&nbsp;</th></tr></thead><tbody>';
-  h+=sect('Furthest under the minimum')+(lo.length?lo.map(row).join(''):sect('— nothing measured yet'));
-  if(hi.length)h+=sect('Furthest over the minimum')+hi.map(row).join('');
+  h+=sect('Furthest under the minimum · measured field')+
+     (lo.length?lo.map(row).join(''):sect(meas.length?'— nobody under the minimum':'— nothing measured yet'));
+  if(hi.length)h+=sect('Closest over the minimum · measured field')+hi.map(row).join('');
   // the two ends are where our car usually is not -- keep it on the page anyway
   var shown={};lo.concat(hi).forEach(function(x){shown[x.car]=1;});
   if(own&&!shown[own.car])h+=sect('Our car')+row(own);

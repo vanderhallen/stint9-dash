@@ -2440,7 +2440,7 @@ Left/Right, with Up/Down forwarded back to the parent as `{type:'reelV'}`.
 | **STOPS** | what each stop cost against its minimum, and what that cost in position — plus the live countdown for the stop running now (§21.6) |
 | **TARGET** | how much longer may this car stand here — live countdown + release time |
 | **LAST HOUR** | the last-stop minimum, keyed on race time remaining |
-| **MARGINS** | every car ranked by margin; tightest execution and furthest under |
+| **MARGINS** | class cards (tightest, furthest under) over a field list: five furthest under, five closest over |
 
 ## 21.1 The regulation tables
 
@@ -2550,12 +2550,25 @@ and marked in the list. The field table is built only while PIT is the visible p
 and at most once a second, and is dropped in `buildClass` alongside `_pitLapCache`.
 
 **Two ends, not ninety-eight rows.** The list is the five furthest *under* the minimum
-and the five furthest *over* it, each under its own section heading, ranked over the
+and the five *closest over* it, each under its own section heading, ranked over the
 measured field — a ninety-row scroll is not something anyone does mid-stint, and only
-the ends say anything. Estimated stops are ranked out for the same reason they are kept
-out of the callouts, and the two ends can never share a car (the over slice starts after
-the under one). Our own car rarely sits at either end, so it is pinned as the black card
-and, when it is in neither five, appended as an `Our car` row.
+the ends say anything. The two ends answer different questions and so are ranked
+differently: below the minimum the interesting car is the furthest one (a penalty to go
+looking for), above it the tight one (the execution to match — the field-wide reading of
+the green card). Splitting the list on the sign of the margin also means the two ends can
+never share a car. Estimated stops are ranked out for the same reason they are kept out
+of the callouts. Our own car rarely sits at either end, so it is pinned as the black card
+and, when it is in neither five, appended as an `Our car` row. The mini bars scale to the
+rows on screen rather than the whole field, because the +635 s outlier would otherwise
+flatten five margins of twenty-odd seconds into nothing.
+
+**Both scopes, said out loud.** The cards rank inside the class and the list ranks the
+measured field, which put a class winner directly above a field row contradicting it —
+`#480` at −55.4 s carded as *furthest under the minimum* with `#396` at −157.6 s in the
+V6 heading the list under the same words. Neither number was wrong; only the headings
+were. So the card labels carry their scope (`FURTHEST UNDER THE MINIMUM IN VT2-F+4W`,
+and `IN THE MEASURED FIELD` when the under-card falls back out of the class), the list
+headings carry theirs, and the page subtitle names both.
 
 There is no class picker: the scope is always the selected car's own class, which is the
 only one where our A/B/C minimums are the car's own. (An earlier `CLASS` select offering
