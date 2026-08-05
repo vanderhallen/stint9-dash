@@ -58,11 +58,21 @@
   .track>.ovr{position:absolute;top:0;height:100%;background:#1e8f3a}
   .track>.und{position:absolute;top:0;height:100%;background:#e0301e}
   .empty{padding:40px 0;text-align:center;color:#9aa2ab;font-size:14px;line-height:1.7}
+  /* Before the first stop the table is the only thing that says what this page
+     will show. Print its shape with the row the car is driving towards already
+     keyed, rather than a bare "No stops yet." over blank space. */
+  tr.ghost td{color:#d3d8dd}
+  tr.ghost td.known{color:#16202b}
+  .capt{padding:16px 0 0;text-align:center;color:#9aa2ab;font-size:13px;line-height:1.7}
 
   /* ---- page 2 / 3: lookup tables ---- */
   .live{flex:0 0 auto;display:flex;align-items:center;gap:20px;padding:8px 12px;margin-bottom:8px;border-radius:10px;background:#f6f8fa;border:2px solid #e3e7eb}
   .live.on{background:#eef4ef;border-color:#1e8f3a}
   .live.over{background:#fdeeec;border-color:#e0301e}
+  /* the same strip, armed but not running: nothing is being counted yet, so it
+     must not wear the green of a live clock */
+  .live.next{background:#f6f8fa;border-color:#c3c8ce}
+  .cd.idle{color:#9aa2ab}
   .cd{font-size:64px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px}
   .cd.go{color:#1e8f3a}.cd.late{color:#e0301e}
   .cdlbl{font-size:10px;letter-spacing:2px;color:#6b7480;text-transform:uppercase;font-weight:700}
@@ -72,6 +82,10 @@
   .lut td,.lut th{padding:9px 10px;text-align:center;border-top:1px solid #f2f4f6}
   .lut tr.hit td{background:#eef4ef;font-weight:800;border-top-color:#1e8f3a}
   .lut tr.hit td:first-child{border-left:3px solid #1e8f3a}
+  /* the row the car is heading for, not the one it is standing on -- keyed, but
+     in grey so it can never be mistaken for the live minimum */
+  .lut tr.hit2 td{background:#f2f4f6;font-weight:700;border-top-color:#c3c8ce}
+  .lut tr.hit2 td:first-child{border-left:3px solid #9aa2ab}
   .cols{display:flex;gap:18px;height:100%}
   .cols>div{flex:1 1 0;min-width:0}
   /* All 59 endgame rows must be readable at a glance -- the crew has no hand
@@ -149,11 +163,11 @@
            survive the parent's 200ms pushes. Only the text nodes are updated. -->
       <div class="live pitcd" id="s-box" style="display:none">
         <div>
-          <div class="cdlbl">Remaining <span class="calbadge" id="s-cdbadge" style="display:none">· crew clock</span></div>
+          <div class="cdlbl" id="s-cdlbl">Remaining</div>
           <div class="cd go" id="s-cd">—</div>
         </div>
         <div>
-          <div class="cdlbl">Calibrate — seconds left on the crew clock</div>
+          <div class="cdlbl" id="s-callbl">Calibrate — seconds left on the crew clock</div>
           <div class="calrow">
             <input id="s-cal" class="cal-in" type="text" inputmode="decimal" autocomplete="off" placeholder="s">
             <button type="button" class="calbtn" id="s-sync">SYNC</button>
@@ -161,7 +175,7 @@
           </div>
         </div>
         <div><div class="cdlbl">Minimum · table <span id="s-tbl">—</span></div><div class="cdreq" id="s-req">—</div></div>
-        <div><div class="cdlbl">Release at</div><div class="cdreq" id="s-rel">—</div></div>
+        <div><div class="cdlbl" id="s-rellbl">Release at</div><div class="cdreq" id="s-rel">—</div></div>
         <div style="margin-left:auto;text-align:right">
           <div class="cdlbl" id="s-stint">—</div>
           <div style="font-size:12px;color:#6b7480" id="s-note"></div>
@@ -254,22 +268,34 @@ function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return 
    value, so the calibrated clock still ticks off the same engine (and the same
    SIM play/pause and speed) instead of drifting on a second timer.
    The offset is keyed to this one stop and is dropped the moment the stop ends
-   or another car is selected -- a stale hand-set clock is worse than none. */
+   or another car is selected -- a stale hand-set clock is worse than none.
+
+   Waiting for the car to be stationary to do any of that gives the crew about a
+   minute, with their hands full. So the same strip is live while the car is on
+   TRACK, against the projected next stop: there ARM sets the WINDOW -- the number
+   the crew clock will start from and count down. That is a fixed quantity, unlike
+   "seconds left", so it can be set a lap early and still be true; it becomes an
+   offset only when the stop opens, against the minimum that stop actually draws
+   (off = req + margin − window), so a stint that runs a lap longer than projected
+   and lands on a different table row still arms correctly. */
 var CAL=null;                                   // {key, off} — displayed = derived − off
+var PEND=null;                                  // {win} — armed window, waiting for the stop to open
 function calKey(){var b=R&&R.inBox;return b?((R.car||'')+'|'+b.lap):null;}
 function calOn(){var k=calKey();return !!(CAL&&k&&CAL.key===k);}
 function calOff(){return calOn()?CAL.off:0;}
 function remNow(){var b=R&&R.inBox;return b?(b.remaining-calOff()):null;}
 
 function doSync(){
-  var b=R&&R.inBox;if(!b)return;
+  var b=R&&R.inBox,nx=R&&R.next;
+  if(!b&&!nx)return;
   var el=document.getElementById('s-cal');
   var v=parseFloat(String(el.value||'').replace(',','.').trim());
-  if(!isFinite(v)){el.focus();el.select();return;}
-  CAL={key:calKey(),off:b.remaining-v};
+  if(!isFinite(v)||v<0){el.focus();el.select();return;}
+  if(b)CAL={key:calKey(),off:b.remaining-v};
+  else PEND={win:v};                            // banked until the stop opens
   el.blur();paintBox();
 }
-function dropSync(){CAL=null;document.getElementById('s-cal').value='';paintBox();}
+function dropSync(){CAL=null;PEND=null;document.getElementById('s-cal').value='';paintBox();}
 document.getElementById('s-sync').addEventListener('click',doSync);
 document.getElementById('s-unsync').addEventListener('click',dropSync);
 document.getElementById('s-cal').addEventListener('keydown',function(e){
@@ -281,19 +307,46 @@ document.getElementById('s-cal').addEventListener('keydown',function(e){
 /* Text-only repaint of the countdown strip: the calibrate field keeps whatever
    the crew has half-typed into it. */
 function paintBox(){
-  var box=document.getElementById('s-box'),b=R&&R.inBox;
-  if(!b){box.style.display='none';return;}
+  var box=document.getElementById('s-box'),b=R&&R.inBox,nx=R&&R.next;
+  if(!b&&!nx){box.style.display='none';return;}
   box.style.display='';
+  if(!b){
+    // on track: the clock is not running, so nothing here may tick or read green.
+    // The number shown is where the countdown will START -- the armed window if
+    // the crew set one, otherwise the projected minimum plus its release margin.
+    var win=PEND?PEND.win:(nx.req+(nx.safety||0));
+    box.className='live pitcd next';
+    var ncd=document.getElementById('s-cd');
+    ncd.textContent=win.toFixed(1);
+    ncd.className='cd idle';
+    document.getElementById('s-cdlbl').innerHTML='Clock will start at'+
+      (PEND?' <span class="calbadge">· crew clock</span>':'');
+    document.getElementById('s-callbl').textContent='Set the window — crew clock start';
+    document.getElementById('s-sync').textContent=PEND?'REARM':'ARM';
+    document.getElementById('s-unsync').style.display=PEND?'':'none';
+    document.getElementById('s-tbl').textContent=nx.tbl;
+    document.getElementById('s-req').textContent=nx.req+'s';
+    document.getElementById('s-rellbl').textContent='Stop';
+    document.getElementById('s-rel').textContent='#'+nx.n;
+    document.getElementById('s-stint').textContent='Lap '+nx.lap+' · '+nx.inStint+' laps in stint';
+    document.getElementById('s-note').innerHTML=PEND
+      ? '<span class="calbadge">armed — applies when the stop opens</span>'
+      : 'if it pits at the end of this lap'+(nx.safety?(' · +'+nx.safety+'s margin'):'');
+    return;
+  }
   var on=calOn(),rem=b.remaining-(on?CAL.off:0);
   box.className='live pitcd'+(rem<0?' over':' on');
   var cd=document.getElementById('s-cd');
   cd.textContent=(rem<0?'+':'')+Math.abs(rem).toFixed(1);
   cd.className='cd '+(rem<0?'late':'go');
-  document.getElementById('s-cdbadge').style.display=on?'':'none';
+  document.getElementById('s-cdlbl').innerHTML='Remaining'+
+    (on?' <span class="calbadge">· crew clock</span>':'');
+  document.getElementById('s-callbl').textContent='Calibrate — seconds left on the crew clock';
   document.getElementById('s-unsync').style.display=on?'':'none';
   document.getElementById('s-sync').textContent=on?'RESYNC':'SYNC';
   document.getElementById('s-tbl').textContent=b.tbl;
   document.getElementById('s-req').textContent=b.req+'s';
+  document.getElementById('s-rellbl').textContent='Release at';
   document.getElementById('s-rel').textContent=hhmm(b.release-(on?CAL.off:0));
   document.getElementById('s-stint').textContent='In-lap '+b.lap+' · '+b.inStint+' laps';
   document.getElementById('s-note').innerHTML='elapsed '+(b.elapsed+(on?CAL.off:0)).toFixed(1)+'s'+
@@ -302,13 +355,21 @@ function paintBox(){
        :(b.shaky?' · <span class="est">anchor estimated</span>':''));
 }
 
-var CALK=null;
+var CALK=null,CARK=null;
 function render(){
   if(!R){return;}
+  // another car: everything hand-set belongs to the car it was set on
+  if(R.car!==CARK){CARK=R.car;CAL=null;PEND=null;document.getElementById('s-cal').value='';}
   // stop over, or another car: both the offset and whatever is typed in the field
   // belong to that one stop -- a hand-set clock carried into the next is worse than none
   var k=calKey();
-  if(k!==CALK){CALK=k;CAL=null;document.getElementById('s-cal').value='';}
+  if(k!==CALK){
+    CALK=k;CAL=null;
+    // the stop just opened on an armed window: convert it against the minimum this
+    // stop really drew, so the countdown starts on the crew's number immediately
+    if(k&&PEND){CAL={key:k,off:(R.inBox.req+(R.inBox.safety||0))-PEND.win};PEND=null;}
+    document.getElementById('s-cal').value='';
+  }
   renderStops();renderTarget();renderEnd();renderField();
   paintBox();
 }
@@ -400,10 +461,38 @@ function renderStops(){
   car.textContent=R.car?('#'+R.car):'—';
   var S=R.stops||[];
   if(!S.length){
-    hero.innerHTML='';
-    tb.innerHTML='<div class="empty">'+(R.car
-      ? (R.live?'No pit times on this feed.<br><span style="font-size:12px">The WIGE socket carries no pit-in time or stop duration.</span>':'No stops yet.')
-      : 'Select a car.')+'</div>';
+    // Nothing measured yet is not nothing to show: print the page it will become,
+    // with the first row already carrying whatever the next stop is known to draw.
+    // The crew reads where each number will land before it has to read the numbers.
+    if(!R.car){
+      hero.innerHTML='';
+      tb.innerHTML='<div class="empty">Select a car.</div>';
+      return;
+    }
+    var nx=R.next;
+    hero.innerHTML='<div><div class="hlbl">Given away</div>'+
+        '<div class="hnum" style="color:#d3d8dd">—</div></div>'+
+      '<div class="hsub" style="color:#9aa2ab"><b>—</b> actual<br><b>—</b> minimum<br>'+
+        '<span>no stops yet</span></div>'+
+      '<div class="hpos"><div><div class="hlbl">Position what-if</div>'+
+        '<div class="hpossm" style="color:#d3d8dd">—</div>'+
+        '<div class="hposnote">how many places the time given away<br>costs — from the first stop on</div></div></div>';
+    var kn=nx?' class="known"':'';       // projected cells read as data, blanks stay grey
+    var g='<table><thead><tr><th class="l">#</th><th>In-lap</th><th>Laps</th><th>Stopped</th>'+
+      '<th class="l">Driver change</th><th>Min req</th><th>Margin</th><th class="l bar">&nbsp;</th></tr></thead><tbody>'+
+      '<tr class="ghost"><td class="l known">1</td>'+
+      '<td'+kn+'>'+(nx?(nx.lap+' <span class="est">~</span>'):'—')+'</td>'+
+      '<td'+kn+'>'+(nx?nx.inStint:'—')+'</td>'+
+      '<td>—</td><td class="l">—</td>'+
+      '<td'+kn+'>'+(nx?(nx.req+' <span style="color:#9aa2ab;font-size:11px">'+nx.tbl+'</span>'):'—')+'</td>'+
+      '<td>—</td>'+
+      '<td class="bar"><div class="track">'+
+        (nx?'<div class="req" style="width:70%"></div>':'')+'</div></td></tr>'+
+      '</tbody></table>';
+    tb.innerHTML=g+'<div class="capt">'+(R.live
+      ? 'No pit times on this feed.<br><span style="font-size:12px">The WIGE socket carries no pit-in time or stop duration — the row fills from the S/F anchor instead.</span>'
+      : (nx?'The first stop fills this row. Grey is projected for a stop at the end of lap '+nx.lap+'.'
+          :'The first stop fills this row.'))+'</div>';
     return;
   }
   var totD=0,totR=0,anyEst=false;
@@ -462,7 +551,7 @@ function renderTarget(){
   var b=R.inBox;
   // one stop, one clock: a SYNC on the STOPS page leads here too
   var on=calOn(),off=calOff(),rem=b?(b.remaining-off):0;
-  box.className='live'+(b?(rem<0?' over':' on'):'');
+  box.className='live'+(b?(rem<0?' over':' on'):(R.next?' next':''));
   if(b){
     box.innerHTML='<div><div class="cdlbl">Remaining'+
         (on?' <span class="calbadge">· crew clock</span>':'')+'</div><div class="cd '+(rem<0?'late':'go')+'">'+
@@ -474,24 +563,39 @@ function renderTarget(){
       (b.safety?(' · +'+b.safety+'s margin'):'')+
       (on?(' · <span class="calbadge">synced '+sgn(-off)+'s</span>')
          :(b.shaky?' · <span class="est">anchor estimated</span>':''))+'</div></div>';
+  }else if(R.next){
+    // on track the row still matters -- it is the one the crew is driving towards
+    var nx=R.next;
+    box.innerHTML='<div><div class="cdlbl">Next stop — projected minimum</div>'+
+        '<div class="cd idle">'+nx.req+'s</div></div>'+
+      '<div><div class="cdlbl">Table</div><div class="cdreq">'+nx.tbl+'</div></div>'+
+      '<div><div class="cdlbl">Stop</div><div class="cdreq">#'+nx.n+'</div></div>'+
+      '<div style="margin-left:auto;text-align:right"><div class="cdlbl">On lap '+nx.lap+' · '+nx.inStint+' laps in stint</div>'+
+      '<div style="font-size:12px;color:#6b7480">for a stop at the end of this lap — one more lap moves it a row down</div></div>';
   }else{
     box.innerHTML='<div><div class="cdlbl">Car is not in the box</div>'+
       '<div style="font-size:15px;color:#6b7480;margin-top:3px">The clock arms at the start/finish crossing that closes an in-lap.</div></div>';
   }
-  var hitLaps=b?b.inStint:-1,hitCol=b?b.tbl.charAt(0):'';
+  // b wins: a running stop is fact, R.next is only a projection
+  var nb=(!b&&R.next)?R.next:null;
+  var hitLaps=b?b.inStint:(nb?nb.inStint:-1),hitCol=b?b.tbl.charAt(0):(nb?nb.tbl.charAt(0):'');
+  var hitCls=b?'hit':'hit2';
   // Inside the last 59 minutes the minimum comes from the LAST HOUR table instead,
   // so nothing here highlights -- say so rather than leave the crew hunting a row.
   var endgame=(hitCol==='C');
   var h='';
+  var eg=b||nb;
   if(endgame)h+='<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#fdf6e6;'+
-    'border:2px solid #e8a71e;font-size:15px;font-weight:700">This stop is inside the last hour — '+
-    'its '+b.req+'s minimum comes from the LAST HOUR table (row '+b.tbl.slice(1)+'), not from A/B below.</div>';
+    'border:2px solid #e8a71e;font-size:15px;font-weight:700">'+(b?'This stop is':'The next stop would be')+
+    ' inside the last hour — its '+eg.req+'s minimum comes from the LAST HOUR table (row '+
+    eg.tbl.slice(1)+'), not from A/B below.</div>';
   h+='<table><thead><tr><th>Laps in stint</th><th>A — 1st stop</th><th>B — from 2nd</th></tr></thead><tbody>';
+  var hitTone=b?'#1e8f3a':'#16202b';
   for(var i=0;i<10;i++){
     var hit=(hitLaps===i+1&&(hitCol==='A'||hitCol==='B'));
-    h+='<tr class="'+(hit?'hit':'')+'"><td>'+(i+1)+'</td>'+
-      '<td'+(hit&&hitCol==='A'?' style="color:#1e8f3a"':'')+'>'+PIT_A[i]+'s</td>'+
-      '<td'+(hit&&hitCol==='B'?' style="color:#1e8f3a"':'')+'>'+PIT_B[i]+'s</td></tr>';
+    h+='<tr class="'+(hit?hitCls:'')+'"><td>'+(i+1)+'</td>'+
+      '<td'+(hit&&hitCol==='A'?' style="color:'+hitTone+'"':'')+'>'+PIT_A[i]+'s</td>'+
+      '<td'+(hit&&hitCol==='B'?' style="color:'+hitTone+'"':'')+'>'+PIT_B[i]+'s</td></tr>';
   }
   h+='</tbody></table>';
   lut.innerHTML=h;

@@ -2822,8 +2822,27 @@ function pushPit(force){
     window.__pitField=field;
   }
   const re=raceEndTod();
+  // The stop the car is DRIVING TOWARDS. Same table lookup as a real stop, keyed
+  // on "if it pits at the end of the lap it is on now", so the crew can read the
+  // minimum -- and set the clock window -- with a lap in hand instead of only
+  // once the car is stationary and the countdown is already running.
+  let next=null;
+  if(selCar&&!inBox){
+    try{
+      const lg=activeLeg(selCar,T);
+      if(lg){
+        const prevPit=stops.length?stops[stops.length-1].lap:0;
+        const inStint=Math.max(1,lg[0]-prevPit),n=stops.length+1,remMin=(re-T)/60;
+        let req,tbl;
+        if(remMin<=59){req=pitMinC(remMin);tbl='C'+Math.max(1,Math.min(59,Math.ceil(remMin)));}
+        else if(n===1){req=pitMinA(inStint);tbl='A'+Math.min(10,inStint);}
+        else{req=pitMinB(inStint);tbl='B'+Math.min(10,inStint);}
+        next={n,lap:lg[0],inStint,req,tbl,safety:PIT_SAFETY};
+      }
+    }catch(e){}
+  }
   f.contentWindow.postMessage({type:'pitReport',car:String(selCar||''),cls:myCls,
-    live:(window.dataMode==='LIVE'),stops,inBox,whatIf,field,
+    live:(window.dataMode==='LIVE'),stops,inBox,next,whatIf,field,
     raceEnd:re,raceEndSrc:raceEndSrc(),remainMin:(re-T)/60,safety:PIT_SAFETY,
     playing:(typeof playing!=='undefined'&&playing),speed:parseFloat((document.getElementById('speed')||{}).value||'1'),
     T},'*');
