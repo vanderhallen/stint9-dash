@@ -45,7 +45,7 @@
   select option{font-size:11px}
   select{cursor:pointer}input[type=number]{width:64px}
   select:focus,input:focus{outline:none;border-color:var(--accent)}
-  /* Our own popup list for the class picker (see dropDown()): position:fixed on
+  /* Our own popup list for the class/car pickers (see dropDown()): position:fixed on
      <body>, i.e. outside .wrap's transform, so it sits at true size like the
      native popup it replaces — and always below its box, never over the header.
      .ddhit is the transparent lid over the closed box that keeps the click from
@@ -4334,7 +4334,7 @@ const NLS_CHAMP={
     {lbl:'NLS1', date:'03-14', h:4, cxl:true},        // cancelled (snow)
     {lbl:'NLS2', date:'03-21', h:4},
     {lbl:'NLS3', date:'04-11', h:4},
-    {lbl:'24hQ1',date:'04-18', h:4, q:true},          // qualifying only, no race classification
+    {lbl:'24hQ1',date:'04-18', h:4, q:true, cxl:true},// qualifying only, no race classification -> not a scoring round, same ✕ as a cancellation
     {lbl:'24hQ2',date:'04-19', h:4, q:true},          // 24h-Qualifier race
     {lbl:'NLS6', date:'06-20', h:4},
     {lbl:'NLS7', date:'08-01', h:6},
@@ -4422,7 +4422,10 @@ function renderChampionship(){
       else dq[car]=(x.s==='dsq')?'DSQ':'DNF';});
     return {order:order,dnf:dq};
   };
-  const RD=R.map((rd,i)=>scraped(rd)||(res&&res[i]?{order:res[i],dnf:(dnf[i]||{})}:null));
+  /* cxl rounds are never scored, whatever either source happens to hold for that
+     date (the 24hQ1 qualifying PDF is on the scraper's radar) — force them empty so
+     the header and every cell agree on ✕ instead of quietly paying out points. */
+  const RD=R.map((rd,i)=>rd.cxl?null:(scraped(rd)||(res&&res[i]?{order:res[i],dnf:(dnf[i]||{})}:null)));
   if(!RD.some(Boolean)){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
   const cars={};RD.forEach(d=>{if(!d)return;d.order.forEach(c=>{cars[c]=true;});Object.keys(d.dnf).forEach(c=>{cars[c]=true;});});
   const rows=Object.keys(cars).map(car=>{
@@ -4454,10 +4457,10 @@ function renderChampionship(){
   // Footnote states what is actually on screen rather than a hardcoded season
   // summary: which rounds are still to come, and where the results came from.
   const up=R.filter((rd,i)=>futR[i]).map(rd=>rd.lbl);
-  const auto=R.filter(rd=>CHAMP_ROWS&&CHAMP_ROWS.some(r=>String(r.event_date||'').slice(5)===rd.date)).map(rd=>rd.lbl);
+  const auto=R.filter(rd=>!rd.cxl&&CHAMP_ROWS&&CHAMP_ROWS.some(r=>String(r.event_date||'').slice(5)===rd.date)).map(rd=>rd.lbl);
   h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. '
-    +'DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. '
-    +'NLS1 cancelled (snow); 24hQ1 no race'+(up.length?('; '+up.join(', ')+' upcoming'):'')+'. '
+    +'DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round not run. '
+    +'NLS1 cancelled (snow); 24hQ1 qualifying only, no race'+(up.length?('; '+up.join(', ')+' upcoming'):'')+'. '
     +(auto.length?('Results read from the official NLS result PDFs ('+auto.join(', ')+'), scraped automatically.'):'Results hand-entered from the official class-result PDFs.')
     +'</div>';
   el.innerHTML=h;
