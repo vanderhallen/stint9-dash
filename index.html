@@ -881,7 +881,14 @@ const LIVE_RUNNING_WINDOW_S=360;
 //  - a gap at the last common boundary larger than this is two cars that ran at
 //    different times, not a racing gap -> shown as "—" instead of "+15000s".
 const GAP_SANE_MAX_S=900;
-function activeLeg(st,T){const a=LEG[st];let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
+// LEG only ever covers the SELECTED class -- buildClass wipes it and refills it from
+// DB.cars. Anything that ranks against the whole field (the PIT what-if's overall
+// line) therefore asks for a car LEG has never heard of, and reading .length off
+// undefined threw the caller out mid-statement. LEGX builds those legs on demand from
+// DB.legs, which is field-wide, and is dropped alongside LEG on every class switch.
+const LEGX={};
+function legsOf(st){return LEG[st]||LEGX[st]||(LEGX[st]=withPitS5(st,(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2])));}
+function activeLeg(st,T){const a=legsOf(st);let lo=0,hi=a.length-1,res=-1;while(lo<=hi){const m=(lo+hi)>>1;if(a[m][2]<=T){res=m;lo=m+1;}else hi=m-1;}if(res<0)return null;const g=a[res];return(T<g[3])?g:null;}
 // last leg the car has already started by T (LEG is sorted by tStart). Used to keep
 // the lap label / car position sensible during a data gap (dropped timing beacon),
 // where activeLeg returns null between a finished sector and the next recorded one.
@@ -1145,7 +1152,7 @@ function progress(lg,T){return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);}
 // returns {p:progress, t:time-of-that-progress}. on-track cars have fractional
 // progress (t=T); a finished car uses its last completed boundary (p integer,
 // t=that boundary's time) so it stays ahead of on-track cars.
-function carProgress(st,T){const lg=activeLeg(st,T);if(lg)return {p:progress(lg,T),t:T};const a=LEG[st];if(!a||!a.length)return null;for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T)return {p:a[i][0]*5+a[i][1],t:a[i][3]};}return null;}
+function carProgress(st,T){const lg=activeLeg(st,T);if(lg)return {p:progress(lg,T),t:T};const a=legsOf(st);if(!a.length)return null;for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T)return {p:a[i][0]*5+a[i][1],t:a[i][3]};}return null;}
 function livePos(T){const a=[];DB.cars.forEach(st=>{const r=carProgress(st,T);if(r!=null)a.push([r.p,r.t,st]);});
   // most progress first; on a tie (e.g. cars finished on the same lap+sector),
   // whoever reached that boundary EARLIER ranks ahead — so the real winner keeps P1.
@@ -2750,10 +2757,16 @@ function pushPit(force){
       // an estimated stop time is far too loose (p95 15.4s) to hang a position on
       if(!anyEst){
         const sv=stops.reduce((a,s)=>a+(s.dur-s.req),0);
-        if(sv>0)whatIf={cls:pitWhatIf(selCar,T,sv,DB.cars),ovr:pitWhatIf(selCar,T,sv,allClassCars())};
+        // built apart: a throw inside the overall line used to abandon the whole
+        // literal, so the class line vanished with it and STOPS showed no what-if
+        // at all -- with nothing on screen to say why.
+        if(sv>0){
+          const wc=pitWhatIf(selCar,T,sv,DB.cars),wo=pitWhatIf(selCar,T,sv,allClassCars());
+          if(wc)whatIf={cls:wc,ovr:wo};
+        }
       }
     }
-  }catch(e){}
+  }catch(e){console.warn('pushPit',e);}   // silent here once cost the what-if entirely
   // The FIELD page walks every car, so it is only worth building while PIT is the
   // visible right-reel panel, and then no faster than once a second.
   let field=window.__pitField||null;
@@ -3114,7 +3127,7 @@ function buildClass(cls){
   window.__pitField=null;window.__pitFieldT=0;   // and the PIT field table built on top of them
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
   DB.cars.forEach((st,i)=>{DB.carcol[st]=SAFE[i%SAFE.length];});
-  for(const k in LEG)delete LEG[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
+  for(const k in LEG)delete LEG[k];for(const k in LEGX)delete LEGX[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
   DB.cars.forEach(st=>{LEG[st]=withPitS5(st,(DB.legs[st]||[]).slice().sort((a,b)=>a[2]-b[2]));
     const m={};(DB.legs[st]||[]).forEach(g=>m[(g[0]-1)*5+g[1]]=g[3]);BX[st]=m;BKEYS[st]=Object.keys(m).map(Number).sort((a,b)=>a-b);
     const mp={},mt={};(DB.chart[st]||[]).forEach(pt=>{const b=Math.round(pt[0]*5);mp[b]=pt[1];mt[b]=pt[2];});POS[st]=mp;BT[st]=mt;});
