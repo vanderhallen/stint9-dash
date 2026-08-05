@@ -108,3 +108,50 @@ select cron.schedule('stint9_nls_driver_autoscan', '0 4 * * 1',
 --   insert into public.stint9_nls_races (event_date, series, title, results_url)
 --   values ('2026-05-17', '24h', 'ADAC RAVENOL 24h Nürburgring', '<direct-pdf-url>')
 --   on conflict (event_date) do update set results_url = excluded.results_url, series = '24h';
+
+-- ============================================================================
+-- CHAMPIONSHIP source (2026-08-05) — index.html's CHAMPIONSHIP reel reads this
+-- view instead of its hand-maintained NLS_CHAMP table, so a round enters the
+-- standings as soon as the scraper has ingested its result PDF.
+--   class      = official championship class ("SP9 PRO-AM"); the PDF's `class`
+--                column alone merges the SP9 ratings, so class_full is the one
+--                that matches the standings.
+--   class_key  = class truncated to 8 chars = exactly what the timing CSV's
+--                KLASSEKURZ does, so it joins onto the dashboard's own keys.
+--   cars       = finishing order, non-classified last:
+--                [{"c":car_no,"p":pos_overall|null,"s":"classified"|"dnf"|"dsq"}, …]
+-- Position within the class is the ARRAY INDEX, not the PDF's pos_class: a round
+-- the parser read as one merged class would rank pos_class wrong, ordering by
+-- overall position cannot. A season is a few hundred rows -> one client fetch.
+-- ============================================================================
+create or replace view public.stint9_champ_rounds
+with (security_invoker = true) as
+select
+  c.event_date,
+  max(ra.round_no) as round_no,
+  max(ra.title)    as title,
+  max(ra.series)   as series,
+  c.class_full     as class,
+  left(c.class_full, 8) as class_key,
+  jsonb_agg(
+    jsonb_build_object('c', c.car_no, 'p', c.pos_overall, 's', c.status)
+    order by (c.pos_overall is null), c.pos_overall, c.car_no
+  ) as cars
+from (
+  select distinct on (event_date, car_no)
+         event_date, car_no, coalesce(class_full, class) as class_full, pos_overall, status
+  from public.stint9_nls_results
+  order by event_date, car_no, (pos_overall is null), pos_overall
+) c
+left join public.stint9_nls_races ra on ra.event_date = c.event_date
+where c.class_full is not null
+group by c.event_date, c.class_full;
+
+grant select on public.stint9_champ_rounds to anon, authenticated;
+
+-- The autoscan is now DAILY, not weekly: since the function skips rounds it has
+-- already ingested (see its header), a run with nothing new to do is two cheap
+-- REST calls, and a Saturday race lands in the standings on Sunday morning
+-- instead of up to a week later.
+select cron.schedule('stint9_nls_driver_autoscan', '0 4 * * *',
+  'select public.stint9_run_nls_driver_scrape();');

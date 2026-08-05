@@ -2564,3 +2564,52 @@ empty `pitinfo` because the WIGE socket carries no pit times at all (§9 open qu
   from data, not read from a rulebook. Both are single named constants.
 - The A/B/C tables are one class's. A per-class table would make FIELD a real
   comparison instead of a same-class one.
+
+---
+
+# 22. CHAMPIONSHIP from the result PDFs, not by hand (2026-08-05)
+
+**Why it was stale.** The standings lived in `NLS_CHAMP` in `index.html` — a
+hand-entered object keyed by class and round index. NLS7 ran on 1 Aug and the
+table still showed it as an upcoming round three days later, because nothing but
+a manual edit ever changed it. Two things were actually broken:
+
+1. **The scraper never ingested NLS7.** `nls-driver-scrape`'s race pass re-parsed
+   *every* past round on *every* run (r.pdf + rl.pdf, ~1 MB each). With four
+   rounds raced that exceeded the edge worker's CPU budget: the run wrote NLS2,
+   NLS3, NLS6 and died before the newest round — the only one anyone was waiting
+   for. It is now **incremental** (skips a round that already has
+   `has_results` + `driver_rows > 0`, `?force=1` to re-parse) and walks
+   **newest-first**, so a budget cut-off costs the oldest round instead. A full
+   season now checks in a couple of seconds. The autoscan moved weekly → daily
+   (`0 4 * * *`), so a Saturday race is in the standings Sunday morning.
+2. **Nothing connected the scrape to the reel.** `stint9_nls_results` (per
+   driver) already held finishing position, class and status. The new view
+   `public.stint9_champ_rounds` collapses it to one row per (race, class) with
+   the class's field in finishing order — see `nls-drivers-supabase.sql`.
+   `renderChampionship()` fetches it once and uses it wherever it has a round,
+   falling back to `NLS_CHAMP` otherwise.
+
+**Why the class comes from `class_full`, truncated.** The PDF's `class` column
+merges the SP9 ratings into one "SP9"; `class_full` ("SP9 PRO-AM") is the real
+championship class. `left(class_full,8)` reproduces exactly what the timing CSV's
+`KLASSEKURZ` does, which is where the dashboard's own keys come from — so
+`SP9 PRO-AM → SP9 PRO-`, `BMW M240i → BMW M240`, `VT2-F+4WD → VT2-F+4W` join up
+with no per-class mapping table.
+
+**Position in class = index in the array**, not the PDF's `pos_class`: a round the
+parser reads as one merged class would rank `pos_class` wrong, while ordering by
+overall finishing position cannot.
+
+**Verified against the hand table.** For BMW M240 the scraped order reproduces
+the hand-entered order for NLS2, NLS3 and NLS6 exactly, DNFs included — and adds
+retirements NLS2 never had (the "no retirement data for NLS2" caveat is gone).
+One known difference: #44 at NLS3 is `dnf` in the scrape and `DSQ` by hand — the
+PDF's `*DSQ` marker didn't fall inside that car's block. Points are 0 either way;
+only the label differs.
+
+**What is still hand-entered.** The 24h-Qualifier round (24hQ2): its PDF uses the
+24h template, which `parseResults`' sanity gate deliberately rejects rather than
+mis-parse. `NLS_CHAMP.res` stays the source for that round, and the season
+skeleton (round labels/dates/cancellations) is still the static `rounds` array —
+a round flips from "upcoming" to raced automatically once results exist for it.
