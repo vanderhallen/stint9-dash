@@ -15,6 +15,9 @@
   .page{flex:0 0 25%;width:25%;height:100%;display:flex;flex-direction:column;min-height:0}
   .pagehead{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px 6px}
   .ptitle{font-size:15px;font-weight:800;letter-spacing:2px}
+  /* MARGINS has a back button and nothing on its right: keep the title beside
+     the button rather than let space-between throw it at the far edge */
+  .pagehead .ptitle:last-child{margin-right:auto}
   .ptitle small{font-size:11px;font-weight:500;letter-spacing:1px;color:#6b7480;margin-left:8px;text-transform:uppercase}
   .navlink{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;color:#16202b;background:#eceff2;border:none;border-radius:8px;padding:8px 12px;cursor:pointer}
   .navlink:hover{background:#dfe4e9}
@@ -122,21 +125,15 @@
   .flist tr.other td{color:#aeb4bb}
   .flist tr.self td{background:#16202b;color:#fff}
   .flist tr.self td:first-child{border-left:3px solid #16202b}
+  /* the list is two short leaderboards now, so each end needs saying out loud */
+  .flist tr.sect td{border-top:1px solid #dfe4e9;padding:14px 8px 4px;text-align:left;
+    font-size:10px;letter-spacing:1.2px;color:#6b7480;text-transform:uppercase;font-weight:700}
+  .flist tr.sect:first-child td{border-top:none;padding-top:2px}
   .mini{position:relative;height:11px;width:150px;background:#f2f4f6;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
   .mini>i{position:absolute;top:0;height:100%}
   .mini>i.p{background:#1e8f3a}.mini>i.n{background:#e0301e}
   .mini>.zero{position:absolute;top:0;height:100%;width:1px;background:#9aa2ab}
   .rep{font-size:10px;font-weight:700;color:#6b7480;letter-spacing:.3px}
-  /* the scope picker reads as a sibling of the nav buttons, not as a form field */
-  .fselwrap{display:flex;align-items:center;gap:7px;flex:0 0 auto}
-  .fsellbl{font-size:10px;letter-spacing:1.5px;color:#6b7480;text-transform:uppercase;font-weight:700}
-  .fsel{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;color:#16202b;
-    background:#eceff2;border:none;border-radius:8px;padding:8px 10px;cursor:pointer;max-width:240px}
-  .fsel:hover{background:#dfe4e9}
-  .fsel:focus{outline:2px solid #1e8f3a;outline-offset:1px}
-  /* anything but our own class is a deliberate choice -- mark it, so a scope left
-     on someone else's class is never misread as the default view */
-  .fsel.custom{background:#eef4ef;box-shadow:inset 0 0 0 2px #1e8f3a}
 </style>
 </head>
 <body>
@@ -205,8 +202,6 @@
     <div class="pagehead">
       <button type="button" class="navlink" data-go="2">&#9666; LAST HOUR</button>
       <span class="ptitle">MARGINS<small id="f-sub">margin against the minimum, every car</small></span>
-      <span class="fselwrap"><span class="fsellbl">Class</span><select class="fsel" id="f-cls"
-        title="Which class the superlatives and the highlight are measured in"></select></span>
     </div>
     <div class="pagebody">
       <div class="cards" id="f-cards"></div>
@@ -230,9 +225,8 @@ window.addEventListener('keydown',function(e){
 });
 window.addEventListener('message',function(e){
   var m=e.data;if(!m)return;
-  // dir 0 is the parent landing on PIT: back to page one AND back to the default
-  // scope, so a class left selected last time never greets the next reader.
-  if(m.type==='pitH'){if(m.dir===0){FSEL='';if(R)renderField();goto(0);}
+  // dir 0 is the parent landing on PIT: back to page one
+  if(m.type==='pitH'){if(m.dir===0)goto(0);
                       else goto(PAGE+(m.dir>0?1:-1));return;}
   if(m.type==='pitReport'){R=m;render();return;}
 });
@@ -319,55 +313,24 @@ function render(){
   paintBox();
 }
 
-/* Which class the page is read in. '' -- the default the page opens on and
-   returns to whenever the reel lands on PIT -- follows the selected car, which
-   is the only scope where our A/B/C minimums are the car's own. Picking another
-   class (or '*', the whole field) is for looking around: the numbers stay ours,
-   so the header says so rather than letting the comparison pass as sound. */
-var FSEL='',FSIG='';
-function fillClassSel(){
-  var sel=document.getElementById('f-cls');if(!sel)return;
-  var seen={},list=[];
-  (R.field||[]).forEach(function(x){var c=x.cls||'?';if(seen[c]==null){seen[c]=0;list.push(c);}seen[c]++;});
-  list.sort();
-  if(FSEL&&FSEL!=='*'&&seen[FSEL]==null)FSEL='';        // that class has left the field
-  var h='<option value="">'+(R.cls?(esc(R.cls)+' · ours'):'our class — no car picked')+'</option>'+
-        '<option value="*">All classes</option>';
-  list.forEach(function(c){h+='<option value="'+esc(c)+'">'+esc(c)+' · '+seen[c]+' car'+(seen[c]>1?'s':'')+'</option>';});
-  // the parent re-pushes ~5x a second; rewriting the options every time would
-  // snap the dropdown shut under the finger. Only touch it when the roster moves.
-  if(h!==FSIG){FSIG=h;sel.innerHTML=h;}
-  sel.value=FSEL;
-  sel.className='fsel'+(FSEL?' custom':'');
-}
-(function(){
-  var sel=document.getElementById('f-cls');if(!sel)return;
-  sel.addEventListener('change',function(){FSEL=sel.value;if(R)renderField();});
-  sel.addEventListener('keydown',function(e){e.stopPropagation();});  // arrows steer the list, not the reel
-})();
-
-/* The whole field, ranked by how far each car sat off the minimum.
+/* The two ends of the field, ranked by how far each car sat off the minimum.
    The A/B/C tables are OUR class's, and the minimums are class-specific -- so
-   the three superlatives are computed inside the scope class, where the comparison
+   the three superlatives are computed inside our own class, where the comparison
    is sound, and every other class is listed for reference but visually muted. */
 function renderField(){
   var cards=document.getElementById('f-cards'),list=document.getElementById('f-list'),
       sub=document.getElementById('f-sub');
   var F=R.field||[];
-  fillClassSel();
   if(!F.length){cards.innerHTML='';list.innerHTML='<div class="empty">No stops in the field yet.</div>';return;}
-  var all=(FSEL==='*');
-  var myCls=all?null:(FSEL||R.cls||'');
-  var elsewhere=!all&&myCls&&R.cls&&myCls!==R.cls;
-  sub.textContent='margin against the minimum · '+F.length+' cars'+
-    (all?' · whole field, our A/B/C table':(elsewhere?(' · '+myCls+' read off our A/B/C table'):''));
+  var myCls=R.cls||'';
   // Only measured stops can be ranked. A car that sat in the garage for repairs
   // has no pitinfo, so its "stop" is an out-lap-S1 estimate running to tens of
   // minutes -- ranking that as "most time given away" would be nonsense.
   var meas=F.filter(function(x){return x.real;});
-  var mine=all?meas:meas.filter(function(x){return x.cls===myCls;});
-  var pool=(all||mine.length>=2)?mine:meas;
-  var scope=all?'whole measured field':(mine.length>=2?esc(myCls):'measured field');
+  var mine=meas.filter(function(x){return x.cls===myCls;});
+  var pool=mine.length>=2?mine:meas;
+  var scope=mine.length>=2?esc(myCls):'measured field';
+  sub.textContent='five furthest each way · '+meas.length+' measured of '+F.length+' cars';
   var closest=null;
   pool.forEach(function(x){if(!closest||Math.abs(x.m)<Math.abs(closest.m))closest=x;});
   // "Under" only exists where our table is not the car's own -- so if nobody in
@@ -384,8 +347,8 @@ function renderField(){
       '<div class="fcsub">'+esc(x.cls)+' · '+x.n+' stop'+(x.n>1?'s':'')+' · '+f1(x.d)+' stopped'+
       (x.rep?(' · '+x.rep+' repair skipped'):'')+'<br>'+note+'</div></div>';
   }
-  // Our own car is the reason to read this page at all, and the list is sorted by
-  // margin -- so it can sit anywhere, including off-screen. Pin it as a card.
+  // Our own car is the reason to read this page at all, and it rarely sits at
+  // either end of the ranking. Pin it as a card.
   var own=null;
   if(R.car)F.forEach(function(x){if(x.car===R.car)own=x;});
   cards.innerHTML=
@@ -394,23 +357,22 @@ function renderField(){
          :(R.car?('#'+esc(R.car)+' — no stops yet'):'pick a car on the STOPS page'))+
     card('best','Closest to the minimum',closest,'tightest execution · '+scope)+
     card('under','Furthest under the minimum',under,
-      underWide?(all?'nobody measured sits under':'outside this class — proof our table is not theirs')
-      :elsewhere?'under our table — theirs may well differ'
+      underWide?'outside this class — proof our table is not theirs'
                :'below our own table — check for a penalty');
 
   // Scale the bars to the measured spread, not to a garage repair -- one 2905s
   // estimate would otherwise flatten every real margin to an invisible sliver.
   var mx=Math.max.apply(null,(meas.length?meas:F).map(function(x){return Math.abs(x.m);}))||1;
-  // tightest first: the under-cars and the well-executed stops are what this page
-  // is for, and the big overruns stay one scroll away rather than owning the fold
-  var srt=F.slice().sort(function(a,b){return a.m-b.m;});
-  var h='<table><thead><tr><th class="l">Car</th><th class="l">Class</th><th>Stops</th><th>Stopped</th>'+
-    '<th>Minimum</th><th>Margin</th><th class="l">&nbsp;</th></tr></thead><tbody>';
-  srt.forEach(function(x){
+  // Ninety-odd rows is a scroll nobody does mid-stint. Only the two ends of the
+  // ranking say anything: who gave time away, and who is under. Estimates are
+  // ranked out for the same reason the cards ignore them.
+  var srt=meas.slice().sort(function(a,b){return a.m-b.m;});
+  var lo=srt.slice(0,5),
+      hi=srt.slice(Math.max(lo.length,srt.length-5)).reverse();   // never the same car twice
+  function row(x){
     var w=Math.min(50,100*Math.abs(x.m)/mx/2), left=x.m>=0?50:(50-w);
-    // "all classes" means nothing is out of scope, so nothing is muted
-    var klass=(x.car===R.car)?'self':(all?'':(x.cls===myCls?'mine':'other'));
-    h+='<tr class="'+klass+'"><td class="l">#'+esc(x.car)+(x.real?'':' <span class="est">~est</span>')+
+    var klass=(x.car===R.car)?'self':(x.cls===myCls?'mine':'other');
+    return '<tr class="'+klass+'"><td class="l">#'+esc(x.car)+(x.real?'':' <span class="est">~est</span>')+
       (x.rep?(' <span class="rep">+'+x.rep+' rep</span>'):'')+'</td>'+
       '<td class="l">'+esc(x.cls)+'</td>'+
       '<td>'+x.n+'</td><td>'+f1(x.d)+'</td><td>'+x.r.toFixed(0)+'</td>'+
@@ -418,7 +380,15 @@ function renderField(){
       '<td style="color:'+(klass==='self'?'#fff':(x.m<0?'#e0301e':'#1e8f3a'))+';font-weight:700">'+sgn(x.m)+'</td>'+
       '<td class="l"><span class="mini"><span class="zero" style="left:50%"></span>'+
       '<i class="'+(x.m>=0?'p':'n')+'" style="left:'+left.toFixed(1)+'%;width:'+w.toFixed(1)+'%"></i></span></td></tr>';
-  });
+  }
+  function sect(lbl){return '<tr class="sect"><td colspan="7">'+lbl+'</td></tr>';}
+  var h='<table><thead><tr><th class="l">Car</th><th class="l">Class</th><th>Stops</th><th>Stopped</th>'+
+    '<th>Minimum</th><th>Margin</th><th class="l">&nbsp;</th></tr></thead><tbody>';
+  h+=sect('Furthest under the minimum')+(lo.length?lo.map(row).join(''):sect('— nothing measured yet'));
+  if(hi.length)h+=sect('Furthest over the minimum')+hi.map(row).join('');
+  // the two ends are where our car usually is not -- keep it on the page anyway
+  var shown={};lo.concat(hi).forEach(function(x){shown[x.car]=1;});
+  if(own&&!shown[own.car])h+=sect('Our car')+row(own);
   list.innerHTML=h+'</tbody></table>';
 }
 

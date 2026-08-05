@@ -2530,7 +2530,7 @@ would latch onto the old round. `loadRaceWindow(date)` fetches that one event's 
 row separately instead, and step 3's date guard stops the upcoming round's finish time
 being applied to a replay of a different race.
 
-## 21.5 MARGINS, and why it defaults to comparing within a class
+## 21.5 MARGINS, and why it compares within a class
 
 Two things the field data forced:
 
@@ -2538,7 +2538,8 @@ Two things the field data forced:
   runs from about **−2 s in CUP3 to +64 s in BMW 325i**, and **17 cars** come out below
   the minimum, which the rules do not allow. That is our table not applying to them,
   not a grid full of penalties. So the callouts are computed inside the selected car's
-  own class and every other class is listed but muted.
+  own class (falling back to the whole measured field when fewer than two of its cars
+  have stopped) and every other class is listed but muted.
 - **A car behind the wall is not making a pit stop.** `#112` showed 143 minutes
   "stopped" and a +8499 s margin. Durations separate cleanly (p95 344 s, then
   545 → 735 → 941 → 8581), so `PIT_REPAIR_S = 600` splits repairs out of the margin and
@@ -2548,18 +2549,19 @@ Cars whose stops are estimated rather than measured are excluded from the callou
 and marked in the list. The field table is built only while PIT is the visible panel
 and at most once a second, and is dropped in `buildClass` alongside `_pitLapCache`.
 
-**The scope is pickable, but it opens on the sound one.** The `CLASS` select in the
-MARGINS header (`FSEL` in `pit.html`) chooses which class the callouts and the green
-`mine` highlight are measured in: `''` — the default — follows the selected car, and
-there is also `*` for the whole field plus one entry per class in the field with its
-car count. Only the reading changes; the minimums stay ours either way, so any scope
-other than the default marks the select green and spells the caveat out in the header
-(`VT2-RWD read off our A/B/C table`). Because a scope left on someone else's class
-would quietly misread as the default next time, `pitH(0)` — the message the parent
-already sends when the reel lands on PIT — resets `FSEL` to `''` along with the page.
-The options are only rewritten when the class roster actually changes, so the parent's
-~5 Hz push cannot snap the open dropdown shut, and arrow keys inside it are
-`stopPropagation`'d so they steer the list rather than the reel.
+**Two ends, not ninety-eight rows.** The list is the five furthest *under* the minimum
+and the five furthest *over* it, each under its own section heading, ranked over the
+measured field — a ninety-row scroll is not something anyone does mid-stint, and only
+the ends say anything. Estimated stops are ranked out for the same reason they are kept
+out of the callouts, and the two ends can never share a car (the over slice starts after
+the under one). Our own car rarely sits at either end, so it is pinned as the black card
+and, when it is in neither five, appended as an `Our car` row.
+
+There is no class picker: the scope is always the selected car's own class, which is the
+only one where our A/B/C minimums are the car's own. (An earlier `CLASS` select offering
+other classes and a whole-field `*` was removed — every non-default reading needed a
+caveat in the header, and a scope left on someone else's class read as the default next
+time the reel landed on PIT.)
 
 ## 21.6 The countdown on STOPS, and the crew clock that can lead it
 
