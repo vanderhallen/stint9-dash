@@ -55,7 +55,18 @@ Single self-contained page **`stint9_dashboard.html`** — a race-intelligence "
 
 ### Data choices / caveats
 - **Per-lap driver is NOT in the data** → stints assumed sequential, split at pit stops (`INPIT='J'`). (The driver-stints table was later **removed** from the UI.)
-- **Pit stops**: count is exact = laps where `INPIT='J'` (e.g. #666 = 3, laps 8/16/21) → embedded as `DB.pits`. **Pit-stop duration is NOT derivable** (`PITSTOPDURATION` is empty in the file; no pit-exit timestamp). Pit *time loss* is derivable as an inflated out-lap (`INPIT='A'` = out-lap) — not yet added to UI.
+- **Pit stops**: count is exact = laps where `INPIT='J'` (e.g. #666 = 3, laps 8/16/21) → embedded as `DB.pits`.
+  - **Wall-clock in/out IS in the file** → embedded as `DB.pitinfo[car][in-lap] = [pit_in_tod, duration_s, pit_out_tod]`.
+    `PITIN_TIME` is a real crossing time at the pit-entry loop and `PITSTOPDURATION` a real
+    stopped time; pit-out = in + duration, and it lands inside the out-lap's S1 — which is
+    what inflates that sector. 265 of 285 in-laps in the 2026-06-20 file carry both; the
+    other 20 read `00.000` (retired in the box, or the stop ran past the end of the session).
+  - ⚠️ **This section used to claim `PITSTOPDURATION` is empty in the file and that pit
+    duration is "NOT derivable". That was wrong** — and because `tools/gen_db.py` was written
+    to that claim, both columns were parsed past and dropped for the whole life of the
+    pipeline. Counted directly: the old `nls sector.CSV` carries a real duration on 360 of
+    its 382 in-laps too, so the claim was never true of any file in `source/`. Fixed 2026-08-04.
+  - Pit *time loss* (as opposed to stopped time) is still the inflated out-lap S1 — not yet in the UI.
 - Live position = `progress = lap*5 + (seg-1) + frac`, sorted per frame (`livePos`).
 - Gaps between two cars = `commonGap` via their last common sector-boundary crossing times.
 - "Last lap"/"Fastest" per car = last completed lap / min over completed laps (leader and selected car may be on different laps).
@@ -189,6 +200,8 @@ What the generator does:
 - Rebuilds everything else from the CSV: `legs` (per-lap 5-sector segments with absolute
   second-of-day boundaries; `TAGESZEIT` = lap-END time, so lap L spans
   `[TAGESZEIT(L-1), TAGESZEIT(L)]`), `sectimes`, `pits` (laps where `INPIT='J'`),
+  `pitinfo` (per in-lap `[pit_in_tod, duration_s, pit_out_tod]` from `PITIN_TIME` +
+  `PITSTOPDURATION`; either half may be `null` on the `00.000` sentinel),
   within-class track `positions`/`chart`/`lappos` (ranked per sector boundary),
   `classes`/`classMaxN` (max laps)/`classAvg` (mean green-lap sector times),
   `name` (FAHRER1 surname), `carcol` (16-colour palette cycled within each class).
@@ -726,6 +739,26 @@ lap_time, inpit, fastest, driver, vehicle, updated_at`. A companion table
 `stint9_live_status` holds one row/day for the header badge (event id / track /
 heat / car count / clock).
 
+### `public.stint9_live_frames` — the raw payloads (2026-08-04)
+
+The table above keeps the ~18 fields the dashboard maps; **everything else WIGE
+sends is now kept too**, whole and verbatim, one row per sampled WebSocket frame:
+`event_date, received_at, pid, event_id, session, heat, track, root_tod, cars,
+body_hash, frame (jsonb)`. Nothing reads it at runtime — it is a write-once
+evidence log so a question about an unmapped field can be answered by querying
+instead of by re-instrumenting and waiting for the next race. See
+`live-frames-supabase.sql`; §9's open questions are the worked example.
+
+- Sampling: one frame per channel per `WIGE_FRAME_MIN_MS` (default **15 s**);
+  `0` keeps every frame, `WIGE_FRAME_ARCHIVE=off` stops collecting. Byte-identical
+  re-sends collapse on the `body_hash` unique index and cost nothing.
+- Size: ~130 cars ≈ 70 KB/frame raw, jsonb-compressed to ~15–25 KB → **~25–35 MB per
+  6h raceday**. `stint9_prune_live_frames(keep_days)` (cron `stint9_live_frames_prune`,
+  daily 05:20, keeps 21 days) is the pressure valve; it refuses to drop frames for a
+  date that has no `stint9_events` row, so a failed archive never loses the session.
+- Writes come from `wige-scrape` with the service role. RLS grants anon **select only**
+  — no anon insert/update/delete policy exists.
+
 ## 4. Dashboard LIVE view — `index.html` + `live/build-db.js`
 
 - When the user flips to **LIVE**, the page polls every **5 s**:
@@ -770,23 +803,39 @@ Everything we learned wiring the WIGE live feed to the dashboard on 2026‑07‑
 [§7 race-day runbook](#7-live-feed--race-day-runbook) (the run procedure) and
 [§8 data flow](#8-live-feed--data-flow) (the data chain).
 
-## ⚠️ OPEN — verify against a live WIGE frame (armed 2026-08-01, do at next NLS session)
+## ⚠️ OPEN — answer from `stint9_live_frames` after the next NLS session (11 Sep 2026)
 
-`wige-scrape` (v9) logs one raw car object per run as `WIGE_RAWFRAME …` (a TEMP
-`console.log`, first accepted frame only). At the next live session, read it via
-Supabase → Edge Functions logs (or MCP `get_logs` service `edge-function`) and
-resolve three things, then **remove the temp log**:
+**These questions are answerable from stored data now.** They were armed 2026-08-01
+against a `WIGE_RAWFRAME` temp `console.log`, and stayed open through two race
+weekends for one reason: edge-function logs are kept **24 hours**, so the evidence
+expired before anyone read it. Since 2026-08-04 `wige-scrape` (v11) also writes every
+sampled payload verbatim to **`public.stint9_live_frames`** (see
+`live-frames-supabase.sql`), which keeps 21 days. The `console.log` survives as a
+same-day fallback; prefer the table.
 
-1. **`inpit` lap-attribution.** v9 derives `inpit` by diffing the per-car
-   **`PITSTOPCOUNT`** across frames and flagging the lap where it ticks up. Confirm
-   that lands on the **in-lap** (what `DB.pits` / `withPitS5` / the racenote PIT-IN
-   note expect) and not the out-lap — adjust to `lap-1` if it's off by one.
+```sql
+-- what does a car object actually contain?
+select distinct k from stint9_live_frames, lateral jsonb_object_keys(frame->'RESULT'->0) k
+where event_date = 'YYYY-MM-DD' order by 1;
+```
+
+1. **`inpit` lap-attribution.** v9+ derives `inpit` by diffing the per-car
+   **`PITSTOPCOUNT`** across frames and flagging the lap where it ticks up. It produced
+   **zero** pit laps over the 2026-08-01 race (4251 rows, 136 cars, hold mode on), so
+   the first thing to check is whether `PITSTOPCOUNT` exists on the socket at all
+   (`select ... where k ilike '%pit%'` on the query above). If it does, confirm the tick
+   lands on the **in-lap** — what `DB.pits` / `withPitS5` / the racenote PIT-IN note
+   expect — and adjust to `lap-1` if it is off by one.
 2. **Lap-count inflation.** The stored `lap` (`c.LAPS`) ran **~40 % higher** than
    WIGE's on-screen session-lap count during the 2026-08-01 6h race (e.g. #650 at
    DB L33 @15:52 while WIGE showed ~L23). Confirm what `c.LAPS` actually counts.
-3. **Field names / sector count.** Confirm `PITSTOPCOUNT` exists on the socket (not
-   just the VLN CSV) and that `NROFINTERMEDIATETIMES` = 4 for the Nordschleife
+3. **Sector count.** Confirm `NROFINTERMEDIATETIMES` = 4 for the Nordschleife
    (why `s5` is always null — the dashboard's 5-sector model vs WIGE's 4 intermediates).
+4. **Pit in/out.** Does the socket carry anything like the VLN CSV's `PITIN_TIME` /
+   `PITSTOPDURATION`? If it does, map it — LIVE currently has no pit times at all and
+   falls back to the out-lap-S1 heuristic in `pitLapsOf()` (index.html), which recovers
+   265 of 285 real stops with 18 false positives. The CSV path now carries the real
+   thing as `DB.pitinfo`.
 
 Everything else in the 2026-08-01 batch is shipped: STINT label gutter, Find-car in
 the Message board (+ Enter searches/highlights it), `inpit` via `PITSTOPCOUNT`

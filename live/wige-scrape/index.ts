@@ -6,6 +6,16 @@
  *   - public.stint9_live_timing   (one row per car|lap)
  *   - public.stint9_messages      (race-control messages, channel [3], deduped)
  *   - public.stint9_live_status   (single row/day the LIVE header badge reads)
+ *   - public.stint9_live_frames   (the RAW payloads, verbatim — see below)
+ *
+ * FRAME ARCHIVE. The three upserts above keep only the fields the dashboard maps.
+ * Everything else WIGE sends used to be parsed and dropped, which is why "does the
+ * feed carry pit in/out times?" could only be answered by catching a live session
+ * with a temp console.log — and edge logs are kept 24h, so the answer always
+ * expired first. stint9_live_frames now stores whole frames; nothing reads it at
+ * runtime. Tuning (see live-frames-supabase.sql):
+ *   WIGE_FRAME_ARCHIVE=off   stop collecting
+ *   WIGE_FRAME_MIN_MS=15000  sample interval per channel (0 = every frame)
  *
  * Two modes (see the docs on ../LIVE-DATA-FLOW.md / ../RACEDAY.md):
  *
@@ -49,6 +59,14 @@ const HOLD_MS = 149000;        // hold mode: ~149s, just under the free-plan 150
 const FLUSH_MS = 5000;         // hold mode: upsert changed rows to Supabase this often
 const GUARD_STALE_MS = 15000;  // hold mode: if the status row advanced within this,
                                // another holder/relay is live -> stand down (no WIGE connect)
+// Frame archive (public.stint9_live_frames): keep whole WIGE payloads, not just the
+// ~18 fields mapCar() maps. Anything the feed sends is then answerable from stored
+// data instead of a 24h-retention console.log — see live-frames-supabase.sql.
+// Sampled per channel: one frame per FRAME_MIN_MS (0 = keep every frame). Identical
+// payloads collapse on the body_hash unique index, so re-sends are free.
+const FRAME_ARCHIVE = (Deno.env.get('WIGE_FRAME_ARCHIVE') ?? 'on') !== 'off';
+const FRAME_MIN_MS = Number(Deno.env.get('WIGE_FRAME_MIN_MS') ?? 15000);
+const FRAME_MAX_PENDING = 40;  // safety cap per flush, so a chatty feed can't blow memory
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -162,13 +180,29 @@ function mapMessages(items: any[], ed: string): MessageRow[] {
   return out;
 }
 
+type FrameRow = {
+  event_date: string; pid: string | null; event_id: string | null;
+  session: string | null; heat: string | null; track: string | null;
+  root_tod: number | null; cars: number | null; body_hash: string; frame: unknown;
+};
+
+// FNV-1a over the serialised frame. Not cryptographic — it only has to collapse
+// byte-identical re-sends within one event_date, and the unique index is the real
+// arbiter. Sync (crypto.subtle is async) so it can run inside ws.onmessage.
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, '0') + s.length.toString(16);
+}
+
 type CollectOpts = {
   holdMs: number;
   flushMs?: number;
   // Called every flushMs with the timing rows that CHANGED and any race-control
   // messages NOT yet flushed since the last tick, plus the full current field
-  // size — lets HOLD mode stream both to Supabase mid-socket.
-  onFlush?: (rows: TimingRow[], meta: Meta | null, total: number, messages: MessageRow[]) => void | Promise<void>;
+  // size — lets HOLD mode stream both to Supabase mid-socket. `frames` carries the
+  // raw payloads sampled since the last tick (drained, so memory stays flat).
+  onFlush?: (rows: TimingRow[], meta: Meta | null, total: number, messages: MessageRow[], frames: FrameRow[]) => void | Promise<void>;
 };
 
 // Open the socket, subscribe to ids, gather snapshots for opts.holdMs. When
@@ -176,7 +210,7 @@ type CollectOpts = {
 // socket stays open (HOLD mode); otherwise it's a single gather-then-return.
 // `gated` (range scan) rejects events whose TRACKNAME doesn't match; a single
 // explicit eventId is trusted as-is. Returns rejected candidates for the caller.
-async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; messages: MessageRow[]; rejected: string[] }> {
+async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; messages: MessageRow[]; frames: FrameRow[]; rejected: string[] }> {
   const ed = eventDate();
   const receipt = todSeconds(Date.now());
   const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win)
@@ -192,7 +226,31 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
   // many). No-op if the field is absent (stays inpit=false as before — no regression).
   const pitCount = new Map<string, number>(); // car -> last PITSTOPCOUNT seen
   const pitLaps = new Set<string>();          // car|lap flagged as a pit lap
-  let rawLogged = false;                       // TEMP: log one raw frame to learn field names
+  let rawLogged = false;                       // log one raw car object (fallback; see below)
+  // Frame archive buffer: drained on every flush (and at close), so a 149s hold
+  // never accumulates more than one interval's worth of payloads in memory.
+  let pending: FrameRow[] = [];
+  const lastFrameAt = new Map<string, number>();  // pid -> ms of last SAMPLED frame
+  // deno-lint-ignore no-explicit-any
+  const archiveFrame = (m: any) => {
+    if (!FRAME_ARCHIVE) return;
+    const pid = m.PID != null ? String(m.PID) : null;
+    const k = pid ?? '?';
+    const now = Date.now();
+    const prev = lastFrameAt.get(k);
+    if (FRAME_MIN_MS > 0 && prev !== undefined && now - prev < FRAME_MIN_MS) return;  // sampled out
+    if (pending.length >= FRAME_MAX_PENDING) return;                                   // safety cap
+    lastFrameAt.set(k, now);
+    let body: string;
+    try { body = JSON.stringify(m); } catch { return; }
+    pending.push({
+      event_date: ed, pid, event_id: m.EXPORTID != null ? String(m.EXPORTID) : null,
+      session: m.SESSION ?? null, heat: m.HEAT ?? null, track: m.TRACKNAME ?? null,
+      root_tod: m.TOD != null && m.TOD !== '' ? todSeconds(m.TOD) : null,
+      cars: Array.isArray(m.RESULT) ? m.RESULT.length : null,
+      body_hash: fnv1a(body), frame: m,
+    });
+  };
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
     let flushTimer: ReturnType<typeof setInterval> | undefined;
@@ -205,14 +263,18 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
       // deno-lint-ignore no-explicit-any
       let m: any; try { m = JSON.parse(String(ev.data)); } catch { return; }
       if (m.PID === 'LTS_TIMESYNC' || m.PID === 'LTS_NOT_FOUND') return;
+      // Archive the payload BEFORE any mapping or gating: whatever WIGE sent is kept
+      // whole, including channels and fields nothing here reads. Clock heartbeats are
+      // the one exception (skipped above) — they carry no race data.
+      archiveFrame(m);
       // Channel [3]: race-control message frame (no RESULT). Collect & dedup.
       if (Array.isArray(m.MESSAGES)) { for (const r of mapMessages(m.MESSAGES, ed)) messages.set(r.ext_key, r); return; }
       if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
       // P1-2: skip wrong-series snapshots while range-scanning.
       if (gated && !acceptEvent(m)) { const id = String(m.EXPORTID ?? ''); if (id) rejected.add(id); return; }
-      // TEMP raw-frame capture: dump the first accepted car object once so get_logs
-      // reveals the exact keys (PITSTOPCOUNT/state, LAPS semantics, sector count).
-      // Remove once the field names are confirmed against a live session.
+      // First-car log, kept as a cheap fallback now that stint9_live_frames holds the
+      // durable copy (this one expires with the 24h edge-log retention — which is
+      // exactly why the table exists). Answer the field questions from the table.
       if (!rawLogged) { rawLogged = true; try { console.log('WIGE_RAWFRAME ' + JSON.stringify({ root: { NROFINTERMEDIATETIMES: m.NROFINTERMEDIATETIMES, TOD: m.TOD, SESSION: m.SESSION }, car0: m.RESULT[0] })); } catch { /* noop */ } }
       // P1-4: root TOD (snapshot time); P2: sector count both from the message root.
       const rootTod = m.TOD != null && m.TOD !== '' ? todSeconds(m.TOD) : receipt;
@@ -246,11 +308,14 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
         for (const [k, r] of timing) { const s = sig(r); if (lastSig.get(k) !== s) { lastSig.set(k, s); changed.push(r); } }
         const newMsgs: MessageRow[] = [];
         for (const [k, r] of messages) { if (!flushedMsg.has(k)) { flushedMsg.add(k); newMsgs.push(r); } }
-        Promise.resolve(opts.onFlush!(changed, meta, timing.size, newMsgs)).catch(() => { /* next tick retries */ });
+        const newFrames = pending; pending = [];   // drain: these are now the writer's problem
+        Promise.resolve(opts.onFlush!(changed, meta, timing.size, newMsgs, newFrames)).catch(() => { /* next tick retries */ });
       }, opts.flushMs);
     }
   });
-  return { meta, rows: [...timing.values()], messages: [...messages.values()], rejected: [...rejected] };
+  // pending holds whatever arrived after the last flush tick (in one-shot mode, all
+  // of it) — the caller writes these too, so no sampled frame is dropped at close.
+  return { meta, rows: [...timing.values()], messages: [...messages.values()], frames: pending, rejected: [...rejected] };
 }
 
 // resolution: merge-duplicates (default, updates on conflict) or ignore-duplicates
@@ -336,17 +401,22 @@ Deno.serve(async (req) => {
       if (!eventId)
         return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
 
-      let flushed = 0, msgFlushed = 0;
-      const onFlush = (rows: TimingRow[], meta: Meta | null, total: number, msgs: MessageRow[]) => (async () => {
+      let flushed = 0, msgFlushed = 0, frameFlushed = 0;
+      const onFlush = (rows: TimingRow[], meta: Meta | null, total: number, msgs: MessageRow[], frames: FrameRow[]) => (async () => {
         flushed += await upsert('stint9_live_timing', rows, 'event_date,car,lap');
         // Race-control messages -> stint9_messages, deduped on ext_key (ignore-duplicates).
         msgFlushed += await upsert('stint9_messages', msgs, 'ext_key', 'ignore-duplicates');
+        // Raw payloads -> stint9_live_frames. Isolated: the frame archive is a
+        // side-record, so a failure there must never cost us a timing flush.
+        frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
         await upsert('stint9_live_status', [statusRow(ed, meta, eventId, total)], 'event_date');
       })();
-      const { meta, rows, messages } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
+      const { meta, rows, messages, frames } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
+      // Tail: frames sampled after the final flush tick.
+      frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
       // Final status write with the true field size (last flush carried a batch count).
       await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
-      return Response.json({ ok: true, held: true, live: !!meta, event_date: ed, event: meta?.event_id ?? eventId, cars: rows.length, timing: flushed, messages: msgFlushed, messagesSeen: messages.length }, { headers: CORS });
+      return Response.json({ ok: true, held: true, live: !!meta, event_date: ed, event: meta?.event_id ?? eventId, cars: rows.length, timing: flushed, messages: msgFlushed, frames: frameFlushed, messagesSeen: messages.length }, { headers: CORS });
     }
 
     // ---- ONE-SHOT mode (⟳ button / default): unchanged 7s snapshot -----------
@@ -355,15 +425,17 @@ Deno.serve(async (req) => {
     // asked for — a bare range scan is known-broken, see above.
     if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
     const ids = eventId ? [eventId] : idRange(range);
-    const { meta, rows, messages, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
+    const { meta, rows, messages, frames, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
     // Race-control messages (channel [3]) -> stint9_messages, deduped on ext_key.
     const nM = await upsert('stint9_messages', messages, 'ext_key', 'ignore-duplicates');
+    // Raw payloads -> stint9_live_frames (best-effort; never fails the snapshot).
+    const nF = await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
     await upsert('stint9_live_status', [statusRow(ed, meta, eventId, rows.length)], 'event_date');
 
     return Response.json(
-      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, messages: nM, rejected },
+      { ok: true, live: !!meta, event_date: ed, event: meta?.event_id ?? null, track: meta?.track ?? null, heat: meta?.heat ?? null, cars: rows.length, timing: nT, messages: nM, frames: nF, rejected },
       { headers: CORS },
     );
   } catch (e) {
