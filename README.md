@@ -2437,7 +2437,7 @@ Left/Right, with Up/Down forwarded back to the parent as `{type:'reelV'}`.
 
 | page | answers |
 |---|---|
-| **STOPS** | what each stop cost against its minimum, and what that cost in position |
+| **STOPS** | what each stop cost against its minimum, and what that cost in position — plus the live countdown for the stop running now (§21.6) |
 | **TARGET** | how much longer may this car stand here — live countdown + release time |
 | **LAST HOUR** | the last-stop minimum, keyed on race time remaining |
 | **MARGINS** | every car ranked by margin; tightest execution and furthest under |
@@ -2530,7 +2530,7 @@ would latch onto the old round. `loadRaceWindow(date)` fetches that one event's 
 row separately instead, and step 3's date guard stops the upcoming round's finish time
 being applied to a replay of a different race.
 
-## 21.5 FIELD, and why it only compares within a class
+## 21.5 MARGINS, and why it defaults to comparing within a class
 
 Two things the field data forced:
 
@@ -2548,7 +2548,55 @@ Cars whose stops are estimated rather than measured are excluded from the callou
 and marked in the list. The field table is built only while PIT is the visible panel
 and at most once a second, and is dropped in `buildClass` alongside `_pitLapCache`.
 
-## 21.6 `DB.pitinfo` mode isolation
+**The scope is pickable, but it opens on the sound one.** The `CLASS` select in the
+MARGINS header (`FSEL` in `pit.html`) chooses which class the callouts and the green
+`mine` highlight are measured in: `''` — the default — follows the selected car, and
+there is also `*` for the whole field plus one entry per class in the field with its
+car count. Only the reading changes; the minimums stay ours either way, so any scope
+other than the default marks the select green and spells the caveat out in the header
+(`VT2-RWD read off our A/B/C table`). Because a scope left on someone else's class
+would quietly misread as the default next time, `pitH(0)` — the message the parent
+already sends when the reel lands on PIT — resets `FSEL` to `''` along with the page.
+The options are only rewritten when the class roster actually changes, so the parent's
+~5 Hz push cannot snap the open dropdown shut, and arrow keys inside it are
+`stopPropagation`'d so they steer the list rather than the reel.
+
+## 21.6 The countdown on STOPS, and the crew clock that can lead it
+
+While a stop is running, STOPS carries the same countdown TARGET does — big remaining
+seconds, the minimum and its table, the release time — in a `.live pitcd` strip above
+the hero. It only exists while `R.inBox` does; between stops the page is exactly what
+it was. Both clocks read one number: `remNow()`, and the `requestAnimationFrame` tick
+paints both, so STOPS and TARGET cannot disagree by a frame.
+
+**Why a crew clock at all.** The derived countdown is only as good as its anchor, and
+the anchor is the S/F crossing less a constant 8.42 s (§21.2). On a clean stop that is
+worth ~0.3 s; on a car that queued or crawled in the lane the raw error reaches 73.7 s,
+and in LIVE there is no `PITIN_TIME` at all, so the whole thing is an estimate marked
+`anchor estimated`. The stopwatch in the crew's hand starts when the car stops, and it
+is right. `SYNC` lets that number take over: type the seconds showing on it, press the
+button, and the field leads.
+
+**Implemented as an offset, not a second timer.** `CAL={key,off}` where
+`off = derived_remaining − typed`, and everything shown is `derived − off` — remaining,
+release time, elapsed. So the calibrated clock rides the existing tick and inherits SIM
+play/pause and playback speed for free; a second `setInterval` would drift against the
+page it sits on. `RESYNC` re-takes a reading, `DROP` returns to the derived clock.
+
+Two things a hand-set clock must not do:
+
+- **Pass as the computed one.** Wherever it is shown it is badged `· CREW CLOCK` in
+  amber, with the applied offset (`SYNCED −5.1s`) next to elapsed, on both pages.
+- **Outlive its stop.** `key` is `car|in-lap`. `render()` compares it against `CALK` and
+  on any change drops the offset *and* clears the input, so the next stop — or the next
+  car selected — starts from the derived clock rather than from a stale reading.
+
+The strip is static markup and only its text nodes are repainted; the parent pushes at
+~5 Hz and an `innerHTML` rebuild would wipe a half-typed calibration under the finger.
+Enter syncs, Escape clears, and keys inside the field are `stopPropagation`'d so typing
+`2` never steers the reel.
+
+## 21.7 `DB.pitinfo` mode isolation
 
 `DB.pitinfo` was missing from `RAW_FIELDS`, from `clearLiveDB()` and from the archive
 apply list, and `live/build-db.js` never emitted it. Harmless while nothing read it —
@@ -2556,10 +2604,11 @@ but the moment PIT did, switching to LIVE or replaying NLS 7 would have shown NL
 stops against whatever car was selected. All four are fixed; `build-db.js` emits an
 empty `pitinfo` because the WIGE socket carries no pit times at all (§9 open question).
 
-## 21.7 Still open
+## 21.8 Still open
 
 - LIVE has no pit times, so STOPS degrades to marked estimates and the countdown to
-  `~est`. The `stint9_live_frames` query settles whether WIGE carries them.
+  `~est` — the crew clock (§21.6) is the answer on the box, not a fix for the feed.
+  The `stint9_live_frames` query settles whether WIGE carries them.
 - The `ceil` on remaining minutes and the 8.42 s `PIT_LANE_IN` are reverse-engineered
   from data, not read from a rulebook. Both are single named constants.
 - The A/B/C tables are one class's. A per-class table would make FIELD a real

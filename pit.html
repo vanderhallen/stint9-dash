@@ -308,9 +308,13 @@ function paintBox(){
        :(b.shaky?' · <span class="est">anchor estimated</span>':''));
 }
 
+var CALK=null;
 function render(){
   if(!R){return;}
-  if(!calOn())CAL=null;                          // stop over, or another car — drop it
+  // stop over, or another car: both the offset and whatever is typed in the field
+  // belong to that one stop -- a hand-set clock carried into the next is worse than none
+  var k=calKey();
+  if(k!==CALK){CALK=k;CAL=null;document.getElementById('s-cal').value='';}
   renderStops();renderTarget();renderEnd();renderField();
   paintBox();
 }
@@ -320,7 +324,7 @@ function render(){
    is the only scope where our A/B/C minimums are the car's own. Picking another
    class (or '*', the whole field) is for looking around: the numbers stay ours,
    so the header says so rather than letting the comparison pass as sound. */
-var FSEL='';
+var FSEL='',FSIG='';
 function fillClassSel(){
   var sel=document.getElementById('f-cls');if(!sel)return;
   var seen={},list=[];
@@ -330,7 +334,9 @@ function fillClassSel(){
   var h='<option value="">'+(R.cls?(esc(R.cls)+' · ours'):'our class — no car picked')+'</option>'+
         '<option value="*">All classes</option>';
   list.forEach(function(c){h+='<option value="'+esc(c)+'">'+esc(c)+' · '+seen[c]+' car'+(seen[c]>1?'s':'')+'</option>';});
-  sel.innerHTML=h;
+  // the parent re-pushes ~5x a second; rewriting the options every time would
+  // snap the dropdown shut under the finger. Only touch it when the roster moves.
+  if(h!==FSIG){FSIG=h;sel.innerHTML=h;}
   sel.value=FSEL;
   sel.className='fsel'+(FSEL?' custom':'');
 }
