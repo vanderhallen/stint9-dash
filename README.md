@@ -2399,3 +2399,142 @@ Console/network errors found while auditing, both silent to the user and both fi
 The remaining `ERR_ABORTED` lines in a headless run — Carto basemap tiles and the
 `keepalive` analytics beacons — are teardown artifacts of closing the browser
 mid-flight, not defects.
+
+---
+
+# 21. PIT — stopped time against the regulation minimum
+
+`pit.html`, the 4th panel of the right reel (`wxReelIdx===3`, between TIMETABLE and
+CHAMPIONSHIP). Same iframe idiom as `service.html`: a fixed logical **1340×700**
+scaled with `transform` by `initPitFrame()`, four horizontal pages driven by
+Left/Right, with Up/Down forwarded back to the parent as `{type:'reelV'}`.
+
+| page | answers |
+|---|---|
+| **STOPS** | what each stop cost against its minimum, and what that cost in position |
+| **TARGET** | how much longer may this car stand here — live countdown + release time |
+| **ENDGAME** | the last-stop minimum, keyed on race time remaining |
+| **FIELD** | every car ranked by margin; tightest execution and furthest under |
+
+## 21.1 The regulation tables
+
+Minimum standing time, hardcoded in `index.html` as `PIT_A` / `PIT_B` / `PIT_C`:
+
+- **A** — first stop, by laps completed in the stint: `64 82 101 119 138 156 175 193 212 230`
+- **B** — from the second stop on: `A − 8` throughout
+- **C** — the last stop, by whole minutes of race time remaining **rounded up** at pit
+  entry, 1 min → 28 s up to 59 min → 158 s
+
+Which table applies is decided by *time remaining*, not by "is this the last stop":
+`remaining ≤ 59 min → C`, else first stop → A, else B. That is the only formulation
+that works mid-race, where you cannot know a stop is the last one. Stints over 10 laps
+clamp to the 10-lap value.
+
+**There is deliberately no configurable target.** The benchmark is the sum of the
+per-stop minimums, which already scales with laps driven and time remaining, so it is
+the true floor for the race being run rather than a round number someone maintains.
+
+Worked reference — NLS 6, car 665, and the regression test for any change here:
+
+| # | in-lap | laps | stopped | minimum | margin |
+|---|---|---|---|---|---|
+| 1 | 5 | 5 | 2:24.173 | 138 (A₅) | +6.173 |
+| 2 | 8 | 3 | 2:19.564 | 93 (B₃) | +46.564 |
+| 3 | 15 | 7 | 3:05.636 | 167 (B₇) | +18.636 |
+| 4 | 21 | 6 | 1:00.020 | 50 (C₁₁) | +10.020 |
+
+8:49.393 against a 7:28.000 floor → **+81.393 s given away**, which cost 2 places:
+class P3 where P1 was available, overall P48 against P43.
+
+## 21.2 Where the stop clock can start
+
+The timing never publishes pit entry, and the obvious anchors are both wrong:
+
+- **The S5 beacon is never crossed on an in-lap.** Pit entry sits at the end of S5, so
+  a car peeling in drives S5 but never trips it — 0 of 273 stops carry that split.
+- **The out-lap S1 beacon fires far too late.** The box *and* the pit exit are both
+  inside S1 (out-lap S1 median 234.8 s against 74.6 s normal), so by then the car has
+  already gone.
+
+The usable anchor is the **start/finish crossing that closes the in-lap** —
+`legs[lap+1][s1][2]`. Measured over 262 stops carrying a real `PITIN_TIME`, the pit
+entry line sits a median **8.42 s before** it (p25 −8.93, p75 −8.11), which is
+`PIT_LANE_IN`. The clock therefore back-dates by that constant and shows the correct
+remaining time from its first tick.
+
+A by-product worth knowing: **"the in-lap published no S5 split" is a perfect pit
+detector** — 273 true positives, 0 false positives, 0 false negatives over 2113 laps,
+against `pitLapsOf()`'s out-lap-S1 heuristic at 265/285 with 18 false positives. It
+also fires at S/F rather than after pit exit.
+
+## 21.3 Error budget when there is no real pit-in time
+
+| | median | p90 | p95 | max |
+|---|---|---|---|---|
+| anchor, raw | 0.36 s | 1.23 s | 1.72 s | **73.7 s** |
+| anchor, after the guard | 0.34 s | — | 1.22 s | **1.92 s** |
+
+The bad cases are cars crawling or queuing in the lane, and they self-identify: a stop
+whose `S/F − S4end` hole runs more than `PIT_HOLE_GUARD` (12 s) over the car's own
+green S5 catches **8 of 8** with >5 s error, over-flagging 45 of 259 — the safe
+direction. Anchoring late only costs time; anchoring early is a penalty, and the worst
+early-release case on the clean set is 1.92 s, hence `PIT_SAFETY = 2`.
+
+**Stopped durations are a different story.** Estimated from the S5 hole plus out-lap S1
+excess they run median 1.8 s but **p95 15.4 s** — enough to move the headline by
+10-20 s across four stops. So in LIVE the durations are marked estimated and the
+position what-if is suppressed rather than shown on sand.
+
+## 21.4 Race end, and why not `DB.tmax`
+
+`DB.tmax` runs ~22 minutes past the flag because cars keep circulating (NLS 6: tmax
+16:21:59 against a 16:00 finish). Using it puts the last stop at 32.7 min remaining →
+C₃₃ = 99 s instead of C₁₁ = 50 s, destroying the reference figure. `raceEndTod()`
+resolves in order:
+
+1. `window.PIT_RACE_END_OVERRIDE` (manual escape hatch)
+2. `window.RACEWIN` — the loaded event's own race row, fetched by `loadRaceWindow()`
+3. `SCHEDULE`'s `race` row, **only when `SCHEDULE.eventDate` matches `DB.event.date`**
+4. derived — `floor(DB.tmin/900)*900 + 4h` (57600 for NLS 6, exactly right)
+
+`loadSchedule()` only ever fetches `event_date >= today`, because the timetable and
+grid countdown want the *next* round — so a SIM replay of a past event finds nothing
+there. Widening that query is not the fix: its clustering anchors on `rows[0]` and
+would latch onto the old round. `loadRaceWindow(date)` fetches that one event's race
+row separately instead, and step 3's date guard stops the upcoming round's finish time
+being applied to a replay of a different race.
+
+## 21.5 FIELD, and why it only compares within a class
+
+Two things the field data forced:
+
+- **Minimum standing times are class-specific.** Median per-stop margin in this event
+  runs from about **−2 s in CUP3 to +64 s in BMW 325i**, and **17 cars** come out below
+  the minimum, which the rules do not allow. That is our table not applying to them,
+  not a grid full of penalties. So the callouts are computed inside the selected car's
+  own class and every other class is listed but muted.
+- **A car behind the wall is not making a pit stop.** `#112` showed 143 minutes
+  "stopped" and a +8499 s margin. Durations separate cleanly (p95 344 s, then
+  545 → 735 → 941 → 8581), so `PIT_REPAIR_S = 600` splits repairs out of the margin and
+  surfaces them as a `+N rep` badge. Top margin falls to +635 s.
+
+Cars whose stops are estimated rather than measured are excluded from the callouts too
+and marked in the list. The field table is built only while PIT is the visible panel
+and at most once a second, and is dropped in `buildClass` alongside `_pitLapCache`.
+
+## 21.6 `DB.pitinfo` mode isolation
+
+`DB.pitinfo` was missing from `RAW_FIELDS`, from `clearLiveDB()` and from the archive
+apply list, and `live/build-db.js` never emitted it. Harmless while nothing read it —
+but the moment PIT did, switching to LIVE or replaying NLS 7 would have shown NLS 6's
+stops against whatever car was selected. All four are fixed; `build-db.js` emits an
+empty `pitinfo` because the WIGE socket carries no pit times at all (§9 open question).
+
+## 21.7 Still open
+
+- LIVE has no pit times, so STOPS degrades to marked estimates and the countdown to
+  `~est`. The `stint9_live_frames` query settles whether WIGE carries them.
+- The `ceil` on remaining minutes and the 8.42 s `PIT_LANE_IN` are reverse-engineered
+  from data, not read from a rulebook. Both are single named constants.
+- The A/B/C tables are one class's. A per-class table would make FIELD a real
+  comparison instead of a same-class one.

@@ -916,17 +916,29 @@ const pitMinC=m=>PIT_C[Math.max(0,Math.min(58,Math.ceil(m)-1))];
 // Scheduled race END (time-of-day seconds) -- NOT DB.tmax, which runs ~22 min
 // past the flag because cars keep circulating (NLS6: tmax 16:21:59 vs a 16:00
 // finish). Getting this wrong moves the last stop into the wrong C row.
+const _tod=d=>d.getHours()*3600+d.getMinutes()*60+d.getSeconds();
+// The loaded event's own race row (loadRaceWindow) wins over SCHEDULE, which only
+// ever describes the NEXT round -- on a SIM replay those are different races.
+function _raceWin(){
+  const w=window.RACEWIN;
+  return (w&&w.end&&(!DB.event||!DB.event.date||w.date===DB.event.date))?w:null;
+}
 function raceEndTod(){
   try{
     if(window.PIT_RACE_END_OVERRIDE!=null)return window.PIT_RACE_END_OVERRIDE;
+    const w=_raceWin();if(w)return _tod(w.end);
     const r=SCHEDULE&&SCHEDULE.rows&&SCHEDULE.rows.find(x=>x.label==='race');
-    if(r&&r.end){const d=r.end;return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();}
+    if(r&&r.end&&(!SCHEDULE.eventDate||!DB.event||!DB.event.date||SCHEDULE.eventDate===DB.event.date))return _tod(r.end);
   }catch(e){}
   return Math.floor(DB.tmin/900)*900+14400;   // fallback: quarter-hour start + 4h
 }
 function raceEndSrc(){
   if(window.PIT_RACE_END_OVERRIDE!=null)return 'manual';
-  try{const r=SCHEDULE&&SCHEDULE.rows&&SCHEDULE.rows.find(x=>x.label==='race');if(r&&r.end)return 'schedule';}catch(e){}
+  try{
+    if(_raceWin())return 'schedule';
+    const r=SCHEDULE&&SCHEDULE.rows&&SCHEDULE.rows.find(x=>x.label==='race');
+    if(r&&r.end&&(!SCHEDULE.eventDate||!DB.event||!DB.event.date||SCHEDULE.eventDate===DB.event.date))return 'schedule';
+  }catch(e){}
   return 'derived';
 }
 // The full stop list for a car up to time T. Real stopped times come from
@@ -4332,6 +4344,24 @@ async function loadSchedule(){
   }catch(e){SCHEDULE=null;}
   GRIDBOUNDS=scheduleBoundaries();renderTimetable();tickGridClock();
 }
+/* SCHEDULE only ever covers today forward (the timetable and the grid countdown
+   both want the NEXT round), so a SIM replay of a past event finds no race row
+   and raceEndTod() falls back to a derived guess. Widening the query above is not
+   the fix: its clustering anchors on rows[0] and would latch onto the old round.
+   Fetch that one event's race window on its own instead -- it feeds raceEndTod
+   only, which is what decides whether a stop falls in the ENDGAME table. */
+async function loadRaceWindow(date){
+  window.RACEWIN=null;
+  if(!date)return;
+  try{
+    const res=await fetch(FUEL_SB_URL+'/rest/v1/stint9_schedule_windows'+
+      '?select=event_date,label,start_ts,end_ts&event_date=eq.'+encodeURIComponent(date)+'&label=eq.race',
+      {headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}});
+    const rows=res.ok?await res.json():[];
+    if(rows.length&&rows[0].end_ts)window.RACEWIN={date:date,end:new Date(rows[0].end_ts)};
+  }catch(e){window.RACEWIN=null;}
+  if(typeof pushPit==='function')pushPit(true);
+}
 function scheduleBoundaries(){
   if(!SCHEDULE)return[];
   const b=SCHEDULE.rows.map(r=>({t:r.start,label:r.label}));
@@ -4401,6 +4431,7 @@ function renderTimetable(){
 }
 renderTimetable();
 loadSchedule();
+loadRaceWindow((DB.event&&DB.event.date)||liveEventDate());   // race end for whatever event is loaded now
 setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule table is updated while the page is left open
 
 /* ---- weather / timetable reel (2 panels) ---- */
@@ -4622,6 +4653,9 @@ applyWxReel(false);
     RAW.forEach(function(k){if(k in built)DB[k]=built[k];});
     DB.event={name:meta.name||slug,date:meta.event_date||''};
     window.archiveEventDate=DB.event.date;
+    // this replay is a different race from whatever SCHEDULE describes, so pull
+    // its own race window for raceEndTod / the PIT ENDGAME table
+    if(typeof loadRaceWindow==='function')loadRaceWindow(DB.event.date);
     var clsSel=document.getElementById('classsel');
     var pick=Object.keys(DB.classes)[0];
     if(clsSel){var cur=clsSel.value;fillClassSelect(clsSel);
