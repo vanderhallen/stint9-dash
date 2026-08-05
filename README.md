@@ -29,6 +29,7 @@
 17. [PWA — installable app, offline shell, wake lock](#17-pwa--installable-app-offline-shell-wake-lock-2026-08-04)
 18. [Race notes — S1 overtakes, pit laps, archive parity](#18-race-notes--s1-overtakes-pit-laps-archive-parity-2026-08-04)
 19. [SIM autoplay + ALL CLASSES](#19-sim-autoplay--all-classes-2026-08-04)
+20. [Scrubbing back in SIM — panels that ignored the clock](#20-scrubbing-back-in-sim--panels-that-ignored-the-clock-2026-08-04)
 
 ---
 
@@ -54,7 +55,18 @@ Single self-contained page **`stint9_dashboard.html`** — a race-intelligence "
 
 ### Data choices / caveats
 - **Per-lap driver is NOT in the data** → stints assumed sequential, split at pit stops (`INPIT='J'`). (The driver-stints table was later **removed** from the UI.)
-- **Pit stops**: count is exact = laps where `INPIT='J'` (e.g. #666 = 3, laps 8/16/21) → embedded as `DB.pits`. **Pit-stop duration is NOT derivable** (`PITSTOPDURATION` is empty in the file; no pit-exit timestamp). Pit *time loss* is derivable as an inflated out-lap (`INPIT='A'` = out-lap) — not yet added to UI.
+- **Pit stops**: count is exact = laps where `INPIT='J'` (e.g. #666 = 3, laps 8/16/21) → embedded as `DB.pits`.
+  - **Wall-clock in/out IS in the file** → embedded as `DB.pitinfo[car][in-lap] = [pit_in_tod, duration_s, pit_out_tod]`.
+    `PITIN_TIME` is a real crossing time at the pit-entry loop and `PITSTOPDURATION` a real
+    stopped time; pit-out = in + duration, and it lands inside the out-lap's S1 — which is
+    what inflates that sector. 265 of 285 in-laps in the 2026-06-20 file carry both; the
+    other 20 read `00.000` (retired in the box, or the stop ran past the end of the session).
+  - ⚠️ **This section used to claim `PITSTOPDURATION` is empty in the file and that pit
+    duration is "NOT derivable". That was wrong** — and because `tools/gen_db.py` was written
+    to that claim, both columns were parsed past and dropped for the whole life of the
+    pipeline. Counted directly: the old `nls sector.CSV` carries a real duration on 360 of
+    its 382 in-laps too, so the claim was never true of any file in `source/`. Fixed 2026-08-04.
+  - Pit *time loss* (as opposed to stopped time) is still the inflated out-lap S1 — not yet in the UI.
 - Live position = `progress = lap*5 + (seg-1) + frac`, sorted per frame (`livePos`).
 - Gaps between two cars = `commonGap` via their last common sector-boundary crossing times.
 - "Last lap"/"Fastest" per car = last completed lap / min over completed laps (leader and selected car may be on different laps).
@@ -188,6 +200,8 @@ What the generator does:
 - Rebuilds everything else from the CSV: `legs` (per-lap 5-sector segments with absolute
   second-of-day boundaries; `TAGESZEIT` = lap-END time, so lap L spans
   `[TAGESZEIT(L-1), TAGESZEIT(L)]`), `sectimes`, `pits` (laps where `INPIT='J'`),
+  `pitinfo` (per in-lap `[pit_in_tod, duration_s, pit_out_tod]` from `PITIN_TIME` +
+  `PITSTOPDURATION`; either half may be `null` on the `00.000` sentinel),
   within-class track `positions`/`chart`/`lappos` (ranked per sector boundary),
   `classes`/`classMaxN` (max laps)/`classAvg` (mean green-lap sector times),
   `name` (FAHRER1 surname), `carcol` (16-colour palette cycled within each class).
@@ -725,6 +739,26 @@ lap_time, inpit, fastest, driver, vehicle, updated_at`. A companion table
 `stint9_live_status` holds one row/day for the header badge (event id / track /
 heat / car count / clock).
 
+### `public.stint9_live_frames` — the raw payloads (2026-08-04)
+
+The table above keeps the ~18 fields the dashboard maps; **everything else WIGE
+sends is now kept too**, whole and verbatim, one row per sampled WebSocket frame:
+`event_date, received_at, pid, event_id, session, heat, track, root_tod, cars,
+body_hash, frame (jsonb)`. Nothing reads it at runtime — it is a write-once
+evidence log so a question about an unmapped field can be answered by querying
+instead of by re-instrumenting and waiting for the next race. See
+`live-frames-supabase.sql`; §9's open questions are the worked example.
+
+- Sampling: one frame per channel per `WIGE_FRAME_MIN_MS` (default **15 s**);
+  `0` keeps every frame, `WIGE_FRAME_ARCHIVE=off` stops collecting. Byte-identical
+  re-sends collapse on the `body_hash` unique index and cost nothing.
+- Size: ~130 cars ≈ 70 KB/frame raw, jsonb-compressed to ~15–25 KB → **~25–35 MB per
+  6h raceday**. `stint9_prune_live_frames(keep_days)` (cron `stint9_live_frames_prune`,
+  daily 05:20, keeps 21 days) is the pressure valve; it refuses to drop frames for a
+  date that has no `stint9_events` row, so a failed archive never loses the session.
+- Writes come from `wige-scrape` with the service role. RLS grants anon **select only**
+  — no anon insert/update/delete policy exists.
+
 ## 4. Dashboard LIVE view — `index.html` + `live/build-db.js`
 
 - When the user flips to **LIVE**, the page polls every **5 s**:
@@ -769,23 +803,39 @@ Everything we learned wiring the WIGE live feed to the dashboard on 2026‑07‑
 [§7 race-day runbook](#7-live-feed--race-day-runbook) (the run procedure) and
 [§8 data flow](#8-live-feed--data-flow) (the data chain).
 
-## ⚠️ OPEN — verify against a live WIGE frame (armed 2026-08-01, do at next NLS session)
+## ⚠️ OPEN — answer from `stint9_live_frames` after the next NLS session (11 Sep 2026)
 
-`wige-scrape` (v9) logs one raw car object per run as `WIGE_RAWFRAME …` (a TEMP
-`console.log`, first accepted frame only). At the next live session, read it via
-Supabase → Edge Functions logs (or MCP `get_logs` service `edge-function`) and
-resolve three things, then **remove the temp log**:
+**These questions are answerable from stored data now.** They were armed 2026-08-01
+against a `WIGE_RAWFRAME` temp `console.log`, and stayed open through two race
+weekends for one reason: edge-function logs are kept **24 hours**, so the evidence
+expired before anyone read it. Since 2026-08-04 `wige-scrape` (v11) also writes every
+sampled payload verbatim to **`public.stint9_live_frames`** (see
+`live-frames-supabase.sql`), which keeps 21 days. The `console.log` survives as a
+same-day fallback; prefer the table.
 
-1. **`inpit` lap-attribution.** v9 derives `inpit` by diffing the per-car
-   **`PITSTOPCOUNT`** across frames and flagging the lap where it ticks up. Confirm
-   that lands on the **in-lap** (what `DB.pits` / `withPitS5` / the racenote PIT-IN
-   note expect) and not the out-lap — adjust to `lap-1` if it's off by one.
+```sql
+-- what does a car object actually contain?
+select distinct k from stint9_live_frames, lateral jsonb_object_keys(frame->'RESULT'->0) k
+where event_date = 'YYYY-MM-DD' order by 1;
+```
+
+1. **`inpit` lap-attribution.** v9+ derives `inpit` by diffing the per-car
+   **`PITSTOPCOUNT`** across frames and flagging the lap where it ticks up. It produced
+   **zero** pit laps over the 2026-08-01 race (4251 rows, 136 cars, hold mode on), so
+   the first thing to check is whether `PITSTOPCOUNT` exists on the socket at all
+   (`select ... where k ilike '%pit%'` on the query above). If it does, confirm the tick
+   lands on the **in-lap** — what `DB.pits` / `withPitS5` / the racenote PIT-IN note
+   expect — and adjust to `lap-1` if it is off by one.
 2. **Lap-count inflation.** The stored `lap` (`c.LAPS`) ran **~40 % higher** than
    WIGE's on-screen session-lap count during the 2026-08-01 6h race (e.g. #650 at
    DB L33 @15:52 while WIGE showed ~L23). Confirm what `c.LAPS` actually counts.
-3. **Field names / sector count.** Confirm `PITSTOPCOUNT` exists on the socket (not
-   just the VLN CSV) and that `NROFINTERMEDIATETIMES` = 4 for the Nordschleife
+3. **Sector count.** Confirm `NROFINTERMEDIATETIMES` = 4 for the Nordschleife
    (why `s5` is always null — the dashboard's 5-sector model vs WIGE's 4 intermediates).
+4. **Pit in/out.** Does the socket carry anything like the VLN CSV's `PITIN_TIME` /
+   `PITSTOPDURATION`? If it does, map it — LIVE currently has no pit times at all and
+   falls back to the out-lap-S1 heuristic in `pitLapsOf()` (index.html), which recovers
+   265 of 285 real stops with 18 false positives. The CSV path now carries the real
+   thing as `DB.pitinfo`.
 
 Everything else in the 2026-08-01 batch is shipped: STINT label gutter, Find-car in
 the Message board (+ Enter searches/highlights it), `inpit` via `PITSTOPCOUNT`
@@ -2196,3 +2246,295 @@ of 26 options; selecting it gives `cars=132, maxN=41, avgseg=[0,83,77,142,237,0]
 with zero console errors; the `carClass` map stays clean (**0 of 132** polluted);
 speed `10`; `playing=true` from `tmin`; `window.archiveSlug` resolved to
 `EVT-2026-08-02`, the newest archived event.
+
+---
+
+# 20. Scrubbing back in SIM — panels that ignored the clock (2026-08-04)
+
+Almost everything on the dashboard re-derives itself from `T` every render, so
+dragging the scrubber back just works. Two panels didn't: both kept a **forward-only
+accumulator** that nothing rewound, so they went on showing a part of the race that,
+at the displayed clock, hadn't happened yet — and a third, the VIDEO reel's count, fell
+out of the sweep that went looking for more of them (§20.4).
+
+## 20.1 Race notes
+
+**Symptom.** In SIM, drag the scrubber back and press play: the RACE NOTES feed
+still shows every note from *later* in the race — passes, pit stops and fastest
+laps that, at the displayed clock, have not happened yet. Everything else on the
+dashboard (standings, map, summary line) had already re-derived itself from `T`.
+
+**Cause.** `rnNotes` was an append-only log of everything the detector had ever
+emitted, and `rnRenderFeed()` painted all of it. `rnDetect(T)` only ever *adds*
+notes at or before `T`, so playing forward looked right — but nothing removed a
+note when the clock moved back behind it. The single reset (`T <= DB.tmin+0.5`,
+"replay is back at the start") only covered scrubbing all the way home.
+
+**The fix** (`index.html`, racenote section):
+
+- `rnT` holds the clock the feed is painted against; `updateRacenote(T)` sets it
+  every frame.
+- `rnVisible(n)` = `n.tod == null || n.tod <= rnT`. `rnRenderFeed()` filters
+  through it, so the feed is a **view of `rnNotes` at `T`**, not a transcript.
+- Detected notes are *hidden*, never dropped. `rnSeen` therefore stays intact, so
+  scrubbing back and playing forward re-reveals the identical notes instead of
+  re-running detection (and, in LIVE, re-POSTing them).
+- `rnFeedN` records how many were visible at the last paint. `updateRacenote`
+  repaints when the detector is dirty **or** that count changed — which is what
+  makes a note appear at the moment the clock crosses it and disappear when it
+  scrubs back past it. Notes carry no tod-less rows today; the `tod == null`
+  branch just means a note that cannot be placed on the clock is always shown.
+
+LIVE is unaffected in practice: `T` is the live clock, so every stored note is
+already behind it.
+
+**Verified** in headless Chrome against the archived **NLS7** bundle
+(`?event=NLS7`, car #5, playback paused, scrubber driven directly):
+
+| | notes shown | notes dated after the clock |
+|---|---|---|
+| scrub to 14:12:21 | 27 | 0 |
+| scrub back to 11:38:27 (**before**) | 27 | **12** |
+| scrub back to 11:38:27 (**after**) | 15 | 0 |
+| scrub forward to 14:12:21 again | 27 | 0 |
+
+## 20.2 The SNAP reel
+
+**Symptom.** Same drag, same shape of bug: the SNAP table kept every lap column it
+had ever drawn — 23 lap columns at a clock where the field was on lap 6.
+
+**Cause.** SNAP is the *frozen* twin of GRID (§ the reel is deliberately not
+recomputed: a cell keeps the colour it had the moment that sector was set). That
+freeze lives in `gridFreeze.done[car][lap]`, which by design is only ever written
+forward — and `lapsSoFar` is derived from it, not from `T`. Nothing dropped a cell
+when the clock moved back behind it. GRID isn't affected: it recomputes from `T`
+every render by construction.
+
+**The fix.** `gridFreeze` now carries the clock `T` it was built up to.
+`renderSectGridFrozen(T)` calls `resetGridFreeze()` when `T` moves backwards and
+re-freezes from the start. That is safe because freezing is deterministic — the
+events are replayed in boundary order through the running bests — so a rebuilt state
+is identical to the incremental one. Forward play is untouched and stays incremental
+(only the sectors that crossed since the last call are processed); the rebuild costs
+one extra pass over cars × laps, and only on a backward scrub.
+
+**Verified** the same way (`?event=NLS7`, SNAP reel, paused, scrubber driven):
+
+| | lap columns | selected car's filled cells |
+|---|---|---|
+| scrub to 13:33:52 | 23 | 23 |
+| scrub back to 10:59:59 (**before**) | **23** | **23** |
+| scrub back to 10:59:59 (**after**) | 6 | 6 |
+| scrub forward to 13:33:52 again | 23 | 23, **cell-for-cell identical colours** |
+
+## 20.3 The VIDEO reel count (and what ANALYSE would cut)
+
+Found by the sweep below, not by eye: the reel header read **"12 overtakes ready"** at
+a clock where only 7 had happened. `rnClipNotes()` — the single definition of "an
+on-track overtake the reel can clip", and deliberately the same list ANALYSE cuts from
+— filtered `rnNotes` by kind and sector but not by the clock, so it counted (and would
+have cut video for) passes still in the future. It now also filters on `rnVisible`, so
+the header, the feed and ANALYSE all agree at any scrubber position.
+
+## 20.4 How the rest was checked — `tools/rewind-audit.mjs`
+
+Rather than reason panel-by-panel about which renderer keeps state, the audit is
+mechanical and rerunnable: render **one clock two ways** — straight to `T`, versus out
+to a late clock and back — and diff the DOM of every panel. Anything that differs is
+carrying state a rewind doesn't undo. A second pass flags panels that render
+*identically at an early and a late clock*, which catches the opposite flavour ("shows
+the whole race regardless of `T`"). Run it exactly like the PWA self-test (§17.7),
+CDP-driven headless Chrome, no npm deps:
+
+```
+python3 -m http.server 8791 --bind 127.0.0.1 &
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+   --headless=new --remote-debugging-port=9222 \
+   --user-data-dir=/tmp/rw-chrome --no-first-run about:blank &
+node tools/rewind-audit.mjs
+```
+
+With the three fixes reverted it fails on exactly `rn-feed`, `snaptablewrap` and
+`vr-count`; with them in place **all 35 panels match**. What it cleared:
+
+- **GRID, DRV, TIMES, POS, FLOW, SECT, PACE, STINT, COMP, DIFF, BARS**, the map, the
+  standings, the gap chart, the mini-map and the whole mobile view — all rebuild from
+  `T` every render.
+- **The FUEL log** already *removes* a lap's row when its condition stops holding at
+  `T` (`fuelS5Set` / `fuelPitSet` map lap → row for exactly that reason).
+- **The race-control board** gates on `msgTod(created_at) <= T` in SIM, so messages
+  hide again on a rewind.
+- **The TYRE and SERVICE iframes** only accumulate km when `LIVE_MODE` — the SIM guard
+  that stopped scrub-back from re-seeding wear.
+- **`_loggedLaps`** (lap-time logging) is LIVE-only, and LIVE never rewinds.
+
+Two known non-findings, both deliberate:
+
+- **STINT driver colours.** `stintDrvColor` hands out a palette colour the first time a
+  driver is drawn, so *which* colour a driver gets depends on how far the replay has
+  run. A colour is never reassigned, so nothing changes on screen mid-session — the
+  audit normalizes STINT's fills and still compares its geometry and labels.
+- **`#gridclock`** counts down to the next race weekend off the wall clock, so it is
+  meant to differ between two runs; the audit ignores it.
+
+## 20.5 Two errors the same run surfaced
+
+Console/network errors found while auditing, both silent to the user and both fixed:
+
+- **`<path> attribute d: Expected moveto path command`** (twice, on any clock with one
+  lap of data). `smoothPath()` returned `''` for a single point, and two callers close
+  the curve into an area fill by appending `" L…,base L…,base Z"` — so the path began
+  with an `L`, the browser rejected it and dropped the element. `smoothPath` now emits a
+  bare `M x,y` for one point; the fill degenerates to a zero-width (invisible) sliver,
+  which is what the area under a one-lap trace should be. Empty input still gives `''`.
+- **HTTP 409 on every `stint9_reel_usage` flush after the first.** The table's PK is
+  `(id)` but its unique index is `(session_id, reel, event_date)`, and the POST asked
+  for `resolution=merge-duplicates` without naming a conflict target — so PostgREST
+  resolved against the PK and the unique constraint rejected the row. The `.catch()`
+  swallowed it, so a session's `seconds` silently froze at its first 15s tick. The URL
+  now carries `?on_conflict=session_id,reel,event_date` (the same shape the racenote
+  upsert already used). Verified against the real table: one headless session merged
+  15 → 30 → 45 s on a single row, no 409s.
+
+The remaining `ERR_ABORTED` lines in a headless run — Carto basemap tiles and the
+`keepalive` analytics beacons — are teardown artifacts of closing the browser
+mid-flight, not defects.
+
+---
+
+# 21. PIT — stopped time against the regulation minimum
+
+`pit.html`, the 4th panel of the right reel (`wxReelIdx===3`, between TIMETABLE and
+CHAMPIONSHIP). Same iframe idiom as `service.html`: a fixed logical **1340×700**
+scaled with `transform` by `initPitFrame()`, four horizontal pages driven by
+Left/Right, with Up/Down forwarded back to the parent as `{type:'reelV'}`.
+
+| page | answers |
+|---|---|
+| **STOPS** | what each stop cost against its minimum, and what that cost in position |
+| **TARGET** | how much longer may this car stand here — live countdown + release time |
+| **ENDGAME** | the last-stop minimum, keyed on race time remaining |
+| **FIELD** | every car ranked by margin; tightest execution and furthest under |
+
+## 21.1 The regulation tables
+
+Minimum standing time, hardcoded in `index.html` as `PIT_A` / `PIT_B` / `PIT_C`:
+
+- **A** — first stop, by laps completed in the stint: `64 82 101 119 138 156 175 193 212 230`
+- **B** — from the second stop on: `A − 8` throughout
+- **C** — the last stop, by whole minutes of race time remaining **rounded up** at pit
+  entry, 1 min → 28 s up to 59 min → 158 s
+
+Which table applies is decided by *time remaining*, not by "is this the last stop":
+`remaining ≤ 59 min → C`, else first stop → A, else B. That is the only formulation
+that works mid-race, where you cannot know a stop is the last one. Stints over 10 laps
+clamp to the 10-lap value.
+
+**There is deliberately no configurable target.** The benchmark is the sum of the
+per-stop minimums, which already scales with laps driven and time remaining, so it is
+the true floor for the race being run rather than a round number someone maintains.
+
+Worked reference — NLS 6, car 665, and the regression test for any change here:
+
+| # | in-lap | laps | stopped | minimum | margin |
+|---|---|---|---|---|---|
+| 1 | 5 | 5 | 2:24.173 | 138 (A₅) | +6.173 |
+| 2 | 8 | 3 | 2:19.564 | 93 (B₃) | +46.564 |
+| 3 | 15 | 7 | 3:05.636 | 167 (B₇) | +18.636 |
+| 4 | 21 | 6 | 1:00.020 | 50 (C₁₁) | +10.020 |
+
+8:49.393 against a 7:28.000 floor → **+81.393 s given away**, which cost 2 places:
+class P3 where P1 was available, overall P48 against P43.
+
+## 21.2 Where the stop clock can start
+
+The timing never publishes pit entry, and the obvious anchors are both wrong:
+
+- **The S5 beacon is never crossed on an in-lap.** Pit entry sits at the end of S5, so
+  a car peeling in drives S5 but never trips it — 0 of 273 stops carry that split.
+- **The out-lap S1 beacon fires far too late.** The box *and* the pit exit are both
+  inside S1 (out-lap S1 median 234.8 s against 74.6 s normal), so by then the car has
+  already gone.
+
+The usable anchor is the **start/finish crossing that closes the in-lap** —
+`legs[lap+1][s1][2]`. Measured over 262 stops carrying a real `PITIN_TIME`, the pit
+entry line sits a median **8.42 s before** it (p25 −8.93, p75 −8.11), which is
+`PIT_LANE_IN`. The clock therefore back-dates by that constant and shows the correct
+remaining time from its first tick.
+
+A by-product worth knowing: **"the in-lap published no S5 split" is a perfect pit
+detector** — 273 true positives, 0 false positives, 0 false negatives over 2113 laps,
+against `pitLapsOf()`'s out-lap-S1 heuristic at 265/285 with 18 false positives. It
+also fires at S/F rather than after pit exit.
+
+## 21.3 Error budget when there is no real pit-in time
+
+| | median | p90 | p95 | max |
+|---|---|---|---|---|
+| anchor, raw | 0.36 s | 1.23 s | 1.72 s | **73.7 s** |
+| anchor, after the guard | 0.34 s | — | 1.22 s | **1.92 s** |
+
+The bad cases are cars crawling or queuing in the lane, and they self-identify: a stop
+whose `S/F − S4end` hole runs more than `PIT_HOLE_GUARD` (12 s) over the car's own
+green S5 catches **8 of 8** with >5 s error, over-flagging 45 of 259 — the safe
+direction. Anchoring late only costs time; anchoring early is a penalty, and the worst
+early-release case on the clean set is 1.92 s, hence `PIT_SAFETY = 2`.
+
+**Stopped durations are a different story.** Estimated from the S5 hole plus out-lap S1
+excess they run median 1.8 s but **p95 15.4 s** — enough to move the headline by
+10-20 s across four stops. So in LIVE the durations are marked estimated and the
+position what-if is suppressed rather than shown on sand.
+
+## 21.4 Race end, and why not `DB.tmax`
+
+`DB.tmax` runs ~22 minutes past the flag because cars keep circulating (NLS 6: tmax
+16:21:59 against a 16:00 finish). Using it puts the last stop at 32.7 min remaining →
+C₃₃ = 99 s instead of C₁₁ = 50 s, destroying the reference figure. `raceEndTod()`
+resolves in order:
+
+1. `window.PIT_RACE_END_OVERRIDE` (manual escape hatch)
+2. `window.RACEWIN` — the loaded event's own race row, fetched by `loadRaceWindow()`
+3. `SCHEDULE`'s `race` row, **only when `SCHEDULE.eventDate` matches `DB.event.date`**
+4. derived — `floor(DB.tmin/900)*900 + 4h` (57600 for NLS 6, exactly right)
+
+`loadSchedule()` only ever fetches `event_date >= today`, because the timetable and
+grid countdown want the *next* round — so a SIM replay of a past event finds nothing
+there. Widening that query is not the fix: its clustering anchors on `rows[0]` and
+would latch onto the old round. `loadRaceWindow(date)` fetches that one event's race
+row separately instead, and step 3's date guard stops the upcoming round's finish time
+being applied to a replay of a different race.
+
+## 21.5 FIELD, and why it only compares within a class
+
+Two things the field data forced:
+
+- **Minimum standing times are class-specific.** Median per-stop margin in this event
+  runs from about **−2 s in CUP3 to +64 s in BMW 325i**, and **17 cars** come out below
+  the minimum, which the rules do not allow. That is our table not applying to them,
+  not a grid full of penalties. So the callouts are computed inside the selected car's
+  own class and every other class is listed but muted.
+- **A car behind the wall is not making a pit stop.** `#112` showed 143 minutes
+  "stopped" and a +8499 s margin. Durations separate cleanly (p95 344 s, then
+  545 → 735 → 941 → 8581), so `PIT_REPAIR_S = 600` splits repairs out of the margin and
+  surfaces them as a `+N rep` badge. Top margin falls to +635 s.
+
+Cars whose stops are estimated rather than measured are excluded from the callouts too
+and marked in the list. The field table is built only while PIT is the visible panel
+and at most once a second, and is dropped in `buildClass` alongside `_pitLapCache`.
+
+## 21.6 `DB.pitinfo` mode isolation
+
+`DB.pitinfo` was missing from `RAW_FIELDS`, from `clearLiveDB()` and from the archive
+apply list, and `live/build-db.js` never emitted it. Harmless while nothing read it —
+but the moment PIT did, switching to LIVE or replaying NLS 7 would have shown NLS 6's
+stops against whatever car was selected. All four are fixed; `build-db.js` emits an
+empty `pitinfo` because the WIGE socket carries no pit times at all (§9 open question).
+
+## 21.7 Still open
+
+- LIVE has no pit times, so STOPS degrades to marked estimates and the countdown to
+  `~est`. The `stint9_live_frames` query settles whether WIGE carries them.
+- The `ceil` on remaining minutes and the 8.42 s `PIT_LANE_IN` are reverse-engineered
+  from data, not read from a rulebook. Both are single named constants.
+- The A/B/C tables are one class's. A per-class table would make FIELD a real
+  comparison instead of a same-class one.

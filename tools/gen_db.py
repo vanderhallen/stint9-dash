@@ -35,6 +35,17 @@ def numde(s):
     s=s.strip()
     return float(s.replace(',','.')) if s else None
 
+def pitsec(s):
+    """PITIN_TIME / PITSTOPDURATION -> seconds; '' and the '00.000' sentinel -> None.
+
+    Both columns ARE populated in the VLN files (README once claimed otherwise —
+    it was wrong; 265 of 285 in-laps in the 2026-06-20 file carry both). '00.000'
+    is the feed's "no exit recorded" marker: the car retired in the box, or the
+    stop straddled the end of the session."""
+    s=s.strip()
+    if not s or s=='00.000': return None
+    return sec(s)
+
 # ---- parse ----
 rows=[]
 with open(CSV, encoding='cp1252') as f:
@@ -60,6 +71,8 @@ with open(CSV, encoding='cp1252') as f:
             tend=tod(row['TAGESZEIT']),
             rt=numde(row['RUNDENZEIT_IN_SEKUNDEN']),
             inpit=row['INPIT'].strip(),
+            pitin=pitsec(row.get('PITIN_TIME','')),
+            pitdur=pitsec(row.get('PITSTOPDURATION','')),
             fast=row['DIESCHNELLSTE'].strip()=='J',
             drv=drv,
             veh=row['FAHRZEUG'].strip(),
@@ -74,9 +87,10 @@ cars=sorted(bycar.keys(), key=lambda c:(len(c),c))
 
 # ---- per-car derived ----
 legs={}; sectimes={}; pits={}; name={}; carclass={}; veh={}; drvlap={}
+pitinfo={}             # car -> {in-lap: [pit_in_tod, duration, pit_out_tod]}
 boundtimes={}          # car -> sorted list of (time, lap, sector)
 for c in cars:
-    lg=[]; st={}; pit=[]; bt=[]; dl={}
+    lg=[]; st={}; pit=[]; bt=[]; dl={}; pi={}
     for r in bycar[c]:
         L=r['lap']; s=r['secs']
         known=sum(x for x in s if x is not None)
@@ -90,9 +104,19 @@ for c in cars:
             lg.append([L, k+1, round(a,2), round(cum,2)])
             bt.append((round(cum,2), L, k+1))
         st[str(L)]=[(round(x,3) if x is not None else None) for x in s]
-        if r['inpit']=='J': pit.append(L)
+        if r['inpit']=='J':
+            pit.append(L)
+            # Wall-clock pit window, straight from the feed. pit-in is a real
+            # crossing time (the pit-entry loop, just before S/F); pit-out is
+            # in+duration and lands inside the OUT-lap's S1, which is why that
+            # sector is inflated. Either half can be None ('00.000' sentinel).
+            if r['pitin'] is not None or r['pitdur'] is not None:
+                out=(r['pitin']+r['pitdur']) if (r['pitin'] is not None and r['pitdur'] is not None) else None
+                pi[str(L)]=[round(r['pitin'],3) if r['pitin'] is not None else None,
+                            round(r['pitdur'],3) if r['pitdur'] is not None else None,
+                            round(out,3) if out is not None else None]
         dl[str(L)]=r['drv']; carclass[c]=r['klass']; veh[c]=r['veh']
-    legs[c]=lg; sectimes[c]=st; pits[c]=sorted(pit); drvlap[c]=dl
+    legs[c]=lg; sectimes[c]=st; pits[c]=sorted(pit); drvlap[c]=dl; pitinfo[c]=pi
     name[c]=bycar[c][0]['drv'] if bycar[c] else ''   # fallback: lap-1 driver
     bt.sort()
     boundtimes[c]=bt
@@ -151,6 +175,7 @@ DB=dict(
     classes=classes, classMaxN=classMaxN, classAvg=classAvg,
     name=name, carcol=carcol, drvtable={}, drvlap=drvlap,
     legs=legs, chart=chart, sectimes=sectimes, lappos=lappos, pits=pits,
+    pitinfo=pitinfo,
 )
 
 out=json.dumps(DB, separators=(',',':'), ensure_ascii=False)
@@ -167,3 +192,5 @@ print("DB json size: %.1f KB" % (len(out)/1024))
 # sanity: check one car's first laps position monotonic-ish
 sc=classes[sorted(classes,key=lambda k:-len(classes[k]))[0]][0]
 print("sample car %s pits=%s laps=%d firstchart=%s" % (sc, pits[sc], len(sectimes[sc]), chart[sc][:3]))
+_np=sum(len(v) for v in pits.values()); _ni=sum(1 for v in pitinfo.values() for x in v.values() if x[2] is not None)
+print("pit stops: %d in-laps, %d with a full in+out window (%d missing an exit time)" % (_np, _ni, _np-_ni))
