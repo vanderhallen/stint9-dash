@@ -2741,6 +2741,12 @@ function pitH(dir){const f=document.getElementById('pitframe');if(f&&f.contentWi
 function pushPit(force){
   const f=document.getElementById('pitframe');if(!f||!f.contentWindow)return;
   const now=Date.now();if(!force&&now-(window.__pitT||0)<200)return;window.__pitT=now;
+  // Resolved before the what-if, not just for the header: the class line has to be
+  // ranked in the CAR's class. DB.cars is whatever class the viewer has selected --
+  // on ALL CLASSES that is the whole field, so the class ranking came back overall
+  // (P48) and still wore the CLASS heading.
+  let myCls='';
+  try{for(const c in DB.classes)if((DB.classes[c]||[]).map(String).indexOf(String(selCar))>=0){myCls=c;break;}}catch(e){}
   let stops=[],inBox=null,whatIf=null;
   try{
     if(selCar){
@@ -2761,7 +2767,8 @@ function pushPit(force){
         // literal, so the class line vanished with it and STOPS showed no what-if
         // at all -- with nothing on screen to say why.
         if(sv>0){
-          const wc=pitWhatIf(selCar,T,sv,DB.cars),wo=pitWhatIf(selCar,T,sv,allClassCars());
+          const wc=pitWhatIf(selCar,T,sv,(DB.classes||{})[myCls]||DB.cars),
+                wo=pitWhatIf(selCar,T,sv,allClassCars());
           if(wc)whatIf={cls:wc,ovr:wo};
         }
       }
@@ -2787,8 +2794,6 @@ function pushPit(force){
     }catch(e){field=[];}
     window.__pitField=field;
   }
-  let myCls='';
-  try{for(const c in DB.classes)if((DB.classes[c]||[]).map(String).indexOf(String(selCar))>=0){myCls=c;break;}}catch(e){}
   const re=raceEndTod();
   f.contentWindow.postMessage({type:'pitReport',car:String(selCar||''),cls:myCls,
     live:(window.dataMode==='LIVE'),stops,inBox,whatIf,field,
