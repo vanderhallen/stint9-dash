@@ -8,10 +8,11 @@
   html,body{margin:0;height:100%;background:#fff;font-family:'IBM Plex Mono',ui-monospace,monospace;color:#16202b}
   body{overflow:hidden}
   /* three horizontal pages: STOPS | TARGET | ENDGAME */
-  #wrap{display:flex;width:300%;height:100%;transition:transform .4s cubic-bezier(.55,.06,.2,1)}
-  body.p1 #wrap{transform:translateX(-33.3333%)}
-  body.p2 #wrap{transform:translateX(-66.6667%)}
-  .page{flex:0 0 33.3333%;width:33.3333%;height:100%;display:flex;flex-direction:column;min-height:0}
+  #wrap{display:flex;width:400%;height:100%;transition:transform .4s cubic-bezier(.55,.06,.2,1)}
+  body.p1 #wrap{transform:translateX(-25%)}
+  body.p2 #wrap{transform:translateX(-50%)}
+  body.p3 #wrap{transform:translateX(-75%)}
+  .page{flex:0 0 25%;width:25%;height:100%;display:flex;flex-direction:column;min-height:0}
   .pagehead{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px 6px}
   .ptitle{font-size:15px;font-weight:800;letter-spacing:2px}
   .ptitle small{font-size:11px;font-weight:500;letter-spacing:1px;color:#6b7480;margin-left:8px;text-transform:uppercase}
@@ -73,6 +74,35 @@
   .foot b{color:#6b7480}
   .ovr-in{font-family:inherit;font-size:12px;font-weight:700;width:74px;text-align:right;border:none;border-bottom:1px dashed #9aa2ab;background:transparent;padding:1px 2px}
   .ovr-in:focus{outline:none;background:#eef4ef;border-bottom-color:#1e8f3a}
+
+  /* ---- page 4: the field ---- */
+  .cards{flex:0 0 auto;display:flex;gap:12px;margin-bottom:10px}
+  .fc{flex:1 1 0;min-width:0;border:2px solid #e3e7eb;border-radius:10px;padding:9px 12px 10px;background:#f9fafb}
+  .fc.best{border-color:#1e8f3a;background:#eef4ef}
+  .fc.worst{border-color:#e0301e;background:#fdeeec}
+  .fc.under{border-color:#e8a71e;background:#fdf6e6}
+  .fclbl{font-size:10px;letter-spacing:1.5px;color:#6b7480;text-transform:uppercase;font-weight:700}
+  .fccar{font-size:30px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+  .fcval{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+  .fcsub{font-size:11px;color:#6b7480;letter-spacing:.3px}
+  .flist{flex:1 1 auto;min-height:0;overflow:auto}
+  .flist table{font-size:15px}
+  .flist td,.flist th{padding:4px 8px;text-align:right;border-top:1px solid #f4f6f8;white-space:nowrap}
+  .flist th{font-size:10px;letter-spacing:1.2px;color:#6b7480;text-transform:uppercase;padding-bottom:6px}
+  .flist td.l,.flist th.l{text-align:left}
+  .flist tr.mine td{background:#eef4ef;font-weight:800}
+  .flist tr.mine td:first-child{border-left:3px solid #1e8f3a}
+  .flist tr.other td{color:#aeb4bb}
+  .flist tr.self td{background:#16202b;color:#fff}
+  .flist tr.self td:first-child{border-left:3px solid #16202b}
+  .mini{position:relative;height:11px;width:150px;background:#f2f4f6;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+  .mini>i{position:absolute;top:0;height:100%}
+  .mini>i.p{background:#e0301e}.mini>i.n{background:#e8a71e}
+  .mini>.zero{position:absolute;top:0;height:100%;width:1px;background:#9aa2ab}
+  .warn{flex:0 0 auto;font-size:11px;line-height:1.55;color:#8a6d1a;background:#fdf6e6;border:1px solid #e8a71e;
+    border-radius:8px;padding:7px 10px;margin-top:8px}
+  .warn b{color:#6b5410}
+  .rep{font-size:10px;font-weight:700;color:#6b7480;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -106,7 +136,7 @@
     <div class="pagehead">
       <button type="button" class="navlink" data-go="1">&#9666; TARGET</button>
       <span class="ptitle">ENDGAME<small>last stop — minimum by race time remaining</small></span>
-      <span style="width:90px"></span>
+      <button type="button" class="navlink" data-go="3">FIELD &#9656;</button>
     </div>
     <div class="pagebody">
       <div class="live" id="e-live"></div>
@@ -115,11 +145,24 @@
     </div>
   </div>
 
+  <div class="page" id="pField">
+    <div class="pagehead">
+      <button type="button" class="navlink" data-go="2">&#9666; ENDGAME</button>
+      <span class="ptitle">FIELD<small id="f-sub">margin against the minimum, every car</small></span>
+      <span style="width:110px"></span>
+    </div>
+    <div class="pagebody">
+      <div class="cards" id="f-cards"></div>
+      <div class="flist" id="f-list"></div>
+      <div class="warn" id="f-warn"></div>
+    </div>
+  </div>
+
 </div>
 <script>
 'use strict';
 var PAGE=0,R=null;
-function goto(i){PAGE=Math.max(0,Math.min(2,i|0));document.body.className=PAGE?('p'+PAGE):'';}
+function goto(i){PAGE=Math.max(0,Math.min(3,i|0));document.body.className=PAGE?('p'+PAGE):'';}
 document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){goto(+b.dataset.go);});});
 
 /* Up/Down belong to the parent's vertical reel; Left/Right step these pages. */
@@ -151,7 +194,78 @@ function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return 
 
 function render(){
   if(!R){return;}
-  renderStops();renderTarget();renderEnd();
+  renderStops();renderTarget();renderEnd();renderField();
+}
+
+/* The whole field, ranked by how far each car sat off the minimum.
+   The A/B/C tables are OUR class's, and the minimums are class-specific -- so
+   the three superlatives are computed inside our own class, where the comparison
+   is sound, and every other class is listed for reference but visually muted. */
+function renderField(){
+  var cards=document.getElementById('f-cards'),list=document.getElementById('f-list'),
+      warn=document.getElementById('f-warn'),sub=document.getElementById('f-sub');
+  var F=R.field||[];
+  if(!F.length){cards.innerHTML='';list.innerHTML='<div class="empty">No stops in the field yet.</div>';warn.innerHTML='';return;}
+  var myCls=R.cls||'';
+  sub.textContent='margin against the minimum · '+F.length+' cars';
+  // Only measured stops can be ranked. A car that sat in the garage for repairs
+  // has no pitinfo, so its "stop" is an out-lap-S1 estimate running to tens of
+  // minutes -- ranking that as "most time given away" would be nonsense.
+  var meas=F.filter(function(x){return x.real;});
+  var mine=meas.filter(function(x){return x.cls===myCls;});
+  var pool=mine.length>=2?mine:meas;
+  var scope=mine.length>=2?esc(myCls):'measured field';
+  var closest=null;
+  pool.forEach(function(x){if(!closest||Math.abs(x.m)<Math.abs(closest.m))closest=x;});
+  // "Under" only exists where our table is not the car's own -- so if nobody in
+  // scope is under, fall back to the field and say plainly why it is negative.
+  var under=null,underWide=false;
+  pool.forEach(function(x){if(x.m<0&&(!under||x.m<under.m))under=x;});
+  if(!under){underWide=true;meas.forEach(function(x){if(x.m<0&&(!under||x.m<under.m))under=x;});}
+  function card(cls,lbl,x,note){
+    if(!x)return '<div class="fc"><div class="fclbl">'+lbl+'</div>'+
+      '<div class="fccar" style="color:#c3c8ce">—</div><div class="fcsub">'+note+'</div></div>';
+    return '<div class="fc '+cls+'"><div class="fclbl">'+lbl+'</div>'+
+      '<div class="fccar">#'+esc(x.car)+'</div>'+
+      '<div class="fcval">'+sgn(x.m)+'s</div>'+
+      '<div class="fcsub">'+esc(x.cls)+' · '+x.n+' stop'+(x.n>1?'s':'')+' · '+f1(x.d)+' stopped'+
+      (x.rep?(' · '+x.rep+' repair skipped'):'')+'<br>'+note+'</div></div>';
+  }
+  cards.innerHTML=
+    card('best','Closest to the minimum',closest,'tightest execution · '+scope)+
+    card('under','Furthest under the minimum',under,
+      underWide?'another class — proof our table is not theirs'
+               :'below our own table — check for a penalty');
+
+  // Scale the bars to the measured spread, not to a garage repair -- one 2905s
+  // estimate would otherwise flatten every real margin to an invisible sliver.
+  var mx=Math.max.apply(null,(meas.length?meas:F).map(function(x){return Math.abs(x.m);}))||1;
+  // tightest first: the under-cars and the well-executed stops are what this page
+  // is for, and the big overruns stay one scroll away rather than owning the fold
+  var srt=F.slice().sort(function(a,b){return a.m-b.m;});
+  var h='<table><thead><tr><th class="l">Car</th><th class="l">Class</th><th>Stops</th><th>Stopped</th>'+
+    '<th>Minimum</th><th>Margin</th><th class="l">&nbsp;</th></tr></thead><tbody>';
+  srt.forEach(function(x){
+    var w=Math.min(50,100*Math.abs(x.m)/mx/2), left=x.m>=0?50:(50-w);
+    var klass=(x.car===R.car)?'self':(x.cls===myCls?'mine':'other');
+    h+='<tr class="'+klass+'"><td class="l">#'+esc(x.car)+(x.real?'':' <span class="est">~est</span>')+
+      (x.rep?(' <span class="rep">+'+x.rep+' rep</span>'):'')+'</td>'+
+      '<td class="l">'+esc(x.cls)+'</td>'+
+      '<td>'+x.n+'</td><td>'+f1(x.d)+'</td><td>'+x.r.toFixed(0)+'</td>'+
+      '<td style="color:'+(klass==='self'?'#fff':(x.m>0?'#e0301e':'#c78a00'))+';font-weight:700">'+sgn(x.m)+'</td>'+
+      '<td class="l"><span class="mini"><span class="zero" style="left:50%"></span>'+
+      '<i class="'+(x.m>=0?'p':'n')+'" style="left:'+left.toFixed(1)+'%;width:'+w.toFixed(1)+'%"></i></span></td></tr>';
+  });
+  list.innerHTML=h+'</tbody></table>';
+
+  var neg=F.filter(function(x){return x.m<0;}).length;
+  var reps=F.reduce(function(a,x){return a+(x.rep||0);},0);
+  warn.innerHTML='<b>Minimum standing times are class-specific.</b> These margins all use the '+
+    (myCls?('<b>'+esc(myCls)+'</b> '):'')+'tables, so only same-class rows (highlighted) are a fair comparison — '+
+    'the rest are reference only. Evidence in this event: median per-stop margin runs from about &minus;2s in CUP3 to +64s in BMW 325i, '+
+    'and <b>'+neg+'</b> car'+(neg===1?'':'s')+' come out below the minimum, which the rules do not allow. '+
+    'That is our table not applying to them, not a penalty. '+
+    (reps?('Stops over 10 min are counted as repairs and excluded — <b>'+reps+'</b> in this event.'):'');
 }
 
 function renderStops(){

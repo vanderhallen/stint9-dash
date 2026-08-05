@@ -905,6 +905,11 @@ const PIT_HOLE_GUARD=12;
 // guard passes, the worst early-release error is 1.92s -- so hold this much extra
 // by default. Set to 0 when a real PITIN_TIME is available.
 let PIT_SAFETY=2;
+// A car behind the wall is not making a pit stop. Measured stop durations break
+// cleanly: p95 is 344s, then the next values jump 545 -> 735 -> 941 -> 8581s. A
+// 600s cut sits in that gap and separates 11 repairs (4.2%) from real service,
+// so they can be counted apart instead of drowning every margin comparison.
+const PIT_REPAIR_S=600;
 const pitMinA=n=>PIT_A[Math.max(0,Math.min(9,Math.round(n)-1))];
 const pitMinB=n=>PIT_B[Math.max(0,Math.min(9,Math.round(n)-1))];
 const pitMinC=m=>PIT_C[Math.max(0,Math.min(58,Math.ceil(m)-1))];
@@ -960,6 +965,7 @@ function pitStopsOf(st,T){
     else{req=pitMinB(inStint);tbl='B'+Math.min(10,inStint);}
     const d0=(DB.drvlap[st]||{})[lap],d1=(DB.drvlap[st]||{})[lap+1];
     out.push({n,lap,inStint,tin,dur,req,tbl,real,shaky,remMin,
+      repair:(dur>PIT_REPAIR_S),
       open:(tin+dur>T),
       from:d0||DB.name[st]||'',to:d1||DB.name[st]||'',
       change:!!(d0&&d1&&d0!==d1)});
@@ -2690,9 +2696,31 @@ function pushPit(force){
       }
     }
   }catch(e){}
+  // The FIELD page walks every car, so it is only worth building while PIT is the
+  // visible right-reel panel, and then no faster than once a second.
+  let field=window.__pitField||null;
+  if(wxReelIdx===3&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
+    window.__pitFieldT=Date.now();
+    field=[];
+    try{
+      const cmap={};for(const c in DB.classes)(DB.classes[c]||[]).forEach(x=>cmap[String(x)]=c);
+      Object.keys(DB.legs||{}).forEach(car=>{
+        const S=pitStopsOf(car,T);if(!S.length)return;
+        const svc=S.filter(x=>!x.repair);          // repairs are not pit strategy
+        if(!svc.length)return;
+        let d=0,r=0;svc.forEach(x=>{d+=x.dur;r+=x.req;});
+        field.push({car:String(car),cls:cmap[String(car)]||'?',n:svc.length,
+          rep:S.length-svc.length,
+          d:+d.toFixed(3),r:+r.toFixed(1),m:+(d-r).toFixed(1),real:svc.every(x=>x.real)});
+      });
+    }catch(e){field=[];}
+    window.__pitField=field;
+  }
+  let myCls='';
+  try{for(const c in DB.classes)if((DB.classes[c]||[]).map(String).indexOf(String(selCar))>=0){myCls=c;break;}}catch(e){}
   const re=raceEndTod();
-  f.contentWindow.postMessage({type:'pitReport',car:String(selCar||''),
-    live:(window.dataMode==='LIVE'),stops,inBox,whatIf,
+  f.contentWindow.postMessage({type:'pitReport',car:String(selCar||''),cls:myCls,
+    live:(window.dataMode==='LIVE'),stops,inBox,whatIf,field,
     raceEnd:re,raceEndSrc:raceEndSrc(),remainMin:(re-T)/60,safety:PIT_SAFETY,
     playing:(typeof playing!=='undefined'&&playing),speed:parseFloat((document.getElementById('speed')||{}).value||'1'),
     T},'*');
@@ -3025,6 +3053,7 @@ function buildClass(cls){
   DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
   stintDrvColor={};resetGridFreeze();
   _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
+  window.__pitField=null;window.__pitFieldT=0;   // and the PIT field table built on top of them
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
   DB.cars.forEach((st,i)=>{DB.carcol[st]=SAFE[i%SAFE.length];});
   for(const k in LEG)delete LEG[k];for(const k in BX)delete BX[k];for(const k in BKEYS)delete BKEYS[k];for(const k in POS)delete POS[k];for(const k in BT)delete BT[k];
