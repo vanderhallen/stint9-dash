@@ -4963,7 +4963,7 @@ applyWxReel(false);
   const fields=document.getElementById('simevFields'),empty=document.getElementById('simevEmpty');
   const goBtn=document.getElementById('simevGo');
   let events=null;   // [{slug,event_date,label,name,year}] — fetched once, cached for the page session
-  function openModal(){modal.classList.add('on');if(!events)loadEvents();}
+  function openModal(){modal.classList.add('on');if(!events)loadEvents();else selectCurrent();}
   function closeModal(){modal.classList.remove('on');}
   if(openBtn)openBtn.onclick=openModal;
   if(closeBtn)closeBtn.onclick=closeModal;
@@ -4990,6 +4990,17 @@ applyWxReel(false);
       .forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=raceLabel(e);raceSel.appendChild(o);});
   }
   yearSel.onchange=fillRaces;
+  /* Open on the race that is actually on screen, not the newest one. The loader
+     above puts the resolved slug (?event=<slug>, or the AUTO latest) in
+     window.archiveSlug, so preselect its year + race — including on a re-open,
+     where the cached list would otherwise still show the previous pick. No slug
+     (baked dataset) or one that isn't in the list → first option, as before. */
+  function selectCurrent(){
+    const cur=window.archiveSlug,e=cur&&(events||[]).find(x=>x.slug===cur);
+    if(e)yearSel.value=String(e.year);
+    fillRaces();
+    if(e)raceSel.value=cur;
+  }
   function loadEvents(){
     goBtn.disabled=true;
     fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label,name&order=event_date.desc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
@@ -5000,7 +5011,7 @@ applyWxReel(false);
         fields.style.display='';empty.style.display='none';goBtn.disabled=false;
         const years=Array.from(new Set(events.map(e=>e.year))).sort((a,b)=>b-a);
         yearSel.innerHTML='';years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;yearSel.appendChild(o);});
-        fillRaces();
+        selectCurrent();
       })
       .catch(()=>{events=[];fields.style.display='none';empty.textContent='Could not load the race list.';empty.style.display='';goBtn.disabled=true;});
   }
