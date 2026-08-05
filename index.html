@@ -91,6 +91,11 @@
   .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
   #reelview .reelpanel,#wxview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
   #reelview .reelpanel svg{display:block;width:100%;height:100%}
+  /* .tall = a per-car chart whose natural height (44px/car) exceeds the panel;
+     syncReelPanels() gives the SVG that natural height and the panel scrolls it
+     instead of fit-shrinking 130 rows into a ~230px sliver. */
+  #reelview .reelpanel.tall{align-items:flex-start;overflow-y:auto}
+  #reelview .reelpanel.tall>svg{flex:0 0 auto;height:auto}
   .reelthumb{position:relative;flex:1 1 0;min-height:0;border:2px solid #cdd2d8;background:#f7f8fa;border-radius:7px;overflow:hidden;cursor:pointer}
   .reelthumb.active{border-color:#6b7480;box-shadow:0 0 0 2px rgba(107,116,128,.3)}
   #reelfilm svg{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -181,7 +186,12 @@
   #gridnext{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
   .startline{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:4px;font-size:12px;padding:6px 0;margin:8px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
   #gridwrap{flex:1 1 auto;min-height:0;overflow:auto;border-radius:8px;background:#fbfbfc;margin-top:6px;display:flex;flex-direction:column;justify-content:flex-start}
-  #gridsvg{display:block}
+  /* flex:0 0 auto — #gridwrap is a flex column, so without it the cascade SVG
+     (whose height attribute is the real drawing height: ~8700px for the 131-car
+     ALL CLASSES field) is flex-SHRUNK to the card and squashed to unreadable
+     instead of overflowing. Keeping its natural height is what makes
+     #gridwrap's overflow:auto actually scroll the field vertically. */
+  #gridsvg{display:block;flex:0 0 auto}
   /* bottom-left mini fuel: remaining bar + escalating pit call (ported from
      index_alternative.html, minus the capacity/at-start/L-per-lap inputs). */
   #fuelmini{position:absolute;left:6px;bottom:6px;z-index:800;width:150px;background:rgba(255,255,255,.92);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);border:1px solid #d3d7dc;border-radius:10px;padding:8px 10px;box-shadow:0 1px 6px rgba(0,0,0,.18)}
@@ -224,7 +234,7 @@
   .fbdel:hover{color:#fff;background:var(--accent)}
   .fbstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px;min-height:12px}
   .msglist{margin-top:8px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
-  .msgitem{border-top:1px solid var(--border);padding-top:6px;padding-right:18px;position:relative}
+  .msgitem{border-top:1px solid var(--border);padding-top:6px;position:relative}
   .msgitem .msgmeta{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
   .msgitem .msgtxt{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:pre-wrap;margin-top:2px;word-break:break-word}
   .msgitem.ours{background:#fff3e0}
@@ -232,8 +242,6 @@
   /* Find-car search hit in the message board: outline + brief flash on Enter */
   .msgitem.found{background:#fff8d6;box-shadow:inset 3px 0 0 #d6a417;border-radius:4px;animation:msgflash 1.2s ease-out 1}
   @keyframes msgflash{0%{background:#ffe89a}100%{background:#fff8d6}}
-  .msgdel{position:absolute;top:5px;right:0;width:16px;height:16px;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c3c8ce;cursor:pointer;border-radius:4px;user-select:none}
-  .msgdel:hover{color:#fff;background:var(--accent)}
   /* race-control popup: fired once per session when a message names the
      selected car. OK closes it; the board row stays highlighted (.ours). */
   #msgModal{position:fixed;inset:0;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:1000}
@@ -389,12 +397,6 @@
   .loginLogo .mark b{color:var(--accent)}
   .loginLogo .tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-top:8px}
   .loginSub{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:14px 0 20px}
-  .loginOpts{display:flex;gap:12px;margin-bottom:6px}
-  .loginOpt{flex:1 1 0;cursor:pointer;border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:16px 12px;text-align:center;transition:border-color .15s,background .15s}
-  .loginOpt:hover{border-color:var(--accent)}
-  .loginOpt.sel{border-color:var(--accent);background:#fff;box-shadow:0 0 0 2px rgba(224,48,30,.15)}
-  .loginOpt .ot{font-weight:700;font-size:16px;letter-spacing:1px}
-  .loginOpt .od{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4}
   #teamFields{display:none;margin-top:16px;flex-direction:column;gap:12px}
   #teamFields.on{display:flex}
   #teamFields label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;flex-direction:column;gap:5px}
@@ -443,18 +445,14 @@
   <div class="loginCard">
     <button type="button" id="loginClose" aria-label="Close">&times;</button>
     <div class="loginLogo"><div class="mark">stint<b>9</b></div><div class="tag">Race Add-on</div></div>
-    <div class="loginSub">Choose how you want to view the dashboard</div>
-    <div class="loginOpts">
-      <div class="loginOpt sel" id="optDemo" data-mode="demo"><div class="ot">DEMO</div><div class="od">View as guest.<br>No tyres or fuel.</div></div>
-      <div class="loginOpt" id="optTeam" data-mode="team"><div class="ot">TEAM</div><div class="od">Pick your car &amp; sign in for tyres &amp; fuel.</div></div>
-    </div>
-    <div id="teamFields">
+    <div class="loginSub">Sign in on your car for tyres &amp; fuel</div>
+    <div id="teamFields" class="on">
       <label>Race class<select id="loginClass"></select></label>
       <label>Select car<select id="loginCar"><option value="">— select a car —</option></select></label>
       <label>Password<span class="pwwrap"><input type="password" id="loginPass" autocomplete="off" placeholder="team password"><button type="button" id="pwToggle" aria-label="Show password" title="Show password"></button></span></label>
     </div>
     <div id="loginErr">wrong password</div>
-    <button type="button" class="loginGo" id="loginGo" style="display:none">Sign in</button>
+    <button type="button" class="loginGo" id="loginGo">Sign in</button>
   </div>
 </div>
 <div id="simEventModal" role="dialog" aria-modal="true">
@@ -785,6 +783,40 @@ function reelHeightRatio(){
   if(rc&&rc.classList.contains('zoomed'))return ZOOM_RATIO;
   return CH/1000;
 }
+/* Natural inline height for a reel viewport `w` wide, CAPPED.
+   CH is the leaderboard viewBox height (44px per car), so CH/1000 is ~5.8 for a
+   132-car field (ALL CLASSES) — a ~3500px panel that dwarfs the viewport. The
+   page can't scroll, so fitPage answered by scaling the WHOLE dashboard down to
+   ~26%: everything unreadable, acres of blank page. Cap the un-zoomed panel at
+   45% of the window height (in unscaled layout units, hence /__fit) so a big
+   field costs only the reel's own detail — the SVGs are preserveAspectRatio,
+   so they just fit-and-centre — instead of the whole page's scale. growMaps
+   still grows the panel from here whenever the page has slack to give. */
+function reelFitHeight(w){
+  const cap=(window.innerHeight/(__fit||1))*0.45;
+  return Math.min(w*reelHeightRatio(),cap);
+}
+/* …and the panel the cap took height away from scrolls instead of shrinking.
+   Every per-car chart (leaderboard, lap trace, flow, stints …) draws at 44px a
+   row into a `0 0 1000 CH` viewBox, so for a big field its natural height is
+   several times the panel's. preserveAspectRatio would then squeeze the whole
+   field into the panel — 131 cars as a hairline sliver. Give such an SVG its
+   natural height and let .reelpanel.tall scroll it: rows stay full size and the
+   rest of the field is one scroll away. Panels holding an iframe or a div
+   (TYPE/SERVICE/sector table/…) are untouched — this only looks at direct
+   <svg> children and reads each one's own viewBox, so it self-corrects when a
+   chart uses a different aspect. */
+function syncReelPanels(){
+  const v=document.getElementById('reelview');if(!v)return;
+  const h=v.clientHeight,w=v.clientWidth;if(h<10||w<10)return;
+  v.querySelectorAll('.reelpanel>svg').forEach(svg=>{
+    const panel=svg.parentElement,vb=(svg.getAttribute('viewBox')||'').split(/[\s,]+/).filter(Boolean);
+    const vw=+vb[2],vh=+vb[3];
+    const nat=(vw>0&&vh>0)?w*vh/vw:0;
+    if(nat>h+2){panel.classList.add('tall');svg.style.height=nat.toFixed(1)+'px';}
+    else{panel.classList.remove('tall');svg.style.height='';}
+  });
+}
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;
   if(i===1)boardCenter();   // arriving on the TYRE row via the vertical reel: centre it on BOARD
   if(i===2)svcH(-1);        // arriving on the SERVICE row: always show SERVICE (ARCHIVE only via right arrow)
@@ -794,7 +826,7 @@ function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reel
   const rc=document.getElementById('reelcard');
   if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=(v.clientWidth*ZOOM_RATIO).toFixed(1)+'px';}
   applyReel(true);if(typeof savePrefs==='function')savePrefs();}
-function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=(w*reelHeightRatio()).toFixed(1)+'px';applyReel(false);
+function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=reelFitHeight(w).toFixed(1)+'px';applyReel(false);
   /* right (weather/timetable) reel: inline it follows the left reel's rendered
      height; but when ITS OWN card is zoomed, fill the modal so the reel opens as
      large as possible instead of inheriting the short inline height. */
@@ -807,7 +839,8 @@ function syncReel(){const v=document.getElementById('reelview');if(!v)return;con
     }else{
       const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';
     }
-  }}
+  }
+  syncReelPanels();}
 let _thT=0;function updateThumbs(){const now=Date.now();if(now-_thT<300)return;_thT=now;const cp=(src,dst)=>{const a=document.getElementById(src),b=document.getElementById(dst);if(a&&b){b.setAttribute('viewBox',a.getAttribute('viewBox')||'0 0 1000 400');b.innerHTML=a.innerHTML;}};cp('lapchart','thumb0');cp('ltgraph','thumb1');cp('sectorsvg','thumb3');cp('flowsvg','thumb4');}
 
 /* track */
@@ -2323,8 +2356,8 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
      const _completedDelay=!pitlike&&lg&&_a>0&&_d>_a*(1+thr)&&_d<_a*4;
      E.dl.style.display=(_completedDelay||(!pitlike&&liveOverdue))?'':'none';}
     vis.push({st,x,y,fs,E});});
-  // message-board highlight: pulsing ring around our car if an active,
-  // undismissed message targets it (see initMessages() below)
+  // message-board highlight: pulsing ring around our car if an active
+  // message targets it (see initMessages() below)
   {const ring=document.getElementById('msgHighlightRing');
     if(ring){if(window.msgHighlightActive&&selXY){ring.setAttribute('cx',selXY[0].toFixed(1));ring.setAttribute('cy',selXY[1].toFixed(1));ring.setAttribute('r',(selR*1.5+8).toFixed(1));ring.style.display='';}else ring.style.display='none';}}
   // declutter labels vertically
@@ -3181,7 +3214,13 @@ syncMapHeights();setTimeout(syncMapHeights,80);
 function syncSideHeights(){
   const mc=document.querySelector('.maincol'),gc=document.getElementById('gridcard'),fc=document.getElementById('rightcol');
   if(!mc||!gc)return;
-  const h=mc.getBoundingClientRect().height/(__fit||1);
+  /* Measure the maincol's CONTENT (its top to the agent bar's bottom), not its
+     box: .wrap is align-items:stretch, so mc's box is the row height — which a
+     tall sidebar inflates, and pinning the sidebar to that fed straight back
+     into itself (each pass a little taller, the page scale a little smaller).
+     Content height is the same measure fitPage/growMaps use as "page bottom". */
+  const ab=mc.querySelector('.agentbar'),r=mc.getBoundingClientRect();
+  const h=((ab?ab.getBoundingClientRect().bottom:r.bottom)-r.top)/(__fit||1);
   if(h>10){gc.style.height=h+'px';if(fc)fc.style.height=h+'px';}
 }
 syncSideHeights();setTimeout(syncSideHeights,80);
@@ -3230,7 +3269,7 @@ function growMaps(){
   const s=__fit||1;
   svg.style.width='64%';svg.style.height='auto';
   syncMapHeights();
-  rv.style.height=(rv.clientWidth*CH/1000)+'px';
+  rv.style.height=reelFitHeight(rv.clientWidth)+'px';   // capped: see reelFitHeight
   if(wv)wv.style.height=rv.clientHeight+'px';
   // real content bottom = the agent bar (the wrap's scrollHeight is polluted
   // by the tall grid sidebar, so we measure the visible column's end instead)
@@ -3261,6 +3300,7 @@ function growMaps(){
   const reelH=mapH*0.8;
   if(Math.abs(mapH-mapH0)>2){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
   if(Math.abs(reelH-reelH0)>2){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
+  syncReelPanels();   // the grown panel height changes which charts need to scroll
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   __fit=1;w.style.transform='none';
@@ -3392,9 +3432,14 @@ function buildStartGrid(){
   // the strings don't line up — but both share car numbers. Look up each grid
   // car's authoritative class from DB.classes (same dropdown value), keep the
   // selected class, order by grid slot, and number them 1..n for class position.
+  // ALL CLASSES = the whole field in grid order (class position == field
+  // position); without this the per-class match below never hits the ALL_CLS
+  // sentinel and the card sat on "no qualifying data" for the one selection
+  // where the full grid is the most interesting thing to look at.
+  const isAll=(typeof isAllCls==='function')&&isAllCls(curCls);
   const carClass={};Object.keys(DB.classes).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   const order=Array.isArray(gridRows)
-    ? gridRows.filter(r=>carClass[String(r.car_no)]===curCls).sort((a,b)=>a.pos_overall-b.pos_overall).map((r,i)=>({car:r.car_no,classPos:i+1,fieldPos:r.pos_overall}))
+    ? gridRows.filter(r=>isAll||carClass[String(r.car_no)]===curCls).sort((a,b)=>a.pos_overall-b.pos_overall).map((r,i)=>({car:r.car_no,classPos:i+1,fieldPos:r.pos_overall}))
     : [];
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
@@ -4435,7 +4480,13 @@ loadRaceWindow((DB.event&&DB.event.date)||liveEventDate());   // race end for wh
 setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule table is updated while the page is left open
 
 /* ---- weather / timetable reel (2 panels) ---- */
-let wxReelIdx=0;const WXN=6;   // 3 = PIT (pit.html)
+/* var, NOT let: pushPit() reads wxReelIdx (its FIELD page only builds while PIT
+   is the visible panel) and render() calls pushPit — and the boot render() near
+   the top of this script runs long before execution reaches this line. With let,
+   that read hit the temporal dead zone and threw, aborting the ENTIRE remainder
+   of this script block: no fitPage (page unscaled/unfitted), no message board,
+   no SIM event picker. var hoists as undefined, so the read is simply !==3. */
+var wxReelIdx=0;const WXN=6;   // 3 = PIT (pit.html)
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -4510,16 +4561,14 @@ applyWxReel(false);
    endpoint; needs reverse-engineering against a *live* event to finish).
    Until real rows exist the board stays empty (no demo/test placeholders in
    any mode). Messages are filtered to the selected race class (null class =
-   shown for all); dismissing one (×) hides it permanently for this browser
-   (localStorage) until real data arrives and supersedes it. If a message
-   names the currently selected car, that car gets a pulsing highlight ring
-   on the main track map (see render() in the main script). */
+   shown for all); the board is read-only — race control's messages are never
+   dismissable from here. If a message names the currently selected car, that
+   car gets a pulsing highlight ring on the main track map (see render() in
+   the main script). */
 (function initMessages(){
   const SB_URL='https://esvvzgxqnfszhttdkuzc.supabase.co',SB_KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
   const list=document.getElementById('msglist');
   if(!list)return;
-  let dismissed;try{dismissed=new Set(JSON.parse(localStorage.getItem('stint9_msg_dismissed')||'[]'));}catch(e){dismissed=new Set();}
-  function saveDismissed(){try{localStorage.setItem('stint9_msg_dismissed',JSON.stringify(Array.from(dismissed)));}catch(e){}}
   // Real race-control rows fetched from Supabase (null = not loaded yet). The
   // board shows ONLY real rows in every mode: no fake/demo placeholders. When no
   // real rows exist the board stays empty (LIVE and SIM alike) until the scraper
@@ -4559,7 +4608,7 @@ applyWxReel(false);
   if(modal)modal.onclick=e=>{if(e.target===modal)closeModal();};   // click backdrop also closes
   window.renderMessages=function renderMessages(){
     const clsSel=document.getElementById('classsel'),curCls=clsSel?clsSel.value:null;
-    const rows=activeMessages().filter(m=>!dismissed.has(String(m.id))&&(!m.race_class||m.race_class===curCls))
+    const rows=activeMessages().filter(m=>!m.race_class||m.race_class===curCls)
       // Newest always on top; older ones drop down, all reachable by scrolling the
       // list (.msglist is overflow-y:auto). Sort here so ordering never depends on
       // the fetch/source order.
@@ -4573,16 +4622,9 @@ applyWxReel(false);
     rows.forEach(m=>{
       const isOurs=!!(selCar&&m.car&&String(m.car)===String(selCar));if(isOurs)highlight=true;
       const item=document.createElement('div');item.className='msgitem'+(isOurs?' ours':'');
-      const del=document.createElement('span');del.className='msgdel';del.textContent='×';del.title='delete (password protected)';
-      del.onclick=()=>{
-        const pw=window.prompt('Password to delete this message:');
-        if(pw===null)return;                                        // cancelled
-        if(pw!=='x'){window.alert('Wrong password — message not deleted.');return;}
-        dismissed.add(String(m.id));saveDismissed();renderMessages();
-      };
       const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=metaOf(m);
       const txt=document.createElement('div');txt.className='msgtxt';txt.textContent=m.message;
-      item.appendChild(del);item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
+      item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
     });
     window.msgHighlightActive=highlight;
     // pop up the first not-yet-acknowledged message about a car we care about:
@@ -4742,8 +4784,7 @@ applyWxReel(false);
    admin.html's own "open in SIM" links already use, so there's no second
    rendering path to keep in sync. Only reachable from SIM (the trigger
    button lives inside #simControls, hidden while LIVE is active) and never
-   auto-opens — button-triggered only, so it can't collide with the
-   auto-shown login/demo modal on page load. */
+   auto-opens — button-triggered only. */
 (function initSimEventPicker(){
   const modal=document.getElementById('simEventModal');
   if(!modal)return;
@@ -4757,10 +4798,26 @@ applyWxReel(false);
   if(openBtn)openBtn.onclick=openModal;
   if(closeBtn)closeBtn.onclick=closeModal;
   modal.onclick=e=>{if(e.target===modal)closeModal();};
+  /* Option text: "2026-08-01 — NLS7 — 6h ADAC Ruhr-Pokal-Rennen" — date first so
+     the (date-sorted) list reads chronologically, then the round, then the race
+     name. The round lives in the slug for archived races (NLS6, NLS7) but only in
+     the name for ad-hoc snapshots (slug EVT-2026-08-02, name "practice NLS7"), so
+     look in both; when it came from the name, strip it there to avoid repeating it.
+     No round at all (an unmatched event) → just date — name. */
+  function raceLabel(e){
+    const date=String(e.event_date||'').slice(0,10);
+    const rx=/NLS\s*(\d+)/i;
+    let round=null,name=(e.name||e.label||'').trim();
+    const fromSlug=rx.exec(e.slug||'');
+    if(fromSlug){round='NLS'+fromSlug[1];}
+    else{const fromName=rx.exec(name);
+      if(fromName){round='NLS'+fromName[1];name=name.replace(fromName[0],'').replace(/\s{2,}/g,' ').trim();}}
+    return [date,round,name].filter(Boolean).join(' — ');
+  }
   function fillRaces(){
     raceSel.innerHTML='';
     (events||[]).filter(e=>String(e.year)===yearSel.value)
-      .forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=e.slug+' — '+(e.name||e.label||e.event_date);raceSel.appendChild(o);});
+      .forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=raceLabel(e);raceSel.appendChild(o);});
   }
   yearSel.onchange=fillRaces;
   function loadEvents(){
@@ -4899,9 +4956,12 @@ applyWxReel(false);
 <script>
 /* ================= LOGIN / per-car access gate =================
    Client-side gate (deterrence, not hard security — see PROTECTION-PLAN.md).
-   DEMO  = guest: no tyres / fuel / notes for any car.
+   DEMO  = guest: no tyres / fuel / notes for any car. The default — the page
+           opens straight into it, no greeter modal to click through.
    TEAM  = signed in on ONE car: tyres / fuel / notes are viewable AND editable
-           only while THAT car is selected. Other cars stay locked. */
+           only while THAT car is selected. Other cars stay locked.
+   The modal is now the sign-in form only, opened from the LOGIN button (or any
+   [data-login] element); closing it without signing in leaves you in DEMO. */
 (function(){
   // Starter passwords (per car). Extend this map as more cars are added.
   const TEAM_PASSWORDS={'665':'stint9_665','670':'stint9_670','680':'stint9_680'};
@@ -4935,12 +4995,9 @@ applyWxReel(false);
 
   // ---- modal ----
   const modal=document.getElementById('loginModal');
-  const optDemo=document.getElementById('optDemo'),optTeam=document.getElementById('optTeam');
-  const teamFields=document.getElementById('teamFields');
   const clsSelL=document.getElementById('loginClass'),carSelL=document.getElementById('loginCar');
   const passInp=document.getElementById('loginPass'),errEl=document.getElementById('loginErr');
   const goBtn=document.getElementById('loginGo');
-  let pick='demo';
 
   function classForCar(car){try{return Object.keys(DB.classes).find(c=>DB.classes[c].map(String).indexOf(String(car))>=0);}catch(e){return null;}}
   function fillLoginClasses(){if(!clsSelL||typeof DB==='undefined')return;clsSelL.innerHTML='<option value="">— select a class —</option>';
@@ -4955,17 +5012,8 @@ applyWxReel(false);
 
   // "Log off" when the current team session matches the picked car and no new
   // password has been typed; otherwise it's a fresh "Sign in".
-  function isLogoff(){return window.AUTH.mode==='team'&&pick==='team'&&String(window.AUTH.car)===String(carSelL.value)&&passInp.value==='';}
-  function updateGoLabel(){if(pick==='team')goBtn.textContent=isLogoff()?'Log off':'Sign in';}
-  function setPick(m){pick=m;
-    optDemo.classList.toggle('sel',m==='demo');optTeam.classList.toggle('sel',m==='team');
-    teamFields.classList.toggle('on',m==='team');
-    goBtn.style.display=m==='team'?'':'none';   // DEMO enters straight from its card — no button
-    updateGoLabel();
-    errEl.classList.remove('on');}
-  function enterDemo(){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();}
-  optDemo.onclick=enterDemo;   // DEMO = "enter as guest" in one click
-  optTeam.onclick=()=>{setPick('team');setTimeout(()=>{try{(carSelL.value?passInp:carSelL).focus();}catch(e){}},30);};
+  function isLogoff(){return window.AUTH.mode==='team'&&String(window.AUTH.car)===String(carSelL.value)&&passInp.value==='';}
+  function updateGoLabel(){goBtn.textContent=isLogoff()?'Log off':'Sign in';}
   carSelL.addEventListener('change',updateGoLabel);
   passInp.addEventListener('input',updateGoLabel);
 
@@ -4977,11 +5025,12 @@ applyWxReel(false);
   setPwVisible(false);
   pwToggle.onclick=()=>{setPwVisible(passInp.type==='password');passInp.focus();};
 
-  function openModal(preselect){errEl.classList.remove('on');passInp.value='';if(typeof setPwVisible==='function')setPwVisible(false);
+  function openModal(){errEl.classList.remove('on');passInp.value='';if(typeof setPwVisible==='function')setPwVisible(false);
     fillLoginClasses();
     if(window.AUTH.mode==='team'){const c=classForCar(window.AUTH.car);if(c){clsSelL.value=c;fillLoginCars();}carSelL.value=window.AUTH.car||'';}
-    setPick(preselect|| (window.AUTH.mode==='team'?'team':'demo'));
-    modal.classList.add('on');}
+    updateGoLabel();
+    modal.classList.add('on');
+    setTimeout(()=>{try{(carSelL.value?passInp:clsSelL).focus();}catch(e){}},30);}
   function closeModal(){modal.classList.remove('on');}
   window.openLogin=openModal;
 
@@ -4993,7 +5042,6 @@ applyWxReel(false);
   }catch(e){}}
 
   goBtn.onclick=()=>{
-    if(pick==='demo'){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();return;}
     // already signed in on this car, nothing retyped → log off
     if(isLogoff()){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();return;}
     const car=carSelL.value;
@@ -5011,17 +5059,17 @@ applyWxReel(false);
   passInp.addEventListener('keydown',e=>{if(e.key==='Enter')goBtn.click();});
 
   document.getElementById('loginBtn').onclick=()=>openModal();
-  document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openModal('team')));
+  document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openModal()));
   // close without changing anything (keeps the current mode — DEMO by default)
   document.getElementById('loginClose').onclick=closeModal;
   modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('on'))closeModal();});
 
   // ---- boot ----
+  // No greeter: the page opens in whatever mode is stored (DEMO by default) and
+  // the modal only ever appears when the LOGIN button asks for it.
   window.AUTH=loadAuth();
   window.applyAuthGate();
-  // Greet with the login window on open, unless a valid team session is stored.
-  if(window.AUTH.mode!=='team')openModal();
 })();
 </script>
 

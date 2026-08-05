@@ -107,11 +107,37 @@ guarantees the full page width is always used and content starts flush at the
 top; a right/bottom margin can still show when the natural (unscaled) design
 is smaller than the window, since we don't upscale past 100% (would blur).
 
+## Big fields (ALL CLASSES) must never drive the page scale (2026-08-05)
+Two things made a 130-car selection shrink the whole dashboard to ~26%:
+
+1. **A `let` in the temporal dead zone killed the boot script.** `render()` runs
+   near the top of the main `<script>` and calls `pushPit()`, which reads
+   `wxReelIdx` — declared with `let` ~1200 lines further down. The read threw
+   `ReferenceError: Cannot access 'wxReelIdx' before initialization`, aborting
+   the *entire rest of that block*: no `fitPage()` (page never scaled or fitted),
+   no message board, no SIM event picker. Now `var`, so it hoists as `undefined`.
+   Same trap as `NLS_CHAMP` (`renderChampionship` catches it) — anything render()
+   touches must be declared above render() or hoisted.
+2. **The reel viewport is aspect-locked to the car count.** Reel panels are sized
+   `width × CH/1000`, and `CH` is 44px per car, so ALL CLASSES asked for a
+   ~3500px panel; `fitPage` had no choice but to scale the page down to fit it.
+   `reelFitHeight()` now caps the un-zoomed panel at 45% of the window height,
+   and `syncReelPanels()` gives any chart taller than its panel its natural
+   height inside a scrolling `.reelpanel.tall` — rows stay readable, the rest of
+   the field is a scroll away, and the page scale is unaffected.
+
+Related: `#gridsvg` is `flex:0 0 auto` so the starting-grid cascade (~8700px for
+131 cars) scrolls inside `#gridwrap` instead of being flex-shrunk to a smear, the
+grid now fills for the ALL CLASSES selection (class position = field position),
+and `syncSideHeights()` measures `.maincol`'s *content* (top → agent-bar bottom)
+rather than its stretched box, which used to feed a tall sidebar back into itself.
+
 ## Message board (added 2026-07-04)
 Right column, bottom ~50% (under Feedback), table `public.stint9_messages`
 (same Supabase project as feedback: `esvvzgxqnfszhttdkuzc`). Filtered by
-selected race class (null class = shown for all classes); dismiss (×) is
-permanent per-browser via localStorage. If a message names the currently
+selected race class (null class = shown for all classes). The board is
+read-only — the per-row dismiss (×) was removed 2026-08-05, race control's
+messages can no longer be hidden from the pit wall. If a message names the currently
 selected car, that car gets a pulsing orange ring on the main track map
 (`#msgHighlightRing`, driven by `window.msgHighlightActive` inside `render()`).
 
@@ -358,7 +384,7 @@ Until then, treat the shared link as fully open and trusted.
 ## localStorage intentionally kept (per-browser UI, not shared data)
 UI preferences remain local by design (they're per-device, not race data):
 selected class/car, delay/pace thresholds, playback speed, active reel
-(`stint9_prefs`), dismissed message-board items, and the tyre board's layout.
+(`stint9_prefs`), the team sign-in (`stint9_auth`), and the tyre board's layout.
 
 ---
 
