@@ -587,7 +587,7 @@
           <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
-          <div class="reelpanel"><svg id="sectorsvg"></svg></div>
+          <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
           <div class="reelpanel"><svg id="ltgraph"></svg></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
@@ -822,7 +822,12 @@ function syncReelPanels(){
   const v=document.getElementById('reelview');if(!v)return;
   const h=v.clientHeight,w=v.clientWidth;if(h<10||w<10)return;
   v.querySelectorAll('.reelpanel>svg').forEach(svg=>{
-    const panel=svg.parentElement,vb=(svg.getAttribute('viewBox')||'').split(/[\s,]+/).filter(Boolean);
+    const panel=svg.parentElement;
+    /* data-fit = a chart of FIXED size (not one row per car), e.g. SECT's five
+       sector rows + footer. Those must always fit-shrink; scrolling one only
+       hides its footer. Never .tall, whatever its viewBox says. */
+    if(svg.dataset.fit!=null){panel.classList.remove('tall');svg.style.height='';return;}
+    const vb=(svg.getAttribute('viewBox')||'').split(/[\s,]+/).filter(Boolean);
     const vw=+vb[2],vh=+vb[3];
     const nat=(vw>0&&vh>0)?w*vh/vw:0;
     if(nat>h+2){panel.classList.add('tall');svg.style.height=nat.toFixed(1)+'px';}
@@ -2023,9 +2028,25 @@ function renderP1Bar(T){
   svg.innerHTML=s;
 }
 function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg)return;
-  // The 5 sector rows need a comfortable minimum canvas height. Small classes
-  // give a very short CH which crams the rows together, so floor it.
-  const H=Math.max(CH,560);svg.setAttribute('viewBox','0 0 1000 '+H);
+  // Unlike the per-car charts this one is always the same size — 5 sector rows
+  // plus the two footer lines — so it must always FIT, never scroll. On the old
+  // fixed 1000 x max(CH,560) canvas its natural height beat the panel whenever
+  // the reel was wider than ~1.79:1 (the zoom modal always is), syncReelPanels()
+  // then marked the panel .tall and the footer ("best lap / ideal / to find" and
+  // "focus S…") sat below the scroll fold. Drawing on a canvas with the panel's
+  // own aspect makes natural height == panel height, so .tall never triggers and
+  // the whole chart is on screen. floor/ceil so the rounded viewBox can only ever
+  // come out a hair SHORT of the panel, never over it. A very wide/short panel
+  // widens the canvas and centres the 1000-unit layout in it, rather than
+  // squashing the five rows.
+  const panel=svg.parentElement,box=panel.getBoundingClientRect();
+  let VW=1000,H=Math.max(CH,560);
+  if(box.width>10&&box.height>10){
+    H=Math.max(480,Math.floor(1000*box.height/box.width));
+    VW=Math.ceil(H*box.width/box.height);
+    panel.classList.remove('tall');svg.style.height=''; // drop any sizing an earlier .tall pass left behind
+  }
+  svg.setAttribute('viewBox',((1000-VW)/2).toFixed(1)+' 0 '+VW+' '+H);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(H/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for sector performance');return;}
   const myBest=[Infinity,Infinity,Infinity,Infinity,Infinity],clsBest=[Infinity,Infinity,Infinity,Infinity,Infinity],clsCar=[null,null,null,null,null];
@@ -2052,6 +2073,12 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
   s+='<text x="580" y="'+sy+'" font-size="21" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">to find +'+totLoss.toFixed(1)+'s</text>';
   s+='<text x="60" y="'+(sy+30)+'" font-size="16" fill="#8a929b" font-family="IBM Plex Mono,monospace">focus S'+(worst+1)+' (+'+delta[worst].toFixed(1)+'s)   ·   class ideal lap '+fmt2(cls)+'</text>';
   svg.innerHTML=s;}
+/* The sector chart draws on its panel's aspect, so it has to be re-drawn when
+   that panel changes shape — zoom open/close, window resize — and not only on
+   the next data tick, which a paused SIM never delivers. */
+(function(){const svg=document.getElementById('sectorsvg');if(!svg)return;const p=svg.parentElement;
+  const refit=()=>{try{renderSectors(T);}catch(e){}};
+  try{new ResizeObserver(refit).observe(p);}catch(e){window.addEventListener('resize',refit);}})();
 let flowCache={car:null,cols:[]},flowLastLap=null,flowLastN=-1;
 function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
