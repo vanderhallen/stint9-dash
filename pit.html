@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pit — stopped time vs minimum</title>
+<style>
+  html,body{margin:0;height:100%;background:#fff;font-family:'IBM Plex Mono',ui-monospace,monospace;color:#16202b}
+  body{overflow:hidden}
+  /* three horizontal pages: STOPS | TARGET | ENDGAME */
+  #wrap{display:flex;width:300%;height:100%;transition:transform .4s cubic-bezier(.55,.06,.2,1)}
+  body.p1 #wrap{transform:translateX(-33.3333%)}
+  body.p2 #wrap{transform:translateX(-66.6667%)}
+  .page{flex:0 0 33.3333%;width:33.3333%;height:100%;display:flex;flex-direction:column;min-height:0}
+  .pagehead{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px 6px}
+  .ptitle{font-size:15px;font-weight:800;letter-spacing:2px}
+  .ptitle small{font-size:11px;font-weight:500;letter-spacing:1px;color:#6b7480;margin-left:8px;text-transform:uppercase}
+  .navlink{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;color:#16202b;background:#eceff2;border:none;border-radius:8px;padding:8px 12px;cursor:pointer}
+  .navlink:hover{background:#dfe4e9}
+  .pagebody{flex:1 1 auto;min-height:0;overflow:hidden;padding:0 22px 12px;display:flex;flex-direction:column}
+
+  /* ---- page 1: the stop table ---- */
+  .hero{flex:0 0 auto;display:flex;align-items:flex-end;gap:22px;padding:2px 0 12px;border-bottom:2px solid #e3e7eb;margin-bottom:8px}
+  .hnum{font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+  .hnum.over{color:#e0301e}.hnum.under{color:#1e8f3a}
+  .hlbl{font-size:11px;letter-spacing:2px;color:#6b7480;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+  .hsub{font-size:13px;color:#16202b;font-variant-numeric:tabular-nums;margin-bottom:6px}
+  .hsub b{font-weight:700}
+  /* the position swing is the consequence, so it reads as loud as the seconds */
+  .hpos{margin-left:auto;text-align:right;display:flex;align-items:flex-end;gap:26px}
+  .hposbig{font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px;white-space:nowrap}
+  .hposbig .to{color:#1e8f3a}
+  .hposbig .ar{color:#9aa2ab;font-weight:400;margin:0 4px}
+  .hposbig.flat{color:#6b7480;font-size:34px}
+  .hpossm{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:#6b7480;white-space:nowrap}
+  .hpossm .to{color:#1e8f3a}
+  .hposnote{font-size:10px;color:#9aa2ab;letter-spacing:.5px;margin-top:5px;font-weight:400}
+  .hgain{font-size:11px;letter-spacing:1.5px;color:#1e8f3a;text-transform:uppercase;font-weight:700;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th{font-size:10px;letter-spacing:1.5px;color:#6b7480;text-transform:uppercase;font-weight:700;text-align:right;padding:0 8px 6px;white-space:nowrap}
+  th.l,td.l{text-align:left}
+  td{font-size:19px;padding:11px 8px;border-top:1px solid #eceff2;white-space:nowrap}
+  tr.tot td{border-top:2px solid #16202b;font-weight:800;padding-top:14px}
+  .drv{font-size:17px;color:#16202b}
+  .drv.same{color:#9aa2ab}
+  .marg{font-weight:700}
+  .marg.over{color:#e0301e}.marg.under{color:#1e8f3a}
+  .est{color:#c78a00;font-size:11px;font-weight:700;letter-spacing:.5px}
+  /* the bar: grey = regulation minimum, red overhang = time given away */
+  td.bar{width:38%;padding-right:0}
+  .track{position:relative;height:20px;background:#f2f4f6;border-radius:3px;overflow:hidden}
+  .track>.req{position:absolute;left:0;top:0;height:100%;background:#c3c8ce}
+  .track>.ovr{position:absolute;top:0;height:100%;background:#e0301e}
+  .track>.und{position:absolute;top:0;height:100%;background:#1e8f3a}
+  .empty{padding:40px 0;text-align:center;color:#9aa2ab;font-size:14px;line-height:1.7}
+
+  /* ---- page 2 / 3: lookup tables ---- */
+  .live{flex:0 0 auto;display:flex;align-items:center;gap:20px;padding:8px 12px;margin-bottom:8px;border-radius:10px;background:#f6f8fa;border:2px solid #e3e7eb}
+  .live.on{background:#eef4ef;border-color:#1e8f3a}
+  .live.over{background:#fdeeec;border-color:#e0301e}
+  .cd{font-size:64px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+  .cd.go{color:#1e8f3a}.cd.late{color:#e0301e}
+  .cdlbl{font-size:10px;letter-spacing:2px;color:#6b7480;text-transform:uppercase;font-weight:700}
+  .cdreq{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+  .lut{flex:1 1 auto;min-height:0;overflow:auto}
+  .lut table{font-size:18px}
+  .lut td,.lut th{padding:9px 10px;text-align:right;border-top:1px solid #f2f4f6}
+  .lut tr.hit td{background:#eef4ef;font-weight:800;border-top-color:#1e8f3a}
+  .lut tr.hit td:first-child{border-left:3px solid #1e8f3a}
+  .cols{display:flex;gap:22px;height:100%}
+  .cols>div{flex:1 1 0;min-width:0}
+  .foot{flex:0 0 auto;font-size:11px;color:#9aa2ab;letter-spacing:.5px;padding-top:8px}
+  .foot b{color:#6b7480}
+  .ovr-in{font-family:inherit;font-size:12px;font-weight:700;width:74px;text-align:right;border:none;border-bottom:1px dashed #9aa2ab;background:transparent;padding:1px 2px}
+  .ovr-in:focus{outline:none;background:#eef4ef;border-bottom-color:#1e8f3a}
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <div class="page" id="pStops">
+    <div class="pagehead">
+      <span class="ptitle">PIT STOPS<small id="s-car">—</small></span>
+      <button type="button" class="navlink" data-go="1">TARGET &#9656;</button>
+    </div>
+    <div class="pagebody">
+      <div class="hero" id="s-hero"></div>
+      <div id="s-table"></div>
+    </div>
+  </div>
+
+  <div class="page" id="pTarget">
+    <div class="pagehead">
+      <button type="button" class="navlink" data-go="0">&#9666; STOPS</button>
+      <span class="ptitle">TARGET<small>minimum standing time by laps in stint</small></span>
+      <button type="button" class="navlink" data-go="2">ENDGAME &#9656;</button>
+    </div>
+    <div class="pagebody">
+      <div class="live" id="t-live"></div>
+      <div class="lut" id="t-lut"></div>
+      <div class="foot" id="t-foot"></div>
+    </div>
+  </div>
+
+  <div class="page" id="pEnd">
+    <div class="pagehead">
+      <button type="button" class="navlink" data-go="1">&#9666; TARGET</button>
+      <span class="ptitle">ENDGAME<small>last stop — minimum by race time remaining</small></span>
+      <span style="width:90px"></span>
+    </div>
+    <div class="pagebody">
+      <div class="live" id="e-live"></div>
+      <div class="lut" id="e-lut"><div class="cols" id="e-cols"></div></div>
+      <div class="foot" id="e-foot"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+'use strict';
+var PAGE=0,R=null;
+function goto(i){PAGE=Math.max(0,Math.min(2,i|0));document.body.className=PAGE?('p'+PAGE):'';}
+document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){goto(+b.dataset.go);});});
+
+/* Up/Down belong to the parent's vertical reel; Left/Right step these pages. */
+window.addEventListener('keydown',function(e){
+  var t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();
+    try{window.parent.postMessage({type:'reelV',dir:e.key==='ArrowDown'?1:-1},'*');}catch(err){}}
+  else if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!typing){e.preventDefault();goto(PAGE+(e.key==='ArrowRight'?1:-1));}
+});
+window.addEventListener('message',function(e){
+  var m=e.data;if(!m)return;
+  if(m.type==='pitH'){if(m.dir===0)goto(0);else goto(PAGE+(m.dir>0?1:-1));return;}
+  if(m.type==='pitReport'){R=m;render();return;}
+});
+
+var PIT_A=[64,82,101,119,138,156,175,193,212,230];
+var PIT_B=PIT_A.map(function(v){return v-8;});
+var PIT_C=[28,30,32,34,37,39,41,43,46,48,50,52,55,57,59,61,64,66,68,70,
+           73,75,77,79,81,84,86,88,90,93,95,97,99,102,104,106,108,111,113,115,
+           117,120,122,124,126,129,131,133,135,137,140,142,144,146,149,151,153,155,158];
+
+function f3(s){var m=Math.floor(s/60),r=s-60*m;return m>0?(m+':'+r.toFixed(3).padStart(6,'0')):r.toFixed(3);}
+function f1(s){var neg=s<0;s=Math.abs(s);var m=Math.floor(s/60),r=s-60*m;
+  return (neg?'-':'')+(m>0?(m+':'+r.toFixed(1).padStart(4,'0')):r.toFixed(1));}
+function sgn(v,d){return (v>=0?'+':'−')+Math.abs(v).toFixed(d==null?1:d);}
+function hhmm(t){t=Math.round(t);var h=Math.floor(t/3600)%24,m=Math.floor(t/60)%60,s=t%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+
+function render(){
+  if(!R){return;}
+  renderStops();renderTarget();renderEnd();
+}
+
+function renderStops(){
+  var car=document.getElementById('s-car'),hero=document.getElementById('s-hero'),tb=document.getElementById('s-table');
+  car.textContent=R.car?('#'+R.car):'—';
+  var S=R.stops||[];
+  if(!S.length){
+    hero.innerHTML='';
+    tb.innerHTML='<div class="empty">'+(R.car
+      ? (R.live?'No pit times on this feed.<br><span style="font-size:12px">The WIGE socket carries no pit-in time or stop duration.</span>':'No stops yet.')
+      : 'Select a car.')+'</div>';
+    return;
+  }
+  var totD=0,totR=0,anyEst=false;
+  S.forEach(function(s){totD+=s.dur;totR+=s.req;if(!s.real)anyEst=true;});
+  var over=totD-totR;
+  var scale=Math.max.apply(null,S.map(function(s){return Math.max(s.dur,s.req);}).concat([totD/2]));
+
+  var pos='';
+  if(R.whatIf&&R.whatIf.cls){
+    var w=R.whatIf,gc=w.cls.now-w.cls.alt,go=w.ovr?(w.ovr.now-w.ovr.alt):0;
+    pos='<div class="hpos">'+
+      '<div><div class="hlbl">Class</div>'+
+        '<div class="hposbig'+(gc?'':' flat')+'">P'+w.cls.now+'<span class="ar">→</span>'+
+        (gc?('<span class="to">P'+w.cls.alt+'</span>'):('P'+w.cls.alt))+'</div>'+
+        (gc?('<div class="hgain">'+gc+' place'+(gc>1?'s':'')+' back</div>')
+           :'<div class="hposnote">no change</div>')+'</div>'+
+      (w.ovr?('<div><div class="hlbl">Overall</div>'+
+        '<div class="hpossm">P'+w.ovr.now+'<span class="ar">→</span>'+
+        (go?('<span class="to">P'+w.ovr.alt+'</span>'):('P'+w.ovr.alt))+'</div>'+
+        '<div class="hposnote">static what-if · rivals unchanged<br>ignores traffic &amp; Code-60</div></div>'):'')+
+      '</div>';
+  }else if(anyEst){
+    pos='<div class="hpos"><div><div class="hlbl">Position what-if</div>'+
+      '<div class="hpossm" style="color:#c78a00">suppressed</div>'+
+      '<div class="hposnote">stop times are estimated —<br>too loose to hang a position on</div></div></div>';
+  }
+  hero.innerHTML='<div><div class="hlbl">Given away</div><div class="hnum '+(over>=0?'over':'under')+'">'+sgn(over)+'s</div></div>'+
+    '<div class="hsub"><b>'+f1(totD)+'</b> actual<br><b>'+f1(totR)+'</b> minimum<br>'+
+    '<span style="color:#6b7480">'+S.length+' stop'+(S.length>1?'s':'')+'</span></div>'+pos;
+
+  var h='<table><thead><tr><th class="l">#</th><th>In-lap</th><th>Laps</th><th>Stopped</th>'+
+    '<th class="l">Driver change</th><th>Min req</th><th>Margin</th><th class="l bar">&nbsp;</th></tr></thead><tbody>';
+  S.forEach(function(s){
+    var m=s.dur-s.req,rw=100*Math.min(1,s.req/scale),dw=100*Math.min(1,s.dur/scale);
+    var bar='<div class="track"><div class="req" style="width:'+rw.toFixed(1)+'%"></div>'+
+      (m>0?'<div class="ovr" style="left:'+rw.toFixed(1)+'%;width:'+Math.max(0,dw-rw).toFixed(1)+'%"></div>'
+          :'<div class="und" style="left:'+dw.toFixed(1)+'%;width:'+Math.max(0,rw-dw).toFixed(1)+'%;opacity:.35"></div>')+'</div>';
+    h+='<tr><td class="l">'+s.n+'</td><td>'+s.lap+'</td><td>'+s.inStint+'</td>'+
+      '<td>'+f3(s.dur)+(s.real?'':' <span class="est">~</span>')+'</td>'+
+      '<td class="l drv'+(s.change?'':' same')+'">'+(s.change?(esc(s.from)+' → '+esc(s.to)):(esc(s.to)+' (stays in)'))+'</td>'+
+      '<td>'+s.req+' <span style="color:#9aa2ab;font-size:11px">'+s.tbl+'</span></td>'+
+      '<td class="marg '+(m>0?'over':'under')+'">'+sgn(m)+'</td><td class="bar">'+bar+'</td></tr>';
+  });
+  var tw=100*Math.min(1,totR/ (totD>totR?totD:totR)),tdw=100;
+  h+='<tr class="tot"><td class="l">Σ</td><td></td><td></td><td>'+f3(totD)+'</td>'+
+    '<td class="l" style="font-size:12px;color:#6b7480">'+(anyEst?'contains estimates':'measured')+'</td>'+
+    '<td>'+totR.toFixed(0)+'</td><td class="marg '+(over>0?'over':'under')+'">'+sgn(over)+'</td>'+
+    '<td class="bar"><div class="track"><div class="req" style="width:'+tw.toFixed(1)+'%"></div>'+
+    (over>0?'<div class="ovr" style="left:'+tw.toFixed(1)+'%;width:'+(tdw-tw).toFixed(1)+'%"></div>':'')+'</div></td></tr>';
+  h+='</tbody></table>';
+  tb.innerHTML=h;
+}
+
+function renderTarget(){
+  var box=document.getElementById('t-live'),lut=document.getElementById('t-lut'),foot=document.getElementById('t-foot');
+  var b=R.inBox;
+  box.className='live'+(b?(b.remaining<0?' over':' on'):'');
+  if(b){
+    box.innerHTML='<div><div class="cdlbl">Remaining</div><div class="cd '+(b.remaining<0?'late':'go')+'">'+
+        (b.remaining<0?'+':'')+Math.abs(b.remaining).toFixed(1)+'</div></div>'+
+      '<div><div class="cdlbl">Minimum · table '+b.tbl+'</div><div class="cdreq">'+b.req+'s</div></div>'+
+      '<div><div class="cdlbl">Release at</div><div class="cdreq">'+hhmm(b.release)+'</div></div>'+
+      '<div style="margin-left:auto;text-align:right"><div class="cdlbl">In-lap '+b.lap+' · '+b.inStint+' laps</div>'+
+      '<div style="font-size:12px;color:#6b7480">elapsed '+b.elapsed.toFixed(1)+'s'+
+      (b.safety?(' · +'+b.safety+'s margin'):'')+(b.shaky?' · <span class="est">anchor estimated</span>':'')+'</div></div>';
+  }else{
+    box.innerHTML='<div><div class="cdlbl">Car is not in the box</div>'+
+      '<div style="font-size:15px;color:#6b7480;margin-top:3px">The clock arms at the start/finish crossing that closes an in-lap.</div></div>';
+  }
+  var hitLaps=b?b.inStint:-1,hitCol=b?b.tbl.charAt(0):'';
+  // Inside the last 59 minutes the minimum comes from the ENDGAME table instead,
+  // so nothing here highlights -- say so rather than leave the crew hunting a row.
+  var endgame=(hitCol==='C');
+  var h='';
+  if(endgame)h+='<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#fdf6e6;'+
+    'border:2px solid #e8a71e;font-size:15px;font-weight:700">This stop is inside the last hour — '+
+    'its '+b.req+'s minimum comes from the ENDGAME table (row '+b.tbl.slice(1)+'), not from A/B below.</div>';
+  h+='<table><thead><tr><th>Laps in stint</th><th>A — 1st stop</th><th>B — from 2nd</th></tr></thead><tbody>';
+  for(var i=0;i<10;i++){
+    var hit=(hitLaps===i+1&&(hitCol==='A'||hitCol==='B'));
+    h+='<tr class="'+(hit?'hit':'')+'"><td>'+(i+1)+'</td>'+
+      '<td'+(hit&&hitCol==='A'?' style="color:#1e8f3a"':'')+'>'+PIT_A[i]+'</td>'+
+      '<td'+(hit&&hitCol==='B'?' style="color:#1e8f3a"':'')+'>'+PIT_B[i]+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  lut.innerHTML=h;
+  foot.innerHTML='Stints over 10 laps clamp to the 10-lap value. '+
+    'Clock anchors to the start/finish crossing less <b>8.42s</b> of pit-lane entry, plus a <b>'+(R.safety||0)+'s</b> release margin.';
+}
+
+function renderEnd(){
+  var box=document.getElementById('e-live'),cols=document.getElementById('e-cols'),foot=document.getElementById('e-foot');
+  var remMin=R.remainMin;
+  var hit=(remMin!=null&&remMin>0&&remMin<=59)?Math.ceil(remMin):-1;
+  box.className='live'+(hit>0?' on':'');
+  box.innerHTML='<div><div class="cdlbl">Race time remaining</div><div class="cdreq">'+
+      (remMin==null?'—':(remMin<=0?'finished':f1(remMin*60)))+'</div></div>'+
+    (hit>0?('<div><div class="cdlbl">Last-stop minimum</div><div class="cd go" style="font-size:44px">'+PIT_C[hit-1]+'s</div></div>'):
+           '<div><div class="cdlbl">Endgame table</div><div style="font-size:15px;color:#6b7480;margin-top:4px">applies inside the last 59 minutes</div></div>')+
+    '<div style="margin-left:auto;text-align:right"><div class="cdlbl">Race ends</div>'+
+    '<div style="font-size:15px;font-weight:700">'+(R.raceEnd!=null?hhmm(R.raceEnd):'—')+
+    ' <span style="font-size:11px;color:#9aa2ab;font-weight:400">'+esc(R.raceEndSrc||'')+'</span></div></div>';
+  var out='';
+  for(var c=0;c<3;c++){
+    var s='<table><thead><tr><th>Min left</th><th>Minimum</th></tr></thead><tbody>';
+    for(var i=c*20;i<Math.min(59,c*20+20);i++){
+      var m=i+1;
+      s+='<tr class="'+(hit===m?'hit':'')+'"><td>'+m+'</td><td>'+PIT_C[i]+'</td></tr>';
+    }
+    out+='<div>'+s+'</tbody></table></div>';
+  }
+  cols.innerHTML=out;
+  foot.innerHTML='Keyed on whole minutes remaining at pit entry, rounded <b>up</b>. '+
+    'Race end is read from the schedule; <b>'+esc(R.raceEndSrc||'')+'</b> in use.';
+}
+
+/* The countdown must keep ticking between the parent's throttled pushes. */
+(function tick(){
+  if(R&&R.inBox&&R.playing){
+    var b=R.inBox,now=performance.now();
+    if(b._t0==null){b._t0=now;b._e0=b.elapsed;}
+    var e=b._e0+(now-b._t0)/1000*(R.speed||1);
+    b.elapsed=e;b.remaining=b.req+(b.safety||0)-e;
+    var el=document.querySelector('#t-live .cd');
+    if(el){el.textContent=(b.remaining<0?'+':'')+Math.abs(b.remaining).toFixed(1);
+      el.className='cd '+(b.remaining<0?'late':'go');
+      var lb=document.getElementById('t-live');if(lb)lb.className='live'+(b.remaining<0?' over':' on');}
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

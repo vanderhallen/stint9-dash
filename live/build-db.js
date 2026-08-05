@@ -167,6 +167,11 @@
       classes, classMaxN, classAvg,
       name, carcol, drvtable: {}, drvlap,
       legs, chart, sectimes, lappos, pits,
+      // The WIGE socket carries no pit-in time or stop duration (README open
+      // question #4), so this stays empty on a live-derived event -- but it MUST
+      // be present, or DB.pitinfo keeps whatever the previous SIM/archive build
+      // left behind and the PIT reel shows those stops against the wrong car.
+      pitinfo: {},
       cars,   // convenience for LIVE (SIM builds DB.cars separately in index.html)
     };
   }
