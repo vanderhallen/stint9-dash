@@ -47,7 +47,12 @@
   select:focus,input:focus{outline:none;border-color:var(--accent)}
   /* Our own popup list for the class picker (see dropDown()): position:fixed on
      <body>, i.e. outside .wrap's transform, so it sits at true size like the
-     native popup it replaces — and always below its box, never over the header. */
+     native popup it replaces — and always below its box, never over the header.
+     .ddhit is the transparent lid over the closed box that keeps the click from
+     ever reaching the <select>, so no browser gets to open a native popup. */
+  .ddwrap{position:relative;display:block}
+  .ddwrap select{width:100%}
+  .ddhit{position:absolute;inset:0;z-index:2;cursor:pointer}
   .dropdn{position:fixed;z-index:9000;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:4px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink)}
   .dropdn div{padding:8px 10px;border-radius:6px;white-space:nowrap;cursor:pointer}
   .dropdn div:hover{background:var(--bg)}
@@ -3198,17 +3203,27 @@ fillClassSelect(clsSel);
    a class far down the list the menu opens upward and covers the header. Take
    over the open and draw the list ourselves, always below the box; it shrinks
    and scrolls when the window bottom is nearer than the list is tall.
-   The <select> stays the source of truth (value + 'change'), so prefs, the
-   mobile mirror and every reader of classsel.value are untouched.
+   The <select> stays the source of truth (value + 'change') and still paints
+   the closed box, so prefs, the mobile mirror and every reader of
+   classsel.value are untouched.
    Mouse/trackpad only — a touch device gets its own native picker, which
    doesn't have this problem. */
 function dropDown(sel){
   if(!sel||!window.matchMedia('(hover:hover) and (pointer:fine)').matches)return;
+  /* Cover the closed box with a transparent lid instead of cancelling the
+     mousedown: Safari opens its popup ON mousedown and ignores preventDefault(),
+     so the only reliable way to not get a native popup in every browser is to
+     never let the pointer reach the <select> at all. The select still paints
+     the closed box and its own current-value text, so nothing here has to
+     mirror the selection. */
+  const wrap=document.createElement('span');wrap.className='ddwrap';
+  sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(sel);
+  const hit=document.createElement('span');hit.className='ddhit';wrap.appendChild(hit);
   let panel=null;
   const close=()=>{if(!panel)return;panel.remove();panel=null;
     window.removeEventListener('scroll',close,true);window.removeEventListener('resize',close);
     document.removeEventListener('mousedown',outside,true);document.removeEventListener('keydown',onkey,true);};
-  const outside=e=>{if(panel&&!panel.contains(e.target)&&e.target!==sel)close();};
+  const outside=e=>{if(panel&&!panel.contains(e.target)&&e.target!==sel&&e.target!==hit)close();};
   const onkey=e=>{if(e.key==='Escape')close();};
   function open(){
     const r=sel.getBoundingClientRect();
@@ -3229,7 +3244,7 @@ function dropDown(sel){
     window.addEventListener('scroll',close,true);window.addEventListener('resize',close);
     document.addEventListener('mousedown',outside,true);document.addEventListener('keydown',onkey,true);
   }
-  sel.addEventListener('mousedown',e=>{e.preventDefault();sel.focus();panel?close():open();});
+  hit.addEventListener('click',()=>{if(sel.disabled)return;panel?close():open();});
   sel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();panel?close():open();}});
 }
 dropDown(clsSel);
@@ -4289,12 +4304,31 @@ rnWire();   // attach the Analyse handler now (reel is in the DOM already)
 
 /* ============================================================
    CHAMPIONSHIP reel — NLS 2026 class standings for EVERY class.
-   Official class results (finishing order per round) from the NLS
-   result archives; points by the NLS class scoring, running total.
-   Sorted by total points (leader first); the selected car's row is
-   highlighted. Shows the standings of the selected car's class.
-   Fill `res` as more rounds run.
+   Class results (finishing order per round) with the NLS class
+   scoring applied as a running total. Sorted by total points
+   (leader first); the selected car's row is highlighted. Shows
+   the standings of the selected car's class.
+
+   SOURCE (since 2026-08-05): public.stint9_champ_rounds, a view over
+   stint9_nls_results — i.e. the official result PDFs as parsed by the
+   nls-driver-scrape edge function. A round is in the standings as soon
+   as the scraper has ingested its r.pdf; nothing here needs editing per
+   round any more. `res`/`dnf` below stay as the FALLBACK for rounds the
+   scraper cannot supply (the 24h-Qualifier, whose PDF uses the 24h
+   template that parseResults deliberately rejects) and as the offline
+   answer if the fetch fails. Where both exist the scraped round wins —
+   they were verified identical for NLS2/NLS3/NLS6, DNFs included.
    ============================================================ */
+/* var, not let: renderChampionship() runs from render(), which fires long
+   before this line — the same temporal-dead-zone trap that took the whole
+   script down via wxReelIdx (see the note there). null = not fetched yet. */
+var CHAMP_ROWS=null;
+function loadChampRounds(){
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_champ_rounds?select=event_date,round_no,title,series,class,class_key,cars&order=event_date.asc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    .then(r=>r.ok?r.json():[])
+    .then(rows=>{CHAMP_ROWS=Array.isArray(rows)?rows:[];try{renderChampionship();}catch(e){}})
+    .catch(()=>{CHAMP_ROWS=[];});   // [] = fetched-and-empty -> fall back to the static table
+}
 const NLS_CHAMP={
   rounds:[
     {lbl:'NLS1', date:'03-14', h:4, cxl:true},        // cancelled (snow)
@@ -4303,16 +4337,18 @@ const NLS_CHAMP={
     {lbl:'24hQ1',date:'04-18', h:4, q:true},          // qualifying only, no race classification
     {lbl:'24hQ2',date:'04-19', h:4, q:true},          // 24h-Qualifier race
     {lbl:'NLS6', date:'06-20', h:4},
-    {lbl:'NLS7', date:'08-01', h:6, fut:true},
+    {lbl:'NLS7', date:'08-01', h:6},
     {lbl:'NLS8', date:'09-12', h:4, fut:true},
     {lbl:'NLS9', date:'09-13', h:4, fut:true},
     {lbl:'NLS10',date:'10-10', h:4, fut:true}
   ],
-  /* Official class results, per DB class key -> {roundIndex:[cars in finishing order]}
-     (array index + 1 = finishing position), from the official "Ergebnis nach Klassen"
+  /* FALLBACK class results (the scraper wins wherever it has the round — see the
+     header), per DB class key -> {roundIndex:[cars in finishing order]} (array index
+     + 1 = finishing position), hand-entered from the official "Ergebnis nach Klassen"
      PDFs. The 24h-Qualifier (24hQ2) uses the 24h event's own class structure, so classes
      it groups differently (a single "SP 9" vs the NLS SP9 PRO/PRO-AM/AM split, AT2, SP-X,
-     SP 2T/3/4T) have no mapped result for that round rather than a guessed one. */
+     SP 2T/3/4T) have no mapped result for that round rather than a guessed one — that
+     round is the one this table is still the only source for. */
   res:{
     'AT 1':{1:['19','75'],2:['75'],5:['18','11']},
     'BMW 325i':{1:['101','111'],2:['121','100','108'],4:['100','112','101'],5:['100','101','102']},
@@ -4372,12 +4408,26 @@ function renderChampionship(){
   const CHAMP_ALIAS={'BMW M240i':'BMW M240','VT2-F+4WD':'VT2-F+4W','SP9 PRO-AM':'SP9 PRO-'};
   const ck=cls?(CHAMP_ALIAS[cls]||cls):null;
   const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[ck],dnf=(NLS_CHAMP.dnf||{})[ck]||{};
-  if(!res){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
-  const cars={};Object.keys(res).forEach(k=>res[k].forEach(c=>{cars[c]=true;}));
-  Object.keys(dnf).forEach(k=>Object.keys(dnf[k]).forEach(c=>{cars[c]=true;}));
+  /* Per round: {order:[cars, in finishing order], dnf:{car:'DNF'|'DSQ'}} — scraped
+     if stint9_champ_rounds has that date+class, else the static fallback. Position
+     in class = index in `order`, so the two sources are interchangeable from here
+     on and the rest of this function never has to know which one it got. */
+  const scraped=(rd)=>{
+    if(!CHAMP_ROWS||!CHAMP_ROWS.length||!ck)return null;
+    const row=CHAMP_ROWS.find(r=>String(r.event_date||'').slice(5)===rd.date&&(r.class_key===ck||r.class===ck||r.class===cls));
+    if(!row||!Array.isArray(row.cars)||!row.cars.length)return null;
+    const order=[],dq={};
+    row.cars.forEach(x=>{const car=String(x.c);
+      if(x.s==='classified'&&x.p!=null)order.push(car);
+      else dq[car]=(x.s==='dsq')?'DSQ':'DNF';});
+    return {order:order,dnf:dq};
+  };
+  const RD=R.map((rd,i)=>scraped(rd)||(res&&res[i]?{order:res[i],dnf:(dnf[i]||{})}:null));
+  if(!RD.some(Boolean)){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
+  const cars={};RD.forEach(d=>{if(!d)return;d.order.forEach(c=>{cars[c]=true;});Object.keys(d.dnf).forEach(c=>{cars[c]=true;});});
   const rows=Object.keys(cars).map(car=>{
-    const per=R.map((rd,i)=>{const arr=res[i];if(!arr)return null;const idx=arr.indexOf(car);
-      if(idx<0){const st=(dnf[i]||{})[car];return st?{dnf:st,pts:0}:null;}
+    const per=R.map((rd,i)=>{const d=RD[i];if(!d)return null;const idx=d.order.indexOf(car);
+      if(idx<0){const st=d.dnf[car];return st?{dnf:st,pts:0}:null;}
       const pos=idx+1;return {pos:pos,pts:rnPoints(pos,rd.h)};});
     const total=per.reduce((a,x)=>a+(x?x.pts:0),0),wins=per.filter(x=>x&&x.pos===1).length;
     return {car:car,per:per,total:total,wins:wins};
@@ -4385,20 +4435,31 @@ function renderChampionship(){
   rows.sort((a,b)=>b.total-a.total||b.wins-a.wins||(a.car>b.car?1:-1));
   let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· '+rnEsc(cls)+' · NLS 2026</span></div>';
   h+='<table><thead><tr><th>Pos</th><th>Pts</th><th class="chcar">Car</th>';
-  R.forEach(rd=>{h+='<th class="'+(rd.cxl?'chcxl':(rd.fut?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
+  // a round counts as "upcoming" only until it has results — the scraper flipping
+  // NLS8/9/10 live needs no edit here
+  const futR=R.map((rd,i)=>!!rd.fut&&!RD[i]);
+  R.forEach((rd,i)=>{h+='<th class="'+(rd.cxl?'chcxl':(futR[i]?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
   h+='</tr></thead><tbody>';
   rows.forEach((r,ri)=>{
     const me=String(r.car)===String(selCar);
     h+='<tr class="'+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
     r.per.forEach((x,i)=>{const rd=R[i];
-      if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(rd.fut?'·':'–'))+'</td>';}
+      if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(futR[i]?'·':'–'))+'</td>';}
       else if(x.dnf){h+='<td><span class="chdnf" title="started, not classified">'+x.dnf+'</span></td>';}
       else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
     });
     h+='</tr>';
   });
   h+='</tbody></table>';
-  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. NLS1 cancelled (snow); 24hQ1 no race; NLS7–10 upcoming. Retirements not known for NLS2.</div>';
+  // Footnote states what is actually on screen rather than a hardcoded season
+  // summary: which rounds are still to come, and where the results came from.
+  const up=R.filter((rd,i)=>futR[i]).map(rd=>rd.lbl);
+  const auto=R.filter(rd=>CHAMP_ROWS&&CHAMP_ROWS.some(r=>String(r.event_date||'').slice(5)===rd.date)).map(rd=>rd.lbl);
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. '
+    +'DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round cancelled. '
+    +'NLS1 cancelled (snow); 24hQ1 no race'+(up.length?('; '+up.join(', ')+' upcoming'):'')+'. '
+    +(auto.length?('Results read from the official NLS result PDFs ('+auto.join(', ')+'), scraped automatically.'):'Results hand-entered from the official class-result PDFs.')
+    +'</div>';
   el.innerHTML=h;
  }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
@@ -4522,6 +4583,7 @@ function renderTimetable(){
 }
 renderTimetable();
 loadSchedule();
+loadChampRounds();   // CHAMPIONSHIP reel: scraped round results (re-renders on arrival)
 loadRaceWindow((DB.event&&DB.event.date)||liveEventDate());   // race end for whatever event is loaded now
 setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule table is updated while the page is left open
 

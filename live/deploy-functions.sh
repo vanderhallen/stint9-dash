@@ -16,7 +16,7 @@ REF="${SUPABASE_PROJECT_REF:-esvvzgxqnfszhttdkuzc}"
 : "${SUPABASE_ACCESS_TOKEN:?Set SUPABASE_ACCESS_TOKEN — create one at https://supabase.com/dashboard/account/tokens}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-FUNCS=(wige-scrape nls-schedule-scrape)
+FUNCS=(wige-scrape nls-schedule-scrape nls-driver-scrape)
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT

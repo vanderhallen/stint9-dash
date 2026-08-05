@@ -45,14 +45,15 @@
   .drv{font-size:17px;color:#16202b}
   .drv.same{color:#9aa2ab}
   .marg{font-weight:700}
-  .marg.over{color:#e0301e}.marg.under{color:#1e8f3a}
+  /* sign, not consequence: at or over the minimum is legal (green), under it is not (red) */
+  .marg.over{color:#1e8f3a}.marg.under{color:#e0301e}
   .est{color:#c78a00;font-size:11px;font-weight:700;letter-spacing:.5px}
-  /* the bar: grey = regulation minimum, red overhang = time given away */
+  /* the bar: grey = regulation minimum, green overhang = margin over it, red = shortfall */
   td.bar{width:38%;padding-right:0}
   .track{position:relative;height:20px;background:#f2f4f6;border-radius:3px;overflow:hidden}
   .track>.req{position:absolute;left:0;top:0;height:100%;background:#c3c8ce}
-  .track>.ovr{position:absolute;top:0;height:100%;background:#e0301e}
-  .track>.und{position:absolute;top:0;height:100%;background:#1e8f3a}
+  .track>.ovr{position:absolute;top:0;height:100%;background:#1e8f3a}
+  .track>.und{position:absolute;top:0;height:100%;background:#e0301e}
   .empty{padding:40px 0;text-align:center;color:#9aa2ab;font-size:14px;line-height:1.7}
 
   /* ---- page 2 / 3: lookup tables ---- */
@@ -65,7 +66,7 @@
   .cdreq{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
   .lut{flex:1 1 auto;min-height:0;overflow:auto}
   .lut table{font-size:18px}
-  .lut td,.lut th{padding:9px 10px;text-align:right;border-top:1px solid #f2f4f6}
+  .lut td,.lut th{padding:9px 10px;text-align:center;border-top:1px solid #f2f4f6}
   .lut tr.hit td{background:#eef4ef;font-weight:800;border-top-color:#1e8f3a}
   .lut tr.hit td:first-child{border-left:3px solid #1e8f3a}
   .cols{display:flex;gap:22px;height:100%}
@@ -318,12 +319,12 @@ function renderStops(){
       '<td>'+f3(s.dur)+(s.real?'':' <span class="est">~</span>')+'</td>'+
       '<td class="l drv'+(s.change?'':' same')+'">'+(s.change?(esc(s.from)+' → '+esc(s.to)):(esc(s.to)+' (stays in)'))+'</td>'+
       '<td>'+s.req+' <span style="color:#9aa2ab;font-size:11px">'+s.tbl+'</span></td>'+
-      '<td class="marg '+(m>0?'over':'under')+'">'+sgn(m)+'</td><td class="bar">'+bar+'</td></tr>';
+      '<td class="marg '+(m>=0?'over':'under')+'">'+sgn(m)+'</td><td class="bar">'+bar+'</td></tr>';
   });
   var tw=100*Math.min(1,totR/ (totD>totR?totD:totR)),tdw=100;
   h+='<tr class="tot"><td class="l">Σ</td><td></td><td></td><td>'+f3(totD)+'</td>'+
     '<td class="l" style="font-size:12px;color:#6b7480">'+(anyEst?'contains estimates':'measured')+'</td>'+
-    '<td>'+totR.toFixed(0)+'</td><td class="marg '+(over>0?'over':'under')+'">'+sgn(over)+'</td>'+
+    '<td>'+totR.toFixed(0)+'</td><td class="marg '+(over>=0?'over':'under')+'">'+sgn(over)+'</td>'+
     '<td class="bar"><div class="track"><div class="req" style="width:'+tw.toFixed(1)+'%"></div>'+
     (over>0?'<div class="ovr" style="left:'+tw.toFixed(1)+'%;width:'+(tdw-tw).toFixed(1)+'%"></div>':'')+'</div></td></tr>';
   h+='</tbody></table>';

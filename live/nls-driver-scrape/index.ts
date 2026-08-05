@@ -20,6 +20,12 @@
  *   5. Upserts stint9_nls_races (one row per race) and replaces
  *      stint9_nls_results for each scraped race (delete-by-event_date then
  *      insert, so a re-scan picks up late-published / corrected results).
+ *      INCREMENTAL: a round already carrying results is skipped (POST ?force=1
+ *      to re-parse it), and rounds are walked newest-first — re-parsing the
+ *      whole season every run exhausted the worker CPU budget and dropped the
+ *      newest round, which is the one the dashboard is waiting for.
+ *      stint9_nls_results also feeds the CHAMPIONSHIP reel through the view
+ *      public.stint9_champ_rounds (one row per race+class, finishing order).
  *   6. STARTING GRID (grid mode — POST ?grid=1 / {grid:true}): fetches the
  *      qualifying result PDF <base>/ergebnisse/<YYYY-MM-DD>t.pdf ("Ergebnis
  *      Zeittraining") for each past round and replaces stint9_grid for that
@@ -519,11 +525,14 @@ if (import.meta.main) Deno.serve(async (req) => {
   //                             their own pass (own cron; also the LIVE race-day
   //                             trigger). Default run = race results, unchanged.
   //   date=YYYY-MM-DD        -> restrict to that one event.
+  //   force=1 / {force:true} -> re-parse rounds that are already ingested
+  //                             (default skips them — see the loop below).
   const url = new URL(req.url);
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no/invalid body */ }
   const wantGrid = url.searchParams.get('grid') === '1' || body.grid === true;
   const onlyDate = url.searchParams.get('date') || (typeof body.date === 'string' ? body.date : null);
+  const force = url.searchParams.get('force') === '1' || body.force === true;
 
   const results: unknown[] = [];
   try {
@@ -537,16 +546,31 @@ if (import.meta.main) Deno.serve(async (req) => {
       return Response.json({ ok: true, racesChecked: results.length, results }, { headers: CORS });
     }
 
+    /* Rounds whose results are already in the DB. The race pass parses r.pdf +
+       rl.pdf per round (~1MB of PDF each), and re-doing every past round on
+       every run walks straight into the worker's CPU budget: with four rounds
+       raced, the run died after three and the NEWEST one — the only round
+       anybody is waiting for — was the one that never landed, leaving the
+       championship standings a round behind. Skip what's already ingested
+       (force=1 to re-parse, e.g. after a corrected PDF is published), and work
+       newest-first so a budget cut-off costs the oldest round, not the newest. */
+    const done = new Set<string>();
+    if (!force) {
+      const have = await sbFetch('stint9_nls_races?select=event_date&has_results=is.true&driver_rows=gt.0', { method: 'GET' });
+      if (have.ok) ((await have.json()) as { event_date: string }[]).forEach((r) => done.add(r.event_date));
+    }
+
     // 1) NLS rounds from the calendar
     const calRes = await fetch(CALENDAR_URL);
     if (!calRes.ok) throw new Error(`calendar fetch ${calRes.status}`);
-    const rounds = parseCalendar(await calRes.text());
+    const rounds = parseCalendar(await calRes.text()).sort((a, b) => (a.eventDate < b.eventDate ? 1 : -1));
     const seen = new Set<string>();
     for (const r of rounds) {
       if (r.eventDate > today) continue;              // not raced yet
       if (seen.has(r.eventDate)) continue;             // de-dupe expanded ranges
       seen.add(r.eventDate);
       if (onlyDate && r.eventDate !== onlyDate) continue;
+      if (!wantGrid && done.has(r.eventDate)) { results.push({ eventDate: r.eventDate, series: 'NLS', status: 'already_ingested' }); continue; }
       if (wantGrid) {
         // Grid-only pass: just the qualifying PDF (one fetch/round).
         try { results.push(await ingestGrid(r.eventDate)); }
@@ -566,6 +590,7 @@ if (import.meta.main) Deno.serve(async (req) => {
         for (const r of rows) {
           if (!r.results_url || r.event_date > today) continue;
           if (onlyDate && r.event_date !== onlyDate) continue;
+          if (done.has(r.event_date)) { results.push({ eventDate: r.event_date, series: '24h', status: 'already_ingested' }); continue; }
           try { results.push(await ingestRace(r.event_date, r.round_no, r.title, '24h', r.results_url)); }
           catch (e) { results.push({ eventDate: r.event_date, series: '24h', status: 'error', error: String(e) }); }
         }
