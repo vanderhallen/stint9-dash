@@ -45,6 +45,13 @@
   select option{font-size:11px}
   select{cursor:pointer}input[type=number]{width:64px}
   select:focus,input:focus{outline:none;border-color:var(--accent)}
+  /* Our own popup list for the class picker (see dropDown()): position:fixed on
+     <body>, i.e. outside .wrap's transform, so it sits at true size like the
+     native popup it replaces — and always below its box, never over the header. */
+  .dropdn{position:fixed;z-index:9000;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:4px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink)}
+  .dropdn div{padding:8px 10px;border-radius:6px;white-space:nowrap;cursor:pointer}
+  .dropdn div:hover{background:var(--bg)}
+  .dropdn div.on{color:var(--accent);font-weight:600}
   .split{display:flex;gap:22px;align-items:flex-start;margin-top:9px}
   .left{flex:0 0 46%;max-width:46%}.right{flex:1 1 auto;min-width:0}
   .colhead{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);height:22px;margin-bottom:8px;white-space:nowrap;overflow:hidden}
@@ -3187,6 +3194,45 @@ function fillClassSelect(sel){if(!sel)return;sel.innerHTML='';
   classOptionKeys().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c+' ('+clsCount(c)+')';sel.appendChild(o);});}
 const clsSel=document.getElementById('classsel');
 fillClassSelect(clsSel);
+/* macOS anchors a native <select> popup on the CURRENTLY SELECTED row, so with
+   a class far down the list the menu opens upward and covers the header. Take
+   over the open and draw the list ourselves, always below the box; it shrinks
+   and scrolls when the window bottom is nearer than the list is tall.
+   The <select> stays the source of truth (value + 'change'), so prefs, the
+   mobile mirror and every reader of classsel.value are untouched.
+   Mouse/trackpad only — a touch device gets its own native picker, which
+   doesn't have this problem. */
+function dropDown(sel){
+  if(!sel||!window.matchMedia('(hover:hover) and (pointer:fine)').matches)return;
+  let panel=null;
+  const close=()=>{if(!panel)return;panel.remove();panel=null;
+    window.removeEventListener('scroll',close,true);window.removeEventListener('resize',close);
+    document.removeEventListener('mousedown',outside,true);document.removeEventListener('keydown',onkey,true);};
+  const outside=e=>{if(panel&&!panel.contains(e.target)&&e.target!==sel)close();};
+  const onkey=e=>{if(e.key==='Escape')close();};
+  function open(){
+    const r=sel.getBoundingClientRect();
+    panel=document.createElement('div');panel.className='dropdn';
+    Array.from(sel.options).forEach((o,i)=>{
+      const row=document.createElement('div');row.textContent=o.textContent;
+      if(i===sel.selectedIndex)row.className='on';
+      row.onmousedown=ev=>ev.preventDefault();   // keep focus on the select
+      row.onclick=()=>{close();if(sel.value!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}};
+      panel.appendChild(row);
+    });
+    panel.style.left=r.left+'px';panel.style.top=(r.bottom+4)+'px';
+    panel.style.minWidth=r.width+'px';
+    panel.style.maxHeight=Math.max(120,window.innerHeight-r.bottom-14)+'px';
+    document.body.appendChild(panel);
+    const pr=panel.getBoundingClientRect();   // pull back in when the box sits near the right edge
+    if(pr.right>window.innerWidth-6)panel.style.left=Math.max(6,window.innerWidth-6-pr.width)+'px';
+    window.addEventListener('scroll',close,true);window.addEventListener('resize',close);
+    document.addEventListener('mousedown',outside,true);document.addEventListener('keydown',onkey,true);
+  }
+  sel.addEventListener('mousedown',e=>{e.preventDefault();sel.focus();panel?close():open();});
+  sel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();panel?close():open();}});
+}
+dropDown(clsSel);
 /* fitPage (not bare syncReel): a class change alters CH, and syncReel alone
    resets the reels to the short CH/1000 aspect without anything re-growing
    them — the maincol/rightcol ResizeObserver never fires because rightcol is
