@@ -314,9 +314,9 @@ function render(){
 }
 
 /* The two ends of the field, ranked by how far each car sat off the minimum.
-   The A/B/C tables are OUR class's, and the minimums are class-specific -- so
-   the three superlatives are computed inside our own class, where the comparison
-   is sound, and every other class is listed for reference but visually muted. */
+   Every car's margin is its own stop against its own class table, so the
+   numbers are comparable across classes: cards and list rank the same measured
+   field, and other classes are listed for reference but visually muted. */
 function renderField(){
   var cards=document.getElementById('f-cards'),list=document.getElementById('f-list'),
       sub=document.getElementById('f-sub');
@@ -327,21 +327,23 @@ function renderField(){
   // has no pitinfo, so its "stop" is an out-lap-S1 estimate running to tens of
   // minutes -- ranking that as "most time given away" would be nonsense.
   var meas=F.filter(function(x){return x.real;});
-  var mine=meas.filter(function(x){return x.cls===myCls;});
-  var pool=mine.length>=2?mine:meas;
-  var scope=mine.length>=2?esc(myCls):'measured field';
-  // The cards rank inside the class; the list below ranks the whole measured
-  // field. Say which is which on every heading, or the class winner reads as a
-  // contradiction of the field row sitting under the same words.
-  var scopeIn=mine.length>=2?('in '+esc(myCls)):'in the measured field';
-  sub.textContent='cards '+scopeIn+' · list over '+meas.length+' measured of '+F.length+' cars';
-  var closest=null;
-  pool.forEach(function(x){if(!closest||Math.abs(x.m)<Math.abs(closest.m))closest=x;});
-  // "Under" only exists where our table is not the car's own -- so if nobody in
-  // scope is under, fall back to the field and say plainly why it is negative.
-  var under=null,underWide=false;
-  pool.forEach(function(x){if(x.m<0&&(!under||x.m<under.m))under=x;});
-  if(!under){underWide=true;meas.forEach(function(x){if(x.m<0&&(!under||x.m<under.m))under=x;});}
+  sub.textContent='cards and list over '+meas.length+' measured of '+F.length+' cars';
+  // Ninety-odd rows is a scroll nobody does mid-stint. Only the two ends of the
+  // ranking say anything. Estimates are ranked out for the same reason the
+  // cards ignore them.
+  var srt=meas.slice().sort(function(a,b){return a.m-b.m;});
+  // Under and over are two different questions, so they get two different
+  // rankings: furthest below the minimum is a penalty to go looking for, but
+  // above it the interesting end is the tight one -- the execution to match.
+  // Splitting on the sign also means the two ends can never share a car.
+  var lo=srt.filter(function(x){return x.m<0;}).slice(0,5),
+      hi=srt.filter(function(x){return x.m>=0;}).slice(0,5);
+  // The cards are the heads of exactly those two rankings -- nothing else, or a
+  // card names one car while the first row printed under the same words names
+  // another. Field-wide both times: the margins already carry each car's own
+  // class minimum, so the deepest shortfall in the field is the deepest, full
+  // stop, and the tightest legal stop is the one to match whoever drove it.
+  var closest=hi[0]||null,under=lo[0]||null;
   function card(cls,lbl,x,note){
     if(!x)return '<div class="fc"><div class="fclbl">'+lbl+'</div>'+
       '<div class="fccar" style="color:#c3c8ce">—</div><div class="fcsub">'+note+'</div></div>';
@@ -359,22 +361,11 @@ function renderField(){
     card('self','Selected car',own,
       own?('our car · '+(own.real?'measured':'stop times estimated'))
          :(R.car?('#'+esc(R.car)+' — no stops yet'):'pick a car on the STOPS page'))+
-    card('best','Closest to the minimum '+scopeIn,closest,'tightest execution · '+scope)+
-    card('under','Furthest under the minimum '+(underWide?'in the measured field':scopeIn),under,
-      underWide?'outside this class — proof our table is not theirs'
-               :'below our own table — check for a penalty');
+    card('best','Closest over the minimum in the measured field',closest,
+      closest?'tightest execution · measured field':'nobody at or over the minimum yet')+
+    card('under','Furthest under the minimum in the measured field',under,
+      under?'below its own class table — check for a penalty':'nobody under the minimum');
 
-  // Ninety-odd rows is a scroll nobody does mid-stint. Only the two ends of the
-  // ranking say anything. Estimates are ranked out for the same reason the
-  // cards ignore them.
-  var srt=meas.slice().sort(function(a,b){return a.m-b.m;});
-  // Under and over are two different questions, so they get two different
-  // rankings: furthest below the minimum is a penalty to go looking for, but
-  // above it the interesting end is the tight one -- the execution to match,
-  // which is what the green card reads inside our class. Splitting on the sign
-  // also means the two ends can never share a car.
-  var lo=srt.filter(function(x){return x.m<0;}).slice(0,5),
-      hi=srt.filter(function(x){return x.m>=0;}).slice(0,5);
   // Scale the bars to the rows actually on screen, not to the whole spread: the
   // field's +635s outlier would flatten five margins of twenty-odd seconds into
   // invisible slivers. Our own row is in the set even when it is in neither end.
