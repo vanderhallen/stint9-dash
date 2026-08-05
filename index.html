@@ -644,7 +644,7 @@
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
-          <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805a" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805b" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel"><div id="videoreel">
             <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
@@ -2226,6 +2226,7 @@ function refreshCarDropdown(T){
   const now=Date.now();if(now-lastDrvRefresh<1000)return;lastDrvRefresh=now;
   const sel=document.getElementById('carsel');if(!sel)return;
   for(const o of sel.options){if(!o.value)continue;o.textContent='#'+o.value+'  '+curDrv(o.value,T);}
+  if(typeof sel.__ddsync==='function')sel.__ddsync();   // keep an open drop-down list current
 }
 // ---- LIVE sector-duration prediction (bounded, per-car/per-sector) --------
 // README §15.4a. "How long should this car's NEXT (still in-progress) sector
@@ -3200,12 +3201,12 @@ function fillClassSelect(sel){if(!sel)return;sel.innerHTML='';
 const clsSel=document.getElementById('classsel');
 fillClassSelect(clsSel);
 /* macOS anchors a native <select> popup on the CURRENTLY SELECTED row, so with
-   a class far down the list the menu opens upward and covers the header. Take
-   over the open and draw the list ourselves, always below the box; it shrinks
-   and scrolls when the window bottom is nearer than the list is tall.
+   a class (or car) far down the list the menu opens upward and covers the
+   header. Take over the open and draw the list ourselves, always below the box;
+   it shrinks and scrolls when the window bottom is nearer than the list is tall.
    The <select> stays the source of truth (value + 'change') and still paints
    the closed box, so prefs, the mobile mirror and every reader of
-   classsel.value are untouched.
+   classsel.value / carsel.value are untouched.
    Mouse/trackpad only — a touch device gets its own native picker, which
    doesn't have this problem. */
 function dropDown(sel){
@@ -3221,16 +3222,20 @@ function dropDown(sel){
   const hit=document.createElement('span');hit.className='ddhit';wrap.appendChild(hit);
   let panel=null;
   const close=()=>{if(!panel)return;panel.remove();panel=null;
-    window.removeEventListener('scroll',close,true);window.removeEventListener('resize',close);
+    window.removeEventListener('scroll',onscroll,true);window.removeEventListener('resize',close);
     document.removeEventListener('mousedown',outside,true);document.removeEventListener('keydown',onkey,true);};
+  // A long list (the car picker) scrolls INSIDE the panel, and a capture
+  // listener on window sees that non-bubbling scroll too — so ignore our own.
+  const onscroll=e=>{if(panel&&(e.target===panel||panel.contains(e.target)))return;close();};
   const outside=e=>{if(panel&&!panel.contains(e.target)&&e.target!==sel&&e.target!==hit)close();};
   const onkey=e=>{if(e.key==='Escape')close();};
   function open(){
     const r=sel.getBoundingClientRect();
     panel=document.createElement('div');panel.className='dropdn';
+    let onRow=null;
     Array.from(sel.options).forEach((o,i)=>{
       const row=document.createElement('div');row.textContent=o.textContent;
-      if(i===sel.selectedIndex)row.className='on';
+      if(i===sel.selectedIndex){row.className='on';onRow=row;}
       row.onmousedown=ev=>ev.preventDefault();   // keep focus on the select
       row.onclick=()=>{close();if(sel.value!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}};
       panel.appendChild(row);
@@ -3241,13 +3246,22 @@ function dropDown(sel){
     document.body.appendChild(panel);
     const pr=panel.getBoundingClientRect();   // pull back in when the box sits near the right edge
     if(pr.right>window.innerWidth-6)panel.style.left=Math.max(6,window.innerWidth-6-pr.width)+'px';
-    window.addEventListener('scroll',close,true);window.addEventListener('resize',close);
+    // capped list: bring the current pick into view without scrolling the page
+    if(onRow&&panel.scrollHeight>panel.clientHeight)
+      panel.scrollTop=Math.max(0,onRow.offsetTop-panel.clientHeight/2+onRow.offsetHeight/2);
+    window.addEventListener('scroll',onscroll,true);window.addEventListener('resize',close);
     document.addEventListener('mousedown',outside,true);document.addEventListener('keydown',onkey,true);
   }
   hit.addEventListener('click',()=>{if(sel.disabled)return;panel?close():open();});
   sel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();panel?close():open();}});
+  /* The car list's option labels carry the CURRENT driver and get rewritten
+     every second in LIVE (refreshCarDropdown) — repaint an open panel so it
+     doesn't show the driver who was at the wheel when it was opened. */
+  sel.__ddsync=()=>{if(!panel)return;
+    Array.from(sel.options).forEach((o,i)=>{const row=panel.children[i];if(row)row.textContent=o.textContent;});};
 }
 dropDown(clsSel);
+dropDown(document.getElementById('carsel'));
 /* fitPage (not bare syncReel): a class change alters CH, and syncReel alone
    resets the reels to the short CH/1000 aspect without anything re-growing
    them — the maincol/rightcol ResizeObserver never fires because rightcol is
