@@ -7,7 +7,7 @@
 <style>
   html,body{margin:0;height:100%;background:#fff;font-family:'IBM Plex Mono',ui-monospace,monospace;color:#16202b}
   body{overflow:hidden}
-  /* three horizontal pages: STOPS | TARGET | ENDGAME */
+  /* four horizontal pages: STOPS | TARGET | LAST HOUR | MARGINS */
   #wrap{display:flex;width:400%;height:100%;transition:transform .4s cubic-bezier(.55,.06,.2,1)}
   body.p1 #wrap{transform:translateX(-25%)}
   body.p2 #wrap{transform:translateX(-50%)}
@@ -80,6 +80,23 @@
   .ovr-in{font-family:inherit;font-size:12px;font-weight:700;width:74px;text-align:right;border:none;border-bottom:1px dashed #9aa2ab;background:transparent;padding:1px 2px}
   .ovr-in:focus{outline:none;background:#eef4ef;border-bottom-color:#1e8f3a}
 
+  /* ---- the in-box countdown, page 1 ---- */
+  /* Same .live shell as TARGET, one size down so the stop table still fits under it. */
+  .pitcd{gap:16px}
+  .pitcd .cd{font-size:46px}
+  .calrow{display:flex;align-items:center;gap:8px;margin-top:3px}
+  .cal-in{font-family:inherit;font-size:26px;font-weight:800;width:104px;text-align:right;
+    font-variant-numeric:tabular-nums;color:#16202b;background:#fff;
+    border:2px solid #d7dce1;border-radius:8px;padding:3px 8px}
+  .cal-in:focus{outline:none;border-color:#16202b}
+  .calbtn{font-family:inherit;font-size:13px;font-weight:800;letter-spacing:1.5px;color:#fff;
+    background:#16202b;border:none;border-radius:8px;padding:9px 13px;cursor:pointer}
+  .calbtn:hover{background:#2b3948}
+  .calbtn.ghost{background:#eceff2;color:#16202b}
+  .calbtn.ghost:hover{background:#dfe4e9}
+  /* a hand-set clock is not the computed one -- say so wherever the number is shown */
+  .calbadge{font-size:10px;letter-spacing:1.5px;font-weight:700;color:#c78a00;text-transform:uppercase}
+
   /* ---- page 4: the field ---- */
   .cards{flex:0 0 auto;display:flex;gap:12px;margin-bottom:10px}
   .fc{flex:1 1 0;min-width:0;border:2px solid #e3e7eb;border-radius:10px;padding:9px 12px 10px;background:#f9fafb}
@@ -121,6 +138,28 @@
       <button type="button" class="navlink" data-go="1">TARGET &#9656;</button>
     </div>
     <div class="pagebody">
+      <!-- Static markup, not rebuilt by render(): a half-typed calibration must
+           survive the parent's 200ms pushes. Only the text nodes are updated. -->
+      <div class="live pitcd" id="s-box" style="display:none">
+        <div>
+          <div class="cdlbl">Remaining <span class="calbadge" id="s-cdbadge" style="display:none">· crew clock</span></div>
+          <div class="cd go" id="s-cd">—</div>
+        </div>
+        <div>
+          <div class="cdlbl">Calibrate — seconds left on the crew clock</div>
+          <div class="calrow">
+            <input id="s-cal" class="cal-in" type="text" inputmode="decimal" autocomplete="off" placeholder="s">
+            <button type="button" class="calbtn" id="s-sync">SYNC</button>
+            <button type="button" class="calbtn ghost" id="s-unsync" style="display:none">DROP</button>
+          </div>
+        </div>
+        <div><div class="cdlbl">Minimum · table <span id="s-tbl">—</span></div><div class="cdreq" id="s-req">—</div></div>
+        <div><div class="cdlbl">Release at</div><div class="cdreq" id="s-rel">—</div></div>
+        <div style="margin-left:auto;text-align:right">
+          <div class="cdlbl" id="s-stint">—</div>
+          <div style="font-size:12px;color:#6b7480" id="s-note"></div>
+        </div>
+      </div>
       <div class="hero" id="s-hero"></div>
       <div id="s-table"></div>
     </div>
@@ -130,7 +169,7 @@
     <div class="pagehead">
       <button type="button" class="navlink" data-go="0">&#9666; STOPS</button>
       <span class="ptitle">TARGET<small>minimum standing time by laps in stint</small></span>
-      <button type="button" class="navlink" data-go="2">ENDGAME &#9656;</button>
+      <button type="button" class="navlink" data-go="2">LAST HOUR &#9656;</button>
     </div>
     <div class="pagebody">
       <div class="live" id="t-live"></div>
@@ -142,8 +181,8 @@
   <div class="page" id="pEnd">
     <div class="pagehead">
       <button type="button" class="navlink" data-go="1">&#9666; TARGET</button>
-      <span class="ptitle">ENDGAME<small>last stop — minimum by race time remaining</small></span>
-      <button type="button" class="navlink" data-go="3">FIELD &#9656;</button>
+      <span class="ptitle">LAST HOUR<small>last stop — minimum by race time remaining</small></span>
+      <button type="button" class="navlink" data-go="3">MARGINS &#9656;</button>
     </div>
     <div class="pagebody">
       <div class="live" id="e-live"></div>
@@ -154,8 +193,8 @@
 
   <div class="page" id="pField">
     <div class="pagehead">
-      <button type="button" class="navlink" data-go="2">&#9666; ENDGAME</button>
-      <span class="ptitle">FIELD<small id="f-sub">margin against the minimum, every car</small></span>
+      <button type="button" class="navlink" data-go="2">&#9666; LAST HOUR</button>
+      <span class="ptitle">MARGINS<small id="f-sub">margin against the minimum, every car</small></span>
       <span style="width:110px"></span>
     </div>
     <div class="pagebody">
@@ -198,9 +237,68 @@ function hhmm(t){t=Math.round(t);var h=Math.floor(t/3600)%24,m=Math.floor(t/60)%
   return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
 
+/* ---- crew-clock calibration ----------------------------------------------
+   The countdown is derived: elapsed runs from the start/finish crossing that
+   closed the in-lap, less a fixed pit-entry allowance -- so it is only as good
+   as that anchor, and on an estimated (shaky) anchor it can be seconds out.
+   The crew's own stopwatch on the box is the truth. SYNC takes the number they
+   read off it and makes it lead: we keep a constant offset against the derived
+   value, so the calibrated clock still ticks off the same engine (and the same
+   SIM play/pause and speed) instead of drifting on a second timer.
+   The offset is keyed to this one stop and is dropped the moment the stop ends
+   or another car is selected -- a stale hand-set clock is worse than none. */
+var CAL=null;                                   // {key, off} — displayed = derived − off
+function calKey(){var b=R&&R.inBox;return b?((R.car||'')+'|'+b.lap):null;}
+function calOn(){var k=calKey();return !!(CAL&&k&&CAL.key===k);}
+function calOff(){return calOn()?CAL.off:0;}
+function remNow(){var b=R&&R.inBox;return b?(b.remaining-calOff()):null;}
+
+function doSync(){
+  var b=R&&R.inBox;if(!b)return;
+  var el=document.getElementById('s-cal');
+  var v=parseFloat(String(el.value||'').replace(',','.').trim());
+  if(!isFinite(v)){el.focus();el.select();return;}
+  CAL={key:calKey(),off:b.remaining-v};
+  el.blur();paintBox();
+}
+function dropSync(){CAL=null;document.getElementById('s-cal').value='';paintBox();}
+document.getElementById('s-sync').addEventListener('click',doSync);
+document.getElementById('s-unsync').addEventListener('click',dropSync);
+document.getElementById('s-cal').addEventListener('keydown',function(e){
+  if(e.key==='Enter'){e.preventDefault();doSync();}
+  else if(e.key==='Escape'){e.preventDefault();e.target.value='';e.target.blur();}
+  e.stopPropagation();                          // don't steer the reel while typing
+});
+
+/* Text-only repaint of the countdown strip: the calibrate field keeps whatever
+   the crew has half-typed into it. */
+function paintBox(){
+  var box=document.getElementById('s-box'),b=R&&R.inBox;
+  if(!b){box.style.display='none';return;}
+  box.style.display='';
+  var on=calOn(),rem=b.remaining-(on?CAL.off:0);
+  box.className='live pitcd'+(rem<0?' over':' on');
+  var cd=document.getElementById('s-cd');
+  cd.textContent=(rem<0?'+':'')+Math.abs(rem).toFixed(1);
+  cd.className='cd '+(rem<0?'late':'go');
+  document.getElementById('s-cdbadge').style.display=on?'':'none';
+  document.getElementById('s-unsync').style.display=on?'':'none';
+  document.getElementById('s-sync').textContent=on?'RESYNC':'SYNC';
+  document.getElementById('s-tbl').textContent=b.tbl;
+  document.getElementById('s-req').textContent=b.req+'s';
+  document.getElementById('s-rel').textContent=hhmm(b.release-(on?CAL.off:0));
+  document.getElementById('s-stint').textContent='In-lap '+b.lap+' · '+b.inStint+' laps';
+  document.getElementById('s-note').innerHTML='elapsed '+(b.elapsed+(on?CAL.off:0)).toFixed(1)+'s'+
+    (b.safety?(' · +'+b.safety+'s margin'):'')+
+    (on?(' · <span class="calbadge">synced '+sgn(-CAL.off)+'s</span>')
+       :(b.shaky?' · <span class="est">anchor estimated</span>':''));
+}
+
 function render(){
   if(!R){return;}
+  if(!calOn())CAL=null;                          // stop over, or another car — drop it
   renderStops();renderTarget();renderEnd();renderField();
+  paintBox();
 }
 
 /* The whole field, ranked by how far each car sat off the minimum.
@@ -352,13 +450,13 @@ function renderTarget(){
       '<div style="font-size:15px;color:#6b7480;margin-top:3px">The clock arms at the start/finish crossing that closes an in-lap.</div></div>';
   }
   var hitLaps=b?b.inStint:-1,hitCol=b?b.tbl.charAt(0):'';
-  // Inside the last 59 minutes the minimum comes from the ENDGAME table instead,
+  // Inside the last 59 minutes the minimum comes from the LAST HOUR table instead,
   // so nothing here highlights -- say so rather than leave the crew hunting a row.
   var endgame=(hitCol==='C');
   var h='';
   if(endgame)h+='<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#fdf6e6;'+
     'border:2px solid #e8a71e;font-size:15px;font-weight:700">This stop is inside the last hour — '+
-    'its '+b.req+'s minimum comes from the ENDGAME table (row '+b.tbl.slice(1)+'), not from A/B below.</div>';
+    'its '+b.req+'s minimum comes from the LAST HOUR table (row '+b.tbl.slice(1)+'), not from A/B below.</div>';
   h+='<table><thead><tr><th>Laps in stint</th><th>A — 1st stop</th><th>B — from 2nd</th></tr></thead><tbody>';
   for(var i=0;i<10;i++){
     var hit=(hitLaps===i+1&&(hitCol==='A'||hitCol==='B'));
@@ -380,7 +478,7 @@ function renderEnd(){
   box.innerHTML='<div><div class="cdlbl">Race time remaining</div><div class="cdreq">'+
       (remMin==null?'—':(remMin<=0?'finished':f1(remMin*60)))+'</div></div>'+
     (hit>0?('<div><div class="cdlbl">Last-stop minimum</div><div class="cd go" style="font-size:44px">'+PIT_C[hit-1]+'s</div></div>'):
-           '<div><div class="cdlbl">Endgame table</div><div style="font-size:15px;color:#6b7480;margin-top:4px">applies inside the last 59 minutes</div></div>')+
+           '<div><div class="cdlbl">Last-hour table</div><div style="font-size:15px;color:#6b7480;margin-top:4px">applies inside the last 59 minutes</div></div>')+
     '<div style="margin-left:auto;text-align:right"><div class="cdlbl">Race ends</div>'+
     '<div style="font-size:15px;font-weight:700">'+(R.raceEnd!=null?hhmm(R.raceEnd):'—')+
     ' <span style="font-size:11px;color:#9aa2ab;font-weight:400">'+esc(R.raceEndSrc||'')+'</span></div></div>';

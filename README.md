@@ -2439,8 +2439,8 @@ Left/Right, with Up/Down forwarded back to the parent as `{type:'reelV'}`.
 |---|---|
 | **STOPS** | what each stop cost against its minimum, and what that cost in position |
 | **TARGET** | how much longer may this car stand here — live countdown + release time |
-| **ENDGAME** | the last-stop minimum, keyed on race time remaining |
-| **FIELD** | every car ranked by margin; tightest execution and furthest under |
+| **LAST HOUR** | the last-stop minimum, keyed on race time remaining |
+| **MARGINS** | every car ranked by margin; tightest execution and furthest under |
 
 ## 21.1 The regulation tables
 

@@ -2727,7 +2727,7 @@ function svcH(dir){const f=document.getElementById('svcframe');if(f&&f.contentWi
   window.__fitPit=fit;
   fit();
 })();
-/* Left/Right inside PIT steps its three pages (STOPS|TARGET|ENDGAME); dir 0 = go home */
+/* Left/Right inside PIT steps its pages (STOPS|TARGET|LAST HOUR|MARGINS); dir 0 = go home */
 function pitH(dir){const f=document.getElementById('pitframe');if(f&&f.contentWindow)f.contentWindow.postMessage({type:'pitH',dir},'*');}
 /* Build the whole PIT report parent-side (DB and every helper live here) and post
    it in. Throttled like the tyre/service pushes; force=true bypasses it. */
@@ -4518,7 +4518,7 @@ async function loadSchedule(){
    and raceEndTod() falls back to a derived guess. Widening the query above is not
    the fix: its clustering anchors on rows[0] and would latch onto the old round.
    Fetch that one event's race window on its own instead -- it feeds raceEndTod
-   only, which is what decides whether a stop falls in the ENDGAME table. */
+   only, which is what decides whether a stop falls in the LAST HOUR table. */
 async function loadRaceWindow(date){
   window.RACEWIN=null;
   if(!date)return;
@@ -4821,7 +4821,7 @@ applyWxReel(false);
     DB.event={name:meta.name||slug,date:meta.event_date||''};
     window.archiveEventDate=DB.event.date;
     // this replay is a different race from whatever SCHEDULE describes, so pull
-    // its own race window for raceEndTod / the PIT ENDGAME table
+    // its own race window for raceEndTod / the PIT LAST HOUR table
     if(typeof loadRaceWindow==='function')loadRaceWindow(DB.event.date);
     var clsSel=document.getElementById('classsel');
     var pick=Object.keys(DB.classes)[0];
