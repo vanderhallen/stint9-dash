@@ -82,6 +82,10 @@
   .fc.best{border-color:#1e8f3a;background:#eef4ef}
   .fc.worst{border-color:#e0301e;background:#fdeeec}
   .fc.under{border-color:#e8a71e;background:#fdf6e6}
+  /* our own car reads as the dark 'self' row does in the list below */
+  .fc.self{border-color:#16202b;background:#16202b}
+  .fc.self .fclbl,.fc.self .fcsub{color:#9aa2ab}
+  .fc.self .fccar,.fc.self .fcval{color:#fff}
   .fclbl{font-size:10px;letter-spacing:1.5px;color:#6b7480;text-transform:uppercase;font-weight:700}
   .fccar{font-size:30px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
   .fcval{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
@@ -100,9 +104,6 @@
   .mini>i{position:absolute;top:0;height:100%}
   .mini>i.p{background:#e0301e}.mini>i.n{background:#e8a71e}
   .mini>.zero{position:absolute;top:0;height:100%;width:1px;background:#9aa2ab}
-  .warn{flex:0 0 auto;font-size:11px;line-height:1.55;color:#8a6d1a;background:#fdf6e6;border:1px solid #e8a71e;
-    border-radius:8px;padding:7px 10px;margin-top:8px}
-  .warn b{color:#6b5410}
   .rep{font-size:10px;font-weight:700;color:#6b7480;letter-spacing:.3px}
 </style>
 </head>
@@ -155,7 +156,6 @@
     <div class="pagebody">
       <div class="cards" id="f-cards"></div>
       <div class="flist" id="f-list"></div>
-      <div class="warn" id="f-warn"></div>
     </div>
   </div>
 
@@ -204,9 +204,9 @@ function render(){
    is sound, and every other class is listed for reference but visually muted. */
 function renderField(){
   var cards=document.getElementById('f-cards'),list=document.getElementById('f-list'),
-      warn=document.getElementById('f-warn'),sub=document.getElementById('f-sub');
+      sub=document.getElementById('f-sub');
   var F=R.field||[];
-  if(!F.length){cards.innerHTML='';list.innerHTML='<div class="empty">No stops in the field yet.</div>';warn.innerHTML='';return;}
+  if(!F.length){cards.innerHTML='';list.innerHTML='<div class="empty">No stops in the field yet.</div>';return;}
   var myCls=R.cls||'';
   sub.textContent='margin against the minimum · '+F.length+' cars';
   // Only measured stops can be ranked. A car that sat in the garage for repairs
@@ -232,7 +232,14 @@ function renderField(){
       '<div class="fcsub">'+esc(x.cls)+' · '+x.n+' stop'+(x.n>1?'s':'')+' · '+f1(x.d)+' stopped'+
       (x.rep?(' · '+x.rep+' repair skipped'):'')+'<br>'+note+'</div></div>';
   }
+  // Our own car is the reason to read this page at all, and the list is sorted by
+  // margin -- so it can sit anywhere, including off-screen. Pin it as a card.
+  var own=null;
+  if(R.car)F.forEach(function(x){if(x.car===R.car)own=x;});
   cards.innerHTML=
+    card('self','Selected car',own,
+      own?('our car · '+(own.real?'measured':'stop times estimated'))
+         :(R.car?('#'+esc(R.car)+' — no stops yet'):'pick a car on the STOPS page'))+
     card('best','Closest to the minimum',closest,'tightest execution · '+scope)+
     card('under','Furthest under the minimum',under,
       underWide?'another class — proof our table is not theirs'
@@ -258,15 +265,6 @@ function renderField(){
       '<i class="'+(x.m>=0?'p':'n')+'" style="left:'+left.toFixed(1)+'%;width:'+w.toFixed(1)+'%"></i></span></td></tr>';
   });
   list.innerHTML=h+'</tbody></table>';
-
-  var neg=F.filter(function(x){return x.m<0;}).length;
-  var reps=F.reduce(function(a,x){return a+(x.rep||0);},0);
-  warn.innerHTML='<b>Minimum standing times are class-specific.</b> These margins all use the '+
-    (myCls?('<b>'+esc(myCls)+'</b> '):'')+'tables, so only same-class rows (highlighted) are a fair comparison — '+
-    'the rest are reference only. Evidence in this event: median per-stop margin runs from about &minus;2s in CUP3 to +64s in BMW 325i, '+
-    'and <b>'+neg+'</b> car'+(neg===1?'':'s')+' come out below the minimum, which the rules do not allow. '+
-    'That is our table not applying to them, not a penalty. '+
-    (reps?('Stops over 10 min are counted as repairs and excluded — <b>'+reps+'</b> in this event.'):'');
 }
 
 function renderStops(){
