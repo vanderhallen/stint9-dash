@@ -69,8 +69,12 @@
   .lut td,.lut th{padding:9px 10px;text-align:center;border-top:1px solid #f2f4f6}
   .lut tr.hit td{background:#eef4ef;font-weight:800;border-top-color:#1e8f3a}
   .lut tr.hit td:first-child{border-left:3px solid #1e8f3a}
-  .cols{display:flex;gap:22px;height:100%}
+  .cols{display:flex;gap:18px;height:100%}
   .cols>div{flex:1 1 0;min-width:0}
+  /* All 59 endgame rows must be readable at a glance -- the crew has no hand
+     free to scroll. Four columns of 15, on tighter rows, land the whole table
+     inside the 700px logical page at the same 18px as the TARGET lookup. */
+  .cols td,.cols th{padding:4px 10px}
   .foot{flex:0 0 auto;font-size:11px;color:#9aa2ab;letter-spacing:.5px;padding-top:8px}
   .foot b{color:#6b7480}
   .ovr-in{font-family:inherit;font-size:12px;font-weight:700;width:74px;text-align:right;border:none;border-bottom:1px dashed #9aa2ab;background:transparent;padding:1px 2px}
@@ -81,7 +85,8 @@
   .fc{flex:1 1 0;min-width:0;border:2px solid #e3e7eb;border-radius:10px;padding:9px 12px 10px;background:#f9fafb}
   .fc.best{border-color:#1e8f3a;background:#eef4ef}
   .fc.worst{border-color:#e0301e;background:#fdeeec}
-  .fc.under{border-color:#e8a71e;background:#fdf6e6}
+  .fc.under{border-color:#e0301e;background:#fdeeec}
+  .fcval.under{color:#e0301e}.fcval.over{color:#1e8f3a}
   /* our own car reads as the dark 'self' row does in the list below */
   .fc.self{border-color:#16202b;background:#16202b}
   .fc.self .fclbl,.fc.self .fcsub{color:#9aa2ab}
@@ -102,7 +107,7 @@
   .flist tr.self td:first-child{border-left:3px solid #16202b}
   .mini{position:relative;height:11px;width:150px;background:#f2f4f6;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
   .mini>i{position:absolute;top:0;height:100%}
-  .mini>i.p{background:#e0301e}.mini>i.n{background:#e8a71e}
+  .mini>i.p{background:#1e8f3a}.mini>i.n{background:#e0301e}
   .mini>.zero{position:absolute;top:0;height:100%;width:1px;background:#9aa2ab}
   .rep{font-size:10px;font-weight:700;color:#6b7480;letter-spacing:.3px}
 </style>
@@ -228,7 +233,7 @@ function renderField(){
       '<div class="fccar" style="color:#c3c8ce">—</div><div class="fcsub">'+note+'</div></div>';
     return '<div class="fc '+cls+'"><div class="fclbl">'+lbl+'</div>'+
       '<div class="fccar">#'+esc(x.car)+'</div>'+
-      '<div class="fcval">'+sgn(x.m)+'s</div>'+
+      '<div class="fcval '+(cls==='self'?'':(x.m<0?'under':'over'))+'">'+sgn(x.m)+'s</div>'+
       '<div class="fcsub">'+esc(x.cls)+' · '+x.n+' stop'+(x.n>1?'s':'')+' · '+f1(x.d)+' stopped'+
       (x.rep?(' · '+x.rep+' repair skipped'):'')+'<br>'+note+'</div></div>';
   }
@@ -260,7 +265,8 @@ function renderField(){
       (x.rep?(' <span class="rep">+'+x.rep+' rep</span>'):'')+'</td>'+
       '<td class="l">'+esc(x.cls)+'</td>'+
       '<td>'+x.n+'</td><td>'+f1(x.d)+'</td><td>'+x.r.toFixed(0)+'</td>'+
-      '<td style="color:'+(klass==='self'?'#fff':(x.m>0?'#e0301e':'#c78a00'))+';font-weight:700">'+sgn(x.m)+'</td>'+
+      // same sign language as the STOPS page: under the minimum is red, at or over it is green
+      '<td style="color:'+(klass==='self'?'#fff':(x.m<0?'#e0301e':'#1e8f3a'))+';font-weight:700">'+sgn(x.m)+'</td>'+
       '<td class="l"><span class="mini"><span class="zero" style="left:50%"></span>'+
       '<i class="'+(x.m>=0?'p':'n')+'" style="left:'+left.toFixed(1)+'%;width:'+w.toFixed(1)+'%"></i></span></td></tr>';
   });
@@ -357,8 +363,8 @@ function renderTarget(){
   for(var i=0;i<10;i++){
     var hit=(hitLaps===i+1&&(hitCol==='A'||hitCol==='B'));
     h+='<tr class="'+(hit?'hit':'')+'"><td>'+(i+1)+'</td>'+
-      '<td'+(hit&&hitCol==='A'?' style="color:#1e8f3a"':'')+'>'+PIT_A[i]+'</td>'+
-      '<td'+(hit&&hitCol==='B'?' style="color:#1e8f3a"':'')+'>'+PIT_B[i]+'</td></tr>';
+      '<td'+(hit&&hitCol==='A'?' style="color:#1e8f3a"':'')+'>'+PIT_A[i]+'s</td>'+
+      '<td'+(hit&&hitCol==='B'?' style="color:#1e8f3a"':'')+'>'+PIT_B[i]+'s</td></tr>';
   }
   h+='</tbody></table>';
   lut.innerHTML=h;
@@ -379,11 +385,11 @@ function renderEnd(){
     '<div style="font-size:15px;font-weight:700">'+(R.raceEnd!=null?hhmm(R.raceEnd):'—')+
     ' <span style="font-size:11px;color:#9aa2ab;font-weight:400">'+esc(R.raceEndSrc||'')+'</span></div></div>';
   var out='';
-  for(var c=0;c<3;c++){
+  for(var c=0;c<4;c++){
     var s='<table><thead><tr><th>Min left</th><th>Minimum</th></tr></thead><tbody>';
-    for(var i=c*20;i<Math.min(59,c*20+20);i++){
+    for(var i=c*15;i<Math.min(59,c*15+15);i++){
       var m=i+1;
-      s+='<tr class="'+(hit===m?'hit':'')+'"><td>'+m+'</td><td>'+PIT_C[i]+'</td></tr>';
+      s+='<tr class="'+(hit===m?'hit':'')+'"><td>'+m+'</td><td>'+PIT_C[i]+'s</td></tr>';
     }
     out+='<div>'+s+'</tbody></table></div>';
   }
