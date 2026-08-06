@@ -2611,6 +2611,19 @@ function fillStints(st){const tb=document.getElementById('drvbody');const panel=
   tb.innerHTML=(DB.drvtable[st]||[]).map(d=>'<tr><td><b>'+d.drv+'</b></td><td>'+d.start+'</td><td>'+d.end+'</td><td>'+d.laps+'</td><td class="g">'+(d.gain?('+'+d.gain):'0')+'</td><td class="d">'+(d.drop?('-'+d.drop):'0')+'</td><td>'+(d.fast||'—')+'</td></tr>').join('');
   panel.style.display='';}
 
+/* Car pickers list by car number, low to high. DB.cars arrives in the feed's
+   own order (grid/classification), which reshuffles as the race runs, so the
+   same car sits somewhere different every time you open the list. Sorting is
+   for the dropdowns only — DB.cars itself keeps feed order, because the chart
+   rows, the colour assignment and the class lists all key off it.
+   Numbers are strings; anything non-numeric falls back to a text compare and
+   lands after the numbered cars rather than sorting as 0. */
+function byCarNo(a,b){const na=parseInt(a,10),nb=parseInt(b,10);
+  if(isNaN(na)&&isNaN(nb))return String(a).localeCompare(String(b));
+  if(isNaN(na))return 1;
+  if(isNaN(nb))return -1;
+  return na-nb||String(a).localeCompare(String(b));}
+
 /* dropdown */
 const sel=document.getElementById('carsel');
 sel.onchange=e=>{selCar=e.target.value;miniEvents=selCar?computeEvents(selCar):[];applyCarFuelSettings(selCar);postTyreCar(selCar);postSvcCar(selCar);pushPit(true);fillStints(selCar);render();savePrefs();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
@@ -3220,7 +3233,7 @@ function buildClass(cls){
   DB.tmax=Math.max.apply(null,DB.cars.flatMap(st=>(DB.legs[st]||[]).map(g=>g[3])));
   scrub.min=DB.tmin;scrub.max=DB.tmax;
   sel.innerHTML='<option value="">— select a car —</option>';
-  DB.cars.forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');sel.appendChild(o);});
+  DB.cars.slice().sort(byCarNo).forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');sel.appendChild(o);});
   if(!DB.cars.some(c=>String(c)===String(selCar)))selCar=DB.cars[0]||'';
   sel.value=selCar;miniEvents=selCar?computeEvents(selCar):[];
   if(!(T>=DB.tmin&&T<=DB.tmax))T=DB.tmin;scrub.value=T;}
@@ -5206,7 +5219,7 @@ applyWxReel(false);
   function fillLoginCars(){if(!carSelL||typeof DB==='undefined')return;
     const cls=clsSelL.value,cars=(DB.classes[cls]||[]);
     carSelL.innerHTML='<option value="">— select a car —</option>';
-    cars.forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');carSelL.appendChild(o);});
+    cars.slice().sort(byCarNo).forEach(st=>{const o=document.createElement('option');o.value=st;o.textContent='#'+st+'  '+(DB.name[st]||'');carSelL.appendChild(o);});
     if(typeof updateGoLabel==='function')updateGoLabel();}
   if(clsSelL)clsSelL.onchange=fillLoginCars;
 
