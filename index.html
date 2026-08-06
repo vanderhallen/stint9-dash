@@ -1016,6 +1016,15 @@ function pitStopsOf(st,T){
     if(!o1)return;                                   // still in the box / race ended there
     const sf=o1[2];                                  // S/F crossing that closed the in-lap
     const hole=s4?(sf-s4[3]):null;
+    // A lap the feed blanked out entirely — prepLiveRaw's garage guard nulls every
+    // sector of a lap reported in minutes-to-hours, and flags it a pit lap. There is
+    // then no S4, so no hole to measure the stop from, and the estimate collapses to
+    // the out-lap S1 alone — which reads NORMAL, because the car rejoined a full lap
+    // later. That printed a 0.9s "stop" for #100 against a 212s minimum and put it at
+    // the head of the "below its own class table — check for a penalty" end of the
+    // whole field, on no timing at all. A stop with no timing cannot be timed: send it
+    // where the other behind-the-wall stops already go.
+    const blind=!idx[lap*5+1];
     const shaky=(hole!=null&&ref5>0&&hole-ref5>PIT_HOLE_GUARD);
     const real=pinf[lap]&&pinf[lap][1]!=null;
     const tin=real?pinf[lap][0]:sf-PIT_LANE_IN;
@@ -1034,7 +1043,7 @@ function pitStopsOf(st,T){
     else{req=pitMinB(inStint);tbl='B'+Math.min(10,inStint);}
     const d0=(DB.drvlap[st]||{})[lap],d1=(DB.drvlap[st]||{})[lap+1];
     out.push({n,lap,inStint,tin,dur,req,tbl,real,shaky,remMin,
-      repair:(dur>PIT_REPAIR_S),
+      repair:(dur>PIT_REPAIR_S||blind),
       open:(tin+dur>T),
       from:d0||DB.name[st]||'',to:d1||DB.name[st]||'',
       change:!!(d0&&d1&&d0!==d1)});
@@ -3781,7 +3790,22 @@ buildStartGrid();
     // a real Nordschleife sector is < ~15min, a lap < ~1h.
     const cap=(v,m)=>(v!=null&&isFinite(+v)&&+v>m)?null:v;
     const big=(v,m)=>v!=null&&isFinite(+v)&&+v>m;
-    const raw=(rows||[]).map(r=>{
+    // lap_time is WIGE's LASTLAPTIME: the row for lap N carries the time of lap
+    // N-1, so a lap's OWN duration only arrives on the NEXT lap's row. Resolve
+    // that up front — every step below wants the lap's own time, not the one
+    // before it. buildLiveDB reads rt as the lap's own duration to anchor its
+    // first sector (t0 = tend - rt), and on a steady lap the two are within a
+    // second or two, so nothing looked wrong: but an out-lap runs 150-250s longer
+    // than the in-lap before it, so every one of its legs used to start that far
+    // late. That is what broke the PIT reel field-wide on a live-derived event —
+    // the S4->S/F hole an estimated stop is measured from swallowed the stop a
+    // second time on top of the out-lap S1 that already carries it, so NLS7 read
+    // ~302s a stop against a real ~150s, for every car at once.
+    const src=rows||[];
+    const byLap={};for(const r of src)(byLap[String(r.car)]||(byLap[String(r.car)]={}))[r.lap]=r;
+    const ownRt=r=>{const nx=byLap[String(r.car)][r.lap+1];
+      return (nx&&nx.rt!=null&&isFinite(+nx.rt))?+nx.rt:null;};
+    const raw=src.map(r=>{
       // Garage/pit lap: WIGE doesn't flag inpit, but a car sitting in the box
       // reports absurd sector/lap times (seen: s1=16086s, lap=5241s). Such a
       // lap's timing is garbage — its partial sectors would scatter the car onto
@@ -3790,21 +3814,25 @@ buildStartGrid();
       // above real racing incl. Code 60 (sector<~5min, lap<~15min), so clean and
       // merely-slow laps are untouched; buildLiveDB then makes no on-track legs
       // for it, and render() parks the car in the box instead of ghost-driving.
-      const s0=r.s||[];
-      const garage=big(r.rt,1200)||big(s0[0],600)||big(s0[1],600)||big(s0[2],600)||big(s0[3],600)||big(s0[4],600);
+      // Tested on the lap's OWN time: on LASTLAPTIME the flag landed a lap late,
+      // nulling the clean lap that FOLLOWED a garage stint instead of the stint.
+      const s0=r.s||[],own=ownRt(r);
+      const garage=big(own,1200)||big(s0[0],600)||big(s0[1],600)||big(s0[2],600)||big(s0[3],600)||big(s0[4],600);
       const s=garage?[null,null,null,null,null]:[cap(s0[0],900),cap(s0[1],900),cap(s0[2],900),cap(s0[3],900),cap(s0[4],900)];
+      // The newest lap of each car has no N+1 row yet, so its own time is not
+      // knowable — LASTLAPTIME is the closest stand-in until the next lap lands.
       return {car:String(r.car),lap:r.lap,klass:r.klass,s,spd:r.spd||[null,null,null,null,null],
-        tend:r.tend,rt:garage?null:cap(r.rt,3600),
+        tend:r.tend,rt:garage?null:cap(own!=null?own:r.rt,3600),
         inpit:!!r.inpit||garage,fast:!!r.fast,drv:r.drv,veh:r.veh};});
-    // Backfill S5: WIGE never sends the final sector for the Nordschleife. A row's
-    // own lap_time is the PREVIOUS lap's (WIGE's LASTLAPTIME while on the current
-    // lap), so it can't be used directly; but lap N+1's lap_time IS lap N's total.
-    // So S5(N) = lapTime(N+1) - (S1+S2+S3+S4 of N). The newest lap has no N+1 yet,
-    // so its S5/LAP total fills in one lap later. rt is already the capped lap_time.
-    {const byCar={};for(const r of raw){(byCar[r.car]||(byCar[r.car]={}))[r.lap]=r;}
-     for(const r of raw){if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
-       const nx=byCar[r.car][r.lap+1];if(!nx||nx.rt==null)continue;
-       const d5=nx.rt-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}}
+    // Backfill S5: WIGE never sends the final sector for the Nordschleife.
+    // S5(N) = ownTime(N) - (S1+S2+S3+S4 of N). Read the own time from the source
+    // row rather than the mapped rt, which falls back to LASTLAPTIME on the newest
+    // lap — subtracting the PREVIOUS lap there would invent an S5 out of the two
+    // laps' difference. That lap's S5 fills in for real once lap N+1 lands.
+    for(let i=0;i<raw.length;i++){const r=raw[i];
+      if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
+      const own=ownRt(src[i]);if(own==null)continue;
+      const d5=own-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}
     return raw;
   };
   function liveTick(){

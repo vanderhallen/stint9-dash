@@ -861,7 +861,11 @@ where event_date = 'YYYY-MM-DD' order by 1;
    `PITSTOPDURATION`? If it does, map it — LIVE currently has no pit times at all and
    falls back to the out-lap-S1 heuristic in `pitLapsOf()` (index.html), which recovers
    265 of 285 real stops with 18 false positives. The CSV path now carries the real
-   thing as `DB.pitinfo`.
+   thing as `DB.pitinfo`. Until then, PIT · MARGINS ranks the **estimated** field on a
+   live-derived event (`DB.pitinfo` empty ⇒ nothing is `real` ⇒ the measured ranking
+   was empty for every car), and labels the scope as such. The estimate earns it:
+   against the 262 NLS6 stops that do carry a real `PITSTOPDURATION` it lands 0.1s off
+   at the median, 6.9s at p90.
 
 Everything else in the 2026-08-01 batch is shipped: STINT label gutter, Find-car in
 the Message board (+ Enter searches/highlights it), `inpit` via `PITSTOPCOUNT`
@@ -1043,6 +1047,22 @@ mixes two laps (gives negative / 167s garbage). Correct reconstruction:
 because lap N's real total is reported as lap N+1's `LASTLAPTIME`. Done in
 `index.html`'s LIVE raw preprocessing (`liveTick`). The newest lap's S5 fills in
 one lap later. SIM is unaffected (CSV has real S5).
+
+**The same off-by-one lap applies to `rt` itself, not just to S5.** `prepLiveRaw`
+knew the quirk for the backfill but still passed `lap_time` straight through as
+`rt`, and `buildLiveDB` reads `rt` as *this* lap's duration to anchor its first
+sector (`t0 = tend − rt`). On a steady lap the two differ by a second or two, so
+nothing looked wrong — but an out-lap runs 150–250s longer than the in-lap before
+it, so every leg of every out-lap started that far late. That silently broke the
+PIT reel across the whole field on any live-derived event: the S4→S/F hole an
+estimated stop is measured from swallowed the stop a *second* time, on top of the
+out-lap S1 that already carries it, so NLS7 read ~302s a stop against a real
+~150s. `prepLiveRaw` now re-keys `rt` to the lap's own time (`lap_time` of lap
+N+1) before anything reads it; the newest lap, which has no N+1 row yet, keeps
+`LASTLAPTIME` as the closest stand-in. The same correction moves the garage-lap
+guard onto the lap's own time, where it had been flagging the clean lap that
+*followed* a garage stint. `live/build-db.js` is untouched and still reproduces
+`gen_db.py` exactly (`node live/test-build-db.mjs`).
 
 ## 3. PostgREST `db-max-rows = 1000` silently truncated the LIVE fetch
 The dashboard's LIVE poll fetches all of today's `stint9_live_timing`

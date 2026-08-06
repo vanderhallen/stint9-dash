@@ -389,11 +389,20 @@ function renderField(){
   // has no pitinfo, so its "stop" is an out-lap-S1 estimate running to tens of
   // minutes -- ranking that as "most time given away" would be nonsense.
   var meas=F.filter(function(x){return x.real;});
-  sub.textContent='cards and list over '+meas.length+' measured of '+F.length+' cars';
+  // Except on an event that has no measured stop anywhere: the WIGE live feed
+  // carries no stop duration at all, so a live-derived race (NLS7 and every race
+  // run off the live feed since) left this ranking empty for all 122 cars and the
+  // page showed only the one pinned card. The estimate is the sole stop time that
+  // exists there, and it is a good one -- against the 262 NLS6 stops that DO carry
+  // a real duration it lands 0.1s off at the median, 6.9s at p90 -- so rank it,
+  // and name the scope honestly rather than printing an empty table.
+  var EST=!meas.length&&F.length>0,pool=EST?F:meas,SCOPE=EST?'estimated field':'measured field';
+  sub.textContent=EST?('cards and list over all '+F.length+' cars · this feed sends no measured stop times')
+                     :('cards and list over '+meas.length+' measured of '+F.length+' cars');
   // Ninety-odd rows is a scroll nobody does mid-stint. Only the two ends of the
-  // ranking say anything. Estimates are ranked out for the same reason the
-  // cards ignore them.
-  var srt=meas.slice().sort(function(a,b){return a.m-b.m;});
+  // ranking say anything. Cards and list rank the same pool, whichever it is, so
+  // a card can never name one car while the rows under the same words name another.
+  var srt=pool.slice().sort(function(a,b){return a.m-b.m;});
   // Under and over are two different questions, so they get two different
   // rankings: furthest below the minimum is a penalty to go looking for, but
   // above it the interesting end is the tight one -- the execution to match.
@@ -423,15 +432,15 @@ function renderField(){
     card('self','Selected car',own,
       own?('our car · '+(own.real?'measured':'stop times estimated'))
          :(R.car?('#'+esc(R.car)+' — no stops yet'):'pick a car on the STOPS page'))+
-    card('best','Closest over the minimum in the measured field',closest,
-      closest?'tightest execution · measured field':'nobody at or over the minimum yet')+
-    card('under','Furthest under the minimum in the measured field',under,
+    card('best','Closest over the minimum in the '+SCOPE,closest,
+      closest?('tightest execution · '+SCOPE):'nobody at or over the minimum yet')+
+    card('under','Furthest under the minimum in the '+SCOPE,under,
       under?'below its own class table — check for a penalty':'nobody under the minimum');
 
   // Scale the bars to the rows actually on screen, not to the whole spread: the
   // field's +635s outlier would flatten five margins of twenty-odd seconds into
   // invisible slivers. Our own row is in the set even when it is in neither end.
-  var bars=lo.concat(hi);if(own&&own.real)bars=bars.concat([own]);
+  var bars=lo.concat(hi);if(own&&(EST||own.real))bars=bars.concat([own]);
   var mx=Math.max.apply(null,(bars.length?bars:F).map(function(x){return Math.abs(x.m);}))||1;
   function row(x){
     var w=Math.min(50,100*Math.abs(x.m)/mx/2), left=x.m>=0?50:(50-w);
@@ -448,9 +457,9 @@ function renderField(){
   function sect(lbl){return '<tr class="sect"><td colspan="7">'+lbl+'</td></tr>';}
   var h='<table><thead><tr><th class="l">Car</th><th class="l">Class</th><th>Stops</th><th>Stopped</th>'+
     '<th>Minimum</th><th>Margin</th><th class="l">&nbsp;</th></tr></thead><tbody>';
-  h+=sect('Furthest under the minimum · measured field')+
-     (lo.length?lo.map(row).join(''):sect(meas.length?'— nobody under the minimum':'— nothing measured yet'));
-  if(hi.length)h+=sect('Closest over the minimum · measured field')+hi.map(row).join('');
+  h+=sect('Furthest under the minimum · '+SCOPE)+
+     (lo.length?lo.map(row).join(''):sect(pool.length?'— nobody under the minimum':'— nothing measured yet'));
+  if(hi.length)h+=sect('Closest over the minimum · '+SCOPE)+hi.map(row).join('');
   // the two ends are where our car usually is not -- keep it on the page anyway
   var shown={};lo.concat(hi).forEach(function(x){shown[x.car]=1;});
   if(own&&!shown[own.car])h+=sect('Our car')+row(own);
