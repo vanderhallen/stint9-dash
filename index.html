@@ -35,6 +35,13 @@
   .headrow{display:flex;align-items:flex-start;justify-content:flex-start;gap:14px;flex-wrap:nowrap;margin-top:4px}
   .evdate{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--muted);margin-top:2px}
   .field{display:flex;flex-direction:column-reverse;gap:5px}
+  /* The car picker's option labels carry the CURRENT driver (refreshCarDropdown,
+     rewritten ~1/s in LIVE), and a native select sizes itself to its WIDEST
+     option — so without this the box breathes by ~150px as drivers swap, and
+     that swing lands on the controls card next to it. Fixed box, ellipsis on
+     overflow; the open list is our own .dropdn panel (minWidth = box width,
+     rows nowrap), so full names are still shown there in full. */
+  #carsel{width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .field label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
   select,input[type=number]{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;box-sizing:border-box;height:44px;line-height:1.2}
   /* select's *closed* box is inside the page's transform:scale (fitPage) and
@@ -84,7 +91,7 @@
   @keyframes code60pulsebanner{0%,100%{opacity:.8}50%{opacity:1}}
     .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
-  .controls input[type=range]{flex:1 1 50px;min-width:40px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
+  .controls input[type=range]{flex:0 1 120px;min-width:40px;max-width:120px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
   .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:50px}
   .modebtn{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
   .modebtn.active{background:var(--ink);color:#fff}
