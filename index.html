@@ -4919,10 +4919,13 @@ applyWxReel(false);
 (function initArchiveEvent(){
   var params=new URLSearchParams(location.search);
   var slug=params.get('event');
-  // No ?event= → replay the most recent archived race day instead of the baked
+  // No ?event= → replay the most recent archived RACE instead of the baked
   // dataset. SIM has no start button (playback auto-starts on load), so opening
   // the dashboard cold should land on the latest race rather than a fixed one.
-  // Resolved below; a failed lookup just leaves the baked dataset in place.
+  // "Latest archived event" is not the same thing: practice/qualifying snapshots
+  // (label 'practice', slug EVT-<date>) are archived too and are newer than the
+  // race they belong to, so a plain date sort lands on Sunday practice instead of
+  // Saturday's race. Resolved below; a failed lookup leaves the baked dataset.
   var AUTO=!slug;
   var overlay=(params.get('overlay')==='1'||params.get('overlay')==='true');
   window.archiveSlug=slug;window.archiveOverlay=overlay;   // slug is re-set below when AUTO resolves it
@@ -5003,15 +5006,32 @@ applyWxReel(false);
   }
 
   if(!AUTO){load(slug);return;}
-  // newest archived event by date. Nothing to load (offline, empty table, error)
-  // simply leaves the baked-in dataset showing — exactly today's behaviour.
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date&order=event_date.desc&limit=1',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+  // A race is label 'race' or, for events archived before the label was filled
+  // in (NLS6), no label at all — anything else (practice, qualifying) is a
+  // session snapshot and never the cold-load default.
+  function isRace(e){return !!e&&(!e.label||e.label==='race');}
+  // Newest archived race by date, from the DB; the committed events/index.json is
+  // the offline/error fallback (same rows, written by tools/archive_event.mjs
+  // --sync-files). Neither one resolving simply leaves the baked-in dataset
+  // showing — exactly today's behaviour.
+  function autoFromIndex(){
+    return fetch('events/index.json',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){
+        var e=((j&&j.events)||[]).filter(isRace)
+          .sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));})[0];
+        if(!e||!e.slug)return;
+        slug=e.slug;window.archiveSlug=slug;
+        return load(slug);
+      }).catch(function(){});
+  }
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label&or=(label.eq.race,label.is.null)&order=event_date.desc&limit=1',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(a){
-      if(!a||!a[0]||!a[0].slug)return;
+      if(!a||!a[0]||!a[0].slug)return autoFromIndex();
       slug=a[0].slug;window.archiveSlug=slug;
       return load(slug);
-    }).catch(function(){});
+    }).catch(autoFromIndex);
 })();
 
 /* ---- SIM race picker: choose an archived event (admin's "Race events
