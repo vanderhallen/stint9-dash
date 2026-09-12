@@ -2891,3 +2891,38 @@ only the label differs.
 mis-parse. `NLS_CHAMP.res` stays the source for that round, and the season
 skeleton (round labels/dates/cancellations) is still the static `rounds` array —
 a round flips from "upcoming" to raced automatically once results exist for it.
+
+# 23. Known issue — S1 is expected to read empty/bogus on the very first lap (not yet fixed)
+
+**The physical setup.** The S1 beacon sits just before the start/finish line, so
+a lap's leg 1 (`li[1]===1`, S1→S2) spans across start/finish. Race timing only
+arms at the green flag (12:00), not during the formation lap. Cars physically
+cross the S1 beacon during the formation lap — before timing is live — so that
+crossing is never recorded. They then cross start/finish (which *is* recorded,
+as the start of the timed lap 1) and carry on into S2 with no real S1 timestamp
+behind them.
+
+**Why this is normal, not a fault.** Every car on the grid does this once, at
+the same moment (race start). It is not a per-car anomaly — it is a one-time gap
+in the source data that the timing feed itself produces, identical in shape to a
+real delay but happening to the whole field simultaneously.
+
+**Why it will read as a false DELAY today.** `render()`'s `_completedDelay` check
+(`index.html` ~2887-2892) compares a completed leg's duration
+`_d = lg[3]-lg[2]` against `DB.avgseg[lg[1]]*(1+thr)`. For lap 1 / sector 1,
+`lg[2]` (the leg's start timestamp) is either missing or backfilled from the
+untimed formation-lap crossing, so `_d` comes out far larger than a real S1 —
+long enough to land in the `avg×(1+thr)..avg×4` band that `_completedDelay`
+badges as DELAY (or, if it lands past `avg×4`, to get miscategorized as a
+parked/pit car instead — see the `PIT_AFTER_S1_X` branch in `liveCarXY`,
+~2839-2841, which also keys off `li[1]===1`). Because every car hits this at
+the same instant, the expected symptom is **several-to-most cars flashing
+DELAY together in the first minute of the race**, self-clearing once each car
+completes a real S1 in lap 2+.
+
+**Fix direction (not yet implemented).** Suppress the DELAY badge (and the
+`PIT_AFTER_S1_X` parked-inference) specifically for `lg[0]===1 && lg[1]===1`
+(lap 1, sector 1) across the field, or more generally for any leg whose start
+timestamp precedes the recorded race-start time — rather than raising
+`thr`/`PIT_AFTER_S1_X` globally, which would just mask real early-race
+incidents instead of this one known artifact.
