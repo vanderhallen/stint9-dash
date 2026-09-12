@@ -571,9 +571,16 @@ def lan_ip():
 
 if __name__ == '__main__':
     ip = lan_ip()
+    local_host = subprocess.run(['scutil', '--get', 'LocalHostName'], capture_output=True, text=True).stdout.strip()
     print(f'STINT9 replay server starting on http://localhost:{PORT}')
+    if local_host:
+        # stable across network changes (unlike the DHCP-assigned IP below) --
+        # this is the address replay.html itself falls back to when opened
+        # from the deployed site, so keep it in sync with CAPTURE_HOST there
+        # if this Mac's name (System Settings > Sharing) ever changes.
+        print(f'  fixed link for other laptops on this network: http://{local_host}.local:{PORT}/replay.html')
     if ip:
-        print(f'  also reachable from other laptops on this network: http://{ip}:{PORT}/replay.html')
+        print(f'  (raw LAN IP right now, will change: http://{ip}:{PORT}/replay.html)')
     # 0.0.0.0: other machines on the same LAN/hotspot can open the dashboard too
     # (they only view/control this Mac's single capture session, same as this tab).
     # macOS may prompt to allow incoming connections for Python the first time.

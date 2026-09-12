@@ -80,7 +80,7 @@
     <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="openTerminal()" id="openTerminalBtn">Open Terminal</button><span class="meta" id="openTerminalFeedback" style="margin:0"></span></div>
     <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
     <div class="step"><span class="stepnum">3</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
-    <div class="step"><span class="stepnum">4</span><button class="btn ghost" onclick="location.href=BASE+'/replay.html'">Open lokaal</button><code>localhost:5057/replay.html</code></div>
+    <div class="step"><span class="stepnum">4</span><button class="btn ghost" onclick="location.href=BASE+'/replay.html'">Open</button><code>ivos-macbook-air.local:5057/replay.html</code></div>
     <div class="meta" style="margin-top:12px">First time only: <code>brew install tesseract</code>, then <code>pip install pytesseract</code> inside that venv.</div>
   </div>
 
@@ -127,12 +127,16 @@
 </div>
 
 <script>
-/* This page is served two ways: (a) the deployed stint9.com copy, where BASE
-   must stay 'localhost' -- that's the "run the server on your own Mac, then
-   click Open lokaal" flow; (b) directly from the replay server itself
-   (port 5057, whether via localhost or another laptop's http://<mac-LAN-IP>:5057),
-   where BASE must be same-host or a LAN viewer would hit its own localhost. */
-var BASE=(location.port==='5057') ? ('http://'+location.hostname+':5057') : 'http://localhost:5057';
+/* This page is served two ways: (a) the deployed stint9.com copy -- BASE must
+   point at the capture Mac's stable Bonjour/.local hostname (NOT 'localhost',
+   which from any other laptop just means itself), so this same link works
+   for the operator's own Mac *and* any other laptop on the same network,
+   with no dependency on a DHCP IP that changes when the network does;
+   (b) directly from the replay server itself (port 5057, whether via
+   localhost, the .local name, or a raw LAN IP), where BASE must be
+   same-host or a viewer would hit their own machine instead. */
+var CAPTURE_HOST='ivos-macbook-air.local';   // update if this Mac's name (System Settings > Sharing) ever changes
+var BASE=(location.port==='5057') ? ('http://'+location.hostname+':5057') : ('http://'+CAPTURE_HOST+':5057');
 
 /* ---- Supabase Storage (same project + publishable key as the rest of stint9-dash);
    the local server does the uploading now, this page only reads the clip list back ---- */
