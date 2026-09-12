@@ -1835,19 +1835,23 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     if(stints.length)stints[stints.length-1].endLap=Math.max(stints[stints.length-1].endLap,lapsDriven);
     const pLabels=[];
     stints.forEach((st2,si)=>{
-      const x0=colX(st2.startLap),x1=colX(st2.endLap),w=Math.max(0,x1-x0);if(w<0.5)return;
-      const col=driverColor(st2.driver);
-      s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
-      const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
-      if(w>label.length*6.2+8)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
-      // remaining pit time from the P-TIME reel, stood at the bar's trailing
-      // edge so the row reads: complete bar → XmYs → next bar → XmYs → …
+      const x0=colX(st2.startLap),x1=colX(st2.endLap),w=Math.max(0,x1-x0);
       const pt=pTimeFmt(st,si+1);
-      if(pt)pLabels.push({x:x1,y:cy,t:pt,sel:st===selCar});
+      if(w>=0.5){
+        const col=driverColor(st2.driver);
+        s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
+        const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
+        if(w>label.length*6.2+24)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
+      }
+      // remaining pit time sits in a chip AFTER the bar so a following stint
+      // cannot paint over it — #677 was visible only because its time landed
+      // in empty space past the last bar; #670's times sit at bar joins.
+      if(pt)pLabels.push({x:x1,y:cy,h:barH,t:pt,sel:st===selCar});
     });
     pLabels.forEach(function(p){
-      const fill=p.sel?'#fff':'#16202b',stroke=p.sel?'#16202b':'#fff';
-      s+='<text transform="rotate(90 '+p.x.toFixed(1)+' '+p.y.toFixed(1)+')" x="'+p.x.toFixed(1)+'" y="'+p.y.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="800" font-family="IBM Plex Mono,monospace" fill="'+fill+'" stroke="'+stroke+'" stroke-width="2.4" paint-order="stroke" stroke-linejoin="round">'+p.t+'</text>';
+      const gap=18,bx=p.x,by=p.y-p.h/2,tx=bx+gap/2,ty=p.y;
+      s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+gap+'" height="'+p.h+'" rx="3" fill="'+(p.sel?'#16202b':'#fff')+'" stroke="#16202b" stroke-width="1"/>';
+      s+='<text transform="rotate(90 '+tx.toFixed(1)+' '+ty.toFixed(1)+')" x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="800" font-family="IBM Plex Mono,monospace" fill="'+(p.sel?'#fff':'#16202b')+'">'+p.t+'</text>';
     });
   });
   svg.innerHTML=s;}
@@ -1856,9 +1860,17 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
    minutes and seconds — so the crew can type the clock they are holding. */
 function pTimeDate(){return (DB.event&&DB.event.date)||(typeof liveEventDate==='function'?liveEventDate():'');}
 function savePTime(){try{localStorage.setItem('stint9_ptime',JSON.stringify(PTIME));}catch(e){}}
+function pTimeRow(car){
+  const ids=[String(car),String(car).replace(/^#/,'')];
+  const pick=d=>{if(!d)return null;for(let i=0;i<ids.length;i++)if(d[ids[i]])return d[ids[i]];return null;};
+  const hit=pick(PTIME[pTimeDate()]);
+  if(hit)return hit;
+  const keys=Object.keys(PTIME);
+  for(let i=keys.length-1;i>=0;i--){const h=pick(PTIME[keys[i]]);if(h)return h;}
+  return {};
+}
 function pTimeFmt(car,n){
-  const day=PTIME[pTimeDate()]||{},row=day[String(car)]||{};
-  const slot=row[n]||row[String(n)];
+  const row=pTimeRow(car),slot=row[n]||row[String(n)];
   if(!slot)return '';
   const num=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.').trim());return isFinite(x)?x:null;};
   const m=num(slot.min),sec=num(slot.sec);
@@ -1898,7 +1910,6 @@ function renderPTime(T){
   const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'');
   if(sig===_ptimeSig&&wrap.querySelector('table'))return;
   _ptimeSig=sig;
-  const day=PTIME[pTimeDate()]||{};
   const av=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds.</div>';
   h+='<table><thead><tr><th class="l">Car</th>';
@@ -1907,9 +1918,10 @@ function renderPTime(T){
   ordered.forEach(st=>{
     const pos=lp[st]!=null?('P'+lp[st]):'—';
     const sel=st===selCar;
+    const row=pTimeRow(st);
     h+='<tr'+(sel?' class="sel"':'')+'><td class="l">'+pos+' #'+st+'</td>';
     for(let i=1;i<=nCols;i++){
-      const slot=(day[String(st)]&&day[String(st)][i])||{min:'',sec:''};
+      const slot=row[i]||row[String(i)]||{min:'',sec:''};
       h+='<td><span class="ptime-pair">'+
         '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-stint="'+i+'" data-k="min" value="'+av(slot.min)+'">'+
         '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-stint="'+i+'" data-k="sec" value="'+av(slot.sec)+'">'+
