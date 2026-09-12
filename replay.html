@@ -8,11 +8,12 @@
   :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff;--red:#e0301e;--green:#1e8f3a;--blue:#2f5fd0}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
-  .wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  .wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
   h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
   .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
   .card.offline{border-color:#f6cfc9;background:#fff8f7}
+  .inert{opacity:.5;pointer-events:none}
   .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-top:8px;line-height:1.5}
@@ -48,10 +49,14 @@
   table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
   .carno{font-weight:700;color:#1e8f3a}
   .empty{color:var(--muted);font-size:13px;padding:8px 0}
-  .hits{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .hits{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:820px){.hits{grid-template-columns:1fr}}
   .hit{background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
-  .hit img,.hit video{width:100%;display:block;background:#000}
+  .hit img,.hit video{width:100%;display:block;background:#000;aspect-ratio:16/9;object-fit:cover}
   .hit .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:8px 10px;background:#fff}
+  .summary{margin:14px 0 18px;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+  .summary video{width:100%;display:block;background:#000;aspect-ratio:16/9}
+  .summary .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:10px 12px;background:#fff}
   #authOverlay{position:fixed;inset:0;background:rgba(15,20,26,.72);z-index:50;align-items:center;justify-content:center;padding:20px}
 </style>
 </head>
@@ -82,6 +87,10 @@
       <select id="browseSelect" style="font-family:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;flex:1 1 260px"><option>loading…</option></select>
     </div>
     <div class="err" id="browseErr"></div>
+    <div class="summary" id="browseSummary" style="display:none">
+      <video id="browseSummaryVid" controls playsinline preload="metadata"></video>
+      <div class="cap" id="browseSummaryCap"></div>
+    </div>
     <div class="hits" id="browseGrid" style="margin-top:14px"></div>
     <div class="meta" id="browseMeta"></div>
   </div>
@@ -97,23 +106,26 @@
     <div class="meta" style="margin-top:12px">First time only: <code>brew install tesseract</code>, then <code>pip install pytesseract</code> inside that venv.</div>
   </div>
 
-  <!-- ---- server online: source + monitor + clips ---- -->
-  <div id="onlineCards" style="display:none">
-    <div class="card">
+  <!-- ---- source + monitor + clips: always visible now (Clips reads Supabase
+       directly and works offline; Source/Monitor need the local server, so
+       those two alone go inert — dimmed, Start disabled — while it's offline,
+       rather than the whole block disappearing behind the offline card above ---- -->
+  <div id="onlineCards">
+    <div class="card inert" id="sourceCard">
       <h2>Source</h2>
       <div class="row">
         <input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off">
-        <button class="btn" id="startBtn" onclick="startMonitoring()">Start monitoring</button>
+        <button class="btn" id="startBtn" onclick="startMonitoring()" disabled>Start monitoring</button>
         <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
       </div>
       <div class="err" id="startErr"></div>
       <div class="yt-embed" id="yt-embed"></div>
     </div>
 
-    <div class="card">
+    <div class="card inert" id="monitorCard">
       <h2>Monitor</h2>
       <div class="row">
-        <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">idle</span></span>
+        <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">offline</span></span>
         <span id="scanPos"></span>
       </div>
       <div class="previewwrap" id="previewWrap">
@@ -210,7 +222,9 @@ function setServerOnline(){
   if(serverOnline)return;serverOnline=true;
   if(healthTimer){clearInterval(healthTimer);healthTimer=null;}
   document.getElementById('offlineCard').style.display='none';
-  document.getElementById('onlineCards').style.display='';
+  document.getElementById('sourceCard').classList.remove('inert');
+  document.getElementById('monitorCard').classList.remove('inert');
+  document.getElementById('startBtn').disabled=false;
   restoreYtUrl();
   pollStatus();
   statusTimer=setInterval(pollStatus,1000);
@@ -218,12 +232,16 @@ function setServerOnline(){
 function setServerOffline(){
   serverOnline=false;
   document.getElementById('offlineCard').style.display='';
-  document.getElementById('onlineCards').style.display='none';
+  document.getElementById('sourceCard').classList.add('inert');
+  document.getElementById('monitorCard').classList.add('inert');
   if(!healthTimer)healthTimer=setInterval(checkServer,4000);
   if(statusTimer){clearInterval(statusTimer);statusTimer=null;}
   resetMonitorUi();
+  document.getElementById('startBtn').disabled=true;
+  setStatus('offline');
 }
 checkServer();
+restoreYtUrl();   // Clips reads Supabase directly, so show past clips even while the local server is offline
 
 /* ---- offline-card buttons: same mechanics as the hoc-tracker kenteken tool ---- */
 async function openTerminal(){
@@ -562,13 +580,33 @@ async function fetchClipRows(videoId){
   const list=await res.json();
   return dedupeClips((list||[]).map(obj=>objToClipRow(videoId,obj,cars)).filter(Boolean));
 }
+function summaryUrl(videoId){
+  return SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/summary.mp4');
+}
+function showBrowseSummary(videoId, rows){
+  const box=document.getElementById('browseSummary');
+  const vid=document.getElementById('browseSummaryVid');
+  const cap=document.getElementById('browseSummaryCap');
+  const url=summaryUrl(videoId);
+  const n=rows.length;
+  const tot=rows.reduce((s,r)=>s+(r.durationS||0),0);
+  vid.src=url;
+  cap.innerHTML='<span class="status active" style="padding:4px 10px">REPLAY SUMMARY</span>'+
+    '<span>'+n+' clip'+(n===1?'':'s')+' · '+fmtDur(tot)+'</span>'+
+    '<a class="btn ghost" style="padding:5px 10px;margin-left:auto" href="'+url+'" target="_blank" rel="noopener">▶ play / download</a>';
+  box.style.display='';
+  vid.onerror=()=>{box.style.display='none';};
+}
 async function loadBrowseClips(videoId){
   const grid=document.getElementById('browseGrid'),meta=document.getElementById('browseMeta'),err=document.getElementById('browseErr');
-  if(!videoId){grid.innerHTML='';meta.textContent='';return;}
+  const box=document.getElementById('browseSummary');
+  if(!videoId){grid.innerHTML='';meta.textContent='';box.style.display='none';return;}
   err.textContent='';
   grid.innerHTML='<div class="empty">loading…</div>';
+  box.style.display='none';
   try{
     const rows=(await fetchClipRows(videoId)).sort((a,b)=>a.startedAtMs-b.startedAtMs);
+    if(rows.length)showBrowseSummary(videoId, rows);
     grid.innerHTML=rows.length?buildClipsGalleryHtml(rows):'<div class="empty">no clips found for this video.</div>';
     meta.textContent=rows.length?rows.length+' clip'+(rows.length===1?'':'s'):'';
   }catch(e){
