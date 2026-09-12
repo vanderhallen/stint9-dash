@@ -42,8 +42,10 @@ for (const [input, expected] of cases) check(`ytId(${JSON.stringify(input)}) -> 
 const wxn = html.match(/const WXN=(\d+);/);
 check('WXN includes the new YOUTUBE panel (7 panels total)', wxn && wxn[1] === '7', wxn && wxn[1]);
 
-const gate = html.includes("if(wxReelIdx!==6&&typeof stopYtPlayer==='function')stopYtPlayer();");
-check('scrolling away from the YouTube panel (index 6) stops playback', gate, gate);
+// index 3, not the original 6: the YouTube panel was later moved to sit
+// right after the timetable panel (a placement request, not a bug fix).
+const gate = html.includes("if(wxReelIdx!==3&&typeof stopYtPlayer==='function')stopYtPlayer();");
+check('scrolling away from the YouTube panel stops playback', gate, gate);
 
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — YouTube reel parses every common link shape and wires into the strip correctly');
 process.exit(failures ? 1 : 0);
