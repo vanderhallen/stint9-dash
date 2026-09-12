@@ -406,6 +406,14 @@
   .mstand tr:first-child td{border-top:none}
   .mstand .p{color:var(--muted);width:40px}.mstand .g{text-align:right;color:var(--muted);white-space:nowrap}
   .mstand tr.sel td{color:var(--accent);font-weight:700}
+  /* Sector-times row: same .mstat building block as the last-lap/fastest/lap
+     row, but 5-wide instead of 3 — that row's 21px value font overflows a
+     phone-width column here (a 4-minute S3/S4 like "4:39.5" needs ~76px at
+     21px monospace against a ~61px column on a 375px screen), so this gets
+     its own smaller size rather than reusing .mstats .v directly. */
+  .msect{display:flex;gap:6px;text-align:center}
+  .msect .mstat{flex:1 1 0;min-width:0}
+  .msect .v{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px}
   /* ---- LOGIN (auth gate) ---- */
   #authbox{display:flex;align-items:center;gap:8px;margin-left:8px}
   #authbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;font-weight:600}
@@ -2742,11 +2750,19 @@ function renderMobile(){
     }else{mcl.textContent=hmsClock(T);mcl.style.color='';mcl.classList.remove('mstatus');}
   }
   var lp=livePos(T);
-  if(!selCar||!lp[selCar]){['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});set('m_num','select a car');set('m_drv','');}
+  if(!selCar||!lp[selCar]){
+    ['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap','m_s1','m_s2','m_s3','m_s4','m_s5'].forEach(function(id){set(id,'—');});
+    set('m_num','select a car');set('m_drv','');set('m_sect_car','select a car');
+  }
   else{
-    set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));
+    set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));set('m_sect_car','#'+selCar);
     var g=gaps(T,lp);set('m_ahead',g.ahead!=null?('-'+g.ahead+'s'):'—');set('m_behind',g.behind!=null?('+'+g.behind+'s'):'—');
     var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');set('m_lap','L'+(cs.L||0));
+    // liveSecs: the same per-sector field the desktop standings/comparison
+    // table (fillCmp) shows in its S1-S5 columns — each sector's value from
+    // whichever of this car's laps most recently crossed it, so a completed
+    // sector holds even after the car has moved into the next one.
+    ['m_s1','m_s2','m_s3','m_s4','m_s5'].forEach(function(id,k){set(id,cs.liveSecs[k]!=null?fmt(cs.liveSecs[k]):'—');});
   }
   var rd=function(id){var e=document.getElementById(id);return e?e.textContent:'';};
   set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
@@ -5509,6 +5525,16 @@ applyWxReel(false);
   <div class="mcard">
     <div class="mlbl">standings</div>
     <table class="mstand"><tbody id="m_stand"></tbody></table>
+  </div>
+  <div class="mcard">
+    <div class="mlbl">sector times — <span id="m_sect_car">select a car</span></div>
+    <div class="msect">
+      <div class="mstat"><div class="mlbl">S1</div><div class="v" id="m_s1">&mdash;</div></div>
+      <div class="mstat"><div class="mlbl">S2</div><div class="v" id="m_s2">&mdash;</div></div>
+      <div class="mstat"><div class="mlbl">S3</div><div class="v" id="m_s3">&mdash;</div></div>
+      <div class="mstat"><div class="mlbl">S4</div><div class="v" id="m_s4">&mdash;</div></div>
+      <div class="mstat"><div class="mlbl">S5</div><div class="v" id="m_s5">&mdash;</div></div>
+    </div>
   </div>
 </div>
 <script>
