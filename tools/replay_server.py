@@ -232,6 +232,28 @@ def grab_frame(path, t):
     return None
 
 
+def save_hit_frame(sess, frame, calib, t):
+    """Write a still of the detection frame (red box on the calibrated crop)
+    so the page can show it the moment REPLAY is found."""
+    vis = frame.copy()
+    h, w = vis.shape[:2]
+    x, y = int(calib['x'] * w), int(calib['y'] * h)
+    cw, ch = max(1, int(calib['w'] * w)), max(1, int(calib['h'] * h))
+    cv2.rectangle(vis, (x, y), (x + cw, y + ch), (0, 0, 255), 4)
+    with lock:
+        idx = len(sess.get('hits') or []) + 1
+        dest_dir = sess['dir']
+    fname = f'hit_{idx}.jpg'
+    cv2.imwrite(str(dest_dir / fname), vis, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    crop = crop_frame(frame, calib)
+    if crop is not None and crop.size:
+        cv2.imwrite(str(dest_dir / f'hit_{idx}_crop.jpg'), crop, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    rec = {'id': idx, 't': round(float(t), 2), 'file': fname}
+    with lock:
+        sess.setdefault('hits', []).append(rec)
+    return rec
+
+
 def cut_and_upload(sess, start_t, end_t, idx):
     time.sleep(2.0)   # give yt-dlp time to flush this range to disk before cutting
     dur = max(0.5, end_t - start_t)
@@ -272,6 +294,25 @@ def cut_and_upload(sess, start_t, end_t, idx):
             with lock:
                 sess['error'] = f'upload failed {r.status_code}: {r.text[:180]}'
             return
+        still = clip_path.with_suffix('.jpg')
+        subprocess.run(
+            ['ffmpeg', '-y', '-ss', '0.4', '-i', str(clip_path),
+             '-frames:v', '1', '-q:v', '3', str(still)],
+            capture_output=True,
+        )
+        if still.exists() and still.stat().st_size > 0:
+            with open(still, 'rb') as f:
+                requests.post(
+                    f'{SB}/storage/v1/object/{BUCKET}/{obj_path[:-4]}.jpg',
+                    headers={
+                        'apikey': KEY,
+                        'Authorization': f'Bearer {KEY}',
+                        'Content-Type': 'image/jpeg',
+                        'x-upsert': 'true',
+                    },
+                    data=f.read(), timeout=30,
+                )
+            still.unlink(missing_ok=True)
     except Exception as e:
         with lock:
             sess['error'] = f'upload failed: {e}'
@@ -368,6 +409,7 @@ def detection_loop(sess):
                         sess['badge_on'] = badge_on
                     if badge_on:
                         clip_start_t = next_t
+                        save_hit_frame(sess, frame, calib, next_t)
                     elif clip_start_t is not None:
                         clip_idx += 1
                         threading.Thread(
@@ -435,7 +477,7 @@ def monitor_start():
             'scan_mode': 'catchup', 'badge_on': False, 'clips_found': 0,
             'calib': None, 'preview_ready': False, 'scanned_t': 0.0,
             'stopped': False, 'broadcast_start': None, 'error': None,
-            'last_dl_line': '', 'video_path': None,
+            'last_dl_line': '', 'video_path': None, 'hits': [],
         }
         sess = session
     start_download(sess, url)
@@ -455,7 +497,7 @@ def monitor_status():
             scanMode=s['scan_mode'], badgeOn=s['badge_on'], clipsFound=s['clips_found'],
             previewReady=s['preview_ready'], scannedT=s['scanned_t'],
             calibrated=s['calib'] is not None, lastDlLine=s.get('last_dl_line', ''),
-            error=s.get('error'),
+            error=s.get('error'), hits=list(s.get('hits') or []),
         )
 
 
@@ -466,6 +508,17 @@ def monitor_preview():
             return jsonify(status='error'), 404
         d = session['dir']
     return send_from_directory(d, 'preview.jpg')
+
+
+@app.route('/api/monitor/hit/<int:idx>.jpg')
+def monitor_hit(idx):
+    with lock:
+        if not session:
+            return jsonify(status='error'), 404
+        d = session['dir']
+    resp = send_from_directory(d, f'hit_{idx}.jpg')
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 @app.route('/api/monitor/calibrate', methods=['POST'])
@@ -504,6 +557,24 @@ def index():
     return send_from_directory(REPO_ROOT, 'replay.html')
 
 
+def lan_ip():
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
+
+
 if __name__ == '__main__':
+    ip = lan_ip()
     print(f'STINT9 replay server starting on http://localhost:{PORT}')
-    app.run(debug=False, host='localhost', port=PORT)
+    if ip:
+        print(f'  also reachable from other laptops on this network: http://{ip}:{PORT}/replay.html')
+    # 0.0.0.0: other machines on the same LAN/hotspot can open the dashboard too
+    # (they only view/control this Mac's single capture session, same as this tab).
+    # macOS may prompt to allow incoming connections for Python the first time.
+    app.run(debug=False, host='0.0.0.0', port=PORT)

@@ -47,6 +47,10 @@
   table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
   table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
   .empty{color:var(--muted);font-size:13px;padding:8px 0}
+  .hits{display:flex;flex-direction:column;gap:16px}
+  .hit{background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+  .hit img,.hit video{width:100%;display:block;background:#000}
+  .hit .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:8px 10px;background:#fff}
 </style>
 </head>
 <body>
@@ -54,6 +58,19 @@
   <div>
     <h1>STINT9 · Replay clips</h1>
     <div class="sub">A local script watches a livestream for the REPLAY badge and auto-catches every clip — runs independently of any browser tab.</div>
+  </div>
+
+  <!-- ---- browse clips: reads Supabase Storage directly, no local server needed --
+       works for anyone, on any network, including the deployed stint9.com copy ---- -->
+  <div class="card" id="browseCard">
+    <h2>Browse clips</h2>
+    <div class="meta" style="margin:0 0 12px">Every REPLAY clip ever caught, by video — this works even when the capture Mac is offline, since it reads straight from Supabase Storage.</div>
+    <div class="row">
+      <select id="browseSelect" style="font-family:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;flex:1 1 260px"><option>loading…</option></select>
+    </div>
+    <div class="err" id="browseErr"></div>
+    <div class="hits" id="browseGrid" style="margin-top:14px"></div>
+    <div class="meta" id="browseMeta"></div>
   </div>
 
   <!-- ---- server offline: setup instructions, mirrors the hoc-tracker kenteken tool ---- -->
@@ -101,11 +118,21 @@
       <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div></div>
       <div class="meta" id="clipsMeta"></div>
     </div>
+
+    <div class="card" id="hitsCard" style="display:none">
+      <h2>REPLAY found</h2>
+      <div class="hits" id="hitsGrid"></div>
+    </div>
   </div>
 </div>
 
 <script>
-var BASE='http://localhost:5057';
+/* This page is served two ways: (a) the deployed stint9.com copy, where BASE
+   must stay 'localhost' -- that's the "run the server on your own Mac, then
+   click Open lokaal" flow; (b) directly from the replay server itself
+   (port 5057, whether via localhost or another laptop's http://<mac-LAN-IP>:5057),
+   where BASE must be same-host or a LAN viewer would hit its own localhost. */
+var BASE=(location.port==='5057') ? ('http://'+location.hostname+':5057') : 'http://localhost:5057';
 
 /* ---- Supabase Storage (same project + publishable key as the rest of stint9-dash);
    the local server does the uploading now, this page only reads the clip list back ---- */
@@ -190,15 +217,19 @@ function restoreYtUrl(){
 
 /* ---- start/stop monitoring: hands the URL to the local server, which does
    everything else (download, detect, cut, upload) independently of this page ---- */
-var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0;
+var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0,lastHitsSig='',lastClipsLoad=0;
 function resetMonitorUi(){
   document.getElementById('startBtn').disabled=false;
   document.getElementById('stopBtn').disabled=true;
   document.getElementById('previewWrap').classList.remove('on');
   document.getElementById('calibRow').style.display='none';
   document.getElementById('scanPos').textContent='';
+  document.getElementById('hitsCard').style.display='none';
+  document.getElementById('hitsGrid').innerHTML='';
   calibShown=false;
   lastClipsFound=-1;
+  lastHitsSig='';
+  lastClipsLoad=0;
   setStatus('idle');
 }
 async function startMonitoring(){
@@ -267,8 +298,12 @@ async function pollStatus(){
   else if(!st.calibrated && st.lastDlLine)pos=st.lastDlLine;
   document.getElementById('scanPos').textContent=pos;
   if(st.previewReady&&!st.calibrated&&!calibShown){calibShown=true;showCalibration();}
+  renderHits(st.hits||[]);
+  const now=Date.now();
   if(typeof st.clipsFound==='number' && st.clipsFound!==lastClipsFound){
     lastClipsFound=st.clipsFound;
+    loadClipsTable();
+  }else if(now-lastClipsLoad>3000){
     loadClipsTable();
   }
 }
@@ -340,8 +375,15 @@ function parseDashedIso(s){
   const ms=Date.parse(m[1]+'T'+m[2]+':'+m[3]+':'+m[4]+'.'+m[5]+'Z');
   return isNaN(ms)?0:ms;
 }
+function clipFileName(obj){
+  let n=obj.name||'';
+  const pfx=ytVideoId+'/';
+  if(n.startsWith(pfx))n=n.slice(pfx.length);
+  return n.split('/').pop();
+}
 async function loadClipsTable(){
   if(!ytVideoId)return;
+  lastClipsLoad=Date.now();
   const meta=document.getElementById('clipsMeta');
   try{
     const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
@@ -353,14 +395,114 @@ async function loadClipsTable(){
     const list=await res.json();
     clipRows={};
     (list||[]).forEach(obj=>{
-      const m=obj.name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);if(!m)return;
-      const path=ytVideoId+'/'+obj.name;
+      const name=clipFileName(obj);
+      const m=name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);if(!m)return;
+      const path=ytVideoId+'/'+name;
       clipRows[path]={startedAtMs:parseDashedIso(m[1]),durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
     });
     renderClipsTable();
     meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
+    renderHitsFromClips();
   }catch(e){}
 }
+function renderHits(hits){
+  const sig=JSON.stringify(hits);
+  if(sig===lastHitsSig)return;
+  lastHitsSig=sig;
+  if(hits && hits.length){
+    const grid=document.getElementById('hitsGrid');
+    document.getElementById('hitsCard').style.display='';
+    grid.innerHTML=hits.map(h=>
+      '<div class="hit">'+
+        '<img src="'+BASE+'/api/monitor/hit/'+h.id+'.jpg?t='+Date.now()+'" alt="REPLAY at '+fmtDur(h.t)+'">'+
+        '<div class="cap"><span class="status active" style="padding:4px 10px">REPLAY</span>'+
+        '<span>'+fmtDur(h.t)+' into the recording</span></div>'+
+      '</div>'
+    ).join('');
+    return;
+  }
+  renderHitsFromClips();
+}
+function buildClipsGalleryHtml(rows){
+  if(!rows.length)return '';
+  return rows.map((r,i)=>{
+    const poster=r.url.replace(/\.mp4($|\?)/,'.jpg$1').replace(/\.webm($|\?)/,'.jpg$1');
+    return '<div class="hit">'+
+      '<a href="'+r.url+'" target="_blank" rel="noopener">'+
+        '<img src="'+poster+'" alt="REPLAY clip '+(i+1)+'" onerror="this.outerHTML=\'<video src=&quot;'+r.url+'&quot; controls preload=metadata playsinline></video>\'">'+
+      '</a>'+
+      '<div class="cap"><span class="status active" style="padding:4px 10px">REPLAY</span>'+
+      '<span>clip '+(i+1)+' · '+fmtClock(r.startedAtMs)+' · '+fmtDur(r.durationS)+'</span>'+
+      '<a class="btn ghost" style="padding:5px 10px;margin-left:auto" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a></div>'+
+    '</div>';
+  }).join('');
+}
+function renderHitsFromClips(){
+  if(lastHitsSig && lastHitsSig!=='[]')return;
+  const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
+  const card=document.getElementById('hitsCard');
+  if(!rows.length){card.style.display='none';document.getElementById('hitsGrid').innerHTML='';return;}
+  card.style.display='';
+  document.getElementById('hitsGrid').innerHTML=buildClipsGalleryHtml(rows);
+}
+
+/* ---- Browse clips: independent of the local capture server -- lists every
+   video folder in the public Supabase Storage bucket (a root-level list()
+   call returns folders as entries with id:null) and renders its clips
+   straight from Storage. Works from the deployed site, any laptop, any
+   network -- unlike the monitor controls above, no local process involved. */
+function objToClipRow(videoId,obj){
+  const name=(obj.name||'').split('/').pop();
+  const m=name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);
+  if(!m)return null;
+  return {startedAtMs:parseDashedIso(m[1]),durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/'+name)};
+}
+async function fetchClipRows(videoId){
+  const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
+    method:'POST',
+    headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({prefix:videoId+'/',limit:200,sortBy:{column:'name',order:'asc'}})
+  });
+  if(!res.ok)throw new Error('list failed '+res.status);
+  const list=await res.json();
+  return (list||[]).map(obj=>objToClipRow(videoId,obj)).filter(Boolean);
+}
+async function loadBrowseClips(videoId){
+  const grid=document.getElementById('browseGrid'),meta=document.getElementById('browseMeta'),err=document.getElementById('browseErr');
+  if(!videoId){grid.innerHTML='';meta.textContent='';return;}
+  err.textContent='';
+  grid.innerHTML='<div class="empty">loading…</div>';
+  try{
+    const rows=(await fetchClipRows(videoId)).sort((a,b)=>a.startedAtMs-b.startedAtMs);
+    grid.innerHTML=rows.length?buildClipsGalleryHtml(rows):'<div class="empty">no clips found for this video.</div>';
+    meta.textContent=rows.length?rows.length+' clip'+(rows.length===1?'':'s'):'';
+  }catch(e){
+    grid.innerHTML='';
+    err.textContent='could not load clips — check the connection and try again';
+  }
+}
+async function loadBrowseVideos(){
+  const sel=document.getElementById('browseSelect');
+  try{
+    const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({prefix:'',limit:200,sortBy:{column:'name',order:'desc'}})
+    });
+    const list=res.ok?await res.json():[];
+    const ids=(list||[]).filter(o=>o.id===null && o.name).map(o=>o.name);
+    const wanted=ytId(new URLSearchParams(location.search).get('v')||'');
+    if(wanted && !ids.includes(wanted))ids.unshift(wanted);   // deep link to a video not yet indexed at the root
+    if(!ids.length){sel.innerHTML='<option value="">no clips recorded yet</option>';document.getElementById('browseMeta').textContent='';return;}
+    sel.innerHTML=ids.map(id=>'<option value="'+id+'">'+id+'</option>').join('');
+    sel.value=wanted&&ids.includes(wanted)?wanted:ids[0];
+    loadBrowseClips(sel.value);
+  }catch(e){
+    sel.innerHTML='<option value="">could not reach Supabase</option>';
+  }
+}
+document.getElementById('browseSelect').addEventListener('change',e=>loadBrowseClips(e.target.value));
+loadBrowseVideos();
 </script>
 </body>
 </html>
