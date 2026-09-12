@@ -171,17 +171,23 @@
   #compmetric .seg:hover{background:#f1f3f5}
   #compmetric .seg.on{background:#16202b;color:#fff}
   /* zoomed reel tables (GRID/SNAP/DRV/TIMES): scale up so the big modal fills and reads better */
-  .card.zoomed #gridtablewrap table,.card.zoomed #snaptablewrap table,.card.zoomed #drvtablewrap table{font-size:19px!important}
-  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #snaptablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child{font-size:16px!important;padding:0 4px 16px!important}
-  .card.zoomed #gridtablewrap th,.card.zoomed #snaptablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #snaptablewrap td,.card.zoomed #drvtablewrap td{padding:6px 10px!important}
+  /* Every length in the zoomed-table rules below is multiplied through --zt, the
+     fit factor fitZoomTable() writes onto the wrap after each render. It is 1 —
+     i.e. exactly the sizes tuned here — whenever the table already fits, and only
+     ever drops below 1 to pull a table that would overflow back inside the modal,
+     font and padding shrinking together so the proportions hold. These stay the
+     intended MAXIMUM; see fitZoomTable() for why measuring beats guessing. */
+  .card.zoomed #gridtablewrap table,.card.zoomed #snaptablewrap table,.card.zoomed #drvtablewrap table{font-size:calc(19px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #snaptablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child{font-size:calc(16px*var(--zt,1))!important;padding:0 4px calc(16px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap th,.card.zoomed #snaptablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #snaptablewrap td,.card.zoomed #drvtablewrap td{padding:calc(6px*var(--zt,1)) calc(10px*var(--zt,1))!important}
   /* TIMES is only 8 rows, so at its inline size it leaves the modal mostly
      empty. Scale it harder than the other tables and let the rows breathe —
      but keep the table content-width: stretching it to 100% blows the row-label
      column out to half the modal whenever a car has only a few laps in. */
-  .card.zoomed #sectabwrap table{font-size:23px!important}
-  .card.zoomed #sectabwrap th,.card.zoomed #sectabwrap td{padding:14px 20px!important}
+  .card.zoomed #sectabwrap table{font-size:calc(23px*var(--zt,1))!important}
+  .card.zoomed #sectabwrap th,.card.zoomed #sectabwrap td{padding:calc(14px*var(--zt,1)) calc(20px*var(--zt,1))!important}
   .card.zoomed #gridtablewrap td>div,.card.zoomed #snaptablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
-  .card.zoomed #gridtablewrap span,.card.zoomed #snaptablewrap span,.card.zoomed #drvtablewrap span{width:12px!important;height:28px!important;border-radius:2px!important}
+  .card.zoomed #gridtablewrap span,.card.zoomed #snaptablewrap span,.card.zoomed #drvtablewrap span{width:calc(12px*var(--zt,1))!important;height:calc(28px*var(--zt,1))!important;border-radius:2px!important}
   /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
      align-items:center centres the (short) table vertically in the tall modal
      instead of pinning it to the top. max-height keeps it scrollable if ever tall. */
@@ -1881,6 +1887,33 @@ function fitDrv(){
    its S/F crossing time is <= T (so it builds out live/replay), and the car's
    own best in each row is highlighted purple. Horizontal + vertical scroll with
    sticky lap header and sticky row-label column. */
+/* Fit a zoomed reel table inside its modal.
+   The zoomed sizes in the CSS above are fixed and deliberately large so the
+   board reads from across the garage — but they were tuned against a typical
+   row count in a typical-height window. Give it more laps, or a shorter modal
+   (a laptop, a rotated tablet), and the bottom row simply falls off: TIMES lost
+   its S5 row this way, reported 2026-09-12. The wrap does scroll, but nobody
+   scrolls a board they are glancing at mid-stint.
+   Guessing a font size from the row count is the fragile version of this —
+   column widths, driver-name lengths and the caption all move too. So render at
+   full size, measure the actual overflow, and hand the CSS a single factor to
+   multiply every length by. Shrink only: a table that fits is left exactly as
+   tuned. Two or three passes because the relationship is near-linear but not
+   exactly so — text can re-wrap on the way down. */
+function fitZoomTable(){
+  const card=document.querySelector('.card.zoomed');if(!card)return;
+  const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#snaptablewrap,#drvtablewrap');
+  if(!wrap||!wrap.querySelector('table'))return;
+  let k=1;wrap.style.setProperty('--zt','1');
+  for(let i=0;i<3;i++){
+    const oh=wrap.scrollHeight,ow=wrap.scrollWidth,ch=wrap.clientHeight,cw=wrap.clientWidth;
+    if(!(oh>0&&ow>0&&ch>10&&cw>10))return;                 // not laid out yet — leave it alone
+    const f=Math.min(ch/oh,cw/ow);
+    if(f>=0.995)break;                                     // fits (or already does after the last pass)
+    k=Math.max(0.4,k*f*0.99);                              // 0.99 = a hair of slack so a rounding error can't re-clip
+    wrap.style.setProperty('--zt',k.toFixed(4));
+  }
+}
 function renderSecTab(T){
   const wrap=document.getElementById('sectabwrap');if(!wrap)return;
   const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
@@ -2465,6 +2498,7 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(reelIdx===12||_tk)renderDrvGrid(T);
   if(reelIdx===13||_tk)renderP1Comp(T);
   if(reelIdx===14||_tk)renderP1Bar(T);
+  fitZoomTable();   // after the reel that owns the zoomed table has redrawn — new laps change its height
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
   if(_tk)updateThumbs();
@@ -2731,9 +2765,16 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
       if(svgEl&&origSvgW>10){svgEl.style.width=(origSvgW*2)+'px';svgEl.style.height='auto';}
       if(miniEl&&origMiniW>10)miniEl.style.width=(origMiniW*2)+'px';
       sizeZoomedMini(card);
+      // the modal has its final size now, so a table reel can be measured and
+      // fitted immediately — without this it stays clipped until the next
+      // render(), which in a paused SIM never comes.
+      if(typeof fitZoomTable==='function')fitZoomTable();
     },40);
   }
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
+  // the modal is sized off the viewport, so a resize (or a tablet rotating)
+  // changes how much table fits — re-measure rather than stay clipped
+  window.addEventListener('resize',()=>{if(cur&&typeof fitZoomTable==='function')fitZoomTable();});
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){close();return;}
     if(!cur)return;
