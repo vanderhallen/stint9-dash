@@ -47,7 +47,7 @@
   table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
   table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
   .empty{color:var(--muted);font-size:13px;padding:8px 0}
-  .hits{display:flex;flex-direction:column;gap:16px}
+  .hits{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
   .hit{background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
   .hit img,.hit video{width:100%;display:block;background:#000}
   .hit .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:8px 10px;background:#fff}
@@ -485,6 +485,18 @@ async function loadBrowseClips(videoId){
     err.textContent='could not load clips — check the connection and try again';
   }
 }
+/* noembed.com proxies YouTube's oEmbed endpoint with permissive CORS headers --
+   YouTube's own oembed endpoint has none, so a direct browser fetch to it is
+   blocked. Falls back to the raw video id (already showing) if it's down. */
+async function fetchVideoTitle(id){
+  try{
+    const url='https://www.youtube.com/watch?v='+id;
+    const res=await fetch('https://noembed.com/embed?url='+encodeURIComponent(url),{signal:AbortSignal.timeout(4000)});
+    if(!res.ok)return null;
+    const data=await res.json();
+    return (data && data.title) || null;
+  }catch(e){return null;}
+}
 async function loadBrowseVideos(){
   const sel=document.getElementById('browseSelect');
   try{
@@ -500,6 +512,13 @@ async function loadBrowseVideos(){
     if(!ids.length){sel.innerHTML='<option value="">no clips recorded yet</option>';document.getElementById('browseMeta').textContent='';return;}
     sel.innerHTML=ids.map(id=>'<option value="'+id+'">'+id+'</option>').join('');
     sel.value=wanted&&ids.includes(wanted)?wanted:ids[0];
+    ids.forEach(id=>{
+      fetchVideoTitle(id).then(title=>{
+        if(!title)return;
+        const opt=sel.querySelector('option[value="'+id+'"]');
+        if(opt)opt.textContent=title;
+      });
+    });
     loadBrowseClips(sel.value);
   }catch(e){
     sel.innerHTML='<option value="">could not reach Supabase</option>';
