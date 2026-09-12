@@ -461,6 +461,170 @@
       }
     },
     {
+      "car": "670",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T08:41:45.556Z",
+          "0002": "2026-09-12T08:41:45.556Z",
+          "0003": "2026-09-12T08:41:45.556Z",
+          "0004": "2026-09-12T08:41:45.556Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
       "car": "680",
       "state": {
         "bands": {
@@ -696,6 +860,41 @@
       "sector": 5,
       "kind": "fastest",
       "body": "fastest lap so far · 11:12.1"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.1s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:14.5s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P3 · passed #652 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P3 · passed #653 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 3,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:28.8"
     },
     {
       "car": "665",
