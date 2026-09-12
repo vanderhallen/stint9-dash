@@ -51,6 +51,10 @@ BUCKET = 'replay-clips'
 SAMPLE_STEP = 1.0   # video-seconds between OCR samples
 DEBOUNCE_N = 2      # consecutive same-state samples required before flipping badge state
 MIN_VIDEO_BYTES = 400_000
+MERGE_GAP_S = 8.0   # badge re-appearing within this many video-seconds of going off
+                    # extends the same clip instead of starting a new one -- back-to-back
+                    # replays (a new angle, a slow-mo replay of the same incident) often
+                    # have the badge blink off for a couple seconds between segments
 
 app = Flask(__name__, static_folder=None)
 CORS(app, allow_private_network=True)
@@ -327,6 +331,7 @@ def detection_loop(sess):
     badge_on = False
     pending, pending_n = None, 0
     clip_start_t = None
+    pending_off_t = None   # video-time the badge last went off; clip isn't cut until MERGE_GAP_S passes with no comeback
     clip_idx = 0
     cap = None
     cap_path = None
@@ -408,25 +413,35 @@ def detection_loop(sess):
                     with lock:
                         sess['badge_on'] = badge_on
                     if badge_on:
-                        clip_start_t = next_t
+                        if clip_start_t is None:
+                            clip_start_t = next_t
+                        pending_off_t = None   # badge came back -- cancel any pending cut, same clip continues
                         save_hit_frame(sess, frame, calib, next_t)
                     elif clip_start_t is not None:
-                        clip_idx += 1
-                        threading.Thread(
-                            target=cut_and_upload,
-                            args=(sess, clip_start_t, next_t, clip_idx),
-                            daemon=True,
-                        ).start()
-                        clip_start_t = None
+                        pending_off_t = next_t   # don't cut yet -- wait out MERGE_GAP_S in case it comes back
+
+            # flush a clip only once the badge has been off for the full merge
+            # gap with no comeback -- checked every tick, not just on a flip,
+            # since time keeps passing while we're waiting to see if it returns
+            if pending_off_t is not None and next_t - pending_off_t >= MERGE_GAP_S:
+                clip_idx += 1
+                threading.Thread(
+                    target=cut_and_upload,
+                    args=(sess, clip_start_t, pending_off_t, clip_idx),
+                    daemon=True,
+                ).start()
+                clip_start_t = None
+                pending_off_t = None
 
             next_t += SAMPLE_STEP
     finally:
         close_cap()
-        if badge_on and clip_start_t is not None:
+        if clip_start_t is not None:
+            end_t = pending_off_t if pending_off_t is not None else next_t
             clip_idx += 1
             threading.Thread(
                 target=cut_and_upload,
-                args=(sess, clip_start_t, next_t, clip_idx),
+                args=(sess, clip_start_t, end_t, clip_idx),
                 daemon=True,
             ).start()
 
