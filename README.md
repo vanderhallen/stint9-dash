@@ -2926,3 +2926,41 @@ completes a real S1 in lap 2+.
 timestamp precedes the recorded race-start time — rather than raising
 `thr`/`PIT_AFTER_S1_X` globally, which would just mask real early-race
 incidents instead of this one known artifact.
+
+# 24. Starting grid was empty at NLS8 (2026-09-12) — FIXED (cron gate)
+
+**Symptom.** The sidebar's starting grid (§ starting-grid-supabase.sql —
+`buildStartGrid()`, official NLS qualifying scraped into `public.stint9_grid`)
+never populated for NLS8, and so never handed off to the race-notes panel
+after lap 1 either — because that handoff only fires once real racenote data
+exists, and with no grid the panel had nothing to show in the meantime. It had
+worked for NLS7 (2026-08-01).
+
+**Root cause.** `stint9_grid` had zero rows for `2026-09-12` — confirmed
+directly against the database. `nls-driver-scrape`'s grid pass was wired to
+cron job `stint9_nls_grid_autoscan`, scheduled `30 4 * * 1` — **Mondays
+04:30 UTC only**, chosen (per the original comment) just to run 30 minutes
+after the Monday driver-results scan so the two wouldn't overlap — it was
+never actually timed against race day. NLS8 raced Saturday; that week's one
+Monday run (2026-09-07) landed before that week's qualifying was published,
+so it found nothing, and being weekly, never got another chance before the
+race. (NLS7's grid data predates this cron's creation — 2026-08-10 — entirely,
+so it must have been a one-off manual scrape; NLS8 was actually the **first**
+race this automated job was ever responsible for, and it missed it.) The
+Monday timing was not, as guessed at the time, tied to the weekly
+championship-results scan (`stint9_nls_driver_autoscan`, § 22) — that one runs
+**daily** at 04:00 UTC already and is unaffected by any of this.
+
+**Fix (shipped 2026-09-12).** Replaced the fixed weekly schedule with a
+schedule-driven gate, the same pattern `stint9_maybe_scrape_wige` already uses
+for the LIVE feed: a new `stint9_maybe_scrape_grid()` checks
+`public.stint9_schedule_windows` (already scraped daily, per-event — see § 9)
+for a `race` window starting in 28–33 minutes, and only then calls
+`nls-driver-scrape` in grid mode. The cron itself now runs every minute
+(`* * * * *`) but is a no-op almost all the time; it self-adjusts to each
+round's actual start time automatically instead of guessing a weekday. See
+`starting-grid-supabase.sql` for the deployed SQL. The old
+`stint9_run_nls_grid_scrape()` trigger function was dropped as unused; the
+manual same-day fast path (`POST nls-driver-scrape {"grid":true,"date":...}`)
+still works for a manual re-trigger if a quali PDF is published/corrected
+late.
