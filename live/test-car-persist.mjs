@@ -74,5 +74,23 @@ function step(cars, selCar, wantCar) {
   check('an empty field yields no selection', step([], '', '670') === '', step([], '', '670'));
 }
 
+/* the second hole: savePrefs() firing while the DB is empty must not erase the
+   stored preference, and a '' already on disk must not be treated as a choice */
+{
+  const prefCarSrc = html.slice(html.indexOf('function prefCar(){'),
+                                html.indexOf('\n', html.indexOf('function prefCar(){')) + 1);
+  const prefCar = (wantCar, selCar, PREFS) =>
+    new Function('wantCar', 'selCar', 'PREFS', `${prefCarSrc}; return prefCar();`)(wantCar, selCar, PREFS);
+
+  check('a blank moment keeps the car already on disk',
+        prefCar('', '', { car: '670' }) === '670', prefCar('', '', { car: '670' }));
+  check('the live intent still wins over disk',
+        prefCar('665', '', { car: '670' }) === '665', prefCar('665', '', { car: '670' }));
+  check('nothing anywhere yields blank', prefCar('', '', {}) === '', prefCar('', '', {}));
+
+  const restore = html.includes("if(PREFS.car){selCar=PREFS.car;wantCar=String(PREFS.car);}");
+  check("a stored '' is ignored on restore (truthy test, not !=null)", restore, restore);
+}
+
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — the selected car survives a refresh');
 process.exit(failures ? 1 : 0);

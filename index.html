@@ -3406,7 +3406,16 @@ function buildClass(cls){
   }
   sel.value=selCar;miniEvents=selCar?computeEvents(selCar):[];
   if(!(T>=DB.tmin&&T<=DB.tmax))T=DB.tmin;scrub.value=T;}
-function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:String(thr*100),pace:String(paceThr),speed:document.getElementById('speed').value,car:(wantCar||selCar),cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
+// The car to remember. wantCar is the user's choice, selCar what is selectable
+// now, and PREFS.car what was last written -- in that order of authority. The
+// final fallback matters: savePrefs() also runs from reel switches, the delay
+// and pace sliders and the speed control, and any of those can fire in the
+// window where clearLiveDB() has blanked selCar and the first LIVE poll has not
+// arrived. Writing '' there used to erase the preference on disk, and since
+// '' != null the next load restored an empty wantCar and buildClass fell to
+// DB.cars[0] -- the lowest number in the class.
+function prefCar(){return wantCar||selCar||(PREFS&&PREFS.car)||'';}
+function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({delay:String(thr*100),pace:String(paceThr),speed:document.getElementById('speed').value,car:prefCar(),cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.delay!=null){const _d=document.getElementById('delaythr');if(_d)_d.value=PREFS.delay;thr=Math.max(0,parseFloat(PREFS.delay||'0'))/100;}
 if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
@@ -3525,7 +3534,7 @@ const startClass=(PREFS.cls&&clsExists(PREFS.cls))?PREFS.cls:Object.keys(DB.clas
 // first poll's buildClass then has nothing to match and drops to DB.cars[0] --
 // the lowest number in the class. Keeping the intent in its own variable is
 // what lets buildClass restore it the moment that car appears in the feed.
-if(PREFS.car!=null){selCar=PREFS.car;wantCar=String(PREFS.car);}
+if(PREFS.car){selCar=PREFS.car;wantCar=String(PREFS.car);}   // truthy, not !=null: a stored '' is no preference, not a request for no car
 clsSel.value=startClass;buildClass(startClass);fillStints(selCar);
 render();syncReel();applyReel(false);
 // #svg/#mini may currently be relocated inside the zoom modal (see initFocus's
