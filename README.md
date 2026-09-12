@@ -1914,12 +1914,12 @@ delta** in `code60Sectors()`:
 - Compare the sector just finished, and elapsed time in the sector being driven
   now, against **that same car's previous clean time** for that sector.
 - Flag when the stretch is **>1.12×** and **at least +10 s**, but **<4×** (a
-  stop, not 60 km/h). A sector lights when **≥2** cars do that at once.
+  stop, not 60 km/h). A sector lights when **≥3** cars do that at once.
 - Skip lap 1 and pit laps. **S1 is ignored** — the pit exit sits in S1, so
   out-laps look like a slow zone and drown real Code 60s further around the lap.
 
-On NLS 8 (2026-09-12) a +15 s floor caught only 2 moments; +8 s was noisy. **+10 s
-is the middle ground** currently shipped.
+On NLS 8 (2026-09-12) a +15 s floor caught only 2 moments. Current ship is
+**1.12× / +10 s / ≥3 cars**, S1 skipped. Judge this against WIGE next race.
 
 **Check next race:** sit with the WIGE live-timing app and this dashboard side by
 side. Every time WIGE / race control calls a Code 60, note whether STINT9 lights

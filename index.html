@@ -1236,7 +1236,7 @@ function pitWhatIf(st,T,saved,pool){
 // For each car, compare (a) the sector it just finished and (b) how long it has
 // already been in the sector it is driving now, against that same car's previous
 // clean time for that sector. A large stretch (ratio and extra seconds) means
-// the car is crawling. A sector flags when ≥2 cars do that at once.
+// the car is crawling. A sector flags when ≥3 cars do that at once.
 //
 // Skip lap 1 (rolling start) and pit laps. Drop a car that has been silent more
 // than 2× its own expected transit of the current sector (crashed / parked),
@@ -1244,7 +1244,7 @@ function pitWhatIf(st,T,saved,pool){
 // the pit exit sits in S1, so out-laps look like a slow zone and drown real
 // Code 60s further around the lap.
 const SECTOR_KM=[3.3,3.3,6.0,9.4,2.4]; // NLS 5-sector lengths (also feeds the TYRE board below)
-const CODE60_RATIO=1.12,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=10,CODE60_MIN_CARS=2;
+const CODE60_RATIO=1.12,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=10,CODE60_MIN_CARS=3;
 function nowSecOfDay(){const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds()+d.getMilliseconds()/1000;}
 function code60Now(){return window.dataMode==='LIVE'?nowSecOfDay():T;}
 function prevSectorDur(st,sector,beforeLap){
