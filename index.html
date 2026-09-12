@@ -1803,13 +1803,16 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
     const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
     const sel=(st===selCar);
-    // right-anchored in the fixed gutter (ends 8px before xL) so the bars —
-    // which paint after these labels — never cover the tail of a longer '#nnn'
-    // (worst on the selected car's fully-opaque bar). The selected car's own
-    // label is picked out in the accent colour too — same convention as the
-    // mobile standings row (.mstand tr.sel) — so it reads at a glance which
-    // row is "ours" without having to compare bar opacity row by row.
-    s+='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="'+(sel?'#e0301e':'#16202b')+'">'+posLbl+'#'+st+'</text>';
+    // right-anchored in the fixed gutter (ends 8px before xL). Drawn AFTER the
+    // stint bars below (not here) so it always paints on top of them — a
+    // stint starting at lap 0 (WIGE's laps-completed convention can report a
+    // driver at lap 0) reaches x0 into this gutter, and with the fully-opaque
+    // selected-car bar that used to bury the car number under it. The
+    // selected car's own label is picked out in the accent colour too — same
+    // convention as the mobile standings row (.mstand tr.sel) — so it reads
+    // at a glance which row is "ours" without having to compare bar opacity
+    // row by row.
+    const posLabelSvg='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="'+(sel?'#e0301e':'#16202b')+'">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
@@ -1848,10 +1851,15 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
       // in empty space past the last bar; #670's times sit at bar joins.
       if(pt)pLabels.push({x:x1,y:cy,h:barH,t:pt,sel:st===selCar});
     });
+    s+=posLabelSvg;
     pLabels.forEach(function(p){
       const gap=18,bx=p.x,by=p.y-p.h/2,tx=bx+gap/2,ty=p.y;
+      // font shrinks to whatever fits the chip's height so a longer clock
+      // (e.g. "5m13s") can't overflow the box and get clipped/unreadable —
+      // short times (e.g. "45s") still render at the full 10px size.
+      const fs=Math.min(10,(p.h-6)/(p.t.length*0.62));
       s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+gap+'" height="'+p.h+'" rx="3" fill="'+(p.sel?'#16202b':'#fff')+'" stroke="#16202b" stroke-width="1"/>';
-      s+='<text transform="rotate(90 '+tx.toFixed(1)+' '+ty.toFixed(1)+')" x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="800" font-family="IBM Plex Mono,monospace" fill="'+(p.sel?'#fff':'#16202b')+'">'+p.t+'</text>';
+      s+='<text transform="rotate(90 '+tx.toFixed(1)+' '+ty.toFixed(1)+')" x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="'+fs.toFixed(1)+'" font-weight="800" font-family="IBM Plex Mono,monospace" fill="'+(p.sel?'#fff':'#16202b')+'">'+p.t+'</text>';
     });
   });
   svg.innerHTML=s;}
