@@ -1691,14 +1691,28 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   ordered.forEach((st,i)=>{
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
     const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
+    const sel=(st===selCar);
     // right-anchored in the fixed gutter (ends 8px before xL) so the bars —
     // which paint after these labels — never cover the tail of a longer '#nnn'
-    // (worst on the selected car's fully-opaque bar).
-    s+='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
+    // (worst on the selected car's fully-opaque bar). The selected car's own
+    // label is picked out in the accent colour too — same convention as the
+    // mobile standings row (.mstand tr.sel) — so it reads at a glance which
+    // row is "ours" without having to compare bar opacity row by row.
+    s+='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="'+(sel?'#e0301e':'#16202b')+'">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
-    const laps=Object.keys(dl).map(Number).filter(L=>L<=doneLaps).sort((a,b)=>a-b);
+    // doneLaps+1, not doneLaps: WIGE reports a lap's driver the moment that
+    // lap's row appears — typically alongside or even before S1 — not once
+    // the lap is fully driven. Gating on doneLaps alone held the CURRENT
+    // driver back a whole lap: the bar only picked up a driver change once
+    // the new lap finished, even though the name was already known well
+    // before the car reached S2. doneLaps+1 is exactly the lap now in
+    // progress (see lapsDrivenOf: for an active leg, floor(lapsDriven) is
+    // always current-lap-1); if WIGE hasn't reported that lap's driver yet
+    // it simply isn't a key in dl; nothing here needs to know one way or
+    // the other, this just stops discarding data that has already arrived.
+    const laps=Object.keys(dl).map(Number).filter(L=>L<=doneLaps+1).sort((a,b)=>a-b);
     const stints=[];
     laps.forEach(L=>{const d=dl[L];const prev=stints[stints.length-1];
       if(prev&&prev.driver===d){prev.endLap=L;prev.count++;}else stints.push({driver:d,startLap:L-1,endLap:L,count:1});});
@@ -2042,14 +2056,31 @@ function fitDrv(){
    multiply every length by. Shrink only: a table that fits is left exactly as
    tuned. Two or three passes because the relationship is near-linear but not
    exactly so — text can re-wrap on the way down. */
+let _fitZoomSig=null;
 function fitZoomTable(){
-  const card=document.querySelector('.card.zoomed');if(!card)return;
+  const card=document.querySelector('.card.zoomed');
+  if(!card){_fitZoomSig=null;return;}
   const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#snaptablewrap,#drvtablewrap');
-  if(!wrap||!wrap.querySelector('table'))return;
+  const table=wrap&&wrap.querySelector('table');
+  if(!wrap||!table){_fitZoomSig=null;return;}
+  // render() calls this every frame (~20-30x/s) so a new lap's row is caught
+  // promptly — but re-running the reset-then-3-pass-remeasure cycle below
+  // EVERY frame, on a table that has not changed at all, forced three rounds
+  // of synchronous layout (scrollHeight/scrollWidth/clientHeight/clientWidth)
+  // per frame for no reason, and risked exactly the kind of visible
+  // flicker/vibration this function exists to prevent — reported 2026-09-12
+  // (a zoomed table reel visibly shaking). Only re-measure when something
+  // that could actually change the fit has happened: the table's own row
+  // count (a new lap), which reel is zoomed, or the container's available
+  // size (opening the modal, a resize) — a cheap signature comparison avoids
+  // touching the DOM at all on every other frame.
+  const sig=wrap.id+':'+table.rows.length+':'+wrap.clientWidth+':'+wrap.clientHeight;
+  if(sig===_fitZoomSig)return;
+  _fitZoomSig=sig;
   let k=1;wrap.style.setProperty('--zt','1');
   for(let i=0;i<3;i++){
     const oh=wrap.scrollHeight,ow=wrap.scrollWidth,ch=wrap.clientHeight,cw=wrap.clientWidth;
-    if(!(oh>0&&ow>0&&ch>10&&cw>10))return;                 // not laid out yet — leave it alone
+    if(!(oh>0&&ow>0&&ch>10&&cw>10)){_fitZoomSig=null;return;}   // not laid out yet — retry on the next call
     const f=Math.min(ch/oh,cw/ow);
     if(f>=0.995)break;                                     // fits (or already does after the last pass)
     k=Math.max(0.4,k*f*0.99);                              // 0.99 = a hair of slack so a rounding error can't re-clip
@@ -5179,6 +5210,13 @@ applyWxReel(false);
   const reel=document.getElementById('ytreel'),url=document.getElementById('yt-url'),btn=document.getElementById('yt-start'),
         err=document.getElementById('yt-err'),box=document.getElementById('yt-player'),close=document.getElementById('yt-close');
   if(!reel||!url||!btn||!box)return;
+  // Remember the last link across reloads, not just while this page stays
+  // open — the reel's own DOM already survives scrolling the strip up/down
+  // (nothing here removes the panel, just translates it, so the input never
+  // loses its value that way), but a refresh starts the page fresh. Restore
+  // the text into the box only, not autoplay: pressing START is still the
+  // user's own action.
+  try{const saved=localStorage.getItem('stint9_ytlink');if(saved)url.value=saved;}catch(e){}
   function ytId(v){
     v=(v||'').trim();if(!v)return null;
     const m=v.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
@@ -5189,6 +5227,7 @@ applyWxReel(false);
     const id=ytId(url.value);
     if(!id){err.textContent='not a YouTube link — paste the URL from the address bar or share button';err.classList.add('err');return;}
     err.textContent='';err.classList.remove('err');
+    try{localStorage.setItem('stint9_ytlink',url.value);}catch(e){}
     // youtube-nocookie.com: the privacy-enhanced embed domain — same player,
     // no watch-page chrome (so still no comments either way), sets no
     // cookies until playback actually starts. autoplay is fine here because
