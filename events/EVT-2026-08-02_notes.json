@@ -1,10 +1,10 @@
 {
   "event": {
     "slug": "EVT-2026-08-02",
-    "name": "practice NLS7",
+    "name": "race",
     "date": "2026-08-02",
     "end": null,
-    "label": "practice"
+    "label": "race"
   },
   "generated_at": "2026-08-02T15:07:00.020857+00:00",
   "fuel": [],
@@ -18,11 +18,11 @@
             "texts": {
               "n12": "12",
               "xxxx": "XXXX",
-              "n1234": "561"
+              "n1234": "0"
             },
             "active": [
               "hl",
-              "used",
+              "dry",
               "hot"
             ]
           },
@@ -30,11 +30,11 @@
             "texts": {
               "n12": "12",
               "xxxx": "XXXX",
-              "n1234": "561"
+              "n1234": "0"
             },
             "active": [
               "hr",
-              "used",
+              "dry",
               "hot"
             ]
           },
@@ -42,11 +42,11 @@
             "texts": {
               "n12": "12",
               "xxxx": "XXXX",
-              "n1234": "561"
+              "n1234": "0"
             },
             "active": [
               "vl",
-              "used",
+              "dry",
               "hot"
             ]
           },
@@ -54,59 +54,60 @@
             "texts": {
               "n12": "12",
               "xxxx": "XXXX",
-              "n1234": "561"
+              "n1234": "0"
             },
             "active": [
               "vr",
-              "used",
+              "dry",
               "hot"
             ]
           },
           "v1": {
             "texts": {
-              "n12": "12",
-              "xxxx": "XXXX",
-              "n1234": "561"
+              "n12": "1",
+              "xxxx": "0002",
+              "n1234": "0"
             },
             "active": [
               "vl",
-              "used",
+              "new",
               "hot"
             ]
           },
           "v2": {
             "texts": {
-              "n12": "12",
-              "xxxx": "XXXX",
-              "n1234": "561"
+              "n12": "1",
+              "xxxx": "0003",
+              "n1234": "0"
             },
             "active": [
               "vr",
-              "used",
+              "new",
               "hot"
             ]
           },
           "v3": {
             "texts": {
-              "n12": "12",
-              "xxxx": "XXXX",
-              "n1234": "561"
+              "n12": "1",
+              "xxxx": "0004",
+              "n1234": "0"
             },
             "active": [
               "hl",
-              "used",
+              "new",
               "hot"
             ]
           },
           "v4": {
             "texts": {
-              "n12": "12",
-              "xxxx": "XXXX",
-              "n1234": "561"
+              "n12": "1",
+              "xxxx": "0001",
+              "n1234": "0"
             },
             "active": [
               "hr",
-              "used",
+              "new",
+              "wet",
               "hot"
             ]
           }
@@ -123,11 +124,60 @@
           },
           "stock-0-3": {
             "cond": "dry"
+          },
+          "stock-3-0": {
+            "km": "561"
+          },
+          "stocknew-0": {
+            "km": "0",
+            "cond": "wet",
+            "wear": "new"
           }
         },
         "trash": [],
-        "stockNew": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
         "firstUsed": {
+          "0001": "2026-08-04T10:13:38.728Z",
+          "0002": "2026-08-04T10:13:38.728Z",
+          "0003": "2026-08-04T10:13:38.728Z",
+          "0004": "2026-08-04T10:13:38.728Z",
           "XXXX": "2026-07-31T22:50:07.037Z"
         },
         "stockAdds": [
@@ -253,13 +303,136 @@
                 "cycle": 12
               }
             ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
           }
         ],
         "emptyBands": [
-          "tl",
-          "tr",
-          "bl",
-          "br"
+          "v1",
+          "v2",
+          "v3",
+          "v4"
         ],
         "stintXfers": [],
         "stintRemoved": [],
@@ -271,7 +444,347 @@
           "stock-2-0",
           "stock-2-1",
           "stock-2-2",
-          "stock-2-3"
+          "stock-2-3",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3",
+          "stocknew-0",
+          "stock-0-0",
+          "stock-0-1",
+          "stock-0-2",
+          "stock-0-3",
+          "stock-4-0",
+          "stock-4-1",
+          "stock-4-2",
+          "stock-4-3"
+        ]
+      }
+    },
+    {
+      "car": "670",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T08:41:45.556Z",
+          "0002": "2026-09-12T08:41:45.556Z",
+          "0003": "2026-09-12T08:41:45.556Z",
+          "0004": "2026-09-12T08:41:45.556Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
+      "car": "680",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T05:08:12.238Z",
+          "0002": "2026-09-12T05:08:12.238Z",
+          "0003": "2026-09-12T05:08:12.238Z",
+          "0004": "2026-09-12T05:08:12.238Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
         ]
       }
     }

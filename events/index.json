@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T08:33:31.227269+00:00",
+  "generated_at": "2026-09-12T15:14:48.757234+00:00",
   "events": [
     {
       "slug": "NLS8-quali",
@@ -13,9 +13,20 @@
       "notes": "events/NLS8-quali_notes.json"
     },
     {
+      "slug": "NLS8",
+      "name": "65. ADAC Reinoldus-Langstreckenrennen (4h)",
+      "label": "race",
+      "date": "2026-09-12",
+      "end": "2026-09-13",
+      "car_count": 131,
+      "archived_at": "2026-09-12T15:14:48.757234+00:00",
+      "file": "events/NLS8.json",
+      "notes": "events/NLS8_notes.json"
+    },
+    {
       "slug": "EVT-2026-08-02",
-      "name": "practice NLS7",
-      "label": "practice",
+      "name": "race",
+      "label": "race",
       "date": "2026-08-02",
       "end": null,
       "car_count": 132,

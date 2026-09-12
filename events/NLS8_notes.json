@@ -1,0 +1,3148 @@
+{
+  "event": {
+    "slug": "NLS8",
+    "name": "65. ADAC Reinoldus-Langstreckenrennen (4h)",
+    "date": "2026-09-12",
+    "end": "2026-09-13",
+    "label": "race"
+  },
+  "generated_at": "2026-09-12T15:14:48.757234+00:00",
+  "fuel": [
+    {
+      "car": "670",
+      "state": {
+        "s5": {},
+        "set": {
+          "cap": 85,
+          "cons": 10.5,
+          "form": 1.2,
+          "start": 85
+        },
+        "pits": {
+          "6": {
+            "full": true,
+            "added": ""
+          }
+        },
+        "notes": {
+          "1": "",
+          "2": "",
+          "3": "",
+          "4": "",
+          "5": "",
+          "6": ""
+        },
+        "s5adj": {},
+        "notesx": {}
+      }
+    }
+  ],
+  "fuel_notes": [],
+  "tyres": [
+    {
+      "car": "665",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "dry",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "dry",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "dry",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "dry",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "1",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "1",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "1",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "1",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "wet",
+              "hot"
+            ]
+          }
+        },
+        "stock": {
+          "stock-0-0": {
+            "cond": "dry"
+          },
+          "stock-0-1": {
+            "cond": "dry"
+          },
+          "stock-0-2": {
+            "cond": "dry"
+          },
+          "stock-0-3": {
+            "cond": "dry"
+          },
+          "stock-3-0": {
+            "km": "561"
+          },
+          "stocknew-0": {
+            "km": "0",
+            "cond": "wet",
+            "wear": "new"
+          }
+        },
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-08-04T10:13:38.728Z",
+          "0002": "2026-08-04T10:13:38.728Z",
+          "0003": "2026-08-04T10:13:38.728Z",
+          "0004": "2026-08-04T10:13:38.728Z",
+          "XXXX": "2026-07-31T22:50:07.037Z"
+        },
+        "stockAdds": [
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          }
+        ],
+        "emptyBands": [
+          "v1",
+          "v2",
+          "v3",
+          "v4"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stock-1-0",
+          "stock-1-1",
+          "stock-1-2",
+          "stock-1-3",
+          "stock-2-0",
+          "stock-2-1",
+          "stock-2-2",
+          "stock-2-3",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3",
+          "stocknew-0",
+          "stock-0-0",
+          "stock-0-1",
+          "stock-0-2",
+          "stock-0-3",
+          "stock-4-0",
+          "stock-4-1",
+          "stock-4-2",
+          "stock-4-3"
+        ]
+      }
+    },
+    {
+      "car": "670",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T08:41:45.556Z",
+          "0002": "2026-09-12T08:41:45.556Z",
+          "0003": "2026-09-12T08:41:45.556Z",
+          "0004": "2026-09-12T08:41:45.556Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
+      "car": "680",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T05:08:12.238Z",
+          "0002": "2026-09-12T05:08:12.238Z",
+          "0003": "2026-09-12T05:08:12.238Z",
+          "0004": "2026-09-12T05:08:12.238Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    }
+  ],
+  "tyre_bands": [],
+  "racenotes": [
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:06.2s"
+    },
+    {
+      "car": "2",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:06.2s"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P1"
+    },
+    {
+      "car": "2",
+      "lap": 2,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P5 at S1 · +1.3s"
+    },
+    {
+      "car": "2",
+      "lap": 2,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #50 · 186.5s → 149.0s"
+    },
+    {
+      "car": "2",
+      "lap": 4,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 8:15.7"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P5→P4 · passed #8 in S2"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #786 in S3"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P3→P5 · lost to #786 in S4"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P3→P5 · lost to #8 in S4"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P2 · passed #786 in S5"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 48.8s"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P2 · passed #8 in S5"
+    },
+    {
+      "car": "2",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P2 · passed #33 in S5"
+    },
+    {
+      "car": "2",
+      "lap": 3,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #5 in S2"
+    },
+    {
+      "car": "2",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P2→P5 · lost to #8 in S3"
+    },
+    {
+      "car": "2",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P2→P5 · lost to #33 in S3"
+    },
+    {
+      "car": "2",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P2→P5 · lost to #786 in S3"
+    },
+    {
+      "car": "2",
+      "lap": 4,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #8 in S3"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.8s"
+    },
+    {
+      "car": "650",
+      "lap": 0,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:30.5s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:14.6s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:30.2s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 54.2s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #664 in S5"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.7s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.0s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:14.1s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:08.7"
+    },
+    {
+      "car": "650",
+      "lap": 4,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #664 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 4,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #664 in S5"
+    },
+    {
+      "car": "650",
+      "lap": 5,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P2→P2 · lost to #664 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 5,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #664 in S2"
+    },
+    {
+      "car": "650",
+      "lap": 5,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #664 in S3"
+    },
+    {
+      "car": "650",
+      "lap": 5,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #664 in S5"
+    },
+    {
+      "car": "650",
+      "lap": 6,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P1"
+    },
+    {
+      "car": "650",
+      "lap": 7,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P1 at S1 · +122.6s"
+    },
+    {
+      "car": "650",
+      "lap": 11,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 2 · from P1"
+    },
+    {
+      "car": "650",
+      "lap": 12,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P1 at S1 · +169.5s"
+    },
+    {
+      "car": "650",
+      "lap": 12,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #664 in S5"
+    },
+    {
+      "car": "650",
+      "lap": 13,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #664 in S2"
+    },
+    {
+      "car": "650",
+      "lap": 13,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #664 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 13,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 3 · from P2"
+    },
+    {
+      "car": "650",
+      "lap": 14,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P2 at S1 · +83.3s"
+    },
+    {
+      "car": "650",
+      "lap": 14,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:30.1s"
+    },
+    {
+      "car": "650",
+      "lap": 15,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:14.9s"
+    },
+    {
+      "car": "650",
+      "lap": 16,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:14.9s"
+    },
+    {
+      "car": "650",
+      "lap": 16,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 134.2s → 104.4s"
+    },
+    {
+      "car": "650",
+      "lap": 20,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 4 · from P1"
+    },
+    {
+      "car": "650",
+      "lap": 21,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P1 at S1 · +-0.6s"
+    },
+    {
+      "car": "651",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P8→P9 · lost to #667 in S5"
+    },
+    {
+      "car": "651",
+      "lap": 2,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 480.7s → 132.0s"
+    },
+    {
+      "car": "651",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 11:12.1"
+    },
+    {
+      "car": "652",
+      "lap": 0,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #670 in S3"
+    },
+    {
+      "car": "652",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P6→P6 · lost to #661 in S1"
+    },
+    {
+      "car": "652",
+      "lap": 2,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 13.7s → 8.4s"
+    },
+    {
+      "car": "652",
+      "lap": 2,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P6→P5 · passed #661 in S5"
+    },
+    {
+      "car": "652",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:24.7"
+    },
+    {
+      "car": "652",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 50.5s → 22.9s"
+    },
+    {
+      "car": "652",
+      "lap": 6,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #664 in S5"
+    },
+    {
+      "car": "652",
+      "lap": 6,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P4"
+    },
+    {
+      "car": "652",
+      "lap": 7,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P4 at S1 · +138.4s"
+    },
+    {
+      "car": "653",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P5 · lost to #670 in S1"
+    },
+    {
+      "car": "653",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P5 · lost to #661 in S1"
+    },
+    {
+      "car": "653",
+      "lap": 2,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P5→P4 · passed #661 in S2"
+    },
+    {
+      "car": "653",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:16.3"
+    },
+    {
+      "car": "653",
+      "lap": 3,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #670 in S5"
+    },
+    {
+      "car": "653",
+      "lap": 4,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #670 in S1"
+    },
+    {
+      "car": "653",
+      "lap": 4,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P4"
+    },
+    {
+      "car": "653",
+      "lap": 5,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P10 at S1 · +300.4s"
+    },
+    {
+      "car": "653",
+      "lap": 6,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #667 in S4"
+    },
+    {
+      "car": "653",
+      "lap": 6,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #667 · 281.1s → 6.5s"
+    },
+    {
+      "car": "653",
+      "lap": 8,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #665 in S1"
+    },
+    {
+      "car": "653",
+      "lap": 8,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P10→P9 · passed #665 in S2"
+    },
+    {
+      "car": "653",
+      "lap": 8,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #665 in S5"
+    },
+    {
+      "car": "653",
+      "lap": 8,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 2 · from P10"
+    },
+    {
+      "car": "653",
+      "lap": 9,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P10 at S1 · +65.8s"
+    },
+    {
+      "car": "661",
+      "lap": 2,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P4→P5 · lost to #653 in S2"
+    },
+    {
+      "car": "661",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:26.0"
+    },
+    {
+      "car": "661",
+      "lap": 2,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 15.4s → 8.4s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.1s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:14.5s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P3 · passed #652 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P3 · passed #653 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 3,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:28.8"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:14.9s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:15.1s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:31.2s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.2s"
+    },
+    {
+      "car": "664",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #650 in S1"
+    },
+    {
+      "car": "664",
+      "lap": 2,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.0s"
+    },
+    {
+      "car": "664",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:08.6"
+    },
+    {
+      "car": "664",
+      "lap": 2,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #650 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #650 in S1"
+    },
+    {
+      "car": "664",
+      "lap": 3,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P2→P2 · passed #650 in S5"
+    },
+    {
+      "car": "664",
+      "lap": 4,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.4s"
+    },
+    {
+      "car": "664",
+      "lap": 5,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P2"
+    },
+    {
+      "car": "664",
+      "lap": 6,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P2 at S1 · +-0.0s"
+    },
+    {
+      "car": "664",
+      "lap": 6,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P4→P5 · lost to #652 in S2"
+    },
+    {
+      "car": "664",
+      "lap": 6,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #652 in S3"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P7→P6 · passed #661 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P6→P5 · passed #653 in S5"
+    },
+    {
+      "car": "665",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #670 in S3"
+    },
+    {
+      "car": "665",
+      "lap": 5,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #651 · 364.0s → 72.1s"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P7→P8 · lost to #677 in S3"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P9 · passed #677 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P9 · lost to #667 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P9 · lost to #651 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P9→P7 · passed #651 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P9→P7 · passed #667 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P7→P9 · lost to #667 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P7→P9 · lost to #651 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #677 in S2"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:41.9"
+    },
+    {
+      "car": "665",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #677 · 21.7s → 14.2s"
+    },
+    {
+      "car": "665",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 129.6s → 107.7s"
+    },
+    {
+      "car": "665",
+      "lap": 5,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:41.5"
+    },
+    {
+      "car": "665",
+      "lap": 6,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P5"
+    },
+    {
+      "car": "665",
+      "lap": 7,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P10 at S1 · +245.1s"
+    },
+    {
+      "car": "665",
+      "lap": 7,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P10→P9 · passed #653 in S5"
+    },
+    {
+      "car": "665",
+      "lap": 8,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #653 in S2"
+    },
+    {
+      "car": "665",
+      "lap": 8,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P10→P9 · passed #653 in S5"
+    },
+    {
+      "car": "665",
+      "lap": 12,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P8→P8 · passed #652 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 12,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #667 · 201.7s → 69.4s"
+    },
+    {
+      "car": "665",
+      "lap": 12,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 2 · from P9"
+    },
+    {
+      "car": "665",
+      "lap": 13,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P8 at S1 · +13.0s"
+    },
+    {
+      "car": "665",
+      "lap": 14,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 239.4s → 213.8s"
+    },
+    {
+      "car": "665",
+      "lap": 15,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 213.8s → 172.0s"
+    },
+    {
+      "car": "665",
+      "lap": 16,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 172.0s → 147.7s"
+    },
+    {
+      "car": "665",
+      "lap": 17,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #653 · 147.7s → 91.9s"
+    },
+    {
+      "car": "665",
+      "lap": 18,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 3 · from P9"
+    },
+    {
+      "car": "665",
+      "lap": 18,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:41.5"
+    },
+    {
+      "car": "665",
+      "lap": 18,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #661 · 241.7s → 141.7s"
+    },
+    {
+      "car": "665",
+      "lap": 19,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P9 at S1 · +68.9s"
+    },
+    {
+      "car": "665",
+      "lap": 19,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #661 · 141.7s → 27.3s"
+    },
+    {
+      "car": "665",
+      "lap": 20,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P9→P8 · passed #661 in S5"
+    },
+    {
+      "car": "665",
+      "lap": 21,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P8→P8 · lost to #661 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 20,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #677 · 463.2s → 38.4s"
+    },
+    {
+      "car": "665",
+      "lap": 21,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P6 · passed #661 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 21,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P6 · passed #651 in S4"
+    },
+    {
+      "car": "667",
+      "lap": 0,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #651 in S3"
+    },
+    {
+      "car": "667",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P10→P7 · passed #651 in S4"
+    },
+    {
+      "car": "667",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P10→P7 · passed #677 in S4"
+    },
+    {
+      "car": "667",
+      "lap": 0,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P10→P7 · passed #665 in S4"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P9→P10 · lost to #651 in S2"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P10→P8 · passed #651 in S3"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P10→P8 · passed #677 in S3"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P8→P9 · lost to #651 in S4"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P9→P7 · passed #651 in S5"
+    },
+    {
+      "car": "667",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P9→P7 · passed #665 in S5"
+    },
+    {
+      "car": "667",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:33.6"
+    },
+    {
+      "car": "667",
+      "lap": 3,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #652 · 46.3s → 43.8s"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P6→P4 · passed #653 in S4"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P6→P4 · passed #661 in S4"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P5→P4 · passed #653 in S5"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P5→P4 · passed #661 in S2"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #665 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #653 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #652 · 336.9s → 124.6s"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P4"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #651 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P7 at S1 · +310.1s"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P4→P5 · lost to #653 in S2"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:28.5"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #652 · 124.6s → 87.4s"
+    },
+    {
+      "car": "670",
+      "lap": 5,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #652 · 87.4s → 28.9s"
+    },
+    {
+      "car": "670",
+      "lap": 0,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #652 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #653 in S1"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #653 in S1"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:15.6s"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #653 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:15.8"
+    },
+    {
+      "car": "670",
+      "lap": 3,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #653 in S2"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P4→P3 · passed #653 in S3"
+    },
+    {
+      "car": "670",
+      "lap": 4,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #653 in S4"
+    },
+    {
+      "car": "670",
+      "lap": 6,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P2"
+    },
+    {
+      "car": "670",
+      "lap": 7,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P1 at S1 · +-0.2s"
+    },
+    {
+      "car": "670",
+      "lap": 11,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P3→P4 · lost to #661 in S2"
+    },
+    {
+      "car": "670",
+      "lap": 11,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 204.3s → 126.3s"
+    },
+    {
+      "car": "670",
+      "lap": 12,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 323.5s → 138.7s"
+    },
+    {
+      "car": "670",
+      "lap": 13,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 138.7s → 133.6s"
+    },
+    {
+      "car": "670",
+      "lap": 13,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 2 · from P3"
+    },
+    {
+      "car": "670",
+      "lap": 14,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P3 at S1 · +131.2s"
+    },
+    {
+      "car": "670",
+      "lap": 17,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 281.7s → 264.0s"
+    },
+    {
+      "car": "670",
+      "lap": 18,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 409.3s → 183.6s"
+    },
+    {
+      "car": "670",
+      "lap": 19,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 183.6s → 181.5s"
+    },
+    {
+      "car": "670",
+      "lap": 20,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 181.5s → 173.6s"
+    },
+    {
+      "car": "670",
+      "lap": 21,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 305.2s → 247.2s"
+    },
+    {
+      "car": "670",
+      "lap": 21,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 3 · from P3"
+    },
+    {
+      "car": "670",
+      "lap": 22,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P3 at S1 · +-0.3s"
+    },
+    {
+      "car": "670",
+      "lap": 22,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 4 · from P3"
+    },
+    {
+      "car": "670",
+      "lap": 23,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P3 at S1 · +200.4s"
+    },
+    {
+      "car": "941",
+      "lap": 1,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P14→P16 · lost to #944 in S2"
+    },
+    {
+      "car": "941",
+      "lap": 1,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P14→P16 · lost to #952 in S2"
+    },
+    {
+      "car": "941",
+      "lap": 2,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P16→P15 · passed #982 in S4"
+    },
+    {
+      "car": "941",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:02.7"
+    },
+    {
+      "car": "941",
+      "lap": 3,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P14→P15 · lost to #950 in S3"
+    },
+    {
+      "car": "941",
+      "lap": 3,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #990 · 10.1s → 8.2s"
+    },
+    {
+      "car": "941",
+      "lap": 4,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P13→P15 · lost to #950 in S2"
+    },
+    {
+      "car": "941",
+      "lap": 4,
+      "sector": 2,
+      "kind": "overtake",
+      "body": "P13→P15 · lost to #952 in S2"
+    },
+    {
+      "car": "941",
+      "lap": 4,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P15→P14 · passed #952 in S3"
+    },
+    {
+      "car": "950",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:10.5s"
+    },
+    {
+      "car": "950",
+      "lap": 1,
+      "sector": 5,
+      "kind": "overtake",
+      "body": "P7→P6 · passed #999 in S5"
+    },
+    {
+      "car": "950",
+      "lap": 4,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P7→P6 · passed #946 in S4"
+    },
+    {
+      "car": "950",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #988 · 796.7s → 727.5s"
+    },
+    {
+      "car": "950",
+      "lap": 4,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 8:46.9"
+    }
+  ],
+  "messages": [
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Test",
+      "created_at": "2026-09-12T06:10:16+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "17",
+      "source": "wige",
+      "message": "Incident #17 and #949 under investigation",
+      "created_at": "2026-09-12T06:36:44+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "176",
+      "source": "wige",
+      "message": "Incident #176 and #962 under investigation",
+      "created_at": "2026-09-12T06:51:01+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "17",
+      "source": "wige",
+      "message": "#17 - coliision #949 reportet to the Stewards",
+      "created_at": "2026-09-12T06:53:03+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "115",
+      "source": "wige",
+      "message": "#115 no GPS Signal",
+      "created_at": "2026-09-12T06:53:34+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "640",
+      "source": "wige",
+      "message": "#640 no GPS Signal",
+      "created_at": "2026-09-12T06:54:00+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "971",
+      "source": "wige",
+      "message": "#971 no GPS Signal",
+      "created_at": "2026-09-12T06:54:25+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "972",
+      "source": "wige",
+      "message": "# 972 check driver ID - you send no signal",
+      "created_at": "2026-09-12T06:55:24+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "972",
+      "source": "wige",
+      "message": "# 972 Fahrer-ID pr?fen - Sie senden kein Signal",
+      "created_at": "2026-09-12T06:55:29+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "6",
+      "source": "wige",
+      "message": "#6 no GPS Signal",
+      "created_at": "2026-09-12T07:04:42+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "950",
+      "source": "wige",
+      "message": "#950 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T07:15:58+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "915",
+      "source": "wige",
+      "message": "#915 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T07:16:29+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "888",
+      "source": "wige",
+      "message": "# 888 check driver ID - you send no signal",
+      "created_at": "2026-09-12T07:17:26+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "888",
+      "source": "wige",
+      "message": "# 888 Fahrer-ID pr?fen - Sie senden kein Signal",
+      "created_at": "2026-09-12T07:17:31+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 first noise violation",
+      "created_at": "2026-09-12T07:18:09+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 erste L?rm?berschreitung",
+      "created_at": "2026-09-12T07:18:13+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "801",
+      "source": "wige",
+      "message": "# 801 first noise violation",
+      "created_at": "2026-09-12T07:22:47+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "801",
+      "source": "wige",
+      "message": "# 801 erste L?rm?berschreitung",
+      "created_at": "2026-09-12T07:22:55+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "32",
+      "source": "wige",
+      "message": "# 32 first noise violation",
+      "created_at": "2026-09-12T07:37:09+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "32",
+      "source": "wige",
+      "message": "# 32 erste L?rm?berschreitung",
+      "created_at": "2026-09-12T07:37:18+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "970",
+      "source": "wige",
+      "message": "# 970 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T07:48:59+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "970",
+      "source": "wige",
+      "message": "# 970 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T07:49:04+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T07:57:07+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T07:57:11+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "124",
+      "source": "wige",
+      "message": "# 124 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T08:02:07+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "124",
+      "source": "wige",
+      "message": "# 124 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T08:02:11+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "970",
+      "source": "wige",
+      "message": "#970, #124 Teammanager im B?ro 3 melden",
+      "created_at": "2026-09-12T08:04:54+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "#321 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T08:05:52+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "786",
+      "source": "wige",
+      "message": "# 786 first noise violation",
+      "created_at": "2026-09-12T08:05:53+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "786",
+      "source": "wige",
+      "message": "# 786 erste L?rm?berschreitung",
+      "created_at": "2026-09-12T08:06:00+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 stop-and-go penalty 60 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T08:09:43+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 Stop-and-Go Strafe 60 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T08:09:51+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "124",
+      "source": "wige",
+      "message": "# 124 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T08:11:58+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "124",
+      "source": "wige",
+      "message": "# 124 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T08:12:06+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "#321 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T08:18:10+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "381",
+      "source": "wige",
+      "message": "#381 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T08:24:06+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "970",
+      "source": "wige",
+      "message": "# 970 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T08:25:41+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "970",
+      "source": "wige",
+      "message": "# 970 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T08:25:49+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Ausfahrt Boxengasse gr?nes Licht f?r 20 Min - Beginn Startaufstellung",
+      "created_at": "2026-09-12T09:10:04+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "pit exit green light for 20 min - begin grid procedure",
+      "created_at": "2026-09-12T09:10:07+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "pit exit closed",
+      "created_at": "2026-09-12T09:30:20+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Ausfahrt Boxengasse geschlossen",
+      "created_at": "2026-09-12T09:30:23+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Ausfahrt Boxengasse geschlossen",
+      "created_at": "2026-09-12T09:30:27+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "14",
+      "source": "wige",
+      "message": "#14 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T10:23:17+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "5",
+      "source": "wige",
+      "message": "Incident #5 and #64 under investigation",
+      "created_at": "2026-09-12T10:23:43+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Start of starting group 3 under investigation",
+      "created_at": "2026-09-12T10:24:03+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "481",
+      "source": "wige",
+      "message": "# 481 first noise violation",
+      "created_at": "2026-09-12T10:30:10+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "481",
+      "source": "wige",
+      "message": "# 481 erste L?rm?berschreitung",
+      "created_at": "2026-09-12T10:30:15+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T10:52:12+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T10:52:18+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T10:58:17+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "# 19 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T10:58:25+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "14",
+      "source": "wige",
+      "message": "Teammanger of Car #14 please Report to Office 4",
+      "created_at": "2026-09-12T10:59:04+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "400",
+      "source": "wige",
+      "message": "#400 penalty Lap - incorrect Starting Position",
+      "created_at": "2026-09-12T11:05:35+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "871",
+      "source": "wige",
+      "message": "#871 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T11:07:31+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "2",
+      "source": "wige",
+      "message": "# 2 Mindestboxenstandzeit unterschritten wird untersucht",
+      "created_at": "2026-09-12T11:09:30+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Longer lasting Code 60 Area Aremberg to Adenauer Forst",
+      "created_at": "2026-09-12T11:09:52+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Longer lasting code 60 area Hatzenbach",
+      "created_at": "2026-09-12T11:19:49+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Fuchsr?hre - Attention car in the middle of the track",
+      "created_at": "2026-09-12T11:21:32+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "653",
+      "source": "wige",
+      "message": "# 653 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T11:24:24+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "653",
+      "source": "wige",
+      "message": "# 653 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T11:24:30+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T11:24:36+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T11:24:40+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Fuchsr?hre longer lasting code 60",
+      "created_at": "2026-09-12T11:26:08+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "2",
+      "source": "wige",
+      "message": "# 2 stop-and- go penalty 23 sec ? fallen below minimum pit time",
+      "created_at": "2026-09-12T11:36:20+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "2",
+      "source": "wige",
+      "message": "# 2 Stop-and-Go Strafe 23 Sek ? Mindestboxenzeit unterschritten",
+      "created_at": "2026-09-12T11:36:31+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "653",
+      "source": "wige",
+      "message": "# 653 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T11:36:46+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "653",
+      "source": "wige",
+      "message": "# 653 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T11:36:54+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "80",
+      "source": "wige",
+      "message": "Incident #80 and #101 under investigation",
+      "created_at": "2026-09-12T11:38:54+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "941",
+      "source": "wige",
+      "message": "# 941 Mindestboxenstandzeit unterschritten wird untersucht",
+      "created_at": "2026-09-12T11:42:09+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T11:47:53+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385  Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T11:48:04+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "941",
+      "source": "wige",
+      "message": "# 941 stop-and- go penalty 1 sec ? fallen below minimum pit time",
+      "created_at": "2026-09-12T11:48:24+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "941",
+      "source": "wige",
+      "message": "# 941 Stop-and-Go Strafe 1 Sek ? Mindestboxenzeit unterschritten",
+      "created_at": "2026-09-12T11:48:33+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "380",
+      "source": "wige",
+      "message": "# 380 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T12:04:11+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "380",
+      "source": "wige",
+      "message": "# 380 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T12:04:14+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T12:04:34+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T12:04:39+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "410",
+      "source": "wige",
+      "message": "#410 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T12:06:37+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "11",
+      "source": "wige",
+      "message": "#11 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T12:06:50+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "410",
+      "source": "wige",
+      "message": "#410 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T12:09:23+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "123",
+      "source": "wige",
+      "message": "#123 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T12:12:56+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T12:17:25+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "385",
+      "source": "wige",
+      "message": "# 385 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T12:17:33+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "380",
+      "source": "wige",
+      "message": "# 380 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-12T12:17:45+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "380",
+      "source": "wige",
+      "message": "# 380 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-12T12:17:56+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "509",
+      "source": "wige",
+      "message": "Incident #509 and #415 under investigation",
+      "created_at": "2026-09-12T12:18:11+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "786",
+      "source": "wige",
+      "message": "Incident #786 and #971 under investigation",
+      "created_at": "2026-09-12T12:18:30+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "80",
+      "source": "wige",
+      "message": "Incident #80 and #101reportet to the Stewards",
+      "created_at": "2026-09-12T12:21:35+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "786",
+      "source": "wige",
+      "message": "Incident # 786 and #971 under investigation",
+      "created_at": "2026-09-12T12:29:09+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "786",
+      "source": "wige",
+      "message": "Incident #786 and #971 reportet to the Stewards",
+      "created_at": "2026-09-12T12:29:36+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "410",
+      "source": "wige",
+      "message": "# 410 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T12:33:38+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "410",
+      "source": "wige",
+      "message": "# 410 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T12:33:43+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "car in the middle of track Marshall Post 82/83",
+      "created_at": "2026-09-12T12:36:06+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "No more car in the middle of track Marshall Post 82/83",
+      "created_at": "2026-09-12T12:43:44+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "19",
+      "source": "wige",
+      "message": "#19 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-12T12:44:33+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "910",
+      "source": "wige",
+      "message": "# 910 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-12T12:44:51+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "910",
+      "source": "wige",
+      "message": "# 910 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-12T12:44:55+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "801",
+      "source": "wige",
+      "message": "Incident #801 and #509 under Investigation",
+      "created_at": "2026-09-12T12:56:25+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "801",
+      "source": "wige",
+      "message": "Incident #801 and #509 reportet to the Stewards",
+      "created_at": "2026-09-12T12:57:11+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "415",
+      "source": "wige",
+      "message": "drive trough Penalty #415",
+      "created_at": "2026-09-12T13:19:52+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "972",
+      "source": "wige",
+      "message": "# 972 Mindestboxenstandzeit unterschritten wird untersucht",
+      "created_at": "2026-09-12T13:23:12+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "481",
+      "source": "wige",
+      "message": "# 481 second noise violation",
+      "created_at": "2026-09-12T13:31:16+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "481",
+      "source": "wige",
+      "message": "# 481 zweite L?rm?berschreitung",
+      "created_at": "2026-09-12T13:31:21+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "312",
+      "source": "wige",
+      "message": "#312 under investiagtion cousing a collision",
+      "created_at": "2026-09-12T13:42:05+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "972",
+      "source": "wige",
+      "message": "#972 Teammanager im B?ro 3 melden",
+      "created_at": "2026-09-12T13:44:56+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "312",
+      "source": "wige",
+      "message": "#312 drive trought penalty replaced by 30sec Time penalty",
+      "created_at": "2026-09-12T13:53:14+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "935",
+      "source": "wige",
+      "message": "#935 under investigation overtacking under yellow",
+      "created_at": "2026-09-12T13:55:32+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "472",
+      "source": "wige",
+      "message": "incident #472 and #909 under investigation",
+      "created_at": "2026-09-12T14:10:50+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    },
+    {
+      "car": "472",
+      "source": "wige",
+      "message": "Incident #472 and #909 no further action",
+      "created_at": "2026-09-12T14:15:33+00:00",
+      "event_date": "2026-09-12",
+      "race_class": null
+    }
+  ]
+}
