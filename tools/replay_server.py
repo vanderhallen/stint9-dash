@@ -25,16 +25,19 @@ Run:
 import json
 import os
 import re
+import secrets
 import signal
 import subprocess
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 
 import cv2
+import numpy as np
 import pytesseract
 import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 
 PORT = 5057
@@ -42,6 +45,25 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SESSIONS_DIR = Path(os.path.expanduser('~/Documents/Terminal/replay-sessions'))
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 COOKIES_PATH = Path(os.path.expanduser('~/Documents/Terminal/youtube-cookies.txt'))
+
+# Only used when this server is reached through a Cloudflare Tunnel (an internet-
+# facing *.trycloudflare.com URL) -- LAN/.local/localhost access stays exactly as
+# open as it always was. Lives outside the repo (this is public on GitHub) and is
+# generated once, so it survives restarts without ever touching version control.
+AUTH_PATH = Path(os.path.expanduser('~/Documents/Terminal/replay-auth.json'))
+TUNNEL_HOST_SUFFIX = '.trycloudflare.com'
+
+
+def load_auth():
+    try:
+        return json.loads(AUTH_PATH.read_text())
+    except Exception:
+        auth = {'password': secrets.token_urlsafe(9), 'secret_key': secrets.token_hex(32)}
+        AUTH_PATH.write_text(json.dumps(auth))
+        return auth
+
+
+AUTH = load_auth()
 
 # same project + publishable key the rest of stint9-dash already uses client-side
 SB = 'https://esvvzgxqnfszhttdkuzc.supabase.co'
@@ -57,10 +79,12 @@ MERGE_GAP_S = 8.0   # badge re-appearing within this many video-seconds of going
                     # have the badge blink off for a couple seconds between segments
 
 app = Flask(__name__, static_folder=None)
+app.secret_key = AUTH['secret_key']
 CORS(app, allow_private_network=True)
 
 lock = threading.Lock()
-session = None   # single active session; this is a one-user local tool, not multi-tenant
+capture_session = None   # single active capture session; this is a one-user local tool, not multi-tenant
+                          # (named apart from Flask's `session` import, used below for the tunnel auth gate)
 
 
 def yt_id(url):
@@ -179,6 +203,103 @@ def resolve_video_path(sess):
     return None
 
 
+def media_kinds(path):
+    """Return (has_video, has_audio) for a media file."""
+    try:
+        out = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type',
+             '-of', 'csv=p=0', str(path)],
+            capture_output=True, text=True, timeout=20,
+        )
+        kinds = {ln.strip() for ln in out.stdout.splitlines() if ln.strip()}
+        return ('video' in kinds, 'audio' in kinds)
+    except Exception:
+        return (False, False)
+
+
+def resolve_audio_path(sess, video_path):
+    """Companion audio file for a video-only HLS/DASH download.
+
+    yt-dlp writes `session.ts.f299.mp4` (video) and `session.ts.f140.mp4`
+    (audio) separately until the live download ends and it merges them.
+    Cutting from the video file alone is why the uploaded clips were silent.
+    """
+    if video_path is None:
+        return None
+    _, has_a = media_kinds(video_path)
+    if has_a:
+        return video_path
+    d = sess['dir']
+    try:
+        files = [p for p in d.iterdir() if p.is_file()]
+    except FileNotFoundError:
+        return None
+    audio_only = []
+    combined = []
+    for p in files:
+        if p == video_path or p.name.startswith(('clip_', 'preview', '_frame', 'hit_')):
+            continue
+        suf = p.suffix.lower()
+        if suf not in {'.ts', '.mkv', '.mp4', '.webm', '.m4a', '.part'} and '.part' not in p.name:
+            continue
+        hv, ha = media_kinds(p)
+        if ha and hv:
+            combined.append(p)
+        elif ha:
+            audio_only.append(p)
+    if combined:
+        combined.sort(key=lambda p: p.stat().st_size, reverse=True)
+        return combined[0]
+    if audio_only:
+        audio_only.sort(key=lambda p: p.stat().st_size, reverse=True)
+        return audio_only[0]
+    return None
+
+
+def ffmpeg_cut(video_path, audio_path, start_t, dur, dest):
+    """Cut [start_t, start_t+dur) keeping audio whenever we have it."""
+    dest = Path(dest)
+    start_t = max(0.0, float(start_t))
+    dur = max(0.5, float(dur))
+    common_tail = ['-t', str(dur), '-avoid_negative_ts', 'make_zero',
+                   '-movflags', '+faststart', str(dest)]
+
+    def run(cmd):
+        return subprocess.run(cmd, capture_output=True, timeout=180)
+
+    same = audio_path is None or Path(audio_path) == Path(video_path)
+    if same:
+        r = run(['ffmpeg', '-y', '-ss', str(start_t), '-i', str(video_path),
+                 '-c', 'copy', *common_tail])
+        if dest.exists() and dest.stat().st_size > 0 and media_kinds(dest)[1]:
+            return True
+        # copy kept video but no audio — try encode that still copies audio if present
+        r = run(['ffmpeg', '-y', '-ss', str(start_t), '-i', str(video_path),
+                 '-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '160k',
+                 *common_tail])
+        if dest.exists() and dest.stat().st_size > 0:
+            return True
+        run(['ffmpeg', '-y', '-ss', str(start_t), '-i', str(video_path),
+             '-c:v', 'libx264', '-preset', 'veryfast', '-an', *common_tail])
+        return dest.exists() and dest.stat().st_size > 0
+
+    r = run(['ffmpeg', '-y',
+             '-ss', str(start_t), '-i', str(video_path),
+             '-ss', str(start_t), '-i', str(audio_path),
+             '-map', '0:v:0', '-map', '1:a:0?',
+             '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest',
+             *common_tail])
+    if dest.exists() and dest.stat().st_size > 0 and media_kinds(dest)[1]:
+        return True
+    r = run(['ffmpeg', '-y',
+             '-ss', str(start_t), '-i', str(video_path),
+             '-ss', str(start_t), '-i', str(audio_path),
+             '-map', '0:v:0', '-map', '1:a:0?',
+             '-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '160k',
+             '-shortest', *common_tail])
+    return dest.exists() and dest.stat().st_size > 0
+
+
 def crop_frame(frame, calib):
     h, w = frame.shape[:2]
     x, y = int(calib['x'] * w), int(calib['y'] * h)
@@ -209,6 +330,108 @@ def ocr_has_replay(crop):
         if _looks_like_replay(pytesseract.image_to_string(img, config=cfg)):
             return True
     return False
+
+
+def _ocr_start_no(crop):
+    """Read '#12' / '#48' / '#665' etc. from a green-box crop. Requires the hash
+    so '911' in 'Porsche 911' is not treated as a start number."""
+    if crop is None or crop.size == 0:
+        return None
+    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    big = cv2.resize(gray, None, fx=5, fy=5, interpolation=cv2.INTER_CUBIC)
+    cfg = '--psm 7 -c tessedit_char_whitelist=#0123456789'
+    texts = [pytesseract.image_to_string(big, config=cfg)]
+    for t in (160, 180, 200):
+        _, th = cv2.threshold(big, t, 255, cv2.THRESH_BINARY)
+        texts.append(pytesseract.image_to_string(th, config=cfg))
+        texts.append(pytesseract.image_to_string(255 - th, config=cfg))
+    blob = ' '.join(texts)
+    found = re.findall(r'#\s*(\d{1,3})', blob)
+    return found[0] if found else None
+
+
+def detect_start_number(frame):
+    """Find the NLS lower-third green parallelogram and OCR the start number
+    inside it (any 1–3 digit value). Returns a digit string or None."""
+    if frame is None or getattr(frame, 'size', 0) == 0:
+        return None
+    h, w = frame.shape[:2]
+    band = frame[int(h * 0.70):, :]
+    hsv = cv2.cvtColor(band, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array((40, 80, 60)), np.array((90, 255, 255)))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 11), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    scale = h / 1080.0
+    votes = []
+    for c in cnts:
+        x, y, cw, ch = cv2.boundingRect(c)
+        area = cv2.contourArea(c)
+        if ch < 16 * scale or cw < 30 * scale:
+            continue
+        if ch > 90 * scale or cw > 220 * scale:
+            continue
+        if cw / max(ch, 1) < 1.4 or cw / max(ch, 1) > 4.5:
+            continue
+        if area < 600 * scale * scale:
+            continue
+        pad = int(6 * scale)
+        crop = band[max(0, y - pad):y + ch + pad, max(0, x - pad):x + cw + pad]
+        num = _ocr_start_no(crop)
+        if num:
+            votes.append(num)
+    if not votes:
+        return None
+    return Counter(votes).most_common(1)[0][0]
+
+
+def detect_start_number_from_clip(clip_path, duration=None):
+    """Sample a few frames of the clip itself (not the full broadcast) and vote."""
+    votes = []
+    times = [0.4, 1.0, 2.0]
+    if duration:
+        times += [max(0.4, float(duration) * 0.5), max(0.4, float(duration) - 0.5)]
+    seen = set()
+    for t in times:
+        t = round(float(t), 2)
+        if t in seen or t < 0:
+            continue
+        seen.add(t)
+        n = detect_start_number(grab_frame(Path(clip_path), t))
+        if n:
+            votes.append(n)
+    if not votes:
+        return None
+    return Counter(votes).most_common(1)[0][0]
+
+
+def upsert_car_meta(video_id, filename, car):
+    if not car or not filename:
+        return
+    pub = f'{SB}/storage/v1/object/public/{BUCKET}/{video_id}/meta.json'
+    url = f'{SB}/storage/v1/object/{BUCKET}/{video_id}/meta.json'
+    meta = {}
+    try:
+        r = requests.get(pub, timeout=10)
+        if r.ok:
+            meta = r.json() or {}
+    except Exception:
+        pass
+    meta[filename] = str(car)
+    try:
+        requests.post(
+            url,
+            headers={
+                'apikey': KEY,
+                'Authorization': f'Bearer {KEY}',
+                'Content-Type': 'application/json',
+                'x-upsert': 'true',
+            },
+            data=json.dumps(meta),
+            timeout=20,
+        )
+    except Exception:
+        pass
 
 
 def grab_frame(path, t):
@@ -264,24 +487,23 @@ def cut_and_upload(sess, start_t, end_t, idx):
     src = resolve_video_path(sess) or sess.get('video_path')
     if src is None or not Path(src).exists():
         return
+    audio = resolve_audio_path(sess, src)
+    # Prefer a already-merged A+V file (yt-dlp writes it after the live
+    # download ends) so timestamps stay in lockstep.
+    if audio is not None and Path(audio) != Path(src):
+        hv, ha = media_kinds(audio)
+        if hv and ha:
+            src = audio
     clip_path = sess['dir'] / f'clip_{idx}.mp4'
-    subprocess.run(
-        ['ffmpeg', '-y', '-ss', str(start_t), '-i', str(src),
-         '-t', str(dur), '-c', 'copy', '-avoid_negative_ts', 'make_zero', str(clip_path)],
-        capture_output=True,
-    )
-    if not clip_path.exists() or clip_path.stat().st_size == 0:
-        subprocess.run(
-            ['ffmpeg', '-y', '-ss', str(start_t), '-i', str(src),
-             '-t', str(dur), '-c:v', 'libx264', '-preset', 'veryfast', '-an', str(clip_path)],
-            capture_output=True,
-        )
-    if not clip_path.exists() or clip_path.stat().st_size == 0:
+    if not ffmpeg_cut(src, audio, start_t, dur, clip_path):
         return
+    car = detect_start_number_from_clip(clip_path, dur)
+    car_suffix = f'_n{car}' if car else ''
     broadcast_start = sess.get('broadcast_start')
     real_ms = int((broadcast_start + start_t) * 1000) if broadcast_start else int(time.time() * 1000)
     iso = time.strftime('%Y-%m-%dT%H-%M-%S', time.gmtime(real_ms / 1000)) + f'-{real_ms % 1000:03d}Z'
-    obj_path = f"{sess['video_id']}/{iso}_{round(dur)}s.mp4"
+    fname = f'{iso}_{round(dur)}s{car_suffix}.mp4'
+    obj_path = f"{sess['video_id']}/{fname}"
     try:
         with open(clip_path, 'rb') as f:
             r = requests.post(
@@ -317,12 +539,15 @@ def cut_and_upload(sess, start_t, end_t, idx):
                     data=f.read(), timeout=30,
                 )
             still.unlink(missing_ok=True)
+        upsert_car_meta(sess['video_id'], fname, car)
     except Exception as e:
         with lock:
             sess['error'] = f'upload failed: {e}'
         return
     with lock:
         sess['clips_found'] = sess.get('clips_found', 0) + 1
+        if car:
+            sess['last_car'] = car
     clip_path.unlink(missing_ok=True)
 
 
@@ -474,27 +699,27 @@ def open_terminal():
 
 @app.route('/api/monitor/start', methods=['POST'])
 def monitor_start():
-    global session
+    global capture_session
     data = request.get_json(force=True) or {}
     url = data.get('url', '')
     vid = yt_id(url)
     if not vid:
         return jsonify(status='error', message='not a YouTube link'), 400
     with lock:
-        if session and not session.get('stopped'):
-            if session.get('video_id') == vid:
+        if capture_session and not capture_session.get('stopped'):
+            if capture_session.get('video_id') == vid:
                 return jsonify(status='running')
             return jsonify(status='error', message='already monitoring a different video — stop first'), 409
         sess_dir = SESSIONS_DIR / f'{vid}-{int(time.time())}'
         sess_dir.mkdir(parents=True, exist_ok=True)
-        session = {
+        capture_session = {
             'video_id': vid, 'dir': sess_dir, 'downloading': True,
             'scan_mode': 'catchup', 'badge_on': False, 'clips_found': 0,
             'calib': None, 'preview_ready': False, 'scanned_t': 0.0,
             'stopped': False, 'broadcast_start': None, 'error': None,
             'last_dl_line': '', 'video_path': None, 'hits': [],
         }
-        sess = session
+        sess = capture_session
     start_download(sess, url)
     threading.Thread(target=fill_broadcast_start, args=(sess, url), daemon=True).start()
     threading.Thread(target=detection_loop, args=(sess,), daemon=True).start()
@@ -504,9 +729,9 @@ def monitor_start():
 @app.route('/api/monitor/status')
 def monitor_status():
     with lock:
-        if not session:
+        if not capture_session:
             return jsonify(active=False)
-        s = session
+        s = capture_session
         return jsonify(
             active=True, videoId=s['video_id'], downloading=s['downloading'],
             scanMode=s['scan_mode'], badgeOn=s['badge_on'], clipsFound=s['clips_found'],
@@ -519,18 +744,18 @@ def monitor_status():
 @app.route('/api/monitor/preview.jpg')
 def monitor_preview():
     with lock:
-        if not session or not session.get('preview_ready'):
+        if not capture_session or not capture_session.get('preview_ready'):
             return jsonify(status='error'), 404
-        d = session['dir']
+        d = capture_session['dir']
     return send_from_directory(d, 'preview.jpg')
 
 
 @app.route('/api/monitor/hit/<int:idx>.jpg')
 def monitor_hit(idx):
     with lock:
-        if not session:
+        if not capture_session:
             return jsonify(status='error'), 404
-        d = session['dir']
+        d = capture_session['dir']
     resp = send_from_directory(d, f'hit_{idx}.jpg')
     resp.headers['Cache-Control'] = 'no-store'
     return resp
@@ -540,10 +765,10 @@ def monitor_hit(idx):
 def monitor_calibrate():
     data = request.get_json(force=True) or {}
     with lock:
-        if not session:
+        if not capture_session:
             return jsonify(status='error'), 400
         try:
-            session['calib'] = {k: float(data[k]) for k in ('x', 'y', 'w', 'h')}
+            capture_session['calib'] = {k: float(data[k]) for k in ('x', 'y', 'w', 'h')}
         except (KeyError, TypeError, ValueError):
             return jsonify(status='error', message='bad crop region'), 400
     return jsonify(status='ok')
@@ -551,15 +776,39 @@ def monitor_calibrate():
 
 @app.route('/api/monitor/stop', methods=['POST'])
 def monitor_stop():
-    global session
+    global capture_session
     proc = None
     with lock:
-        if session:
-            session['stopped'] = True
-            proc = session.get('proc')
-        session = None
+        if capture_session:
+            capture_session['stopped'] = True
+            proc = capture_session.get('proc')
+        capture_session = None
     kill_proc(proc)
     return jsonify(status='ok')
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json(force=True) or {}
+    if data.get('password') == AUTH['password']:
+        session['authed'] = True
+        session.permanent = True
+        return jsonify(status='ok')
+    return jsonify(status='error', message='wrong password'), 401
+
+
+@app.before_request
+def _guard_tunnel_auth():
+    # LAN/.local/localhost access is unauthenticated exactly as before -- this
+    # only gates requests that arrive through the internet-facing tunnel host.
+    host = request.host.split(':')[0]
+    if not host.endswith(TUNNEL_HOST_SUFFIX):
+        return
+    if request.path == '/api/login' or not request.path.startswith('/api/'):
+        return
+    if session.get('authed'):
+        return
+    return jsonify(status='error', message='auth required'), 401
 
 
 @app.route('/replay.html')
@@ -596,6 +845,8 @@ if __name__ == '__main__':
         print(f'  fixed link for other laptops on this network: http://{local_host}.local:{PORT}/replay.html')
     if ip:
         print(f'  (raw LAN IP right now, will change: http://{ip}:{PORT}/replay.html)')
+    print(f'  if you run a Cloudflare Tunnel (cloudflared tunnel --url http://localhost:{PORT}) for internet access,'
+          f' the *.trycloudflare.com link it prints will ask for this password: {AUTH["password"]}')
     # 0.0.0.0: other machines on the same LAN/hotspot can open the dashboard too
     # (they only view/control this Mac's single capture session, same as this tab).
     # macOS may prompt to allow incoming connections for Python the first time.

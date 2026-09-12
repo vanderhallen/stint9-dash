@@ -46,14 +46,27 @@
   table.clips{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
   table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
   table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .carno{font-weight:700;color:#1e8f3a}
   .empty{color:var(--muted);font-size:13px;padding:8px 0}
   .hits{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
   .hit{background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
   .hit img,.hit video{width:100%;display:block;background:#000}
   .hit .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:8px 10px;background:#fff}
+  #authOverlay{position:fixed;inset:0;background:rgba(15,20,26,.72);z-index:50;align-items:center;justify-content:center;padding:20px}
 </style>
 </head>
 <body>
+<div id="authOverlay" style="display:none">
+  <div class="card" style="max-width:360px;width:100%">
+    <h2>Password required</h2>
+    <div class="meta" style="margin:0 0 12px">This link is reachable from the internet — enter the capture password to control monitoring. (Printed in the server's terminal window at startup.)</div>
+    <div class="row">
+      <input id="authPw" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()">
+      <button class="btn" onclick="submitAuth()">Unlock</button>
+    </div>
+    <div class="err" id="authErr"></div>
+  </div>
+</div>
 <div class="wrap">
   <div>
     <h1>STINT9 · Replay clips</h1>
@@ -127,16 +140,53 @@
 </div>
 
 <script>
-/* This page is served two ways: (a) the deployed stint9.com copy -- BASE must
-   point at the capture Mac's stable Bonjour/.local hostname (NOT 'localhost',
-   which from any other laptop just means itself), so this same link works
-   for the operator's own Mac *and* any other laptop on the same network,
-   with no dependency on a DHCP IP that changes when the network does;
-   (b) directly from the replay server itself (port 5057, whether via
-   localhost, the .local name, or a raw LAN IP), where BASE must be
-   same-host or a viewer would hit their own machine instead. */
+/* This page is served two ways: (a) the deployed stint9.com/GitHub Pages copy --
+   BASE must point at the capture Mac's stable Bonjour/.local hostname (NOT
+   'localhost', which from any other laptop just means itself), so this same
+   link works for the operator's own Mac *and* any other laptop on the same
+   network, with no dependency on a DHCP IP that changes when the network does;
+   (b) directly from the replay server itself -- localhost, the .local name, a
+   raw LAN IP, or a Cloudflare Tunnel's *.trycloudflare.com address (HTTPS on
+   the standard port, so no ':5057' in the URL at all) -- where BASE must stay
+   same-origin or a viewer would hit their own machine instead. */
 var CAPTURE_HOST='ivos-macbook-air.local';   // update if this Mac's name (System Settings > Sharing) ever changes
-var BASE=(location.port==='5057') ? ('http://'+location.hostname+':5057') : ('http://'+CAPTURE_HOST+':5057');
+function isCaptureHost(host){
+  return host==='localhost' || host==='127.0.0.1' || host.endsWith('.local') || host.endsWith('.trycloudflare.com') ||
+    /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+}
+var BASE=isCaptureHost(location.hostname) ? location.origin : ('http://'+CAPTURE_HOST+':5057');
+
+/* ---- tunnel password gate: the server only enforces this over a
+   *.trycloudflare.com host (LAN/.local/localhost stay unauthenticated) --
+   a 401 from any control endpoint means show the prompt, not "offline". ---- */
+var authOverlayShown=false;
+function showAuthOverlay(){
+  if(authOverlayShown)return;
+  authOverlayShown=true;
+  document.getElementById('authOverlay').style.display='flex';
+}
+function hideAuthOverlay(){
+  if(!authOverlayShown)return;
+  authOverlayShown=false;
+  document.getElementById('authOverlay').style.display='none';
+}
+async function apiFetch(url,opts){
+  const res=await fetch(url,opts);
+  if(res.status===401){
+    showAuthOverlay();
+    const e=new Error('auth required');e.authRequired=true;throw e;
+  }
+  return res;
+}
+async function submitAuth(){
+  const pw=document.getElementById('authPw').value,err=document.getElementById('authErr');
+  err.textContent='';
+  try{
+    const res=await fetch(BASE+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    if(res.ok){document.getElementById('authPw').value='';hideAuthOverlay();pollStatus();return;}
+    err.textContent='wrong password';
+  }catch(e){err.textContent='could not reach server';}
+}
 
 /* ---- Supabase Storage (same project + publishable key as the rest of stint9-dash);
    the local server does the uploading now, this page only reads the clip list back ---- */
@@ -180,10 +230,10 @@ async function openTerminal(){
   const btn=document.getElementById('openTerminalBtn'),fb=document.getElementById('openTerminalFeedback');
   btn.disabled=true;
   try{
-    const res=await fetch(BASE+'/api/open-terminal',{cache:'no-store'});
+    const res=await apiFetch(BASE+'/api/open-terminal',{cache:'no-store'});
     const data=await res.json();
     if(data.status==='ok'){fb.textContent='Terminal opened.';btn.disabled=false;return;}
-  }catch(e){}
+  }catch(e){if(e&&e.authRequired){btn.disabled=false;return;}}
   try{await navigator.clipboard.writeText('Terminal');}catch(e){}
   fb.textContent='Copied — press ⌘ Space and paste.';
   btn.disabled=false;
@@ -245,17 +295,21 @@ async function startMonitoring(){
   embedYt(id);
   document.getElementById('startBtn').disabled=true;
   try{
-    const res=await fetch(BASE+'/api/monitor/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
+    const res=await apiFetch(BASE+'/api/monitor/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
     const data=await res.json();
     if(data.status==='error'){err.textContent=data.message||'could not start';document.getElementById('startBtn').disabled=false;return;}
-  }catch(e){err.textContent='could not reach the local server';document.getElementById('startBtn').disabled=false;return;}
+  }catch(e){
+    document.getElementById('startBtn').disabled=false;
+    if(!(e&&e.authRequired))err.textContent='could not reach the local server';
+    return;
+  }
   document.getElementById('stopBtn').disabled=false;
   calibShown=false;
   lastClipsFound=-1;
   loadClipsTable();
 }
 async function stopMonitoring(){
-  try{await fetch(BASE+'/api/monitor/stop',{method:'POST'});}catch(e){}
+  try{await apiFetch(BASE+'/api/monitor/stop',{method:'POST'});}catch(e){if(e&&e.authRequired)return;}
   resetMonitorUi();
 }
 
@@ -271,14 +325,16 @@ function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padS
 async function pollStatus(){
   let st;
   try{
-    const res=await fetch(BASE+'/api/monitor/status',{cache:'no-store',signal:AbortSignal.timeout(2000)});
+    const res=await apiFetch(BASE+'/api/monitor/status',{cache:'no-store',signal:AbortSignal.timeout(2000)});
     st=await res.json();
     statusFails=0;
   }catch(e){
+    if(e && e.authRequired)return;   // server's up, it's just locked -- not a connectivity problem
     statusFails++;
     if(statusFails>=3)setServerOffline();
     return;
   }
+  hideAuthOverlay();
   if(!st.active){
     if(!document.getElementById('stopBtn').disabled)resetMonitorUi();
     return;
@@ -354,7 +410,7 @@ async function confirmCalib(){
   document.getElementById('cropbox').style.display='none';
   document.getElementById('calibRow').style.display='none';
   document.getElementById('previewWrap').classList.remove('on');
-  try{await fetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
+  try{await apiFetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
 }
 
 /* ---- clips table: reads straight from Supabase Storage — unchanged from before,
@@ -365,9 +421,9 @@ function renderClipsTable(){
   const wrap=document.getElementById('clipsTableWrap');
   const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
   if(!rows.length){wrap.innerHTML='<div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div>';return;}
-  let html='<table class="clips"><tr><th>Clip</th><th>Start time</th><th>Duration</th><th>Link</th></tr>';
+  let html='<table class="clips"><tr><th>Clip</th><th>No.</th><th>Start time</th><th>Duration</th><th>Link</th></tr>';
   rows.forEach((r,i)=>{
-    html+='<tr><td>clip '+(i+1)+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+
+    html+='<tr><td>clip '+(i+1)+'</td><td class="carno">'+(r.car?'#'+r.car:'')+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+
       '<a class="btn ghost" style="padding:5px 10px" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a></td></tr>';
   });
   html+='</table>';
@@ -385,11 +441,42 @@ function clipFileName(obj){
   if(n.startsWith(pfx))n=n.slice(pfx.length);
   return n.split('/').pop();
 }
+function parseClipName(name){
+  const m=(name||'').match(/^(.+)_(\d+)s(?:_n(\d+)|_av)?\.(webm|mp4)$/);
+  if(!m)return null;
+  return {iso:m[1],durationS:+m[2],car:m[3]||null,av:/_av\.(webm|mp4)$/.test(name)};
+}
+function clipRank(r){
+  if(r.av || /_av\.(mp4|webm)(\?|$)/.test(r.url||'')) return 2;
+  if(r.car || /_n\d+\.(mp4|webm)(\?|$)/.test(r.url||'')) return 1;
+  return 0;
+}
+function dedupeClips(rows){
+  const by=new Map();
+  rows.forEach(r=>{
+    const k=r.startedAtMs+'|'+r.durationS;
+    const prev=by.get(k);
+    if(!prev){by.set(k,r);return;}
+    if(!r.car && prev.car)r.car=prev.car;
+    if(!prev.car && r.car)prev.car=r.car;
+    if(clipRank(r)>clipRank(prev))by.set(k,r);
+  });
+  return Array.from(by.values());
+}
+async function fetchCarMeta(videoId){
+  try{
+    const r=await fetch(SB+'/storage/v1/object/public/'+BUCKET+'/'+videoId+'/meta.json',{cache:'no-store'});
+    if(!r.ok)return {};
+    const d=await r.json();
+    return d&&typeof d==='object'?d:{};
+  }catch(e){return {};}
+}
 async function loadClipsTable(){
   if(!ytVideoId)return;
   lastClipsLoad=Date.now();
   const meta=document.getElementById('clipsMeta');
   try{
+    const cars=await fetchCarMeta(ytVideoId);
     const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
       method:'POST',
       headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
@@ -400,10 +487,13 @@ async function loadClipsTable(){
     clipRows={};
     (list||[]).forEach(obj=>{
       const name=clipFileName(obj);
-      const m=name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);if(!m)return;
+      const p=parseClipName(name);if(!p)return;
       const path=ytVideoId+'/'+name;
-      clipRows[path]={startedAtMs:parseDashedIso(m[1]),durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
+      clipRows[path]={startedAtMs:parseDashedIso(p.iso),durationS:p.durationS,car:p.car||cars[name]||cars[p.iso+'_'+p.durationS+'s.mp4']||null,av:!!p.av,url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
     });
+    const kept=dedupeClips(Object.values(clipRows));
+    clipRows={};
+    kept.forEach(r=>{clipRows[r.url]=r;});
     renderClipsTable();
     meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
     renderHitsFromClips();
@@ -430,13 +520,13 @@ function renderHits(hits){
 function buildClipsGalleryHtml(rows){
   if(!rows.length)return '';
   return rows.map((r,i)=>{
-    const poster=r.url.replace(/\.mp4($|\?)/,'.jpg$1').replace(/\.webm($|\?)/,'.jpg$1');
+    const poster=r.url.replace(/_av\.mp4($|\?)/,'.jpg$1').replace(/_n\d+\.mp4($|\?)/,'.jpg$1').replace(/\.mp4($|\?)/,'.jpg$1').replace(/\.webm($|\?)/,'.jpg$1');
     return '<div class="hit">'+
       '<a href="'+r.url+'" target="_blank" rel="noopener">'+
         '<img src="'+poster+'" alt="REPLAY clip '+(i+1)+'" onerror="this.outerHTML=\'<video src=&quot;'+r.url+'&quot; controls preload=metadata playsinline></video>\'">'+
       '</a>'+
       '<div class="cap"><span class="status active" style="padding:4px 10px">REPLAY</span>'+
-      '<span>clip '+(i+1)+' · '+fmtClock(r.startedAtMs)+' · '+fmtDur(r.durationS)+'</span>'+
+      '<span>clip '+(i+1)+(r.car?' · #'+r.car:'')+' · '+fmtClock(r.startedAtMs)+' · '+fmtDur(r.durationS)+'</span>'+
       '<a class="btn ghost" style="padding:5px 10px;margin-left:auto" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a></div>'+
     '</div>';
   }).join('');
@@ -455,13 +545,14 @@ function renderHitsFromClips(){
    call returns folders as entries with id:null) and renders its clips
    straight from Storage. Works from the deployed site, any laptop, any
    network -- unlike the monitor controls above, no local process involved. */
-function objToClipRow(videoId,obj){
+function objToClipRow(videoId,obj,cars){
   const name=(obj.name||'').split('/').pop();
-  const m=name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);
-  if(!m)return null;
-  return {startedAtMs:parseDashedIso(m[1]),durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/'+name)};
+  const p=parseClipName(name);
+  if(!p)return null;
+  return {startedAtMs:parseDashedIso(p.iso),durationS:p.durationS,car:p.car||(cars&&(cars[name]||cars[p.iso+'_'+p.durationS+'s.mp4']))||null,av:!!p.av,url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/'+name)};
 }
 async function fetchClipRows(videoId){
+  const cars=await fetchCarMeta(videoId);
   const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
     method:'POST',
     headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
@@ -469,7 +560,7 @@ async function fetchClipRows(videoId){
   });
   if(!res.ok)throw new Error('list failed '+res.status);
   const list=await res.json();
-  return (list||[]).map(obj=>objToClipRow(videoId,obj)).filter(Boolean);
+  return dedupeClips((list||[]).map(obj=>objToClipRow(videoId,obj,cars)).filter(Boolean));
 }
 async function loadBrowseClips(videoId){
   const grid=document.getElementById('browseGrid'),meta=document.getElementById('browseMeta'),err=document.getElementById('browseErr');
