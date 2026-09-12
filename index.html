@@ -4504,13 +4504,17 @@ function rnDetect(T){
   // negative/zero keys, so seeding at 0 made this loop never find them.
   let maxIdx=-Infinity;Object.keys(bx).forEach(k=>{if(bx[k]<=T&&+k>maxIdx)maxIdx=+k;});
   // -- overtakes: same-boundary time gap to each class rival flips sign across a sector --
-  // S1 is never reported. The pit box and the pit exit both sit inside S1, so an out-lap
-  // S1 runs ~200s against a ~75s green one: every class rival's gap flips sign and the
-  // feed fills with passes that never happened (2026-08-01 #950: 145 of 180 notes in S1).
-  // It only LOOKED clean on the baked CSV events, where the in-lap carries no S5 split —
-  // the missing boundary made the pair below unresolvable, so the S1 crossing was skipped
-  // by accident, not by design. The WIGE live feed does publish an in-lap S5, so nothing
-  // skipped it there. The stop is reported by the PIT IN/OUT notes (black bar) instead.
+  // S1 is unreliable ONLY on an OUT-LAP for one of the two cars being compared —
+  // the pit box and the pit exit both sit inside S1, so an out-lap S1 runs
+  // ~200s against a ~75s green one and the gap flips regardless of any real
+  // on-track pass (2026-08-01 #950: 145 of 180 notes in S1, before this was
+  // scoped). It used to skip S1 UNCONDITIONALLY, for every lap of every car —
+  // which missed genuine passes there: confirmed live 2026-09-12, #670 vs
+  // #653 swapped at lap 2's S1, an entirely ordinary green-flag lap for both,
+  // and the note never fired. pitLapsOf(car) already flags exactly which
+  // lap's OWN out-lap S1 is the distorted one (see its definition above); a
+  // pit-lap check per car, not a blanket sector skip, is the fix. The stop
+  // itself is still reported separately by the PIT IN/OUT notes (black bar).
   // Starts at -3 (lap0/S2), not the old hardcoded 2 (lap1/S2): that assumed
   // lap 1 was always the first lap, so overtakes WITHIN lap 0 -- happening
   // right now, mid-race, for every car still on its first lap -- were never
@@ -4519,8 +4523,10 @@ function rnDetect(T){
   for(let idx=-3;idx<=maxIdx;idx++){
     const a=bx[idx-1],b=bx[idx];if(a==null||b==null||b>T)continue;
     const L=Math.floor((idx-1)/5)+1,k=keySec(idx);
-    if(k===1)continue;
-    rnCars.forEach(X=>{if(X===rnCar)return;const xb=rnBX[X]||{},ax=xb[idx-1],bx2=xb[idx];
+    const myOutLap=k===1&&pitLapsOf(rnCar).indexOf(L-1)>=0;
+    rnCars.forEach(X=>{if(X===rnCar)return;
+      if(k===1&&(myOutLap||pitLapsOf(X).indexOf(L-1)>=0))return;   // either car pitted INTO this lap — its own S1 is the distorted one
+      const xb=rnBX[X]||{},ax=xb[idx-1],bx2=xb[idx];
       if(ax==null||bx2==null||ax>T||bx2>T)return;
       const g0=a-ax,g1=b-bx2;                 // >0 => #665 behind X at that fixed track point
       if(g0>0===g1>0)return;                   // no crossover in this sector
