@@ -5,37 +5,44 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>STINT9 · replay clips</title>
 <style>
-  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff;--red:#e0301e;--green:#1e8f3a}
+  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff;--red:#e0301e;--green:#1e8f3a;--blue:#2f5fd0}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
   .wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
   h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
   .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .card.offline{border-color:#f6cfc9;background:#fff8f7}
   .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-top:8px;line-height:1.5}
   a.btn,button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:11px 18px;border-radius:8px;text-decoration:none;display:inline-block;cursor:pointer}
   button.btn:disabled{opacity:.45;cursor:default}
   a.btn.ghost,button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  button.btn.copied{background:var(--green)}
   input[type=text]{font-family:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;flex:1 1 320px;min-width:0}
   .err{color:var(--red);font-size:11px;margin-top:6px;min-height:14px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block;flex:0 0 auto}
+  .dot.on{background:var(--green)}
+  .stepnum{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:700;flex:0 0 auto}
+  .step{display:flex;align-items:center;gap:10px;margin:9px 0}
+  .step code{font-size:11px;color:var(--muted)}
   .yt-embed{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
   .yt-embed.on{display:block}
   .yt-embed iframe{width:100%;height:100%;border:0;display:block}
-  .stagewrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
-  .stagewrap.on{display:block}
-  .stagewrap video{width:100%;display:block}
+  .previewwrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
+  .previewwrap.on{display:block}
+  .previewwrap img{width:100%;display:block}
   #cropbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.15);cursor:move;touch-action:none}
   #cropbox .rz{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#ff3b30;border-radius:3px;cursor:nwse-resize}
   .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:20px;background:#eef1f4;color:var(--muted)}
+  .status .sdot{width:8px;height:8px;border-radius:50%;background:currentColor}
   .status.watching{background:#eaf6ee;color:var(--green)}
   .status.active{background:#fdecea;color:var(--red)}
-  .status.catchup{background:#eaf1fb;color:#2f5fd0}
-  #scanPos{font-size:11px;color:var(--muted);letter-spacing:.5px}
-  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
-  .status.active .dot{animation:pulse 1s infinite}
+  .status.catchup{background:#eaf1fb;color:var(--blue)}
+  .status.active .sdot{animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  #scanPos{font-size:11px;color:var(--muted);letter-spacing:.5px}
   table.clips{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
   table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
   table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -46,146 +53,244 @@
 <div class="wrap">
   <div>
     <h1>STINT9 · Replay clips</h1>
-    <div class="sub">Watches a livestream tab for the REPLAY badge and auto-catches each clip.</div>
+    <div class="sub">A local script watches a livestream for the REPLAY badge and auto-catches every clip — runs independently of any browser tab.</div>
   </div>
 
-  <div class="card">
-    <h2>Source</h2>
-    <div class="row">
-      <input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off">
-      <button class="btn" id="yt-load" onclick="loadYt()">Load</button>
-    </div>
-    <div class="err" id="yt-err"></div>
-    <div class="yt-embed" id="yt-embed"></div>
+  <!-- ---- server offline: setup instructions, mirrors the hoc-tracker kenteken tool ---- -->
+  <div class="card offline" id="offlineCard">
+    <h2><span class="dot" id="statusDot"></span> Server offline</h2>
+    <div class="meta" style="margin:0 0 12px">Start the local server to download and scan livestreams. It runs entirely on this machine — the deployed site never talks to YouTube or ffmpeg itself.</div>
+    <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="openTerminal()" id="openTerminalBtn">Open Terminal</button><span class="meta" id="openTerminalFeedback" style="margin:0"></span></div>
+    <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
+    <div class="step"><span class="stepnum">3</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
+    <div class="step"><span class="stepnum">4</span><button class="btn ghost" onclick="location.href=BASE+'/replay.html'">Open lokaal</button><code>localhost:5057/replay.html</code></div>
+    <div class="meta" style="margin-top:12px">First time only: <code>brew install tesseract</code>, then <code>pip install pytesseract</code> inside that venv.</div>
   </div>
 
-  <div class="card">
-    <h2>Monitor</h2>
-    <div class="meta" style="margin:0 0 10px">Click Start, then choose <b>This Tab</b> in the browser's share picker — that's the only way to read the pixels of a YouTube embed you don't control (its origin blocks direct canvas access). The permission is asked again every time you start monitoring; browsers don't let a page remember it. Once sharing starts, it rewinds to the very beginning of the broadcast and scans forward at up to 2&times; until it catches up to the live edge — any REPLAY found along the way is slowed to real speed just long enough to record it — then it settles at 1&times; and keeps watching live.</div>
-    <div class="row">
-      <button class="btn" id="startBtn" onclick="startMonitoring()">Start monitoring</button>
-      <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
-      <span class="status" id="statusPill"><span class="dot"></span><span id="statusTxt">idle</span></span>
-      <span id="scanPos"></span>
+  <!-- ---- server online: source + monitor + clips ---- -->
+  <div id="onlineCards" style="display:none">
+    <div class="card">
+      <h2>Source</h2>
+      <div class="row">
+        <input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off">
+        <button class="btn" id="startBtn" onclick="startMonitoring()">Start monitoring</button>
+        <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
+      </div>
+      <div class="err" id="startErr"></div>
+      <div class="yt-embed" id="yt-embed"></div>
     </div>
-    <div class="stagewrap" id="stagewrap">
-      <video id="capVideo" autoplay muted playsinline></video>
-      <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
-    </div>
-    <div class="row" id="calibRow" style="display:none;margin-top:10px">
-      <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm.</div>
-      <button class="btn" onclick="confirmCalib()">Confirm region →</button>
-    </div>
-    <div class="err" id="capErr"></div>
-  </div>
 
-  <div class="card">
-    <h2>Clips</h2>
-    <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one live, or clips from a past session for this video will load here.</div></div>
-    <div class="meta" id="clipsMeta"></div>
+    <div class="card">
+      <h2>Monitor</h2>
+      <div class="row">
+        <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">idle</span></span>
+        <span id="scanPos"></span>
+      </div>
+      <div class="previewwrap" id="previewWrap">
+        <img id="previewImg" alt="stream preview">
+        <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
+      </div>
+      <div class="row" id="calibRow" style="display:none;margin-top:10px">
+        <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm — scanning is paused until you do.</div>
+        <button class="btn" onclick="confirmCalib()">Confirm region →</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Clips</h2>
+      <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div></div>
+      <div class="meta" id="clipsMeta"></div>
+    </div>
   </div>
 </div>
 
 <script>
-/* ---- Supabase (same project + publishable key as the rest of stint9-dash) ---- */
+var BASE='http://localhost:5057';
+
+/* ---- Supabase Storage (same project + publishable key as the rest of stint9-dash);
+   the local server does the uploading now, this page only reads the clip list back ---- */
 var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
 var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
 var BUCKET='replay-clips';
 
-/* ---- YouTube embed: ytId() is the same regex index.html's YOUTUBE STREAM panel uses,
-   but this page needs the IFrame Player API (not a bare src=embed iframe) so it can
-   seekTo()/setPlaybackRate() the stream to race it from 0 up to the live edge. */
-var ytVideoId=null,ytPlayer=null,ytApiP=null;
+/* ---- server online/offline detection: same pattern as the hoc-tracker kenteken tool
+   (poll /health every 4s while offline, stop polling once online) ---- */
+var healthTimer=null,serverOnline=false;
+async function checkServer(){
+  try{
+    const res=await fetch(BASE+'/health',{signal:AbortSignal.timeout(2000),cache:'no-store'});
+    const data=await res.json();
+    if(data.status==='ok'){setServerOnline();return true;}
+  }catch(e){}
+  setServerOffline();
+  return false;
+}
+function setServerOnline(){
+  if(serverOnline)return;serverOnline=true;
+  if(healthTimer){clearInterval(healthTimer);healthTimer=null;}
+  document.getElementById('offlineCard').style.display='none';
+  document.getElementById('onlineCards').style.display='';
+  restoreYtUrl();
+  pollStatus();
+  statusTimer=setInterval(pollStatus,1000);
+}
+function setServerOffline(){
+  serverOnline=false;
+  document.getElementById('offlineCard').style.display='';
+  document.getElementById('onlineCards').style.display='none';
+  if(!healthTimer)healthTimer=setInterval(checkServer,4000);
+  if(statusTimer){clearInterval(statusTimer);statusTimer=null;}
+  resetMonitorUi();
+}
+checkServer();
+
+/* ---- offline-card buttons: same mechanics as the hoc-tracker kenteken tool ---- */
+async function openTerminal(){
+  const btn=document.getElementById('openTerminalBtn'),fb=document.getElementById('openTerminalFeedback');
+  btn.disabled=true;
+  try{
+    const res=await fetch(BASE+'/api/open-terminal',{cache:'no-store'});
+    const data=await res.json();
+    if(data.status==='ok'){fb.textContent='Terminal opened.';btn.disabled=false;return;}
+  }catch(e){}
+  try{await navigator.clipboard.writeText('Terminal');}catch(e){}
+  fb.textContent='Copied — press ⌘ Space and paste.';
+  btn.disabled=false;
+}
+function copyCmd(btn,text){
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.textContent;btn.textContent='Copied!';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied');},2000);
+  });
+}
+
+/* ---- YouTube preview embed: just a bare iframe for the user's own convenience —
+   detection no longer needs any client-side control of the player ---- */
 function ytId(v){
   v=(v||'').trim();if(!v)return null;
   const m=v.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
   if(m)return m[1];
   return /^[A-Za-z0-9_-]{11}$/.test(v)?v:null;
 }
-function loadYtApi(){
-  if(window.YT&&window.YT.Player)return Promise.resolve();
-  if(ytApiP)return ytApiP;
-  ytApiP=new Promise(res=>{
-    const prev=window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady=function(){if(prev)try{prev();}catch(e){}res();};
-    const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);
-  });
-  return ytApiP;
-}
-async function loadYt(){
-  const url=document.getElementById('yt-url'),err=document.getElementById('yt-err'),box=document.getElementById('yt-embed');
-  const id=ytId(url.value);
-  if(!id){err.textContent='not a YouTube link — paste the URL from the address bar or share button';return;}
-  err.textContent='';ytVideoId=id;
-  try{localStorage.setItem('stint9_replay_ytlink',url.value);}catch(e){}
-  if(ytPlayer){try{ytPlayer.destroy();}catch(e){}ytPlayer=null;}
-  box.innerHTML='<div id="yt-player-el"></div>';
+function embedYt(id){
+  const box=document.getElementById('yt-embed');
+  box.innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0" '+
+    'title="YouTube video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
   box.classList.add('on');
-  try{await loadYtApi();}catch(e){err.textContent='could not load the YouTube player API — check your connection.';return;}
-  await new Promise(res=>{
-    ytPlayer=new YT.Player('yt-player-el',{
-      host:'https://www.youtube-nocookie.com',
-      videoId:id,
-      playerVars:{autoplay:1,rel:0,enablejsapi:1},
-      events:{onReady:()=>res()}
-    });
-  });
-  loadClipsTable();
 }
-(function restoreYt(){try{const s=localStorage.getItem('stint9_replay_ytlink');if(s)document.getElementById('yt-url').value=s;}catch(e){}})();
-
-/* ---- tab-capture + calibration ---- */
-var capStream=null,capVideo=null,calibFrac=null;
-function loadCalib(){try{const s=JSON.parse(localStorage.getItem('stint9_replay_calib')||'null');if(s&&s.w&&s.h)return s;}catch(e){}return null;}
-function saveCalib(f){try{localStorage.setItem('stint9_replay_calib',JSON.stringify(f));}catch(e){}}
-
-async function startMonitoring(){
-  const errEl=document.getElementById('capErr');errEl.textContent='';
-  if(!ytPlayer||typeof ytPlayer.seekTo!=='function'){errEl.textContent='load a video first.';return;}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){errEl.textContent='this browser does not support tab capture (getDisplayMedia).';return;}
+function restoreYtUrl(){
   try{
-    capStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:true});
-  }catch(e){errEl.textContent='tab-share permission was not granted.';return;}
-  capVideo=document.getElementById('capVideo');
-  capVideo.srcObject=capStream;
-  await capVideo.play().catch(()=>{});
-  document.getElementById('stagewrap').classList.add('on');
-  document.getElementById('startBtn').disabled=true;
-  document.getElementById('stopBtn').disabled=false;
-  capStream.getVideoTracks()[0].addEventListener('ended',stopMonitoring);
-  const saved=loadCalib();
-  if(saved){calibFrac=saved;beginCatchUpScan();}
-  else{beginCalibration();}
+    const s=localStorage.getItem('stint9_replay_ytlink');
+    if(!s)return;
+    document.getElementById('yt-url').value=s;
+    const id=ytId(s);
+    if(id){ytVideoId=id;loadClipsTable();}
+  }catch(e){}
 }
-function stopMonitoring(){
-  stopDetectionLoop();
-  if(recorder&&recorder.state!=='inactive')try{recorder.stop();}catch(e){}
-  if(capStream)capStream.getTracks().forEach(t=>t.stop());
-  capStream=null;
-  if(ytPlayer){try{ytPlayer.setPlaybackRate(1);ytPlayer.seekTo(ytPlayer.getDuration(),true);}catch(e){}}
-  document.getElementById('scanPos').textContent='';
-  document.getElementById('stagewrap').classList.remove('on');
-  document.getElementById('calibRow').style.display='none';
+
+/* ---- start/stop monitoring: hands the URL to the local server, which does
+   everything else (download, detect, cut, upload) independently of this page ---- */
+var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0;
+function resetMonitorUi(){
   document.getElementById('startBtn').disabled=false;
   document.getElementById('stopBtn').disabled=true;
+  document.getElementById('previewWrap').classList.remove('on');
+  document.getElementById('calibRow').style.display='none';
+  document.getElementById('scanPos').textContent='';
+  calibShown=false;
+  lastClipsFound=-1;
   setStatus('idle');
 }
+async function startMonitoring(){
+  const url=document.getElementById('yt-url').value,err=document.getElementById('startErr');
+  const id=ytId(url);
+  if(!id){err.textContent='not a YouTube link — paste the URL from the address bar or share button';return;}
+  err.textContent='';ytVideoId=id;
+  try{localStorage.setItem('stint9_replay_ytlink',url);}catch(e){}
+  embedYt(id);
+  document.getElementById('startBtn').disabled=true;
+  try{
+    const res=await fetch(BASE+'/api/monitor/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
+    const data=await res.json();
+    if(data.status==='error'){err.textContent=data.message||'could not start';document.getElementById('startBtn').disabled=false;return;}
+  }catch(e){err.textContent='could not reach the local server';document.getElementById('startBtn').disabled=false;return;}
+  document.getElementById('stopBtn').disabled=false;
+  calibShown=false;
+  lastClipsFound=-1;
+  loadClipsTable();
+}
+async function stopMonitoring(){
+  try{await fetch(BASE+'/api/monitor/stop',{method:'POST'});}catch(e){}
+  resetMonitorUi();
+}
 
-/* draggable/resizable crop box over the live preview, in CSS pixels -> stored as
-   fractions of the captured video's natural size so it survives any window resize */
-function beginCalibration(){
-  const box=document.getElementById('cropbox');
-  box.style.display='block';
-  const stage=document.getElementById('stagewrap');
-  const initW=stage.clientWidth*0.16,initH=stage.clientHeight*0.10;
-  box.style.left=(stage.clientWidth*0.78)+'px';box.style.top=(stage.clientHeight*0.10)+'px';
-  box.style.width=initW+'px';box.style.height=initH+'px';
-  document.getElementById('calibRow').style.display='flex';
-  setStatus('calibrate');
-  wireCropBoxDrag();
+/* ---- status polling drives the status pill, the calibration snapshot, and the
+   clips-table refresh — all the actual work happens server-side ---- */
+function setStatus(s){
+  const pill=document.getElementById('statusPill'),txt=document.getElementById('statusTxt');
+  const cls=s==='active'?'active':s==='watching'?'watching':s==='catching up'?'catchup':'';
+  pill.className='status'+(cls?' '+cls:'');
+  txt.textContent=s;
+}
+function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+async function pollStatus(){
+  let st;
+  try{
+    const res=await fetch(BASE+'/api/monitor/status',{cache:'no-store',signal:AbortSignal.timeout(2000)});
+    st=await res.json();
+    statusFails=0;
+  }catch(e){
+    statusFails++;
+    if(statusFails>=3)setServerOffline();
+    return;
+  }
+  if(!st.active){
+    if(!document.getElementById('stopBtn').disabled)resetMonitorUi();
+    return;
+  }
+  document.getElementById('startBtn').disabled=true;
+  document.getElementById('stopBtn').disabled=false;
+  if(st.videoId && st.videoId!==ytVideoId){
+    ytVideoId=st.videoId;
+    const inp=document.getElementById('yt-url');
+    if(!inp.value)inp.value='https://www.youtube.com/watch?v='+st.videoId;
+    if(!document.getElementById('yt-embed').classList.contains('on'))embedYt(st.videoId);
+    loadClipsTable();
+  }
+  const err=document.getElementById('startErr');
+  if(st.error)err.textContent=st.error;
+  if(st.badgeOn)setStatus('active');
+  else if(!st.calibrated)setStatus(st.previewReady?'awaiting calibration':'downloading…');
+  else setStatus(st.scanMode==='catchup'?'catching up':'watching');
+  let pos='';
+  if(st.calibrated && st.scanMode==='catchup')pos=fmtDur(st.scannedT)+' scanned';
+  else if(!st.calibrated && st.lastDlLine)pos=st.lastDlLine;
+  document.getElementById('scanPos').textContent=pos;
+  if(st.previewReady&&!st.calibrated&&!calibShown){calibShown=true;showCalibration();}
+  if(typeof st.clipsFound==='number' && st.clipsFound!==lastClipsFound){
+    lastClipsFound=st.clipsFound;
+    loadClipsTable();
+  }
+}
+
+/* ---- calibration: same draggable-crop-box UX as before, now overlaid on a static
+   preview snapshot the server grabbed, instead of a live captured video frame ---- */
+function showCalibration(){
+  const wrap=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
+  img.src=BASE+'/api/monitor/preview.jpg?t='+Date.now();
+  img.onload=()=>{
+    wrap.classList.add('on');
+    const box=document.getElementById('cropbox');
+    box.style.display='block';
+    const initW=wrap.clientWidth*0.16,initH=wrap.clientHeight*0.10;
+    box.style.left=(wrap.clientWidth*0.78)+'px';box.style.top=(wrap.clientHeight*0.10)+'px';
+    box.style.width=initW+'px';box.style.height=initH+'px';
+    document.getElementById('calibRow').style.display='flex';
+    wireCropBoxDrag();
+  };
 }
 function wireCropBoxDrag(){
-  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('stagewrap');
+  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('previewWrap');
   let mode=null,sx=0,sy=0,ox=0,oy=0,ow=0,oh=0;
   function down(e,m){mode=m;const p=(e.touches?e.touches[0]:e);sx=p.clientX;sy=p.clientY;
     ox=parseFloat(box.style.left);oy=parseFloat(box.style.top);ow=parseFloat(box.style.width);oh=parseFloat(box.style.height);
@@ -200,192 +305,35 @@ function wireCropBoxDrag(){
   document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});
   document.addEventListener('mouseup',()=>mode=null);document.addEventListener('touchend',()=>mode=null);
 }
-function confirmCalib(){
-  const box=document.getElementById('cropbox'),stage=document.getElementById('stagewrap');
-  const vw=capVideo.videoWidth||stage.clientWidth,vh=capVideo.videoHeight||stage.clientHeight;
-  const sxr=vw/stage.clientWidth,syr=vh/stage.clientHeight;
+async function confirmCalib(){
+  const box=document.getElementById('cropbox'),stage=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
+  const iw=img.naturalWidth||stage.clientWidth,ih=img.naturalHeight||stage.clientHeight;
+  const sxr=iw/stage.clientWidth,syr=ih/stage.clientHeight;
   const x=parseFloat(box.style.left)*sxr,y=parseFloat(box.style.top)*syr;
   const w=parseFloat(box.style.width)*sxr,h=parseFloat(box.style.height)*syr;
-  calibFrac={x:x/vw,y:y/vh,w:w/vw,h:h/vh};
-  saveCalib(calibFrac);
+  const calib={x:x/iw,y:y/ih,w:w/iw,h:h/ih};
   document.getElementById('cropbox').style.display='none';
   document.getElementById('calibRow').style.display='none';
-  beginCatchUpScan();
+  document.getElementById('previewWrap').classList.remove('on');
+  try{await fetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
 }
 
-/* ---- OCR: same rnOcrRegion/rnLoadTesseract approach as index.html's clock reader,
-   copied (this is a separate static page, nothing is shared/imported between pages),
-   whitelist narrowed to just the REPLAY letters, region narrowed to the calibrated crop */
-const TESS_SRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-let tessWorker=null,tessP=null;
-function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[data-s="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.dataset.s=src;s.onload=()=>res();s.onerror=()=>rej(new Error('load failed'));document.head.appendChild(s);});}
-function loadTesseract(){
-  if(tessWorker)return Promise.resolve(tessWorker);if(tessP)return tessP;
-  tessP=(async()=>{await loadScript(TESS_SRC);const w=await Tesseract.createWorker('eng');
-    await w.setParameters({tessedit_char_whitelist:'REPLAYreplay',tessedit_pageseg_mode:'7'});tessWorker=w;return w;})();
-  return tessP;
-}
-function ocrCrop(video,frac){
-  const vw=video.videoWidth||640,vh=video.videoHeight||480;
-  const sx=Math.round(vw*frac.x),sy=Math.round(vh*frac.y),sw=Math.max(1,Math.round(vw*frac.w)),sh=Math.max(1,Math.round(vh*frac.h));
-  const sc=Math.min(4,Math.max(1,Math.round(300/sw)));
-  const cv=document.createElement('canvas');cv.width=sw*sc;cv.height=sh*sc;
-  const ctx=cv.getContext('2d');ctx.drawImage(video,sx,sy,sw,sh,0,0,cv.width,cv.height);
-  const img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data;
-  for(let i=0;i<d.length;i+=4){let g=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;g=Math.max(0,Math.min(255,(g-90)*2.4));d[i]=d[i+1]=d[i+2]=g;}
-  ctx.putImageData(img,0,0);
-  return cv;
-}
-
-/* ---- catch-up scan: on Start, rewind the player to 0 and race it forward at the
-   fastest rate the API offers (capped at 2x — YouTube doesn't expose faster via
-   setPlaybackRate) until it reaches the live edge, then settle at 1x and keep
-   watching. Sampling is driven by the PLAYER'S video-time, not wall-clock, so the
-   same 1-video-second cadence holds regardless of playback rate — no per-rate
-   interval math needed. */
-var scanMode='idle';   // 'idle' | 'catchup' | 'live'
-var fastRate=1,lastSampleT=null,ocrBusy=false;
-const SAMPLE_STEP=1.0;    // video-seconds between OCR samples
-const LIVE_EPS=2.5;       // video-seconds from the live edge counted as "caught up"
-function pickFastRate(){
-  try{const rates=ytPlayer.getAvailablePlaybackRates()||[1];return Math.max.apply(null,rates.filter(r=>r<=2))||1;}
-  catch(e){return 1;}
-}
-function beginCatchUpScan(){
-  fastRate=pickFastRate();
-  scanMode=fastRate>1?'catchup':'live';
-  lastSampleT=null;
-  try{ytPlayer.seekTo(0,true);ytPlayer.setPlaybackRate(fastRate);ytPlayer.playVideo();}catch(e){}
-  beginDetectionLoop();
-}
-function updateScanPos(cur,dur){
-  document.getElementById('scanPos').textContent=(scanMode==='catchup')?(fmtDur(cur)+' / '+fmtDur(dur)+' scanned'):'';
-}
-
-/* ---- detection loop: 1 sample/video-sec, 2-consecutive-sample debounce, drives clip capture ---- */
-var detTimer=null,badgeOn=false,pendingState=null,pendingCount=0,recorder=null,recChunks=[],clipStartMs=0,recStartRealMs=0,clipIdx=0;
-function setStatus(s){
-  const pill=document.getElementById('statusPill'),txt=document.getElementById('statusTxt');
-  const cls=s==='active'?'active':s==='watching'?'watching':s==='catching up'?'catchup':'';
-  pill.className='status'+(cls?' '+cls:'');
-  txt.textContent=s;
-}
-async function beginDetectionLoop(){
-  setStatus('loading OCR…');
-  try{await loadTesseract();}catch(e){document.getElementById('capErr').textContent='could not load the OCR engine — check your connection.';return;}
-  setStatus(scanMode==='catchup'?'catching up':'watching');
-  detTimer=setInterval(scanStep,200);
-}
-function stopDetectionLoop(){if(detTimer){clearInterval(detTimer);detTimer=null;}badgeOn=false;pendingState=null;pendingCount=0;scanMode='idle';}
-function scanStep(){
-  if(!ytPlayer||typeof ytPlayer.getCurrentTime!=='function')return;
-  let cur=0,dur=0;
-  try{cur=ytPlayer.getCurrentTime()||0;dur=ytPlayer.getDuration()||0;}catch(e){return;}
-  if(scanMode==='catchup'){
-    updateScanPos(cur,dur);
-    if(dur>0&&dur-cur<=LIVE_EPS){
-      scanMode='live';
-      try{ytPlayer.setPlaybackRate(1);}catch(e){}
-      updateScanPos(0,0);
-      if(!badgeOn)setStatus('watching');
-    }
-  }
-  if(ocrBusy)return;
-  if(lastSampleT==null||cur-lastSampleT>=SAMPLE_STEP||cur-lastSampleT<=-0.5){
-    lastSampleT=cur;ocrBusy=true;
-    detectTick().finally(()=>{ocrBusy=false;});
-  }
-}
-async function detectTick(){
-  if(!capVideo||capVideo.readyState<2||!calibFrac)return;
-  let text='';
-  try{const cv=ocrCrop(capVideo,calibFrac);const {data}=await tessWorker.recognize(cv);text=(data&&data.text)||'';}catch(e){return;}
-  const seen=/REPLAY/i.test(text);
-  if(seen===badgeOn){pendingState=null;pendingCount=0;return;}
-  if(pendingState===seen){pendingCount++;}else{pendingState=seen;pendingCount=1;}
-  if(pendingCount<2)return;   // require 2 consecutive samples before flipping state
-  pendingState=null;pendingCount=0;
-  badgeOn=seen;
-  if(badgeOn)onBadgeOn();else onBadgeOff();
-}
-function onBadgeOn(){
-  setStatus('active');
-  // back-date to when this video position was actually broadcast live, not "now" —
-  // during a catch-up scan "now" is well past the moment this old replay first aired
-  clipStartMs=Date.now();
-  try{
-    const dur=ytPlayer.getDuration()||0,cur=ytPlayer.getCurrentTime()||0;
-    if(dur>0)clipStartMs=Date.now()-(dur-cur)*1000;
-  }catch(e){}
-  if(scanMode==='catchup'){try{ytPlayer.setPlaybackRate(1);}catch(e){}}   // record this one at real speed
-  recChunks=[];
-  recStartRealMs=Date.now();   // actual wall-clock start, for duration — kept separate from the back-dated display timestamp above
-  try{
-    recorder=new MediaRecorder(capStream,{mimeType:pickMime()});
-  }catch(e){recorder=null;return;}
-  recorder.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
-  recorder.start();
-}
-function onBadgeOff(){
-  setStatus(scanMode==='catchup'?'catching up':'watching');
-  if(scanMode==='catchup'){try{ytPlayer.setPlaybackRate(fastRate);}catch(e){}}   // resume the fast scan
-  if(!recorder||recorder.state==='inactive')return;
-  const displayStart=clipStartMs,recStart=recStartRealMs;
-  recorder.onstop=()=>{
-    const durationS=Math.max(0.5,(Date.now()-recStart)/1000);
-    const blob=new Blob(recChunks,{type:recorder.mimeType||'video/webm'});
-    uploadClip(blob,displayStart,durationS);
-  };
-  recorder.stop();
-}
-function pickMime(){
-  const opts=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  for(const o of opts){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(o))return o;}
-  return 'video/webm';
-}
-
-/* ---- upload straight to Supabase Storage; metadata lives in the path, no DB table ---- */
-function extFromMime(m){return (m&&m.indexOf('mp4')>=0)?'mp4':'webm';}
-async function uploadClip(blob,startedAtMs,durationS){
-  const ext=extFromMime(blob.type);
-  const iso=new Date(startedAtMs).toISOString().replace(/[:.]/g,'-');
-  const path=(ytVideoId||'unknown')+'/'+iso+'_'+Math.round(durationS)+'s.'+ext;
-  clipIdx++;
-  renderClipRow({idx:clipIdx,path:path,startedAtMs:startedAtMs,durationS:durationS,url:null,uploading:true});
-  try{
-    const res=await fetch(SB+'/storage/v1/object/'+BUCKET+'/'+encodeURI(path),{
-      method:'POST',
-      headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':blob.type||'video/webm'},
-      body:blob
-    });
-    if(!res.ok)throw new Error('upload failed ('+res.status+')');
-    const url=SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path);
-    updateClipRow(path,{url:url,uploading:false});
-  }catch(e){updateClipRow(path,{uploading:false,error:'upload failed'});}
-}
-
-/* ---- clips table: renders live catches, and reloads past clips for this video on load ---- */
+/* ---- clips table: reads straight from Supabase Storage — unchanged from before,
+   the local server just uploads into the same bucket ---- */
 var clipRows={};
-function fmtClock(ms){const d=new Date(ms);return d.toLocaleTimeString();}
-function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function fmtClock(ms){return new Date(ms).toLocaleTimeString();}
 function renderClipsTable(){
   const wrap=document.getElementById('clipsTableWrap');
   const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
-  if(!rows.length){wrap.innerHTML='<div class="empty">No clips caught yet — start monitoring to catch one live, or clips from a past session for this video will load here.</div>';return;}
+  if(!rows.length){wrap.innerHTML='<div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div>';return;}
   let html='<table class="clips"><tr><th>Clip</th><th>Start time</th><th>Duration</th><th>Link</th></tr>';
   rows.forEach((r,i)=>{
-    const link=r.url?('<a class="btn ghost" style="padding:5px 10px" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a>')
-      :(r.error?('<span class="err" style="margin:0">'+r.error+'</span>'):'<span class="meta" style="margin:0">uploading…</span>');
-    html+='<tr><td>clip '+(i+1)+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+link+'</td></tr>';
+    html+='<tr><td>clip '+(i+1)+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+
+      '<a class="btn ghost" style="padding:5px 10px" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a></td></tr>';
   });
   html+='</table>';
   wrap.innerHTML=html;
 }
-function renderClipRow(r){clipRows[r.path]=r;renderClipsTable();}
-function updateClipRow(path,patch){if(!clipRows[path])return;Object.assign(clipRows[path],patch);renderClipsTable();}
-
-// "2026-09-12T14-32-07-123Z" (dashes in place of the ':'/'.' an ISO string can't
-// have in a filename) back to a real ISO string a Date can parse
 function parseDashedIso(s){
   const m=s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/);
   if(!m)return 0;
@@ -403,13 +351,11 @@ async function loadClipsTable(){
     });
     if(!res.ok)return;
     const list=await res.json();
-    clipRows={};clipIdx=0;
+    clipRows={};
     (list||[]).forEach(obj=>{
       const m=obj.name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);if(!m)return;
-      const startedAtMs=parseDashedIso(m[1]);
       const path=ytVideoId+'/'+obj.name;
-      clipIdx++;
-      clipRows[path]={idx:clipIdx,path:path,startedAtMs:isNaN(startedAtMs)?0:startedAtMs,durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
+      clipRows[path]={startedAtMs:parseDashedIso(m[1]),durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
     });
     renderClipsTable();
     meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
