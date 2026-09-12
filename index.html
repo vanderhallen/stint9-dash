@@ -896,6 +896,12 @@ const LEG={};
 //    mid-track at its last split). Kept comfortably above the longest real sector
 //    (~280s) so a car genuinely circulating a long sector is never mistaken for parked.
 const LIVE_RUNNING_WINDOW_S=360;
+// How many times its own S2 reference a car may be silent, after clearing S1,
+// before we read it as having taken the second pit entry (the GP-to-Nordschleife
+// transition, just past the S1 beacon) rather than as a slow S2. Set above
+// anything real: the slowest of 639 completed S2s on 2026-09-12 was 204s against
+// a 74.7s median, i.e. 2.7x. See liveCarXY().
+const PIT_AFTER_S1_X=3;
 //  - a gap at the last common boundary larger than this is two cars that ran at
 //    different times, not a racing gap -> shown as "—" instead of "+15000s".
 const GAP_SANE_MAX_S=900;
@@ -2420,6 +2426,18 @@ function liveCarXY(st,T){
   const nextSeg=(li[1]>=5)?1:li[1]+1;
   const predDur=liveRefDuration(st,nextSeg);
   if(predDur>0){
+    // The Nordschleife pit entry. There are TWO ways into the lane here: the main
+    // one on the GP straight before start/finish, and a second at the GP-to-
+    // Nordschleife transition — which sits just past the S1 beacon. So a car that
+    // has cleared S1 and then simply stops being reported has almost always
+    // turned into the lane at that second entry; it is not crawling towards the
+    // S2 entrance. Nothing else fits the data either: across 639 completed S2s on
+    // 2026-09-12 the slowest was 204s against a 74.7s median (2.7x), so a car
+    // silent past PIT_AFTER_S1_X of its own S2 reference is not running S2 at all.
+    // Without this the whole group slid to the S2 exit and stacked there on one
+    // point wearing DELAY badges, for the LIVE_RUNNING_WINDOW_S minutes it took
+    // the generic park rule below to catch up.
+    if(li[1]===1&&elapsed>predDur*PIT_AFTER_S1_X)return{xy:ptAlong(1,0),parked:true,overdue:false};
     const progress=Math.max(0,Math.min(1,elapsed/predDur));  // capped — never overshoots the sector exit
     return{xy:ptAlong(nextSeg,progress),parked:false,overdue:elapsed>predDur*(1+thr)};
   }

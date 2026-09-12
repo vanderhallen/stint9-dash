@@ -1859,6 +1859,34 @@ actually circulating" = it published a new or changed split during the window.
 value-change latch, and the no-evidence path. `live/test-build-db.mjs` still
 passes unchanged: rows carrying no `t0` derive exactly as before.
 
+### The second pit entry — "cleared S1, then silent" (2026-09-12)
+
+The Nürburgring has **two ways into the pit lane**: the main one on the GP
+straight before start/finish, and a second at the **GP-to-Nordschleife
+transition**, which sits just past the S1 beacon. Cars use it constantly in
+practice, and it is invisible in the feed — `inpit` is effectively never set
+(§18), so nothing marks the stop.
+
+The effect on the map was a permanent clump: a car that cleared S1 and then
+stopped being reported was predicted onward into S2, capped at the S2 exit and
+badged `DELAY`, where it sat with everyone else in the same situation for the
+**six minutes** it took `LIVE_RUNNING_WINDOW_S` to catch up. That clump at the
+S2 entrance was the single biggest remaining stack on the map.
+
+Nothing else fits the data: across **639 completed S2s** that day the slowest
+was **204s against a 74.7s median — 2.7×**. So a car silent past
+`PIT_AFTER_S1_X` (3×, deliberately above that observed maximum) of its **own**
+S2 reference is not running S2 at all, and `liveCarXY()` now parks it in the
+lane instead — no `DELAY` badge, because a stop is not a delay.
+
+Deliberately **S1-only**. There is no pit entry mid-Nordschleife, so a car
+overdue in S3/S4/S5 is stranded *on track* and must keep saying so — that is
+safety information, not a pit stop. `live/test-live-pit.mjs` locks both halves
+of that down.
+
+On the captured 2026-09-12 field, 7 of the 19 overdue cars reclassify to PIT
+immediately, the rest as they stay silent.
+
 **Known residual:** a car still on lap 0 at cold load has no previous lap and
 no witnessed crossing yet, so it keeps the old pinned-at-the-boundary
 behaviour until it publishes its next split (≤ one sector, worst case ~S4's
