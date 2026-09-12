@@ -3842,6 +3842,97 @@ buildStartGrid();
       const d5=own-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}
     return raw;
   };
+  // ---- LIVE position anchoring (README §15.4b) ------------------------------
+  // WIGE publishes no per-car crossing time. wige-scrape probes for one and falls
+  // back to the frame's root TOD (live/wige-scrape/index.ts:96-103), so every row
+  // a poll writes carries the SAME lap_end_tod: the snapshot time, not a boundary
+  // the car crossed.
+  //
+  // For a lap the car has FINISHED that is still good evidence — the row stops
+  // being rewritten the moment its lap counter ticks over, so the frozen stamp is
+  // the line crossing to within one poll (~5s, §10.1). For the car's CURRENT lap
+  // it is not: the stamp is rewritten to "now" every poll, and buildLiveDB's
+  // t0 = tend - rt then drags the whole in-progress lap forward so the last sector
+  // the car reported always ends exactly at T. That is the bug this fixes. Every
+  // car drew at the exit of its last reported sector, so the field stacked onto
+  // the four or five sector-exit points instead of flowing between them — and
+  // §15.4a's prediction never ran at all, because activeLeg always found a leg
+  // covering T and render() never reached its LIVE branch.
+  //
+  // Both corrections below touch ONLY each car's current-lap row. Finished laps
+  // already anchor correctly and are left exactly as they were.
+  //
+  //  1. ANCHOR the lap at a time the car really was at the line, best evidence
+  //     first: a witnessed lap-counter tick, else the previous lap row's frozen
+  //     stamp (needs no history, so a cold load mid-session is anchored on its
+  //     first poll), else back-computed from a witnessed sector crossing — a
+  //     value absent last poll and present this one. No evidence -> row is left
+  //     untouched and behaves exactly as it did before.
+  //  2. GATE the sector times against that anchor. WIGE does not clear the split
+  //     fields at the line: for the first seconds of a lap the row still carries
+  //     the FINISHED lap's splits (verified 2026-09-12 — #650 23s into lap 2 was
+  //     still reporting lap 1's four splits, while #17 and #11 on that same poll
+  //     already showed their own new S1). Laid out from a correct anchor those
+  //     stale splits would throw the car most of a lap down the road, so drop the
+  //     first sector whose cumulative time lands in the future, and everything
+  //     after it. A car cannot have crossed a boundary it has not reached yet.
+  const ANCH={};                 // car -> {lap,seen,t0:{lap:tod},sc:{lap*5+k:tod}} — previous-poll state + witnessed crossings
+  const ANCH_TOL_S=2;            // slack on the future-crossing gate: float noise + sub-poll jitter
+  function anchorLiveRows(raw,snapTod){
+    if(snapTod==null||!raw||!raw.length)return raw;
+    const cur={},tendOf={};
+    for(const r of raw){tendOf[r.car+'|'+r.lap]=r.tend;
+      if(!cur[r.car]||r.lap>cur[r.car].lap)cur[r.car]=r;}
+    for(const c in cur){
+      const r=cur[c];
+      const a=ANCH[c];
+      if(!a){ANCH[c]={lap:r.lap,seen:r.s.slice(),t0:{},sc:{}};}   // first sight: record state, latch nothing — its splits may be minutes old
+      else{
+        if(r.lap>a.lap)a.t0[r.lap]=snapTod;                // the counter ticking over IS the S/F crossing
+        // A split that CHANGED value was just published, so the car crossed that
+        // boundary between the two polls. Comparing values rather than merely
+        // "null -> set" matters because WIGE overwrites the previous lap's
+        // carried-over splits in place: the field is never empty, so a
+        // presence-only test would miss every crossing on a lap that started
+        // with carry-over — which is most of them.
+        else if(r.lap===a.lap){for(let k=0;k<5;k++)if(r.s[k]!=null&&r.s[k]!==a.seen[k])a.sc[r.lap*5+k+1]=snapTod;}
+        a.lap=r.lap;a.seen=r.s.slice();
+      }
+      const st=ANCH[c];
+      // Strongest evidence first: a split we actually watched land. Walking back
+      // from it over this lap's own splits puts every boundary of the lap in the
+      // right absolute place. A LINE crossing cannot do that — the counter ticks
+      // over as the car crosses, but if it then sits in the box the splits it
+      // later posts did NOT start there (observed 2026-09-12: #22 crossed to
+      // start lap 2, spent 639s stopped, then ran S1-S3; anchored at the line it
+      // read as 903s silent and got parked on the pit line while circulating).
+      // So a line crossing is only a fallback, and only while it stays credible.
+      // NB the resulting t0 is "where the walk starts", not necessarily the S/F
+      // crossing, on a lap that contains a stop — the boundaries are what matter.
+      let t0=null;
+      for(let k=5;k>=1;k--){const ts=st.sc[r.lap*5+k];if(ts==null)continue;
+        let cum=0,ok=true;
+        for(let i=0;i<k;i++){if(r.s[i]==null){ok=false;break;}cum+=r.s[i];}
+        if(ok){t0=ts-cum;break;}}
+      if(t0==null){                                        // nothing witnessed yet (cold load): fall back to a line crossing
+        let cum=0;for(let k=0;k<5;k++){if(r.s[k]==null)break;cum+=r.s[k];}
+        const line=st.t0[r.lap]!=null?st.t0[r.lap]:tendOf[c+'|'+(r.lap-1)];
+        // Only trust it while it does not imply the car has been silent longer
+        // than a car on track ever is. Beyond that we simply do not know where
+        // the car is, and asserting a position is worse than leaving it be.
+        if(line!=null&&snapTod-(line+cum)<=LIVE_RUNNING_WINDOW_S)t0=line;
+      }
+      if(t0==null)continue;                                // no evidence anywhere yet — leave the row alone
+      let cum=0;
+      for(let k=0;k<5;k++){
+        if(r.s[k]==null)continue;
+        if(t0+cum+r.s[k]>snapTod+ANCH_TOL_S){for(let j=k;j<5;j++)r.s[j]=null;break;}   // not reached yet -> stale carry-over
+        cum+=r.s[k];
+      }
+      r.t0=t0;
+    }
+    return raw;
+  }
   function liveTick(){
     refreshStatus();
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_timing?select=car,lap,klass,s1,s2,s3,s4,s5,s1_kmh,s2_kmh,s3_kmh,s4_kmh,s5_kmh,lap_end_tod,lap_time,inpit,fastest,driver,vehicle&event_date=eq.'+encodeURIComponent(liveEventDate())+'&order=car,lap',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
@@ -3872,10 +3963,23 @@ buildStartGrid();
         // corrupt leg still pushes the derived DB.tmax into the future.
         liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
         if(!isFinite(liveFrontier))liveFrontier=null;
+        // The frontier IS this poll's snapshot time (every row carries it), which is
+        // exactly what the anchoring pass needs to witness crossings against.
+        anchorLiveRows(raw,liveFrontier);
         const geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
         let live;try{live=window.buildLiveDB(raw,geom,{name:(DB.event&&DB.event.name)||'LIVE',date:liveEventDate()});}catch(e){liveMsg.textContent='live feed: parse error';return;}
         ['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','name','drvlap','carcol','veh','event'].forEach(k=>{DB[k]=live[k];});
-        const pick=fillClassDropdown();buildClass(pick);fillStints(selCar);
+        // buildClass re-derives DB.tmin/tmax from leg ENDS and yanks T back to
+        // DB.tmin whenever T falls outside that window (index.html:3255). Now that
+        // anchorLiveRows() puts a car's last leg at the crossing it really happened
+        // at, the newest leg end sits up to a sector behind "now" and T is
+        // legitimately past it — so hold the clock across the rebuild and keep the
+        // LIVE timeline running to the newest DATA time, as it always has.
+        const _liveT=T;
+        const pick=fillClassDropdown();buildClass(pick);
+        if(liveFrontier!=null&&liveFrontier>DB.tmax){DB.tmax=liveFrontier;if(scrub)scrub.max=DB.tmax;}
+        T=_liveT;if(scrub)scrub.value=T;
+        fillStints(selCar);
         applyCarFuelSettings(selCar);postTyreCar(selCar);postSvcCar(selCar);pushPit(true);
         const frontier=(liveFrontier!=null)?liveFrontier:DB.tmax;liveSeen=true;liveHasData=true;   // robust newest data-time; drives clock T
         markStale(frontier);
@@ -3911,6 +4015,7 @@ buildStartGrid();
     snapSim();
     clearLiveDB();                                              // README §15.3: LIVE starts from a genuinely empty DB, every time
     liveSeen=false;liveHasData=false;liveFrontier=null;
+    for(const k in ANCH)delete ANCH[k];                         // §15.3: no crossing latches carried in from a previous LIVE session either
     window.__liveAdvMs=Date.now();window.__liveLastT=undefined;  // don't inherit stale staleness state from a previous LIVE entry
     liveDispT=null;liveDispLast=0;liveLastDrawn=null;
     liveMsg.textContent='LIVE · connecting…';

@@ -1764,6 +1764,106 @@ prediction first (zero new fetches, already covers "this car has done at
 least one lap"), verified not to ghost, before adding the archive-lookup
 tiers as a refinement.
 
+## 15.4b Anchoring a LIVE lap to a real crossing — SHIPPED 2026-09-12
+
+§15.4a point 2 calls a real sector-crossing time "the one holy reference" and
+assumed `lap_end_tod` was one. **It is not.** WIGE publishes no per-car
+crossing time: `wige-scrape` probes `TAGESZEIT`/`TIMEOFDAY`/`LASTPASSING`/…
+and falls back to the frame's **root TOD**
+(`live/wige-scrape/index.ts:96-103`), so every row a poll writes carries the
+same value — the snapshot time. Verified on a live Zeittraining field
+(2026-09-12): all 49 in-progress rows of one poll shared `lap_end_tod`
+24076.2 to the decimal, and `admin.html`'s data-stream panel shows one
+identical `tod(UTC)` down the whole column.
+
+For a **finished** lap the stamp is still good evidence — the row stops being
+rewritten the moment the car's lap counter ticks over, so it froze at the line
+crossing to within one poll (~5s, §10.1). For the car's **current** lap it is
+rewritten to "now" on every poll, and `build-db`'s `t0 = tend - rt` then broke
+the map in two different ways at once:
+
+| car state | `rt` | what `t0 = tend - rt` produced | how it looked |
+|---|---|---|---|
+| out-lap, no lap time yet | `null` → sum of known sectors | last known sector ends **exactly at the snapshot** | car pinned ~`LIVE_BUFFER_S` short of a sector exit; `activeLeg` always finds a leg covering `T`, so §15.4a's prediction **never ran at all** |
+| any later lap | previous lap's `LASTLAPTIME` | lap assumed to have started exactly one lap time ago; known sectors land at the front of that window | car reads as hundreds of seconds overdue → `DELAY` badge, and past `LIVE_RUNNING_WINDOW_S` **parked on the pit line** while actually on track |
+
+Both collapse the field onto the four or five sector-exit points instead of
+letting it flow between them. That is the "cars are grouped on the map" report.
+
+### The fix — `anchorLiveRows()` (`index.html`, LIVE path only)
+
+Runs between `prepLiveRaw()` and `buildLiveDB()`, and touches **only each
+car's current-lap row** — finished laps already anchor correctly.
+
+1. **Anchor the lap**, strongest evidence first:
+   - **A witnessed split crossing** — a split whose value appeared or *changed*
+     between two polls, so the car crossed that boundary between them. Walking
+     back over this lap's own splits from there puts every boundary of the lap
+     in the right absolute place. This is the only anchor that survives a pit
+     stop, so it wins outright.
+   - **A line crossing** (a witnessed lap-counter tick, else the previous lap
+     row's frozen stamp) — the cold-load fallback, since it needs no history.
+     Used **only while it stays credible**: if it implies the car has been
+     silent longer than `LIVE_RUNNING_WINDOW_S`, it is discarded.
+   - Nothing credible → the row is left completely alone and behaves exactly
+     as it did before.
+
+   A line crossing is *real* but is not a safe anchor on its own, because the
+   counter ticks over as the car crosses and the splits it posts afterwards
+   need not start there. Observed 2026-09-12: **#22** crossed to start lap 2,
+   stood in the box for **639s**, then ran S1-S3. Anchored at that line it read
+   as 903s silent and was parked on the pit line while it was circulating —
+   which is why the credibility bound exists and why a witnessed split
+   outranks it. (On such a lap the resulting `t0` is "where the walk starts",
+   not the S/F crossing; the boundary positions are what the map needs.)
+
+   `buildLiveDB` takes the anchor as a new optional `t0` row field; rows
+   without one (SIM, archive replay) derive exactly as before.
+2. **Gate the splits against that anchor.** WIGE does not clear the split
+   fields at the line — for the first seconds of a lap the row still carries
+   the **finished** lap's splits (2026-09-12: #650 23s into lap 2 still
+   reporting lap 1's four splits, while #17 and #11 on that same poll already
+   showed their own new S1). Laid out from a *correct* anchor those stale
+   splits would throw the car most of a lap down the road, so drop the first
+   split whose cumulative time lands in the future, and everything after it. A
+   car cannot have crossed a boundary it has not reached yet.
+
+Note the crossing latch compares split **values**, not mere presence: because
+of the carry-over above the field is never empty, so a presence-only test
+would miss every crossing on a lap that began with carry-over — which is most
+of them.
+
+`buildClass()` re-derives `DB.tmin/tmax` from leg ends and yanks `T` back to
+`DB.tmin` when `T` falls outside that window. With legs now ending at real
+crossings the newest leg end sits up to a sector behind "now" and `T` is
+legitimately past it, so `liveTick` holds the clock across the rebuild and
+keeps `DB.tmax` at the newest **data** time, as the LIVE timeline always had.
+
+### Measured on the live field
+
+Four real consecutive polls of the 2026-09-12 Zeittraining (131 cars, ~4 min
+of running) replayed through the real pipeline. Ground truth for "was this car
+actually circulating" = it published a new or changed split during the window.
+
+| | before | after |
+|---|---|---|
+| circulating cars wrongly parked on the pit line | 20 | **3** |
+| model agrees with ground truth | 73 | **90** |
+| cars drawn from a real interpolated leg | 6 | **53** |
+| cars sitting within 5% of a sector boundary (excl. parked) | 61 / 80 | **35 / 98** |
+| `DELAY` badges | 31 | **12** |
+
+**Tests:** `node live/test-live-anchor.mjs` — lifts the real function out of
+`index.html` (no copy to drift) and drives it with rows actually observed on
+2026-09-12, covering both failure modes above, cold load, carry-over, the
+value-change latch, and the no-evidence path. `live/test-build-db.mjs` still
+passes unchanged: rows carrying no `t0` derive exactly as before.
+
+**Known residual:** a car still on lap 0 at cold load has no previous lap and
+no witnessed crossing yet, so it keeps the old pinned-at-the-boundary
+behaviour until it publishes its next split (≤ one sector, worst case ~S4's
+~215s). It self-corrects with no intervention.
+
 ## 15.5 Feature-parity audit — SIM vs LIVE
 
 Traced every `window.dataMode` branch point in `index.html` (24 occurrences).

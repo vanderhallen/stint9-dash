@@ -14,6 +14,13 @@
  *     spd:[178.2, 165.4, null, 152.9, 61.0], // sector speed readings (km/h), same shape as s; feeds Code 60 (see index.html code60Sectors())
  *     tend:43525.47,   // TAGESZEIT as seconds-of-day = lap END boundary
  *     rt:673.9,        // RUNDENZEIT_IN_SEKUNDEN (may be null -> sum of known sectors)
+ *     t0:42851.6,      // OPTIONAL lap-START boundary. Overrides the derived
+ *                      //   t0 = tend - rt when the caller knows better. Only the
+ *                      //   LIVE path sets it (index.html anchorLiveRows(), README
+ *                      //   §15.4b): WIGE sends no per-car crossing time, so `tend`
+ *                      //   on a car's CURRENT lap is just the snapshot time and
+ *                      //   deriving t0 from it pins the car's last reported sector
+ *                      //   to "now". Absent on SIM/archive rows -> unchanged.
  *     inpit:false, fast:false,
  *     drv:"Mustermann", veh:"Porsche 911 GT3 R" }
  *
@@ -81,7 +88,11 @@
         let known = 0;
         for (const x of s) if (x != null) known += x;
         const rt = r.rt ? r.rt : known;
-        const t0 = r.tend - rt;
+        // An explicit lap-start anchor wins over the derived one. `tend - rt` is
+        // only as good as `tend`, and on the LIVE feed a car's CURRENT lap carries
+        // the snapshot time there, not a boundary it crossed (see the row-shape
+        // note above). Rows without `t0` — SIM, archive replay — are unaffected.
+        const t0 = (r.t0 != null && isFinite(+r.t0)) ? +r.t0 : (r.tend - rt);
         let cum = t0;
         for (let k = 0; k < 5; k++) {
           if (s[k] == null) continue;           // e.g. S5 on a pit-in lap: no boundary
