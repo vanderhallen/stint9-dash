@@ -126,6 +126,31 @@ const NOW = 24076.2;                       // snapshot TOD of the poll under tes
         NOW22 + 5 - (seen.t0 + s[0] + s[1] + s[2]) < 1, seen.t0);
 }
 
+/* ---- 4d. two cars whose splits land in the SAME poll must not collapse onto
+       one point: once anchored, each is carried forward over its own published
+       split durations, so their next boundary differs by real seconds. Real
+       case, 2026-09-12: five cars all pinned to 26138.3 with S3 times spanning
+       155-180s, drawn on top of each other. ---- */
+{
+  resetAnch();
+  const t = 26000;
+  // both witnessed S1 in the same poll (same anchor granularity)...
+  anchorLiveRows([row('10', 3, [null, null, null, null, null], t - 5, 500),
+                  row('447', 2, [null, null, null, null, null], t - 5, 500)], t - 5);
+  anchorLiveRows([row('10', 3, [76, null, null, null, null], t, 500),
+                  row('447', 2, [83, null, null, null, null], t, 500)], t);
+  // ...then both publish S2 + S3 in one later poll, with different times
+  const a = row('10',  3, [76, 77, 165, null, null], t + 250, 500);
+  const b = row('447', 2, [83, 82, 180, null, null], t + 250, 500);
+  anchorLiveRows([a, b], t + 250);
+  const s3a = a.t0 + 76 + 77 + 165, s3b = b.t0 + 83 + 82 + 180;
+  check('#10 and #447 do not share an S3 crossing', Math.abs(s3a - s3b) > 10, { s3a, s3b });
+  // both S1 crossings are pinned to the one poll that witnessed them, so the two
+  // cars diverge by exactly the splits run SINCE that shared anchor — S2 + S3
+  check('their S3 crossings differ by the splits run since the shared anchor',
+        near(s3b - s3a, (82 + 180) - (77 + 165), 0.5), s3b - s3a);
+}
+
 /* ---- 5. no evidence at all -> row left exactly as it was (old behaviour) ---- */
 {
   resetAnch();

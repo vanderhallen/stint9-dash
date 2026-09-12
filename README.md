@@ -1874,6 +1874,18 @@ Every LIVE-only or SIM-only behavioural difference found is legitimately
 |---|---|---|
 | Code 60 detection | `index.html:835` | needs live sector *speed* readings; the baked SIM CSV has none |
 | Clock timezone shift | `index.html:960-970` (`clockOffsetS`) | WIGE reports UTC; SIM's CSV `TAGESZEIT` is already track-local |
+
+> **Any time-of-day you render must go through `hmsClock()`, never bare `hms()`.**
+> `hms()` formats the feed's own base, which in LIVE is UTC — two hours behind
+> the trackside clock at the Nürburgring in CEST. Fixed 2026-09-12 in the
+> racenote feed and the message-board clock, which were showing 07:18 while the
+> header (correctly, via `hmsClock`) read 09:18. Bare `hms()` is right only for
+> a **duration** — e.g. `hms(tv)` in the clip list is a position inside a video
+> file, not a time of day. Still on bare `hms()` and left alone deliberately:
+> the ANALYSE & CLIP results (`index.html:4479, 4487`), whose times are
+> compared against a clock OCR'd out of the footage (`rnReadClockAt`, `err=c-T`)
+> and so share the feed's base by design — converting the display without
+> settling what base the burned-in video clock uses would just move the bug.
 | Gap sanity clamp | `index.html:925` | practice-session LIVE gaps can be hours apart (meaningless as a race gap); SIM gaps are always real |
 | Fuel-note / weather / lap-time sync to Supabase | `index.html:712, 2560, 2623` | only the real race is worth persisting; SIM is an ephemeral replay by design (§5) |
 | Signal counter / event badge | `index.html:988-1001` | SIM has no feed to count |

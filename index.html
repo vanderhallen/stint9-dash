@@ -2599,7 +2599,7 @@ function renderMobile(){
       mcl.textContent=(ev&&ev!=='event —')?ev:(msg||ev||'—');
       mcl.style.color=(le&&le.style.color)?le.style.color:'';
       mcl.classList.add('mstatus');
-    }else{mcl.textContent=hms(T);mcl.style.color='';mcl.classList.remove('mstatus');}
+    }else{mcl.textContent=hmsClock(T);mcl.style.color='';mcl.classList.remove('mstatus');}
   }
   var lp=livePos(T);
   if(!selCar||!lp[selCar]){['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});set('m_num','select a car');set('m_drv','');}
@@ -3909,8 +3909,18 @@ buildStartGrid();
       // So a line crossing is only a fallback, and only while it stays credible.
       // NB the resulting t0 is "where the walk starts", not necessarily the S/F
       // crossing, on a lap that contains a stop — the boundaries are what matter.
+      // …and the OLDEST such split of this lap, not the newest. An observation is
+      // only accurate to one poll, and anchoring on the newest one pins that
+      // boundary AT the moment we happened to see it — so every car whose split
+      // landed in the same poll collapses onto one point, however different their
+      // actual pace. Anchoring early and letting build-db's cumulative walk carry
+      // the car forward over its OWN published split durations separates them by
+      // real seconds instead (observed 2026-09-12: #10/#33/#447/#524/#801 all
+      // pinned to 26138.3 with S3 times of 165/155/180/163/165s). The anchor's
+      // own one-poll error is common to every boundary either way, so this costs
+      // nothing in absolute accuracy and buys the relative spacing.
       let t0=null;
-      for(let k=5;k>=1;k--){const ts=st.sc[r.lap*5+k];if(ts==null)continue;
+      for(let k=1;k<=5;k++){const ts=st.sc[r.lap*5+k];if(ts==null)continue;
         let cum=0,ok=true;
         for(let i=0;i<k;i++){if(r.s[i]==null){ok=false;break;}cum+=r.s[i];}
         if(ok){t0=ts-cum;break;}}
@@ -4271,7 +4281,10 @@ function rnRenderFeed(){
   const ns=rnNotes.filter(rnVisible).sort((a,b)=>(a.tod||0)-(b.tod||0));
   rnFeedN=ns.length;
   if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';return;}
-  feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hms(n.tod):'';
+  // hmsClock, not hms: n.tod is in the feed's own base, which is UTC in LIVE
+  // (clockOffsetS, index.html:1252) — bare hms had these notes reading 2h behind
+  // the header clock and behind the trackside clock at the Nürburgring.
+  feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hmsClock(n.tod):'';
     const ls=(n.lap!=null?('L'+n.lap):'')+(n.sector!=null?(' · S'+n.sector):'');
     return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+'</div>';}).join('');
   feed.scrollTop=feed.scrollHeight;
