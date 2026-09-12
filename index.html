@@ -647,10 +647,10 @@
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="lapchart"></svg></div>
+          <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
           <div class="reelpanel"><svg id="ltgraph"></svg></div>
-          <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
             <div id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px">
               <button type="button" class="seg on" data-v="lap">Lap</button>
@@ -675,10 +675,10 @@
         <div class="reelthumb" data-i="2" title="Service — component km to next service (service.html)"><span class="thumbcap">SERVE</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><g fill="#9aa1a9"><rect x="46.5" y="11" width="7" height="10" transform="rotate(0 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(45 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(90 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(135 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(180 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(225 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(270 50 36)"/><rect x="46.5" y="11" width="7" height="10" transform="rotate(315 50 36)"/></g><circle cx="50" cy="36" r="16" fill="none" stroke="#16202b" stroke-width="4"/><circle cx="50" cy="36" r="6" fill="none" stroke="#16202b" stroke-width="4"/></svg></div>
         <div class="reelthumb" data-i="3" title="Sector times — selected car, laps × sectors (numbers only)"><span class="thumbcap">TIMES</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="8" width="88" height="56" rx="3" fill="none" stroke="#cdd2d8" stroke-width="2"/><line x1="6" y1="22" x2="94" y2="22" stroke="#9aa1a9" stroke-width="2"/><line x1="28" y1="8" x2="28" y2="64" stroke="#9aa1a9" stroke-width="2"/><line x1="37" y1="15" x2="45" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="53" y1="15" x2="61" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="69" y1="15" x2="77" y2="15" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="34" x2="22" y2="34" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="46" x2="22" y2="46" stroke="#16202b" stroke-width="2.5"/><line x1="12" y1="58" x2="22" y2="58" stroke="#16202b" stroke-width="2.5"/><line x1="37" y1="34" x2="45" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="34" x2="61" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="34" x2="77" y2="34" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="46" x2="45" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="46" x2="61" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="46" x2="77" y2="46" stroke="#9aa1a9" stroke-width="2.5"/><line x1="37" y1="58" x2="45" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="53" y1="58" x2="61" y2="58" stroke="#9aa1a9" stroke-width="2.5"/><line x1="69" y1="58" x2="77" y2="58" stroke="#9aa1a9" stroke-width="2.5"/></svg></div>
         <div class="reelthumb active" data-i="4" title="Lap chart — positions"><span class="thumbcap">POS</span><svg id="thumb0" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="5" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="6" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="7" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
-        <div class="reelthumb" data-i="8" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
+        <div class="reelthumb" data-i="5" title="Driver stints"><span class="thumbcap">STINT</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="14" y="14" width="34" height="12" rx="2" fill="#2f5fd0"/><rect x="48" y="14" width="38" height="12" rx="2" fill="#e0301e"/><rect x="14" y="30" width="52" height="12" rx="2" fill="#1e8f3a"/><rect x="66" y="30" width="20" height="12" rx="2" fill="#c9971e"/><rect x="14" y="46" width="72" height="12" rx="2" fill="#7b2fbe"/></svg></div>
+        <div class="reelthumb" data-i="6" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="7" title="Sector performance"><span class="thumbcap">SECT</span><svg id="thumb3" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="8" title="Lap-time trace"><span class="thumbcap">PACE</span><svg id="thumb1" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div class="reelthumb" data-i="9" title="Sector-1 comparison — all cars"><span class="thumbcap">COMP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 58 C20 58,22 20,32 20 S44 58,52 58 S64 34,72 34 S84 10,96 10" fill="none" stroke="#2f5fd0" stroke-width="3"/><path d="M4 62 C22 62,26 44,36 44 S50 62,60 62 S76 50,96 50" fill="none" stroke="#e0301e" stroke-width="3"/></svg></div>
         <div class="reelthumb" data-i="10" title="Sector colours grid — all cars, all laps"><span class="thumbcap">GRID</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#22B14C"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/><rect x="35" y="10" width="8" height="14" fill="#22B14C"/><rect x="44" y="10" width="8" height="14" fill="#F5C500"/>
@@ -873,8 +873,26 @@ function applyReel(anim){const strip=document.getElementById('reelstrip'),up=doc
 const ZOOM_RATIO=700/1340;
 function reelHeightRatio(){
   const rc=document.getElementById('reelcard');
-  if(rc&&rc.classList.contains('zoomed'))return ZOOM_RATIO;
-  return CH/1000;
+  if(!(rc&&rc.classList.contains('zoomed')))return CH/1000;
+  // Zoomed: every reel type used to share this SAME fixed ratio (matching the
+  // TYRE board's own aspect) — which for a per-car chart (POS/FLOW/STINT/
+  // PACE/COMP/…) with more than a handful of cars forced .reelpanel.tall to
+  // kick in and hide the rest behind a scrollbar (reported 2026-09-12: POS
+  // zoomed in, not all class cars visible). Those charts declare no
+  // data-fit (same attribute syncReelPanels already reads for exactly this
+  // distinction) and draw one row per car into a `0 0 1000 CH` viewBox — that
+  // viewBox already says exactly how tall the chart wants to be, so use it,
+  // whichever is TALLER: a modest field then shows every row with no
+  // scrolling, and a genuinely huge one (ALL CLASSES) still scrolls, same as
+  // it always would at any reasonable window size.
+  const panels=document.querySelectorAll('#reelstrip>.reelpanel');
+  const svg=panels[reelIdx]&&panels[reelIdx].querySelector(':scope>svg');
+  if(svg&&svg.dataset.fit==null){
+    const vb=(svg.getAttribute('viewBox')||'').split(/[\s,]+/).filter(Boolean);
+    const vw=+vb[2],vh=+vb[3];
+    if(vw>0&&vh>0)return Math.max(ZOOM_RATIO,vh/vw);
+  }
+  return ZOOM_RATIO;
 }
 /* Natural inline height for a reel viewport `w` wide, CAPPED.
    CH is the leaderboard viewBox height (44px per car), so CH/1000 is ~5.8 for a
@@ -886,7 +904,16 @@ function reelHeightRatio(){
    so they just fit-and-centre — instead of the whole page's scale. growMaps
    still grows the panel from here whenever the page has slack to give. */
 function reelFitHeight(w){
-  const cap=(window.innerHeight/(__fit||1))*0.45;
+  const rc=document.getElementById('reelcard');
+  // Zoomed: #focusHost already caps the WHOLE modal at 95vh on its own CSS,
+  // so this only needs to stay safely under that — not the much tighter 45%
+  // budget the un-zoomed inline page uses to avoid scaling the WHOLE
+  // dashboard down for a big field (see the comment above). Using that
+  // tighter cap here too would have undone reelHeightRatio()'s taller ratio
+  // for a modest-sized per-car chart the instant it exceeded 45% of the
+  // window, right back to the same needless scrolling this exists to fix.
+  const zoomed=rc&&rc.classList.contains('zoomed');
+  const cap=zoomed?window.innerHeight*0.85:(window.innerHeight/(__fit||1))*0.45;
   return Math.min(w*reelHeightRatio(),cap);
 }
 /* …and the panel the cap took height away from scrolls instead of shrinking.
@@ -918,11 +945,16 @@ function syncReelPanels(){
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;
   if(i===1)boardCenter();   // arriving on the TYRE row via the vertical reel: centre it on BOARD
   if(i===2)svcH(-1);        // arriving on the SERVICE row: always show SERVICE (ARCHIVE only via right arrow)
-  // Only re-size on switch while zoomed (all zoom windows share ZOOM_RATIO).
-  // Inline, the reel height is owned by growMaps() (grown to fill the page) —
-  // don't clobber it back to the short CH/1000 aspect.
+  // Only re-size on switch while zoomed — each reel can want a different
+  // height now (see reelHeightRatio()). Inline, the reel height is owned by
+  // growMaps() (grown to fill the page) — don't clobber it back down.
   const rc=document.getElementById('reelcard');
-  if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=(v.clientWidth*ZOOM_RATIO).toFixed(1)+'px';}
+  // reelFitHeight, not the flat ZOOM_RATIO directly: reelHeightRatio() now
+  // reads the newly-switched-to reel's OWN viewBox for a per-car chart, and
+  // this is what runs on EVERY reel switch — using the flat ratio here while
+  // syncReel() (resize/open) used the height-aware one would size the SAME
+  // reel differently depending on which path last touched it.
+  if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=reelFitHeight(v.clientWidth).toFixed(1)+'px';}
   applyReel(true);if(typeof savePrefs==='function')savePrefs();}
 function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=reelFitHeight(w).toFixed(1)+'px';applyReel(false);
   /* right (weather/timetable) reel: inline it follows the left reel's rendered
@@ -2356,7 +2388,10 @@ function askAgent(q){
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
   const fmtT=v=>{if(v==null||!isFinite(v))return '—';const m=Math.floor(v/60);return m+':'+(v-60*m).toFixed(1).padStart(4,'0');};
   const has=(...w)=>w.some(x=>q.includes(x));
-  const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=0;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return Math.floor(mx/5)+1;};
+  // -Infinity, not 0: see keySec's note near index.html:789 -- a car still on
+  // lap 0 has only negative/zero boundary keys, and seeding at 0 misread that
+  // as lap 1.
+  const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=-Infinity;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return isFinite(mx)?Math.floor(mx/5)+1:0;};
   const paceOf=st=>{const ts=[];for(let L=maxN;L>=1&&ts.length<3;L--){const t=lapT(st,L);if(t!=null)ts.push(t);}return ts.length?ts.reduce((a,b)=>a+b,0)/ts.length:null;};
   const lastLap=st=>{for(let L=maxN;L>=1;L--){const t=lapT(st,L);if(t!=null)return t;}return null;};
   const lapsOf=st=>{const a=[];for(let L=1;L<=maxN;L++){const t=lapT(st,L);if(t!=null)a.push(t);}return a;};
@@ -2426,11 +2461,22 @@ function askAgent(q){
     if(be){const g=commonGap(be,selCar,T);a+='\nBehind: '+nm(be)+(g!=null?(' ('+g.toFixed(1)+'s back)'):'');}return a;}
   if(has('outcome','finish','predict','end up','result','win','podium','expect')){
     if(!p)return nm(selCar)+' is off track (pit); hard to project until it rejoins.';
-    const rem=Math.max(0,maxN-curLapOf(selCar)),myPace=paceOf(selCar);let proj=p;const notes=[];
+    // NOT maxN-curLapOf(selCar): maxN is "the highest lap ANY car in the class
+    // has reached so far" -- rebuilt every LIVE poll from current progress, it
+    // is not a declared race distance. For a car near the front it tracks that
+    // SAME car's own lap almost exactly, so the old formula read ~0 laps to go
+    // hours before the flag (reported 2026-09-12, ~2h still on the clock).
+    // This is a time-based enduro (raceEndTod(), already the source for the
+    // PIT LAST HOUR feature) with no fixed lap count agreed in advance, so
+    // "laps to go" has to come from time left over this car's own pace, not
+    // from how far anyone has driven already.
+    const myPace=paceOf(selCar);
+    const rem=myPace>0?Math.max(0,Math.round((raceEndTod()-T)/myPace)):null;let proj=p;const notes=[];
     const ah=byPos[p-1];if(ah&&myPace){const ap=paceOf(ah),g=commonGap(selCar,ah,T);if(ap!=null&&g!=null){const d=ap-myPace;if(d>0.15&&rem>0&&g/d<=rem){proj--;notes.push('catching '+nm(ah)+' (+'+g.toFixed(0)+'s, ~'+d.toFixed(1)+'s/lap quicker)');}}}
     const be=byPos[p+1];if(be&&myPace){const bp=paceOf(be),g=commonGap(be,selCar,T);if(bp!=null&&g!=null){const d=myPace-bp;if(d>0.15&&rem>0&&g/d<=rem){proj++;notes.push('under threat from '+nm(be)+' (+'+g.toFixed(0)+'s, ~'+d.toFixed(1)+'s/lap quicker)');}}}
     proj=Math.max(1,Math.min(nC,proj));
-    return nm(selCar)+' is P'+p+' with ~'+rem+' laps to go. Likely finish: <b>P'+proj+'</b>.'+(notes.length?'\n'+notes.join('\n'):'\nTrack position looks stable at current pace.');}
+    const remTxt=rem!=null?('~'+rem+' laps to go'):'not enough laps yet to estimate laps to go';
+    return nm(selCar)+' is P'+p+' with '+remTxt+'. Likely finish: <b>P'+proj+'</b>.'+(notes.length?'\n'+notes.join('\n'):'\nTrack position looks stable at current pace.');}
   if(has('ahead')&&!rev){
     if(!p)return nm(selCar)+' is off track (pit) — no gap to report.';
     const ah=byPos[p-1];if(!ah)return nm(selCar)+' is P'+p+' — no car ahead (leading the class).';
@@ -2678,10 +2724,10 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(reelIdx===0||_tk)renderFuel(T);
   if(reelIdx===3||_tk)renderSecTab(T);
   if(reelIdx===4||_tk)renderChart(T);
-  if(reelIdx===5||_tk)renderFlow(T);
-  if(reelIdx===6||_tk)renderSectors(T);
-  if(reelIdx===7||_tk)renderLapTrace(T);
-  if(reelIdx===8||_tk)renderStints(T);
+  if(reelIdx===5||_tk)renderStints(T);
+  if(reelIdx===6||_tk)renderFlow(T);
+  if(reelIdx===7||_tk)renderSectors(T);
+  if(reelIdx===8||_tk)renderLapTrace(T);
   if(reelIdx===9||_tk)renderComp(T);
   if(reelIdx===10||_tk)renderSectGrid(T);
   if(reelIdx===11||_tk)renderSectGridFrozen(T);
@@ -2954,6 +3000,17 @@ document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
 document.querySelectorAll('#compmetric .seg').forEach(b=>b.onclick=()=>{document.querySelectorAll('#compmetric .seg').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderComp(T);});
+// #agentModal is position:fixed;inset:0 to centre on the viewport, but it
+// lives inside .agentbar -> .wrap, and fitPage() applies a CSS transform:scale
+// to .wrap whenever the page needs shrinking to fit -- any transformed
+// ancestor becomes the containing block for a fixed descendant, so the modal
+// was centring on .wrap's scaled box instead of the real viewport (reported
+// 2026-09-12: not showing in the middle of the page). The same problem, and
+// the same fix, already exist for the class/car dropdown popup (dropDown(),
+// index.html ~3653) and the zoom-focus layer (initFocus): move it to be a
+// direct child of <body>, outside .wrap's transform, once at load — nothing
+// else about it (content, show/hide, position:fixed) needs to change.
+{const am=document.getElementById('agentModal');if(am)document.body.appendChild(am);}
 document.getElementById('agentgo').onclick=agentAsk;
 document.getElementById('agentModalOk').onclick=closeAgentModal;
 document.getElementById('agentModal').onclick=e=>{if(e.target.id==='agentModal')closeAgentModal();};
@@ -3315,8 +3372,14 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
 
 /* ---- weather radar (RainViewer) ---- */
 (function initWeather(){if(typeof L==='undefined'){return setTimeout(initWeather,300);}
-  const lat=DB.gps[0],lon=DB.gps[1],map=L.map('weather',{attributionControl:false}).setView([lat,lon],11);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+  // Carto's basemaps.cartocdn.com free tier now requires an API key we never
+  // had — every tile came back as a placeholder PNG with "API KEY REQUIRED"
+  // baked into it, reported 2026-09-12. OpenStreetMap's own tile server needs
+  // no key/signup at all; its usage policy in return asks for real, visible
+  // attribution, hence attributionControl is now on (it was off for Carto's
+  // tiles, which didn't require one on a free/keyless basis either way).
+  const lat=DB.gps[0],lon=DB.gps[1],map=L.map('weather',{attributionControl:true}).setView([lat,lon],11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
   const circ=L.circle([lat,lon],{radius:10000,color:'#e0301e',weight:1.5,fill:false}).addTo(map);
   L.circleMarker([lat,lon],{radius:5,color:'#e0301e',fillColor:'#e0301e',fillOpacity:1}).addTo(map);
   /* real-size Nordschleife (24h layout) outline, georeferenced from the dashboard
