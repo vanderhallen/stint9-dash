@@ -406,14 +406,18 @@
   .mstand tr:first-child td{border-top:none}
   .mstand .p{color:var(--muted);width:40px}.mstand .g{text-align:right;color:var(--muted);white-space:nowrap}
   .mstand tr.sel td{color:var(--accent);font-weight:700}
-  /* Sector-times row: same .mstat building block as the last-lap/fastest/lap
-     row, but 5-wide instead of 3 — that row's 21px value font overflows a
-     phone-width column here (a 4-minute S3/S4 like "4:39.5" needs ~76px at
-     21px monospace against a ~61px column on a 375px screen), so this gets
-     its own smaller size rather than reusing .mstats .v directly. */
-  .msect{display:flex;gap:6px;text-align:center}
-  .msect .mstat{flex:1 1 0;min-width:0}
-  .msect .v{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px}
+  /* Sector-times table: two rows (latest lap, previous lap) x five sectors.
+     15px value font, not the 21px the last-lap/fastest/lap row uses — that
+     size overflows a phone-width column here (a 4-minute S3/S4 like "4:39.5"
+     needs ~76px at 21px monospace against a ~61px column on a 375px screen). */
+  .msectbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:15px;table-layout:fixed}
+  .msectbl th{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right}
+  .msectbl th:first-child{text-align:left}
+  .msectbl td{padding:4px 2px;text-align:right;font-weight:700}
+  .msectbl td.lbl{text-align:left;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700}
+  /* Same purple the desktop TIMES reel uses for a car's own per-sector best
+     (renderSecTab, index.html) — one shared convention across both views. */
+  .msectbl td.best{color:#7b2fbe}
   /* ---- LOGIN (auth gate) ---- */
   #authbox{display:flex;align-items:center;gap:8px;margin-left:8px}
   #authbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;font-weight:600}
@@ -2763,20 +2767,44 @@ function renderMobile(){
       mcl.classList.add('mstatus');
     }else{mcl.textContent=hmsClock(T);mcl.style.color='';mcl.classList.remove('mstatus');}
   }
+  // Fill one sector-times row (5 cells) and mark each cell purple when it
+  // equals bestSec[k] — same #7b2fbe "car's own per-sector best" convention
+  // as the desktop TIMES reel (renderSecTab), so the colour means the same
+  // thing in both views.
+  var setSectRow=function(ids,secs,bestSec){ids.forEach(function(id,k){var el=document.getElementById(id);if(!el)return;
+    var v=secs?secs[k]:null;el.textContent=(v!=null)?fmt(v):'—';
+    el.classList.toggle('best',v!=null&&bestSec[k]<Infinity&&Math.abs(v-bestSec[k])<0.01);});};
   var lp=livePos(T);
   if(!selCar||!lp[selCar]){
-    ['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap','m_s1','m_s2','m_s3','m_s4','m_s5'].forEach(function(id){set(id,'—');});
+    ['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});
     set('m_num','select a car');set('m_drv','');set('m_sect_car','select a car');
+    var none=[null,null,null,null,null],inf=[Infinity,Infinity,Infinity,Infinity,Infinity];
+    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],none,inf);setSectRow(['m_p1','m_p2','m_p3','m_p4','m_p5'],none,inf);
   }
   else{
     set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));set('m_sect_car','#'+selCar);
     var g=gaps(T,lp);set('m_ahead',g.ahead!=null?('-'+g.ahead+'s'):'—');set('m_behind',g.behind!=null?('+'+g.behind+'s'):'—');
-    var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');set('m_lap','L'+(cs.L||0));
-    // liveSecs: the same per-sector field the desktop standings/comparison
-    // table (fillCmp) shows in its S1-S5 columns — each sector's value from
-    // whichever of this car's laps most recently crossed it, so a completed
-    // sector holds even after the car has moved into the next one.
-    ['m_s1','m_s2','m_s3','m_s4','m_s5'].forEach(function(id,k){set(id,cs.liveSecs[k]!=null?fmt(cs.liveSecs[k]):'—');});
+    var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');
+    set('m_lap','L'+Math.max(0,cs.L));   // cs.L is "the last FULLY completed lap" (see carStats), can be -1 while still on lap 0 — clamp, don't show "L-1"
+    var stmSel=DB.sectimes[selCar]||{},bxSel=BX[selCar]||{};
+    // this car's own personal best per sector, gated the same way renderSecTab
+    // gates its "best[k]" — only a sector actually crossed by T can set it.
+    var bestSec=[Infinity,Infinity,Infinity,Infinity,Infinity];
+    Object.keys(stmSel).forEach(function(Lk){var sArr=stmSel[Lk];if(!sArr)return;
+      for(var kk=0;kk<5;kk++){var tbb=bxSel[(Number(Lk)-1)*5+(kk+1)];if(tbb!=null&&tbb<=T&&sArr[kk]!=null&&sArr[kk]<bestSec[kk])bestSec[kk]=sArr[kk];}});
+    // "latest" = the lap actually in progress right now, each sector gated by
+    // its own boundary so an unreached sector reads — rather than a stale
+    // value carried from further back (unlike liveSecs, which deliberately
+    // does carry the previous lap's value forward — the right choice for a
+    // single "current status" row, but wrong once "previous lap" is its own
+    // row: showing the same number in both would look like a bug).
+    var alg=activeLeg(selCar,T),curSecs=[null,null,null,null,null];
+    if(alg){var CL=alg[0],csRaw=stmSel[CL];
+      if(csRaw)for(var k2=0;k2<5;k2++){var tb2=bxSel[(CL-1)*5+(k2+1)];if(tb2!=null&&tb2<=T&&csRaw[k2]!=null)curSecs[k2]=csRaw[k2];}}
+    // "previous" = cs.L, the last lap carStats already confirmed complete.
+    var prevSecs=stmSel[cs.L]||[null,null,null,null,null];
+    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],curSecs,bestSec);
+    setSectRow(['m_p1','m_p2','m_p3','m_p4','m_p5'],prevSecs,bestSec);
   }
   var rd=function(id){var e=document.getElementById(id);return e?e.textContent:'';};
   set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
@@ -5550,13 +5578,13 @@ applyWxReel(false);
   </div>
   <div class="mcard">
     <div class="mlbl">sector times — <span id="m_sect_car">select a car</span></div>
-    <div class="msect">
-      <div class="mstat"><div class="mlbl">S1</div><div class="v" id="m_s1">&mdash;</div></div>
-      <div class="mstat"><div class="mlbl">S2</div><div class="v" id="m_s2">&mdash;</div></div>
-      <div class="mstat"><div class="mlbl">S3</div><div class="v" id="m_s3">&mdash;</div></div>
-      <div class="mstat"><div class="mlbl">S4</div><div class="v" id="m_s4">&mdash;</div></div>
-      <div class="mstat"><div class="mlbl">S5</div><div class="v" id="m_s5">&mdash;</div></div>
-    </div>
+    <table class="msectbl">
+      <thead><tr><th></th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead>
+      <tbody>
+        <tr><td class="lbl" id="m_sect_curlbl">latest</td><td id="m_s1">&mdash;</td><td id="m_s2">&mdash;</td><td id="m_s3">&mdash;</td><td id="m_s4">&mdash;</td><td id="m_s5">&mdash;</td></tr>
+        <tr><td class="lbl" id="m_sect_prevlbl">previous</td><td id="m_p1">&mdash;</td><td id="m_p2">&mdash;</td><td id="m_p3">&mdash;</td><td id="m_p4">&mdash;</td><td id="m_p5">&mdash;</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 <script>
