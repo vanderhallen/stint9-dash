@@ -1195,7 +1195,52 @@ function progress(lg,T){return lg[0]*5+(lg[1]-1)+(T-lg[2])/((lg[3]-lg[2])||1);}
 // progress (t=T); a finished car uses its last completed boundary (p integer,
 // t=that boundary's time) so it stays ahead of on-track cars.
 function carProgress(st,T){const lg=activeLeg(st,T);if(lg)return {p:progress(lg,T),t:T};const a=legsOf(st);if(!a.length)return null;for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T)return {p:a[i][0]*5+a[i][1],t:a[i][3]};}return null;}
-function livePos(T){const a=[];DB.cars.forEach(st=>{const r=carProgress(st,T);if(r!=null)a.push([r.p,r.t,st]);});
+/* Which ranking the leaderboard uses.
+   A QUALIFYING (or practice) session is a time sheet: P1 is whoever set the
+   fastest lap, and how many laps anyone completed is irrelevant. A RACE is the
+   opposite — P1 is whoever has covered the most distance. Ranking a quali by
+   race logic is what put #670 at P6 on 2026-09-12 with the best lap on screen:
+   the whole BMW M240i class had finished lap 6 with every sector in, so they
+   tied on progress and livePos' tiebreak (earliest to reach that boundary)
+   silently decided the order.
+   The session comes from our OWN stint9_schedule_windows via SCHEDULE (the
+   table that also gates the auto-scan), not from the feed's `heat` string,
+   which is not to be trusted to flip when the session does. Archive replays use
+   the bundle's label. Anything we cannot positively identify as a timed session
+   falls through to the race ranking, i.e. the historical behaviour. */
+function currentWindowLabel(){
+  if(!SCHEDULE||!SCHEDULE.rows)return null;
+  const now=Date.now();
+  for(const r of SCHEDULE.rows){
+    if(r.start&&r.end&&now>=r.start.getTime()&&now<r.end.getTime())return r.label;
+  }
+  return null;
+}
+function sessionKind(){
+  const lbl=(window.dataMode==='LIVE')?currentWindowLabel():(window.__eventLabel||null);
+  return (lbl&&/quali|zeittraining|training|practice|warm/i.test(lbl))?'quali':'race';
+}
+/* Time-sheet order: fastest lap first. carStats().fast is reused deliberately —
+   it is exactly the number the FASTEST column shows, so POS and the times on
+   screen can never disagree. A car with no completed lap yet has no time and
+   sorts behind everyone who has one, ordered by how far round it has got. */
+function qualiPos(T){
+  const a=[];
+  DB.cars.forEach(st=>{
+    const f=carStats(st,T).fast,r=carProgress(st,T);
+    if(f==null&&r==null)return;
+    a.push([f,r?r.p:-1,st]);
+  });
+  a.sort((x,y)=>{
+    if(x[0]!=null&&y[0]!=null)return x[0]-y[0];
+    if(x[0]!=null)return -1;
+    if(y[0]!=null)return 1;
+    return y[1]-x[1];
+  });
+  const m={};a.forEach((e,i)=>m[e[2]]=i+1);return m;
+}
+function livePos(T){if(sessionKind()==='quali')return qualiPos(T);
+  const a=[];DB.cars.forEach(st=>{const r=carProgress(st,T);if(r!=null)a.push([r.p,r.t,st]);});
   // most progress first; on a tie (e.g. cars finished on the same lap+sector),
   // whoever reached that boundary EARLIER ranks ahead — so the real winner keeps P1.
   a.sort((x,y)=>y[0]-x[0]||x[1]-y[1]);const m={};a.forEach((e,i)=>m[e[2]]=i+1);return m;}
@@ -1323,7 +1368,10 @@ function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.g
   if(!order.length){box.style.display='none';return;}
   const A=carStats(leader,T),dOf=(v,rv)=>(v!=null&&rv!=null)?(v-rv):null;
   const rows=order.map(st=>{const stat=carStats(st,T),isRef=(st===leader),ref=isRef?null:A,selq=(st===selCar);
-    const pos=lp[st]||'—',g=isRef?null:commonGap(st,leader,T),gtxt=(g==null)?'—':((g>=0?'+':'')+g.toFixed(1)+'s');
+    // In a time sheet the gap that means anything is the lap-time delta to the
+    // quickest car; a track gap between two cars on separate flying laps is noise.
+    const quali=(sessionKind()==='quali');
+    const pos=lp[st]||'—',g=isRef?null:(quali?dOf(stat.fast,A.fast):commonGap(st,leader,T)),gtxt=(g==null)?'—':((g>=0?'+':'')+g.toFixed(1)+'s');
     let c='<td><b>P'+pos+'</b></td><td'+(selq?' style=\"color:var(--accent);font-weight:700\"':'')+'>#'+st+' '+curDrv(st,T)+'</td><td>'+gtxt+'</td>';
     c+='<td>'+cmpCell(stat.fast,ref?dOf(stat.fast,ref.fast):null)+'</td>';
     c+='<td>'+cmpCell(stat.last,ref?dOf(stat.last,ref.last):null)+'</td>';
@@ -5199,6 +5247,10 @@ applyWxReel(false);
   function buildFromBundle(b){
     if(!b)return;
     var meta=b.meta||{name:slug,event_date:''};
+    // Replaying a QUALIFYING or practice snapshot must rank it as a time sheet,
+    // not as a race — sessionKind() reads this (SCHEDULE only ever covers today
+    // forward, so it is no use for a past event).
+    window.__eventLabel=meta.label||null;
     var built=null;
     if(b.db)built=b.db;
     else if(b.timing&&b.timing.length&&typeof window.buildLiveDB==='function'){

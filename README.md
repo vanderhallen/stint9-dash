@@ -1905,6 +1905,40 @@ no witnessed crossing yet, so it keeps the old pinned-at-the-boundary
 behaviour until it publishes its next split (≤ one sector, worst case ~S4's
 ~215s). It self-corrects with no intervention.
 
+## 15.4c Qualifying is a time sheet, not a race — SHIPPED 2026-09-12
+
+`livePos()` ranked every session by **progress** (`lap*5 + sector + fraction`).
+That is right for a race and wrong for qualifying, where **P1 is the fastest lap
+and laps completed are irrelevant**. In quali the whole field tends to finish on
+the same lap with every sector in, so cars tie on progress and the race
+tiebreak — earliest to reach that boundary — silently decides the order. On
+2026-09-12 that put **#670 at P6 while holding the best lap on screen**; the
+real class order had it P4, and **#664 was P1 on only 3 laps** against the
+others' 5.
+
+`sessionKind()` now picks the ranking:
+
+- **LIVE** — the label of the `stint9_schedule_windows` row containing *now*,
+  via the `SCHEDULE` object the timetable already loads. Our own table, not the
+  feed's `heat` string, which cannot be trusted to flip when the session does.
+- **SIM / archive replay** — the bundle's `meta.label` (`SCHEDULE` only ever
+  covers today forward, so it is no use for a past event).
+- Anything not positively identified as `quali`/`training`/`practice`/`warm`
+  falls through to the **race** ranking, i.e. the historical behaviour. So
+  `pitwalk`, `startaufstellung`, `lineup`, `end` and a blank label are all
+  race-ranked, and a race can never be re-ranked by accident.
+
+In a time sheet the GAP column also becomes the **lap-time delta** to the
+quickest car; a track gap between two cars on separate flying laps is noise.
+`qualiPos()` reuses `carStats().fast` — the exact number the FASTEST column
+shows — so POS and the times on screen can never disagree. A car with no
+completed lap sorts behind everyone who has one.
+
+**Tests:** `node live/test-quali-rank.mjs`, including the safety property that
+every unrecognised label race-ranks. Verified against the real 2026-09-12 quali
+rows: P1 #664 9:10.9 (3 laps) · #650 9:14.0 · #653 9:25.7 · #670 9:28.5 ·
+#661 9:38.6 · #665 9:43.6 · #652 9:47.2 · #651 9:51.0 · #667 9:51.7 · #677 no time.
+
 ## 15.5 Feature-parity audit — SIM vs LIVE
 
 Traced every `window.dataMode` branch point in `index.html` (24 occurrences).
