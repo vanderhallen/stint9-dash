@@ -94,7 +94,10 @@
      inline where this is placed) rather than SVG content drawn into the
      chart's own viewBox, so it never has to compete with that chart's own
      scaling/axis layout. */
-  .selstint{position:absolute;left:6px;right:6px;bottom:6px;height:24px;border-radius:5px;overflow:hidden;display:flex;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  /* left/right set in JS (renderSelStint), not here -- they have to match the
+     chart's own xL/xR axis constants exactly, and CSS has no way to read a
+     JS value. */
+  .selstint{position:absolute;bottom:6px;height:24px;border-radius:5px;overflow:hidden;display:flex;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.2)}
   .selstint .seg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;border-right:1px solid rgba(255,255,255,.35)}
   .selstint .seg:last-child{border-right:none}
   #dots.stale{opacity:.4;transition:opacity .5s}
@@ -1720,6 +1723,15 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
 // visible on the lap-time trace without switching to the class-wide STINT view.
 function renderSelStint(T){
   const el=document.getElementById('selstint');if(!el)return;
+  // Left/right computed from the SAME xL/xR the chart's own axis uses (the
+  // shared globals every per-car chart plots into, index.html ~1389: xL=160,
+  // xR=765 in the 0-1000 viewBox), not hardcoded independently — so the bar
+  // spans exactly the chart's plot area (matching lap positions on the axis
+  // below) and can never drift out of sync if that geometry ever changes.
+  // A straight percentage of the viewBox works because the reel's rendered
+  // aspect is deliberately kept equal to the SVG's own (reelHeightRatio/
+  // reelFitHeight), so there is no letterboxing to account for.
+  el.style.left=(xL/10)+'%';el.style.right=((1000-xR)/10)+'%';
   if(!selCar){el.style.display='none';el.innerHTML='';return;}
   const lg=activeLeg(selCar,T),bx=BX[selCar]||{};
   let lapsDriven;

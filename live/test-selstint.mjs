@@ -28,6 +28,28 @@ check('renderSelStint is called from renderLapTrace, not from the map\'s render(
       'call site not found at the top of renderLapTrace');
 check('renderSelStint is NOT still wired into the map\'s per-frame block',
       !html.includes("badge.style.display='flex';\n    renderSelStint(T);}"), 'old map call site still present');
+check('CSS no longer hardcodes left/right (they must track the chart\'s own axis constants)',
+      !/\.selstint\{[^}]*\bleft:/.test(html), 'left still hardcoded in CSS');
+
+/* the bar's left/right must be computed FROM xL/xR, not duplicated as a
+   separate hardcoded percentage -- so it can never drift out of sync with
+   the chart's own axis if that geometry ever changes. */
+{
+  const xL = 160, xR = 1000 - 235;   // the chart's real, current axis constants
+  const setLeft = [];
+  const el = { style: new Proxy({}, { set: (t, k, v) => { setLeft.push([k, v]); t[k] = v; return true; } }) };
+  global.document = { getElementById: id => id === 'selstint' ? el : null };
+  const a = html.indexOf('function renderSelStint(T){');
+  const b = html.indexOf('\nfunction renderStints(T){', a);
+  const src = html.slice(a, b);
+  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', 'xL', 'xR',
+    `${src}; return renderSelStint;`)('', () => null, {}, { drvlap: {} }, () => '#000', xL, xR);
+  fn(1e9);
+  check('left is set to xL/10 percent (matches the chart\'s Y-axis position exactly)',
+        el.style.left === '16%', el.style.left);
+  check('right is set to (1000-xR)/10 percent (matches the plot area\'s right edge)',
+        el.style.right === '23.5%', el.style.right);
+}
 
 const a = html.indexOf('function renderSelStint(T){');
 const b = html.indexOf('\nfunction renderStints(T){', a);
@@ -43,8 +65,8 @@ function makeEl() { return { style: {}, innerHTML: '' }; }
 {
   const el = makeEl();
   makeDom(el);
-  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', `${src}; return renderSelStint;`)(
-    '', () => null, {}, { drvlap: {} }, () => '#000');
+  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', 'xL', 'xR', `${src}; return renderSelStint;`)(
+    '', () => null, {}, { drvlap: {} }, () => '#000', 160, 765);
   fn(1e9);
   check('no car selected -> hidden and empty', el.style.display === 'none' && el.innerHTML === '', el);
 }
@@ -61,8 +83,8 @@ function makeEl() { return { style: {}, innerHTML: '' }; }
   const activeLeg = () => [3, 2, 1000, 1075];   // lap 3, sector 2, mid-leg
   const BX = {};
   const colors = { Smith: '#2f5fd0', Jones: '#e0301e' };
-  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', `${src}; return renderSelStint;`)(
-    '42', activeLeg, BX, DB, d => colors[d]);
+  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', 'xL', 'xR', `${src}; return renderSelStint;`)(
+    '42', activeLeg, BX, DB, d => colors[d], 160, 765);
   fn(1030);   // 30s into a 75s S2 leg -> 40% through sector 2 of lap 3
   check('two driver segments render', el.innerHTML.includes('Smith') && el.innerHTML.includes('Jones'), el.innerHTML);
   check('Smith\'s segment covers exactly 2 laps', /Smith.*2 laps/.test(el.innerHTML.replace(/\n/g, ' ')), el.innerHTML);
@@ -78,8 +100,8 @@ function makeEl() { return { style: {}, innerHTML: '' }; }
   makeDom(el);
   const DB = { drvlap: { 42: { 1: 'Solo', 2: 'Solo' } } };
   const activeLeg = () => [2, 5, 1000, 1050];
-  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', `${src}; return renderSelStint;`)(
-    '42', activeLeg, {}, DB, () => '#123456');
+  const fn = new Function('selCar', 'activeLeg', 'BX', 'DB', 'driverColor', 'xL', 'xR', `${src}; return renderSelStint;`)(
+    '42', activeLeg, {}, DB, () => '#123456', 160, 765);
   fn(1030);
   check('a single-driver stint still renders one segment', el.innerHTML.includes('Solo'), el.innerHTML);
 }
