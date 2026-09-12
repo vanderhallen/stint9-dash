@@ -898,10 +898,19 @@ const LEG={};
 const LIVE_RUNNING_WINDOW_S=360;
 // How many times its own S2 reference a car may be silent, after clearing S1,
 // before we read it as having taken the second pit entry (the GP-to-Nordschleife
-// transition, just past the S1 beacon) rather than as a slow S2. Set above
-// anything real: the slowest of 639 completed S2s on 2026-09-12 was 204s against
-// a 74.7s median, i.e. 2.7x. See liveCarXY().
-const PIT_AFTER_S1_X=3;
+// transition, just past the S1 beacon) rather than as a slow S2.
+// Calibrated per car, not against the field: over 521 completed S2s on
+// 2026-09-12, each measured against THAT car's own previous clean S2, the median
+// was 1.00x, p99 1.37x and the slowest genuine racing S2 1.61x. Exactly one
+// sample went beyond — #22 at 3.10x — and that lap was itself a pit stop. So 2x
+// clears every real S2 with room to spare while catching the stops; the earlier
+// 3x was derived against the FIELD median and left cars stacked at 1.7-2.9x.
+// Code 60 is the one thing that can legitimately blow a sector out this far, so
+// the rule stands down while one is flagged there (see liveCarXY).
+const PIT_AFTER_S1_X=2;
+// Sectors currently under Code 60, refreshed once per render() — liveCarXY needs
+// it per car and code60Sectors() walks the whole field, so it is computed once.
+let _c60=[];
 //  - a gap at the last common boundary larger than this is two cars that ran at
 //    different times, not a racing gap -> shown as "—" instead of "+15000s".
 const GAP_SANE_MAX_S=900;
@@ -2432,18 +2441,23 @@ function liveCarXY(st,T){
     // has cleared S1 and then simply stops being reported has almost always
     // turned into the lane at that second entry; it is not crawling towards the
     // S2 entrance. Nothing else fits the data either: across 639 completed S2s on
-    // 2026-09-12 the slowest was 204s against a 74.7s median (2.7x), so a car
-    // silent past PIT_AFTER_S1_X of its own S2 reference is not running S2 at all.
+    // 2026-09-12, each compared with THAT car's own previous clean S2, the slowest
+    // genuine one was 1.61x (median 1.00x, p99 1.37x) — so a car silent past
+    // PIT_AFTER_S1_X of its own S2 reference is not running S2 at all, unless a
+    // Code 60 is up in S2, which is the one thing that can stretch it honestly.
     // Without this the whole group slid to the S2 exit and stacked there on one
     // point wearing DELAY badges, for the LIVE_RUNNING_WINDOW_S minutes it took
     // the generic park rule below to catch up.
-    if(li[1]===1&&elapsed>predDur*PIT_AFTER_S1_X)return{xy:ptAlong(1,0),parked:true,overdue:false};
+    if(li[1]===1&&elapsed>predDur*PIT_AFTER_S1_X&&_c60.indexOf(2)<0)return{xy:ptAlong(1,0),parked:true,overdue:false};
     const progress=Math.max(0,Math.min(1,elapsed/predDur));  // capped — never overshoots the sector exit
     return{xy:ptAlong(nextSeg,progress),parked:false,overdue:elapsed>predDur*(1+thr)};
   }
   return{xy:ptAlong(li[1],1),parked:false,overdue:false};    // no reference anywhere yet — frozen at the last real crossing
 }
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
+  // before the per-car loop: liveCarXY's pit inference must not fire on a sector
+  // that is legitimately crawling under Code 60.
+  _c60=(window.dataMode==='LIVE'&&typeof code60Sectors==='function')?code60Sectors():[];
   // gather visible for declutter
   const vis=[];let selXY=null,selR=null;
   DB.cars.forEach(st=>{const E=EL[st],lg=activeLeg(st,T);let x,y;const pit=!lg&&pitInfo(st,T);let parked=false,liveOverdue=false;

@@ -1873,19 +1873,32 @@ badged `DELAY`, where it sat with everyone else in the same situation for the
 **six minutes** it took `LIVE_RUNNING_WINDOW_S` to catch up. That clump at the
 S2 entrance was the single biggest remaining stack on the map.
 
-Nothing else fits the data: across **639 completed S2s** that day the slowest
-was **204s against a 74.7s median — 2.7×**. So a car silent past
-`PIT_AFTER_S1_X` (3×, deliberately above that observed maximum) of its **own**
-S2 reference is not running S2 at all, and `liveCarXY()` now parks it in the
-lane instead — no `DELAY` badge, because a stop is not a delay.
+Nothing else fits the data. Measured **per car** — 521 completed S2s that day,
+each against *that car's own* previous clean S2 — the median was **1.00×**, p99
+**1.37×**, and the slowest genuine racing S2 **1.61×**. Exactly one sample went
+beyond (#22 at 3.10×) and that lap was itself a pit stop. So `PIT_AFTER_S1_X` is
+**2×**: clear of every real S2, low enough to catch the stops. `liveCarXY()`
+parks such a car in the lane — no `DELAY` badge, because a stop is not a delay.
+
+Calibrating against the *field* median instead gave 3×, which left cars sitting
+at 1.7-2.9× still stacked at the S2 entrance — the per-car reference is the one
+that matters, because these cars' own S2s run 86-106s, well off the field's 75s.
+
+**Code 60 stands the rule down.** It is the one thing that can legitimately
+stretch a sector that far, so while `code60Sectors()` flags S2 the car keeps
+being predicted (and badged `DELAY`) instead of being sent to the pits. The
+flags are computed once per `render()` into `_c60`, since the check is per car
+and `code60Sectors()` walks the whole field.
 
 Deliberately **S1-only**. There is no pit entry mid-Nordschleife, so a car
 overdue in S3/S4/S5 is stranded *on track* and must keep saying so — that is
 safety information, not a pit stop. `live/test-live-pit.mjs` locks both halves
 of that down.
 
-On the captured 2026-09-12 field, 7 of the 19 overdue cars reclassify to PIT
-immediately, the rest as they stay silent.
+On the live field at 10:12 that day the whole picture became PIT 120 / running
+9 / **DELAY 2**, the two remaining being at 1.73× and 1.80× and flipping within
+the half-minute. At 3× the same field still showed 6 cars stacked at the S2
+entrance.
 
 **Known residual:** a car still on lap 0 at cold load has no previous lap and
 no witnessed crossing yet, so it keeps the old pinned-at-the-boundary

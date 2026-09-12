@@ -29,14 +29,14 @@ if (a < 0 || b < 0) { console.error('FAIL — could not find liveCarXY()'); proc
 const src = html.slice(a, html.indexOf(endMark, b) + endMark.length);
 
 const S2REF = 75;           // this car's own S2 reference, seconds
-function makeCarXY(lastSector, refDur = S2REF) {
+function makeCarXY(lastSector, refDur = S2REF, c60 = []) {
   // one completed leg ending at t=1000: [lap, sector, start, end]
   const LEG = { 42: [[3, lastSector, 1000 - 80, 1000]] };
-  return new Function('LEG', 'thr', 'LIVE_RUNNING_WINDOW_S', 'PIT_AFTER_S1_X', 'REF', `
+  return new Function('LEG', 'thr', 'LIVE_RUNNING_WINDOW_S', 'PIT_AFTER_S1_X', 'REF', '_c60', `
     function ptAlong(seg,frac){return {seg:seg,frac:+frac.toFixed(4)};}
     function liveRefDuration(){return REF;}
     ${src}
-    return liveCarXY;`)(LEG, 0.5, WINDOW, PITX, refDur);
+    return liveCarXY;`)(LEG, 0.5, WINDOW, PITX, refDur, c60);
 }
 
 let failures = 0;
@@ -70,6 +70,18 @@ console.log(`LIVE_RUNNING_WINDOW_S=${WINDOW}s  PIT_AFTER_S1_X=${PITX}  (S2 ref $
   check('...and NOT badged DELAY — it is a stop, not a delay', r.overdue === false, r);
   check('...well before the generic park window would have caught it',
         PITX * S2REF < WINDOW, { pitAt: PITX * S2REF, window: WINDOW });
+}
+
+/* Code 60 in S2 is the one honest reason a sector blows out this far, so the
+   pit inference stands down while one is flagged there */
+{
+  const f = makeCarXY(1, S2REF, [2]);
+  const r = f('42', 1000 + PITX * S2REF + 1);
+  check('Code 60 in S2 suppresses the pit inference', !r.parked && r.xy.seg === 2, r);
+  check('...and the car is flagged DELAY instead', r.overdue === true, r);
+  const g = makeCarXY(1, S2REF, [4]);          // Code 60 somewhere else does not
+  check('Code 60 in another sector does not suppress it',
+        g('42', 1000 + PITX * S2REF + 1).parked === true, g('42', 1000 + PITX * S2REF + 1));
 }
 
 /* the rule is S1-only: there is no pit entry mid-Nordschleife, so a car stopped
