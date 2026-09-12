@@ -2857,6 +2857,25 @@ function liveCarXY(st,T){
   }
   return{xy:ptAlong(li[1],1),parked:false,overdue:false};    // no reference anywhere yet — frozen at the last real crossing
 }
+/* LIVE-only ETA S/F: chains liveRefDuration() (this car's own recent, clean
+   sector times — the same reference the live map dot predicts its position
+   from) across every sector between the last real crossing and the next
+   start/finish line, so the incoming driver gets a rough "be ready in ~Ns"
+   instead of nothing. Deliberately approximate — off by a sector or two of
+   pace swing is fine for this, unlike liveCarXY's dot which is bounded much
+   tighter because it has to look right on the map. Gated on liveCarXY's own
+   parked/pit call so a stopped or silent car doesn't get a bogus ETA. */
+function liveEtaSF(st,T){
+  const res=liveCarXY(st,T);if(!res||res.parked)return null;
+  const a=LEG[st];let li=null;
+  if(a&&a.length)for(let i=a.length-1;i>=0;i--){if(a[i][3]<=T){li=a[i];break;}}
+  if(!li)return null;
+  const remaining=[];let s=li[1];
+  do{s=(s>=5)?1:s+1;remaining.push(s);}while(s!==5);
+  let cum=0;
+  for(const sec of remaining){const d=liveRefDuration(st,sec);if(!(d>0))return null;cum+=d;}
+  return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
+}
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
@@ -2967,6 +2986,10 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     // during a pit stop (or any leg gap) hold the last known lap instead of dropping to L0
     const _lkl=slg||lastStartedLeg(selCar,T);const ld=_lkl?Math.max(0,_lkl[0]-1):0;
     let etaTime=null,etaLbl='';if(slg){const fk=slg[0]*5,tc=BX[selCar]?BX[selCar][fk]:null;if(tc!=null&&tc>=T){etaTime=fmt(tc-T);etaLbl='ETA '+(slg[0]>=maxN?'FINISH':'S/F');}}
+    // LIVE has no future crossing to look up (see liveEtaSF above), so give the
+    // pit crew a "~" prefixed estimate instead of leaving this blank all race —
+    // it's only meant to tell the next driver roughly when to get ready.
+    else if(window.dataMode==='LIVE'){const est=liveEtaSF(selCar,T);if(est){etaTime='~'+fmt(est.sec);etaLbl='ETA '+(est.lap>=maxN?'FINISH':'S/F');}}
     const plines=[];
     if(p&&p>1){let ah=null;for(const st in lp)if(lp[st]===p-1)ah=st;if(ah){const e=predPass(selCar,ah,T);if(e!=null)plines.push(['▲ reducing gap to #'+ah,'#1e8f3a',32]);}}
     if(p){let be=null;for(const st in lp)if(lp[st]===p+1)be=st;if(be){const e=predPass(be,selCar,T);if(e!=null)plines.push(['▼ decreasing gap to #'+be,'#c0392b',32]);}}
@@ -2979,8 +3002,10 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
       let maxL=0;for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(Number(L)-1)*5+5];if(tc==null||tc>T)continue;const nL=Number(L),tt=s[0]+s[1]+s[2]+s[3]+s[4];if(nL>lastPit&&tt<flDrv)flDrv=tt;if(nL>maxL){maxL=nL;prevLap=tt;}}}
     // Reference-lap rows are ALWAYS emitted so the table frame renders in both
     // SIM and LIVE — even before a flying lap completes (LIVE warm-up / lap 1),
-    // where the cells sit at '—' and fill in as data arrives. ETA S/F needs the
-    // lap's future S/F crossing, which never exists LIVE, so it stays '—' there.
+    // where the cells sit at '—' and fill in as data arrives. SIM's ETA S/F
+    // reads the lap's real future crossing; LIVE has none yet, so it falls
+    // back to liveEtaSF's "~" prefixed estimate (or '—' before this car has
+    // any reference sector to predict from, e.g. still on its first lap).
     const refFmt=v=>(v!=null&&isFinite(v))?fmt(v):'—';
     plines.push(['class','#16202b',32,refFmt(flClass<Infinity?flClass:null),flClass<Infinity?flClass:null]);
     plines.push(['car','#16202b',32,refFmt(flCar<Infinity?flCar:null),flCar<Infinity?flCar:null]);
