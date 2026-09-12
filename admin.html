@@ -107,22 +107,6 @@
   </div>
 
   <div class="card">
-    <h2>LIVE data stream <span id="liveRawState" style="font-size:13px;font-weight:600;padding:2px 8px;border-radius:6px;vertical-align:middle">…</span></h2>
-    <div class="row">
-      <div class="meta" style="margin:0">Raw rows the WIGE scraper is writing — use to check the feed is actually streaming.</div>
-      <span>
-        <label style="font-size:13px;margin-right:10px"><input type="checkbox" id="liveRawAuto"> auto (4s)</label>
-        <button class="btn" onclick="loadLiveRaw()">↻ Refresh</button>
-      </span>
-    </div>
-    <div class="meta" id="liveRawFresh" style="margin-top:8px">…</div>
-    <div style="overflow:auto;max-height:340px;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px">
-      <table id="liveRawTbl" style="width:100%;border-collapse:collapse;font:12px/1.4 ui-monospace,Menlo,monospace"></table>
-    </div>
-    <div class="meta" id="liveRawMeta" style="margin-top:6px"></div>
-  </div>
-
-  <div class="card">
     <h2>Driver database</h2>
     <div class="meta" style="margin:0 0 14px">Every driver who competed in the 2026 NLS season — sortable by races, podiums, points in class, best finish/lap, nationality, cars & teams, with a races×points heatmap. Auto-refreshes weekly from the official result PDFs.</div>
     <div class="row" style="justify-content:flex-end">
@@ -136,6 +120,22 @@
     <div class="row" style="justify-content:flex-end">
       <a class="btn" href="replay.html" target="_blank" rel="noopener">list of clips →</a>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>LIVE data stream <span id="liveRawState" style="font-size:13px;font-weight:600;padding:2px 8px;border-radius:6px;vertical-align:middle">…</span></h2>
+    <div class="row">
+      <div class="meta" style="margin:0">Raw rows the WIGE scraper is writing — use to check the feed is actually streaming.</div>
+      <span>
+        <label style="font-size:13px;margin-right:10px"><input type="checkbox" id="liveRawAuto"> auto (4s)</label>
+        <button class="btn" onclick="loadLiveRaw()">↻ Refresh</button>
+      </span>
+    </div>
+    <div class="meta" id="liveRawFresh" style="margin-top:8px">…</div>
+    <div style="overflow:auto;max-height:340px;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px">
+      <table id="liveRawTbl" style="width:100%;border-collapse:collapse;font:12px/1.4 ui-monospace,Menlo,monospace"></table>
+    </div>
+    <div class="meta" id="liveRawMeta" style="margin-top:6px"></div>
   </div>
 
   <div class="card">
