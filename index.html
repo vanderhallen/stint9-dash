@@ -410,11 +410,19 @@
      15px value font, not the 21px the last-lap/fastest/lap row uses — that
      size overflows a phone-width column here (a 4-minute S3/S4 like "4:39.5"
      needs ~76px at 21px monospace against a ~61px column on a 375px screen). */
-  .msectbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:15px;table-layout:fixed}
-  .msectbl th{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right}
+  /* table-layout:fixed splits width EQUALLY across all 6 columns, which gives
+     the short "latest"/"previous" label column far more room than it needs
+     and starves the 5 numeric ones — on a narrow phone a value like "9:15.8"
+     then wraps inside its cell instead of fitting on one line, and the
+     wrapped second line overlaps the row below. Give the label column a
+     small explicit width instead (fixed layout then splits the REST equally
+     among the other 5), drop the value font further, and force one line. */
+  .msectbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;table-layout:fixed}
+  .msectbl th:first-child,.msectbl td:first-child{width:42px}
+  .msectbl th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right;white-space:nowrap}
   .msectbl th:first-child{text-align:left}
-  .msectbl td{padding:4px 2px;text-align:right;font-weight:700}
-  .msectbl td.lbl{text-align:left;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .msectbl td{padding:4px 2px;text-align:right;font-weight:700;white-space:nowrap;overflow:hidden}
+  .msectbl td.lbl{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700}
   /* Same purple the desktop TIMES reel uses for a car's own per-sector best
      (renderSecTab, index.html) — one shared convention across both views. */
   .msectbl td.best{color:#7b2fbe}
