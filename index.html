@@ -1824,16 +1824,30 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     // it simply isn't a key in dl; nothing here needs to know one way or
     // the other, this just stops discarding data that has already arrived.
     const laps=Object.keys(dl).map(Number).filter(L=>L<=doneLaps+1).sort((a,b)=>a-b);
+    const pitEnd=new Set(pitLapsOf(st));
     const stints=[];
     laps.forEach(L=>{const d=dl[L];const prev=stints[stints.length-1];
-      if(prev&&prev.driver===d){prev.endLap=L;prev.count++;}else stints.push({driver:d,startLap:L-1,endLap:L,count:1});});
+      // split on a pit even when the same driver stays in, so P-TIME's STINT n
+      // lands on bar n (remaining time sits at that bar's trailing edge).
+      if(prev&&prev.driver===d&&!prev.closed){prev.endLap=L;prev.count++;}
+      else stints.push({driver:d,startLap:L-1,endLap:L,count:1,closed:false});
+      if(pitEnd.has(L))stints[stints.length-1].closed=true;});
     if(stints.length)stints[stints.length-1].endLap=Math.max(stints[stints.length-1].endLap,lapsDriven);
-    stints.forEach(st2=>{
+    const pLabels=[];
+    stints.forEach((st2,si)=>{
       const x0=colX(st2.startLap),x1=colX(st2.endLap),w=Math.max(0,x1-x0);if(w<0.5)return;
       const col=driverColor(st2.driver);
       s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
       const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
       if(w>label.length*6.2+8)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
+      // remaining pit time from the P-TIME reel, stood at the bar's trailing
+      // edge so the row reads: complete bar → XmYs → next bar → XmYs → …
+      const pt=pTimeFmt(st,si+1);
+      if(pt)pLabels.push({x:x1,y:cy,t:pt,sel:st===selCar});
+    });
+    pLabels.forEach(function(p){
+      const fill=p.sel?'#fff':'#16202b',stroke=p.sel?'#16202b':'#fff';
+      s+='<text transform="rotate(90 '+p.x.toFixed(1)+' '+p.y.toFixed(1)+')" x="'+p.x.toFixed(1)+'" y="'+p.y.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="800" font-family="IBM Plex Mono,monospace" fill="'+fill+'" stroke="'+stroke+'" stroke-width="2.4" paint-order="stroke" stroke-linejoin="round">'+p.t+'</text>';
     });
   });
   svg.innerHTML=s;}
@@ -1842,6 +1856,16 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
    minutes and seconds — so the crew can type the clock they are holding. */
 function pTimeDate(){return (DB.event&&DB.event.date)||(typeof liveEventDate==='function'?liveEventDate():'');}
 function savePTime(){try{localStorage.setItem('stint9_ptime',JSON.stringify(PTIME));}catch(e){}}
+function pTimeFmt(car,n){
+  const day=PTIME[pTimeDate()]||{},row=day[String(car)]||{};
+  const slot=row[n]||row[String(n)];
+  if(!slot)return '';
+  const num=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.').trim());return isFinite(x)?x:null;};
+  const m=num(slot.min),sec=num(slot.sec);
+  if(m==null&&sec==null)return '';
+  const nstr=v=>{const r=Math.round(v);return Math.abs(v-r)<1e-6?String(r):String(v);};
+  return nstr(m==null?0:m)+'m'+nstr(sec==null?0:sec)+'s';
+}
 function pTimeSlot(car,n){
   const day=pTimeDate();if(!PTIME[day])PTIME[day]={};
   if(!PTIME[day][car])PTIME[day][car]={};
@@ -1904,6 +1928,7 @@ function renderPTime(T){
     if(!car||!n||(k!=='min'&&k!=='sec'))return;
     pTimeSlot(String(car),n)[k]=el.value;
     savePTime();
+    if(typeof renderStints==='function'&&typeof T==='number')renderStints(T);
   });
   wrap.addEventListener('keydown',function(e){e.stopPropagation();});
 })();
