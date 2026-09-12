@@ -581,7 +581,7 @@ async function fetchClipRows(videoId){
   return dedupeClips((list||[]).map(obj=>objToClipRow(videoId,obj,cars)).filter(Boolean));
 }
 function summaryUrl(videoId){
-  return SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/summary.mp4');
+  return SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/summary-titled.mp4');
 }
 function showBrowseSummary(videoId, rows){
   const box=document.getElementById('browseSummary');
@@ -590,6 +590,7 @@ function showBrowseSummary(videoId, rows){
   const url=summaryUrl(videoId);
   const n=rows.length;
   const tot=rows.reduce((s,r)=>s+(r.durationS||0),0);
+  vid.poster=SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(videoId+'/summary-titled.jpg');
   vid.src=url;
   cap.innerHTML='<span class="status active" style="padding:4px 10px">REPLAY SUMMARY</span>'+
     '<span>'+n+' clip'+(n===1?'':'s')+' · '+fmtDur(tot)+'</span>'+
