@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STINT9 · replay clips</title>
+<style>
+  :root{--ink:#16202b;--muted:#6b7480;--border:#dfe3e8;--bg:#f4f6f8;--card:#fff;--red:#e0301e;--green:#1e8f3a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;padding:26px 18px}
+  .wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
+  .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-top:8px;line-height:1.5}
+  a.btn,button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:11px 18px;border-radius:8px;text-decoration:none;display:inline-block;cursor:pointer}
+  button.btn:disabled{opacity:.45;cursor:default}
+  a.btn.ghost,button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  input[type=text]{font-family:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;flex:1 1 320px;min-width:0}
+  .err{color:var(--red);font-size:11px;margin-top:6px;min-height:14px}
+  .yt-embed{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
+  .yt-embed.on{display:block}
+  .yt-embed iframe{width:100%;height:100%;border:0;display:block}
+  .stagewrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
+  .stagewrap.on{display:block}
+  .stagewrap video{width:100%;display:block}
+  #cropbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.15);cursor:move;touch-action:none}
+  #cropbox .rz{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#ff3b30;border-radius:3px;cursor:nwse-resize}
+  .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:20px;background:#eef1f4;color:var(--muted)}
+  .status.watching{background:#eaf6ee;color:var(--green)}
+  .status.active{background:#fdecea;color:var(--red)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+  .status.active .dot{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  table.clips{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
+  table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>STINT9 · Replay clips</h1>
+    <div class="sub">Watches a livestream tab for the REPLAY badge and auto-catches each clip.</div>
+  </div>
+
+  <div class="card">
+    <h2>Source</h2>
+    <div class="row">
+      <input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off">
+      <button class="btn" id="yt-load" onclick="loadYt()">Load</button>
+    </div>
+    <div class="err" id="yt-err"></div>
+    <div class="yt-embed" id="yt-embed"></div>
+  </div>
+
+  <div class="card">
+    <h2>Monitor</h2>
+    <div class="meta" style="margin:0 0 10px">Click Start, then choose <b>This Tab</b> in the browser's share picker — that's the only way to read the pixels of a YouTube embed you don't control (its origin blocks direct canvas access). The permission is asked again every time you start monitoring; browsers don't let a page remember it.</div>
+    <div class="row">
+      <button class="btn" id="startBtn" onclick="startMonitoring()">Start monitoring</button>
+      <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
+      <span class="status" id="statusPill"><span class="dot"></span><span id="statusTxt">idle</span></span>
+    </div>
+    <div class="stagewrap" id="stagewrap">
+      <video id="capVideo" autoplay muted playsinline></video>
+      <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
+    </div>
+    <div class="row" id="calibRow" style="display:none;margin-top:10px">
+      <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm.</div>
+      <button class="btn" onclick="confirmCalib()">Confirm region →</button>
+    </div>
+    <div class="err" id="capErr"></div>
+  </div>
+
+  <div class="card">
+    <h2>Clips</h2>
+    <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one live, or clips from a past session for this video will load here.</div></div>
+    <div class="meta" id="clipsMeta"></div>
+  </div>
+</div>
+
+<script>
+/* ---- Supabase (same project + publishable key as the rest of stint9-dash) ---- */
+var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
+var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+var BUCKET='replay-clips';
+
+/* ---- YouTube embed: same ytId()/iframe pattern as index.html's YOUTUBE STREAM panel ---- */
+var ytVideoId=null;
+function ytId(v){
+  v=(v||'').trim();if(!v)return null;
+  const m=v.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
+  if(m)return m[1];
+  return /^[A-Za-z0-9_-]{11}$/.test(v)?v:null;
+}
+function loadYt(){
+  const url=document.getElementById('yt-url'),err=document.getElementById('yt-err'),box=document.getElementById('yt-embed');
+  const id=ytId(url.value);
+  if(!id){err.textContent='not a YouTube link — paste the URL from the address bar or share button';return;}
+  err.textContent='';ytVideoId=id;
+  try{localStorage.setItem('stint9_replay_ytlink',url.value);}catch(e){}
+  box.innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0" '+
+    'title="YouTube video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
+  box.classList.add('on');
+  loadClipsTable();
+}
+(function restoreYt(){try{const s=localStorage.getItem('stint9_replay_ytlink');if(s)document.getElementById('yt-url').value=s;}catch(e){}})();
+
+/* ---- tab-capture + calibration ---- */
+var capStream=null,capVideo=null,calibFrac=null;
+function loadCalib(){try{const s=JSON.parse(localStorage.getItem('stint9_replay_calib')||'null');if(s&&s.w&&s.h)return s;}catch(e){}return null;}
+function saveCalib(f){try{localStorage.setItem('stint9_replay_calib',JSON.stringify(f));}catch(e){}}
+
+async function startMonitoring(){
+  const errEl=document.getElementById('capErr');errEl.textContent='';
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){errEl.textContent='this browser does not support tab capture (getDisplayMedia).';return;}
+  try{
+    capStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:true});
+  }catch(e){errEl.textContent='tab-share permission was not granted.';return;}
+  capVideo=document.getElementById('capVideo');
+  capVideo.srcObject=capStream;
+  await capVideo.play().catch(()=>{});
+  document.getElementById('stagewrap').classList.add('on');
+  document.getElementById('startBtn').disabled=true;
+  document.getElementById('stopBtn').disabled=false;
+  capStream.getVideoTracks()[0].addEventListener('ended',stopMonitoring);
+  const saved=loadCalib();
+  if(saved){calibFrac=saved;beginDetectionLoop();}
+  else{beginCalibration();}
+}
+function stopMonitoring(){
+  stopDetectionLoop();
+  if(recorder&&recorder.state!=='inactive')try{recorder.stop();}catch(e){}
+  if(capStream)capStream.getTracks().forEach(t=>t.stop());
+  capStream=null;
+  document.getElementById('stagewrap').classList.remove('on');
+  document.getElementById('calibRow').style.display='none';
+  document.getElementById('startBtn').disabled=false;
+  document.getElementById('stopBtn').disabled=true;
+  setStatus('idle');
+}
+
+/* draggable/resizable crop box over the live preview, in CSS pixels -> stored as
+   fractions of the captured video's natural size so it survives any window resize */
+function beginCalibration(){
+  const box=document.getElementById('cropbox');
+  box.style.display='block';
+  const stage=document.getElementById('stagewrap');
+  const initW=stage.clientWidth*0.16,initH=stage.clientHeight*0.10;
+  box.style.left=(stage.clientWidth*0.78)+'px';box.style.top=(stage.clientHeight*0.10)+'px';
+  box.style.width=initW+'px';box.style.height=initH+'px';
+  document.getElementById('calibRow').style.display='flex';
+  setStatus('calibrate');
+  wireCropBoxDrag();
+}
+function wireCropBoxDrag(){
+  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('stagewrap');
+  let mode=null,sx=0,sy=0,ox=0,oy=0,ow=0,oh=0;
+  function down(e,m){mode=m;const p=(e.touches?e.touches[0]:e);sx=p.clientX;sy=p.clientY;
+    ox=parseFloat(box.style.left);oy=parseFloat(box.style.top);ow=parseFloat(box.style.width);oh=parseFloat(box.style.height);
+    e.preventDefault();e.stopPropagation();}
+  box.onmousedown=e=>down(e,'move');box.ontouchstart=e=>down(e,'move');
+  rz.onmousedown=e=>down(e,'resize');rz.ontouchstart=e=>down(e,'resize');
+  function move(e){if(!mode)return;const p=(e.touches?e.touches[0]:e);const dx=p.clientX-sx,dy=p.clientY-sy;
+    if(mode==='move'){let nx=Math.max(0,Math.min(stage.clientWidth-ow,ox+dx));let ny=Math.max(0,Math.min(stage.clientHeight-oh,oy+dy));
+      box.style.left=nx+'px';box.style.top=ny+'px';}
+    else{let nw=Math.max(24,Math.min(stage.clientWidth-ox,ow+dx));let nh=Math.max(16,Math.min(stage.clientHeight-oy,oh+dy));
+      box.style.width=nw+'px';box.style.height=nh+'px';}}
+  document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});
+  document.addEventListener('mouseup',()=>mode=null);document.addEventListener('touchend',()=>mode=null);
+}
+function confirmCalib(){
+  const box=document.getElementById('cropbox'),stage=document.getElementById('stagewrap');
+  const vw=capVideo.videoWidth||stage.clientWidth,vh=capVideo.videoHeight||stage.clientHeight;
+  const sxr=vw/stage.clientWidth,syr=vh/stage.clientHeight;
+  const x=parseFloat(box.style.left)*sxr,y=parseFloat(box.style.top)*syr;
+  const w=parseFloat(box.style.width)*sxr,h=parseFloat(box.style.height)*syr;
+  calibFrac={x:x/vw,y:y/vh,w:w/vw,h:h/vh};
+  saveCalib(calibFrac);
+  document.getElementById('cropbox').style.display='none';
+  document.getElementById('calibRow').style.display='none';
+  beginDetectionLoop();
+}
+
+/* ---- OCR: same rnOcrRegion/rnLoadTesseract approach as index.html's clock reader,
+   copied (this is a separate static page, nothing is shared/imported between pages),
+   whitelist narrowed to just the REPLAY letters, region narrowed to the calibrated crop */
+const TESS_SRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let tessWorker=null,tessP=null;
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[data-s="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.dataset.s=src;s.onload=()=>res();s.onerror=()=>rej(new Error('load failed'));document.head.appendChild(s);});}
+function loadTesseract(){
+  if(tessWorker)return Promise.resolve(tessWorker);if(tessP)return tessP;
+  tessP=(async()=>{await loadScript(TESS_SRC);const w=await Tesseract.createWorker('eng');
+    await w.setParameters({tessedit_char_whitelist:'REPLAYreplay',tessedit_pageseg_mode:'7'});tessWorker=w;return w;})();
+  return tessP;
+}
+function ocrCrop(video,frac){
+  const vw=video.videoWidth||640,vh=video.videoHeight||480;
+  const sx=Math.round(vw*frac.x),sy=Math.round(vh*frac.y),sw=Math.max(1,Math.round(vw*frac.w)),sh=Math.max(1,Math.round(vh*frac.h));
+  const sc=Math.min(4,Math.max(1,Math.round(300/sw)));
+  const cv=document.createElement('canvas');cv.width=sw*sc;cv.height=sh*sc;
+  const ctx=cv.getContext('2d');ctx.drawImage(video,sx,sy,sw,sh,0,0,cv.width,cv.height);
+  const img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data;
+  for(let i=0;i<d.length;i+=4){let g=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;g=Math.max(0,Math.min(255,(g-90)*2.4));d[i]=d[i+1]=d[i+2]=g;}
+  ctx.putImageData(img,0,0);
+  return cv;
+}
+
+/* ---- detection loop: 1 sample/sec, 2-consecutive-sample debounce, drives clip capture ---- */
+var detTimer=null,badgeOn=false,pendingState=null,pendingCount=0,recorder=null,recChunks=[],clipStartMs=0,clipIdx=0;
+function setStatus(s){
+  const pill=document.getElementById('statusPill'),txt=document.getElementById('statusTxt');
+  pill.className='status'+(s==='active'?' active':s==='watching'?' watching':'');
+  txt.textContent=s;
+}
+async function beginDetectionLoop(){
+  setStatus('loading OCR…');
+  try{await loadTesseract();}catch(e){document.getElementById('capErr').textContent='could not load the OCR engine — check your connection.';return;}
+  setStatus('watching');
+  detTimer=setInterval(detectTick,1000);
+}
+function stopDetectionLoop(){if(detTimer){clearInterval(detTimer);detTimer=null;}badgeOn=false;pendingState=null;pendingCount=0;}
+async function detectTick(){
+  if(!capVideo||capVideo.readyState<2||!calibFrac)return;
+  let text='';
+  try{const cv=ocrCrop(capVideo,calibFrac);const {data}=await tessWorker.recognize(cv);text=(data&&data.text)||'';}catch(e){return;}
+  const seen=/REPLAY/i.test(text);
+  if(seen===badgeOn){pendingState=null;pendingCount=0;return;}
+  if(pendingState===seen){pendingCount++;}else{pendingState=seen;pendingCount=1;}
+  if(pendingCount<2)return;   // require 2 consecutive samples before flipping state
+  pendingState=null;pendingCount=0;
+  badgeOn=seen;
+  if(badgeOn)onBadgeOn();else onBadgeOff();
+}
+function onBadgeOn(){
+  setStatus('active');
+  clipStartMs=Date.now();
+  recChunks=[];
+  try{
+    recorder=new MediaRecorder(capStream,{mimeType:pickMime()});
+  }catch(e){recorder=null;return;}
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
+  recorder.start();
+}
+function onBadgeOff(){
+  setStatus('watching');
+  if(!recorder||recorder.state==='inactive')return;
+  const startedAt=clipStartMs;
+  recorder.onstop=()=>{
+    const durationS=Math.max(0.5,(Date.now()-startedAt)/1000);
+    const blob=new Blob(recChunks,{type:recorder.mimeType||'video/webm'});
+    uploadClip(blob,startedAt,durationS);
+  };
+  recorder.stop();
+}
+function pickMime(){
+  const opts=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(const o of opts){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(o))return o;}
+  return 'video/webm';
+}
+
+/* ---- upload straight to Supabase Storage; metadata lives in the path, no DB table ---- */
+function extFromMime(m){return (m&&m.indexOf('mp4')>=0)?'mp4':'webm';}
+async function uploadClip(blob,startedAtMs,durationS){
+  const ext=extFromMime(blob.type);
+  const iso=new Date(startedAtMs).toISOString().replace(/[:.]/g,'-');
+  const path=(ytVideoId||'unknown')+'/'+iso+'_'+Math.round(durationS)+'s.'+ext;
+  clipIdx++;
+  renderClipRow({idx:clipIdx,path:path,startedAtMs:startedAtMs,durationS:durationS,url:null,uploading:true});
+  try{
+    const res=await fetch(SB+'/storage/v1/object/'+BUCKET+'/'+encodeURI(path),{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':blob.type||'video/webm'},
+      body:blob
+    });
+    if(!res.ok)throw new Error('upload failed ('+res.status+')');
+    const url=SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path);
+    updateClipRow(path,{url:url,uploading:false});
+  }catch(e){updateClipRow(path,{uploading:false,error:'upload failed'});}
+}
+
+/* ---- clips table: renders live catches, and reloads past clips for this video on load ---- */
+var clipRows={};
+function fmtClock(ms){const d=new Date(ms);return d.toLocaleTimeString();}
+function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function renderClipsTable(){
+  const wrap=document.getElementById('clipsTableWrap');
+  const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
+  if(!rows.length){wrap.innerHTML='<div class="empty">No clips caught yet — start monitoring to catch one live, or clips from a past session for this video will load here.</div>';return;}
+  let html='<table class="clips"><tr><th>Clip</th><th>Start time</th><th>Duration</th><th>Link</th></tr>';
+  rows.forEach((r,i)=>{
+    const link=r.url?('<a class="btn ghost" style="padding:5px 10px" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a>')
+      :(r.error?('<span class="err" style="margin:0">'+r.error+'</span>'):'<span class="meta" style="margin:0">uploading…</span>');
+    html+='<tr><td>clip '+(i+1)+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+link+'</td></tr>';
+  });
+  html+='</table>';
+  wrap.innerHTML=html;
+}
+function renderClipRow(r){clipRows[r.path]=r;renderClipsTable();}
+function updateClipRow(path,patch){if(!clipRows[path])return;Object.assign(clipRows[path],patch);renderClipsTable();}
+
+// "2026-09-12T14-32-07-123Z" (dashes in place of the ':'/'.' an ISO string can't
+// have in a filename) back to a real ISO string a Date can parse
+function parseDashedIso(s){
+  const m=s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/);
+  if(!m)return 0;
+  const ms=Date.parse(m[1]+'T'+m[2]+':'+m[3]+':'+m[4]+'.'+m[5]+'Z');
+  return isNaN(ms)?0:ms;
+}
+async function loadClipsTable(){
+  if(!ytVideoId)return;
+  const meta=document.getElementById('clipsMeta');
+  try{
+    const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({prefix:ytVideoId+'/',limit:200,sortBy:{column:'name',order:'asc'}})
+    });
+    if(!res.ok)return;
+    const list=await res.json();
+    clipRows={};clipIdx=0;
+    (list||[]).forEach(obj=>{
+      const m=obj.name.match(/^(.+)_(\d+)s\.(webm|mp4)$/);if(!m)return;
+      const startedAtMs=parseDashedIso(m[1]);
+      const path=ytVideoId+'/'+obj.name;
+      clipIdx++;
+      clipRows[path]={idx:clipIdx,path:path,startedAtMs:isNaN(startedAtMs)?0:startedAtMs,durationS:+m[2],url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
+    });
+    renderClipsTable();
+    meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
+  }catch(e){}
+}
+</script>
+</body>
+</html>
