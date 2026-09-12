@@ -1905,6 +1905,28 @@ no witnessed crossing yet, so it keeps the old pinned-at-the-boundary
 behaviour until it publishes its next split (≤ one sector, worst case ~S4's
 ~215s). It self-corrects with no intervention.
 
+## 15.6 Code 60 — sector-time delta (2026-09-13)
+
+Beacon `S{n}SPEED` is the trap at the line, so a car can crawl through a Code 60
+and still carry ~200 km/h from the previous beacon. Detector is now **time
+delta** in `code60Sectors()`:
+
+- Compare the sector just finished, and elapsed time in the sector being driven
+  now, against **that same car's previous clean time** for that sector.
+- Flag when the stretch is **>1.12×** and **at least +10 s**, but **<4×** (a
+  stop, not 60 km/h). A sector lights when **≥2** cars do that at once.
+- Skip lap 1 and pit laps. **S1 is ignored** — the pit exit sits in S1, so
+  out-laps look like a slow zone and drown real Code 60s further around the lap.
+
+On NLS 8 (2026-09-12) a +15 s floor caught only 2 moments; +8 s was noisy. **+10 s
+is the middle ground** currently shipped.
+
+**Check next race:** sit with the WIGE live-timing app and this dashboard side by
+side. Every time WIGE / race control calls a Code 60, note whether STINT9 lights
+the matching sector (and the reverse: STINT9 on, WIGE off). If we miss real
+zones, lower `CODE60_EXTRA_S` (or `CODE60_RATIO`); if we cry wolf, raise them.
+Record the verdict in this section.
+
 ## 15.4c Qualifying is a time sheet, not a race — SHIPPED 2026-09-12
 
 `livePos()` ranked every session by **progress** (`lap*5 + sector + fraction`).
@@ -1947,7 +1969,7 @@ Every LIVE-only or SIM-only behavioural difference found is legitimately
 
 | Difference | Where | Why it's correct to differ |
 |---|---|---|
-| Code 60 detection | `index.html:835` | needs live sector *speed* readings; the baked SIM CSV has none |
+| Code 60 detection | `index.html` `code60Sectors()` | infers slow zones from **sector-time delta** vs that car's previous clean split (not beacon speed). SIM has times too, so it can flag on replay. |
 | Clock timezone shift | `index.html:960-970` (`clockOffsetS`) | WIGE reports UTC; SIM's CSV `TAGESZEIT` is already track-local |
 
 > `admin.html` renders the same feed times through its own `todClock()` /
