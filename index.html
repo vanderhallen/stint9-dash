@@ -4347,7 +4347,7 @@ buildStartGrid();
 let rnCar='';                            // the racenote target = the currently selected car (any class)
 const RN_SECKM=[3.3,3.3,6.0,9.4,2.4];   // NLS 5-sector estimated lengths (nls-sector-layout.md)
 const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "gap" note fires
-let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null;
+let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null,rnIdentTok=null;
 let rnNotes=[],rnSeen=new Set(),rnPosted=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
 // The feed is rendered against the playback clock, not against everything detected so
 // far: SIM lets you scrub back, and a note whose tod is still in the future must not be
@@ -4383,9 +4383,28 @@ function rnCurLapSec(T){const lg=rnLegOf(rnCar,T);if(lg)return[lg[0],lg[1]];cons
 // car, its class, or the DB (LIVE rebuild / first load) changes.
 function rnEnsure(){
   const car=String(selCar||'');
-  const tok=car+'|'+(DB.event&&DB.event.date)+'|'+((DB.legs&&DB.legs[car]||[]).length)+'|'+Object.keys(DB.classes||{}).length;
-  if(tok===rnTok)return;
-  rnTok=tok;rnCar=car;
+  // Two separate questions, deliberately NOT one combined token:
+  //  - identity: has the CAR or EVENT changed? Only this should wipe rnNotes
+  //    and reload from the DB — a genuinely different car/session.
+  //  - data: has DB.legs[car] or the class list grown? This just means new
+  //    sector data landed and rnBX/rnLegs need rebuilding to see it.
+  // A single combined token (the previous design) put the car's own leg COUNT
+  // in it, so it changed on every single new sector this car crossed — every
+  // ~70-220s. Each change wiped rnNotes and relied on rnDetect to regenerate
+  // it via the async done() callback below; but a NEW reset supersedes an
+  // in-flight one before it resolves (`if(rnTok===tok...)`), so under the
+  // steady drip of new sectors the fetch's own render() call was routinely
+  // stale and skipped, and nothing else forced an immediate re-detect. Live
+  // 2026-09-12: an EARLIER overtake (#670 passed #652, lap 0) was correctly
+  // detected once, then vanished from the feed as #670 kept lapping, while a
+  // brand-new overtake minutes later appeared fine — exactly this pattern,
+  // since a fresh crossing's own reset happens to trigger sooner than the
+  // stale-render race resolves.
+  const identTok=car+'|'+(DB.event&&DB.event.date);
+  const dataTok=identTok+'|'+((DB.legs&&DB.legs[car]||[]).length)+'|'+Object.keys(DB.classes||{}).length;
+  if(dataTok===rnTok)return;
+  const identChanged=(identTok!==rnIdentTok);
+  rnTok=dataTok;rnIdentTok=identTok;rnCar=car;
   if(!car){rnClass=null;rnCars=[];rnBX={};rnLegs={};rnNotes=[];rnSeen=new Set();rnPosted=new Set();rnLoaded=true;rnRenderFeed();return;}
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   rnClass=carClass[car]||null;
@@ -4394,6 +4413,7 @@ function rnEnsure(){
   // withPitS5: same in-lap S5 reconstruction the map uses, so rnProg/rnRank don't
   // read a pitting car as stalled at the S4 boundary. rnBX stays on real splits.
   rnCars.forEach(c=>{const lg=(DB.legs[c]||[]);rnLegs[c]=withPitS5(c,lg.slice().sort((a,b)=>a[2]-b[2]));const m={};lg.forEach(g=>{m[(g[0]-1)*5+g[1]]=g[3];});rnBX[c]=m;});
+  if(!identChanged)return;   // same car/event, just new data — rnBX/rnLegs above already cover it; rnDetect's own idempotent nkey dedup handles the rest
   // reload persisted notes for this event/car
   rnLoaded=false;rnNotes=[];rnSeen=new Set();rnPosted=new Set();
   if(!rnLive()){rnLoaded=true;rnRenderFeed();return;}   // SIM: ephemeral, don't load from DB
@@ -4401,7 +4421,7 @@ function rnEnsure(){
   // re-render once notes have loaded so detection + summary run even while paused
   // (car may have been switched while playback is stopped). Guard against the token
   // having changed again in the meantime (rapid car switching).
-  const done=()=>{rnLoaded=true;rnRenderFeed();if(rnTok===tok&&typeof render==='function')render();};
+  const done=()=>{rnLoaded=true;rnRenderFeed();if(rnTok===dataTok&&typeof render==='function')render();};
   fetch(FUEL_SB_URL+'/rest/v1/stint9_racenotes?select=lap,sector,kind,body,tod,nkey,meta&event_date=eq.'+encodeURIComponent(ed)+'&car=eq.'+encodeURIComponent(car)+'&order=tod',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
     .then(r=>r.ok?r.json():[]).then(rows=>{rows=rows||[];
       // LIVE parity with SIM: don't DISPLAY the stored auto-notes — regenerate them fresh
