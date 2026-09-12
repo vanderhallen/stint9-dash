@@ -472,9 +472,14 @@
      wrapped second line overlaps the row below. Give the label column a
      small explicit width instead (fixed layout then splits the REST equally
      among the other 5), drop the value font further, and force one line. */
+  /* The lap-by-lap history (m_sect_prev) can run to well over a hundred rows
+     over a race — scroll it inside the card instead of pushing the rest of
+     the page down, with the header pinned so the sector columns stay legible
+     while scrolling. */
+  .msecscroll{max-height:240px;overflow-y:auto}
   .msectbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;table-layout:fixed}
   .msectbl th:first-child,.msectbl td:first-child{width:42px}
-  .msectbl th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right;white-space:nowrap}
+  .msectbl th{position:sticky;top:0;background:var(--card);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right;white-space:nowrap}
   .msectbl th:first-child{text-align:left}
   .msectbl td{padding:4px 2px;text-align:right;font-weight:700;white-space:nowrap;overflow:hidden}
   .msectbl td.lbl{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -3096,7 +3101,8 @@ function renderMobile(){
     ['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});
     set('m_num','select a car');set('m_drv','');set('m_sect_car','select a car');
     var none=[null,null,null,null,null],inf=[Infinity,Infinity,Infinity,Infinity,Infinity];
-    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],none,inf);setSectRow(['m_p1','m_p2','m_p3','m_p4','m_p5'],none,inf);
+    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],none,inf);
+    var pb0=document.getElementById('m_sect_prev');if(pb0)pb0.innerHTML='';
   }
   else{
     set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));set('m_sect_car','#'+selCar);
@@ -3118,10 +3124,23 @@ function renderMobile(){
     var alg=activeLeg(selCar,T),curSecs=[null,null,null,null,null];
     if(alg){var CL=alg[0],csRaw=stmSel[CL];
       if(csRaw)for(var k2=0;k2<5;k2++){var tb2=bxSel[(CL-1)*5+(k2+1)];if(tb2!=null&&tb2<=T&&csRaw[k2]!=null)curSecs[k2]=csRaw[k2];}}
-    // "previous" = cs.L, the last lap carStats already confirmed complete.
-    var prevSecs=stmSel[cs.L]||[null,null,null,null,null];
     setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],curSecs,bestSec);
-    setSectRow(['m_p1','m_p2','m_p3','m_p4','m_p5'],prevSecs,bestSec);
+    // every completed lap gets its own row — not just cs.L, the single most
+    // recent one — newest on top, scrollable (see .msecscroll), same
+    // per-sector "purple = car's own best" convention as the desktop TIMES
+    // reel (renderSecTab).
+    var prevRows='';
+    for(var L=cs.L;L>=1;L--){
+      var sArr=stmSel[L];if(!sArr)continue;
+      var any=false,rowHtml='<tr><td class="lbl">L'+L+'</td>';
+      for(var k3=0;k3<5;k3++){
+        var tb3=bxSel[(L-1)*5+(k3+1)],v3=(tb3!=null&&tb3<=T&&sArr[k3]!=null)?sArr[k3]:null;
+        if(v3!=null)any=true;
+        rowHtml+='<td'+(v3!=null&&bestSec[k3]<Infinity&&Math.abs(v3-bestSec[k3])<0.01?' class="best"':'')+'>'+(v3!=null?fmt(v3):'—')+'</td>';
+      }
+      if(any)prevRows+=rowHtml+'</tr>';
+    }
+    var pb=document.getElementById('m_sect_prev');if(pb)pb.innerHTML=prevRows;
   }
   var rd=function(id){var e=document.getElementById(id);return e?e.textContent:'';};
   set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
@@ -6003,13 +6022,15 @@ applyWxReel(false);
   </div>
   <div class="mcard">
     <div class="mlbl">sector times — <span id="m_sect_car">select a car</span></div>
-    <table class="msectbl">
-      <thead><tr><th></th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead>
-      <tbody>
-        <tr><td class="lbl" id="m_sect_curlbl">latest</td><td id="m_s1">&mdash;</td><td id="m_s2">&mdash;</td><td id="m_s3">&mdash;</td><td id="m_s4">&mdash;</td><td id="m_s5">&mdash;</td></tr>
-        <tr><td class="lbl" id="m_sect_prevlbl">previous</td><td id="m_p1">&mdash;</td><td id="m_p2">&mdash;</td><td id="m_p3">&mdash;</td><td id="m_p4">&mdash;</td><td id="m_p5">&mdash;</td></tr>
-      </tbody>
-    </table>
+    <div class="msecscroll">
+      <table class="msectbl">
+        <thead><tr><th></th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl" id="m_sect_curlbl">latest</td><td id="m_s1">&mdash;</td><td id="m_s2">&mdash;</td><td id="m_s3">&mdash;</td><td id="m_s4">&mdash;</td><td id="m_s5">&mdash;</td></tr>
+        </tbody>
+        <tbody id="m_sect_prev"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 <script>
