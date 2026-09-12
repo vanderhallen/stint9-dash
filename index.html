@@ -88,15 +88,14 @@
   .feedbanner{position:absolute;top:12px;right:12px;padding:5px 11px;border-radius:8px;background:#57534e;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:12px;letter-spacing:1px;display:none}
   .feedbanner.on{display:block}
   /* Selected-car stint bar: which driver has done which laps, at a glance,
-     without switching to the separate STINT reel. An HTML overlay alongside
-     the map (same pattern as .carbadge/.code60banner/.feedbanner above), not
-     SVG content inside #svg -- the reference-lap table already sits flush
-     against #svg's own bottom edge (boxBot lands exactly on the viewBox's
-     lower boundary), so there is no room to add another SVG row there
-     without either resizing the viewBox (risking whatever else assumes its
-     current height) or displacing the table. A plain overlay sidesteps both. */
-  .selstint{position:absolute;left:10px;right:10px;bottom:8px;height:28px;border-radius:6px;overflow:hidden;display:flex;pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.22)}
-  .selstint .seg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;border-right:1px solid rgba(255,255,255,.35)}
+     inside the PACE reel (the lap-time trace, #ltgraph) — not the map: an
+     earlier version overlaid the map itself, corrected 2026-09-12. An HTML
+     overlay alongside the chart SVG (same .reelpanel gets position:relative
+     inline where this is placed) rather than SVG content drawn into the
+     chart's own viewBox, so it never has to compete with that chart's own
+     scaling/axis layout. */
+  .selstint{position:absolute;left:6px;right:6px;bottom:6px;height:24px;border-radius:5px;overflow:hidden;display:flex;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .selstint .seg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;border-right:1px solid rgba(255,255,255,.35)}
   .selstint .seg:last-child{border-right:none}
   #dots.stale{opacity:.4;transition:opacity .5s}
   @keyframes code60pulsebanner{0%,100%{opacity:.8}50%{opacity:1}}
@@ -606,7 +605,7 @@
   </div>
   <div class="split" style="margin-top:13px">
     <div class="left">
-      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="code60"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div><div class="code60banner" id="code60banner"></div><div class="feedbanner" id="feedbanner"></div><div class="selstint" id="selstint" style="display:none"></div></div>
+      <div class="card stage" data-focus><svg id="svg" viewBox="80 80 2000 1300"><g id="track"></g><g id="code60"></g><g id="dots"></g><circle id="msgHighlightRing" fill="none" stroke="#e8871e" stroke-width="5" style="display:none;pointer-events:none"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle><g id="predsvg"></g></svg><div class="carbadge" id="carbadge"></div><div class="code60banner" id="code60banner"></div><div class="feedbanner" id="feedbanner"></div></div>
     </div>
     <div class="right">
       <div class="card stage" data-focus style="background:#fbfbfc"><svg id="mini" viewBox="0 0 268 268" style="display:block;width:auto;height:auto;margin:0 auto;overflow:visible">
@@ -660,7 +659,7 @@
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
-          <div class="reelpanel"><svg id="ltgraph"></svg></div>
+          <div class="reelpanel" style="position:relative"><svg id="ltgraph"></svg><div class="selstint" id="selstint" style="display:none"></div></div>
           <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
             <div id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px">
               <button type="button" class="seg on" data-v="lap">Lap</button>
@@ -1501,6 +1500,7 @@ function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.g
     return '<tr>'+c+'</tr>';});
   tb.innerHTML=rows.join('');box.style.display='';}
 function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+  renderSelStint(T);   // stint bar lives in THIS reel, not the map — renderSelStint hides itself when !selCar
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   if(!selCar){ph('select a car for the lap-time trace');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
@@ -1713,10 +1713,11 @@ function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!pane
    known driver — it "snaps" to a new segment/colour the moment that lap
    actually completes with a different driver, same idea as every other
    reel only drawing what's actually happened by T. */
-// Selected-car-only stint bar overlaid on the main map (see .selstint CSS) —
-// same driver/lap-count segmentation as the STINT reel below, just scoped to
-// one car and drawn as plain HTML instead of that reel's SVG, so who's
-// driving right now is visible without switching reels.
+// Selected-car-only stint bar, overlaid inside the PACE reel (#ltgraph — see
+// .selstint CSS and its call site in renderLapTrace) — same driver/lap-count
+// segmentation as the STINT reel below, just scoped to one car and drawn as
+// plain HTML instead of that reel's SVG, so who's driving right now is
+// visible on the lap-time trace without switching to the class-wide STINT view.
 function renderSelStint(T){
   const el=document.getElementById('selstint');if(!el)return;
   if(!selCar){el.style.display='none';el.innerHTML='';return;}
@@ -2860,10 +2861,8 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     let yb=(nR?boxTop:lastY+26)-32;
     for(let k=preds.length-1;k>=0;k--){mkT((BX0+BX1)/2,yb,'middle',preds[k][0],preds[k][1],fs);yb-=rowH;}
     if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,yb-16,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
-    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(selPit?'<span class="pos" style="color:#e0301e">PIT</span>':(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>'))+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';
-    renderSelStint(T);}
-  else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);
-    const _ss=document.getElementById('selstint');if(_ss)_ss.style.display='none';}
+    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(selPit?'<span class="pos" style="color:#e0301e">PIT</span>':(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>'))+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';}
+  else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}
   if(typeof updateRacenote==='function')updateRacenote(T);}
 /* Render-rate cap. render() repaints the whole 1722px layout; at 60fps that
    sustained compositing is what iOS Safari's GPU-memory limit can't hold (the

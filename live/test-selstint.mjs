@@ -4,9 +4,10 @@
  *   node live/test-selstint.mjs
  *
  * Same driver/lap-count segmentation as the STINT reel (renderStints), just
- * for one car and drawn as an HTML overlay (.selstint) on the main map
- * instead of that reel's own SVG, per request: "at the bottom of this view,
- * with the driver names, to match driver with laps of the select car only".
+ * for one car and drawn as an HTML overlay (.selstint) inside the PACE reel
+ * (#ltgraph) instead of that reel's own SVG. An earlier version placed this
+ * on the main map instead — corrected 2026-09-12 per "the bar is placed on
+ * the wrong position, I wanted the bar in the reel, not on the track map".
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,11 +20,14 @@ let failures = 0;
 const check = (name, cond, got) => { if (!cond) failures++;
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : `  (got ${JSON.stringify(got)})`}`); };
 
-check('.selstint overlay markup is present', html.includes('<div class="selstint" id="selstint" style="display:none"></div>'), 'not found');
-check('renderSelStint is wired to run whenever a car is selected',
-      html.includes('badge.style.display=\'flex\';\n    renderSelStint(T);}'), 'call site not found where expected');
-check('the bar is hidden again when no car is selected',
-      html.includes("const _ss=document.getElementById('selstint');if(_ss)_ss.style.display='none';"), 'hide-on-deselect not found');
+check('.selstint overlay markup is present inside the PACE reel (#ltgraph), not the map',
+      html.includes('<div class="reelpanel" style="position:relative"><svg id="ltgraph"></svg><div class="selstint" id="selstint" style="display:none"></div></div>'),
+      'not found in the PACE reelpanel');
+check('renderSelStint is called from renderLapTrace, not from the map\'s render() block',
+      html.includes("function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);\n  renderSelStint(T);"),
+      'call site not found at the top of renderLapTrace');
+check('renderSelStint is NOT still wired into the map\'s per-frame block',
+      !html.includes("badge.style.display='flex';\n    renderSelStint(T);}"), 'old map call site still present');
 
 const a = html.indexOf('function renderSelStint(T){');
 const b = html.indexOf('\nfunction renderStints(T){', a);
