@@ -1875,6 +1875,13 @@ Every LIVE-only or SIM-only behavioural difference found is legitimately
 | Code 60 detection | `index.html:835` | needs live sector *speed* readings; the baked SIM CSV has none |
 | Clock timezone shift | `index.html:960-970` (`clockOffsetS`) | WIGE reports UTC; SIM's CSV `TAGESZEIT` is already track-local |
 
+> `admin.html` renders the same feed times through its own `todClock()` /
+> `trackOffsetS()` (it has no access to `index.html`'s helpers) and labels the
+> column **`tod(track)`**, not `tod(UTC)`. Its "behind wall clock" figure stays
+> in UTC on purpose — it is a difference between two times in the same base, so
+> the offset cancels and converting it would be wrong. Raw-row *values* are
+> still raw per §9; only the clock is made readable.
+>
 > **Any time-of-day you render must go through `hmsClock()`, never bare `hms()`.**
 > `hms()` formats the feed's own base, which in LIVE is UTC — two hours behind
 > the trackside clock at the Nürburgring in CEST. Fixed 2026-09-12 in the

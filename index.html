@@ -2296,10 +2296,28 @@ function refreshCarDropdown(T){
 // exit, DELAY flagged" within about one predicted sector length, not slid
 // forward indefinitely by other cars' progress.
 function liveRefDuration(car,sectorIdx){
-  const stm=DB.sectimes[car]||{},pits=(DB.pits&&DB.pits[car])||[];
+  // pitLapsOf(), not DB.pits: the feed barely populates `inpit` (wige-scrape's
+  // PITSTOPCOUNT diff has produced ~nothing over three race weekends — see
+  // README §18), so DB.pits alone leaves pit laps unflagged and their distorted
+  // sectors become this car's "reference pace". pitLapsOf adds the out-lap-S1
+  // heuristic that secRef() (index.html:1141) already relies on for exactly this.
+  const stm=DB.sectimes[car]||{},pits=pitLapsOf(car);
   const laps=Object.keys(stm).map(Number).sort((a,b)=>b-a);
   for(const L of laps){
-    if(pits.indexOf(L)!==-1)continue;                    // skip pit in/out laps — not representative pace
+    // Exclude the SECTORS a stop actually distorts, not the whole lap — the same
+    // two rules secRef() applies (index.html:1141-1144). A stop sits at the end
+    // of S5, so on the in-lap only S5 is missing/wrong and its S1-S4 are ordinary
+    // racing sectors, while on the OUT-lap it is S1 that carries the stop: at the
+    // Nürburgring the pit lane runs between start/finish and the S1 point, so an
+    // out-lap S1 lasts minutes (observed 2026-09-12: #254 765.8s, #500 399.6s —
+    // and 399.6s is UNDER prepLiveRaw's 600s garage threshold, so it survived into
+    // DB.sectimes and, unfiltered, became that car's S1 reference; its next lap
+    // was then predicted to take 400s through S1 and it crawled). Skipping the
+    // whole lap instead would throw away good data now that pitLapsOf flags far
+    // more laps than DB.pits ever did — it cost #380 a clean 271s S4 in favour of
+    // a 297s one.
+    if(sectorIdx===5&&pits.indexOf(L)!==-1)continue;     // in-lap S5 — no crossing / distorted
+    if(sectorIdx===1&&pits.indexOf(L-1)!==-1)continue;   // out-lap S1 — carries the stop
     const s=stm[L];if(s&&s[sectorIdx-1]!=null)return s[sectorIdx-1];
   }
   const ar=liveArchiveRef(car,sectorIdx);if(ar!=null)return ar;
