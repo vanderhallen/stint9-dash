@@ -2451,6 +2451,12 @@ function renderSecTab(T){
     if(!any)continue;
     laps.push(L);cells[L]={vals:vals};drvs[L]=dl[L]||'';
     if(full){const tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];cells[L].tot=tot;if(tot<bestLap)bestLap=tot;}
+    else{
+      // LASTLAPTIME lives on the NEXT WIGE row; prepLiveRaw copies it to this
+      // lap's rt so we can show LAP even when S1 (and thus S5) is still blank.
+      const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];
+      if(rt!=null){cells[L].tot=rt;if(rt<bestLap)bestLap=rt;}
+    }
   }
   if(!laps.length){ph('no completed sectors yet');return;}
   laps.reverse();   // newest/last lap leftmost, first lap rightmost
@@ -3762,33 +3768,56 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
   window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
-  /* animated rain radar: past (observed) + nowcast (forecast) frames from
-     RainViewer, cycled with a play/pause button and a timeline clock. The blue
-     divider on the timeline marks "now" (boundary between observed and forecast). */
-  fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()).then(d=>{
-    const host=d.host,past=(d.radar&&d.radar.past)||[],fc=(d.radar&&d.radar.nowcast)||[];
-    const frames=past.concat(fc);if(!frames.length)return;
-    const layers=frames.map(fr=>L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,zIndex:250}).addTo(map));
-    const nowSec=Date.now()/1000,fcFrom=past.length;   // index where forecast begins
+  /* animated rain radar: RainViewer past (+ nowcast when they publish it) and
+     Open-Meteo 15-min precipitation for the next 6h. RainViewer nowcast is often
+     empty in this region, so the timeline used to stop at "−7 min". Forecast
+     frames tint the 10 km circle; the blue divider is "now". */
+  const precipCirc=L.circle([lat,lon],{radius:10000,stroke:false,fill:false,fillColor:'#2a5cff',fillOpacity:0,zIndex:240}).addTo(map);
+  Promise.all([
+    fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()),
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&minutely_15=precipitation&forecast_days=1&timezone=auto').then(r=>r.json()).catch(()=>null)
+  ]).then(([d,om])=>{
+    const host=d.host,past=(d.radar&&d.radar.past)||[],rvFc=(d.radar&&d.radar.nowcast)||[];
+    const nowSec=Date.now()/1000;
+    const frames=past.concat(rvFc).map(fr=>({time:fr.time,path:fr.path,forecast:false}));
+    const lastRadarT=frames.length?frames[frames.length-1].time:nowSec;
+    const omT=(om&&om.minutely_15&&om.minutely_15.time)||[];
+    const omP=(om&&om.minutely_15&&om.minutely_15.precipitation)||[];
+    for(let i=0;i<omT.length;i++){
+      const ts=new Date(omT[i]).getTime()/1000;
+      if(!(ts>lastRadarT+30)||ts>nowSec+6*3600)continue;
+      frames.push({time:ts,precip:omP[i]||0,forecast:true});
+    }
+    if(!frames.length)return;
+    const layers=frames.map(fr=>fr.path?L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,zIndex:250}).addTo(map):null);
+    const fcFrom=frames.findIndex(fr=>fr.time>nowSec+30);const fcIdx=fcFrom<0?frames.length:fcFrom;
     const bar=document.getElementById('wxradar'),playBtn=document.getElementById('wxplay'),tl=document.getElementById('wxtl'),
           fill=document.getElementById('wxtlfill'),nowMk=document.getElementById('wxtlnow'),tLbl=document.getElementById('wxtime');
     if(bar)bar.style.display='flex';
     const relLabel=i=>{const dt=Math.round((frames[i].time-nowSec)/60);if(Math.abs(dt)<5)return'now';
       const s=dt<0?'-':'+',a=Math.abs(dt);return a>=60?(s+(a/60).toFixed(a%60?1:0)+'h'):(s+a+'min');};
-    const nowPct=Math.min(fcFrom,frames.length-1)/(frames.length-1)*100;
+    const nowPct=Math.min(Math.max(fcIdx-1,0),frames.length-1)/(Math.max(frames.length-1,1))*100;
     if(nowMk&&frames.length>1)nowMk.style.left=nowPct.toFixed(1)+'%';
-    // time axis along the scrubber: oldest (left) · now (at the observed|forecast divider) · newest (right)
     if(tl&&frames.length>1){tl.querySelectorAll('.wxtk').forEach(e=>e.remove());
+      tl.style.background='linear-gradient(90deg,#e2e5ea '+nowPct.toFixed(1)+'%,#c5d8ff '+nowPct.toFixed(1)+'%)';
       const tk=(pct,txt,cls,align)=>{const e=document.createElement('div');e.className='wxtk'+(cls?' '+cls:'');e.textContent=txt;e.style.left=pct.toFixed(1)+'%';if(align)e.style.transform=align;tl.appendChild(e);};
       tk(0,relLabel(0),'','translateX(0)');
       if(nowPct>8&&nowPct<92)tk(nowPct,'now','now','translateX(-50%)');
       tk(100,relLabel(frames.length-1),'','translateX(-100%)');}
-    let idx=Math.max(0,fcFrom-1),playing=false,tmr=null;   // start at the latest observation ("now")
-    function show(i){idx=i;layers.forEach((l,k)=>l.setOpacity(k===i?0.6:0));
+    let idx=Math.max(0,fcIdx-1),playing=false,tmr=null;
+    function precipStyle(mm){
+      if(!(mm>0.05))return{fill:false,fillOpacity:0};
+      return{fill:true,fillColor:'#2a5cff',fillOpacity:Math.min(0.55,0.12+mm*0.18)};
+    }
+    function show(i){idx=i;
+      layers.forEach((l,k)=>{if(l)l.setOpacity((!frames[i].forecast&&k===i)?0.6:0);});
+      precipCirc.setStyle(frames[i].forecast?precipStyle(frames[i].precip):{fill:false,fillOpacity:0});
       if(fill&&frames.length>1)fill.style.width=(i/(frames.length-1)*100).toFixed(1)+'%';
-      if(tLbl){tLbl.textContent=relLabel(i);tLbl.classList.toggle('fc',i>=fcFrom);}}
-    function start(){if(tmr)clearInterval(tmr);playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';tmr=setInterval(()=>show((idx+1)%frames.length),650);}
-    function stop(){playing=false;if(tmr){clearInterval(tmr);tmr=null;}if(playBtn)playBtn.innerHTML='&#9658;';}
+      if(tLbl){tLbl.textContent=relLabel(i);tLbl.classList.toggle('fc',!!frames[i].forecast||i>=fcIdx);}}
+    function start(){if(tmr){clearTimeout(tmr);tmr=null;}playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';
+      function tick(){show((idx+1)%frames.length);tmr=setTimeout(tick,frames[idx].forecast?2200:1400);}
+      tmr=setTimeout(tick,frames[idx].forecast?2200:1400);}
+    function stop(){playing=false;if(tmr){clearTimeout(tmr);tmr=null;}if(playBtn)playBtn.innerHTML='&#9658;';}
     if(playBtn)playBtn.onclick=()=>{playing?stop():start();};
     show(idx);start();
   }).catch(()=>{});
@@ -4601,9 +4630,21 @@ buildStartGrid();
     // lap — subtracting the PREVIOUS lap there would invent an S5 out of the two
     // laps' difference. That lap's S5 fills in for real once lap N+1 lands.
     for(let i=0;i<raw.length;i++){const r=raw[i];
-      if(r.s[4]!=null||r.s[0]==null||r.s[1]==null||r.s[2]==null||r.s[3]==null)continue;
+      if(r.s[4]!=null)continue;
       const own=ownRt(src[i]);if(own==null)continue;
-      const d5=own-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;}
+      if(r.s[0]!=null&&r.s[1]!=null&&r.s[2]!=null&&r.s[3]!=null){
+        const d5=own-(r.s[0]+r.s[1]+r.s[2]+r.s[3]);if(d5>5&&d5<900)r.s[4]=d5;
+        continue;
+      }
+      // First timed lap: WIGE omits S1TIME (LAPS=0). LASTLAPTIME on lap N+1 is
+      // this lap's time. Use this car's S1 on the *next* lap only to split
+      // S1+S5 so S5 can show after a hard refresh (no witnessed S4/S/F clocks).
+      if(r.s[1]!=null&&r.s[2]!=null&&r.s[3]!=null){
+        const nx=byLap[String(r.car)][r.lap+1];
+        const s1=nx&&nx.s&&nx.s[0];
+        if(s1!=null){const d5=own-s1-r.s[1]-r.s[2]-r.s[3];if(d5>5&&d5<900)r.s[4]=d5;}
+      }
+    }
     return raw;
   };
   // ---- LIVE position anchoring (README §15.4b) ------------------------------
@@ -4705,6 +4746,27 @@ buildStartGrid();
       }
       r.t0=t0;
     }
+    // S5 = t(S/F) − t(S4). Does not need S1. WIGE never sends S5; the usual
+    // backfill is LASTLAPTIME − (S1+S2+S3+S4), which dies when S1 is missing
+    // (first timed lap: LAPS=0, no S1). We already witness S4 when that split
+    // changes and S/F when LAPS ticks — that delta is S5.
+    for(const r of raw){
+      if(r.s[4]!=null)continue;
+      const st=ANCH[r.car];if(!st)continue;
+      const newer=raw.some(x=>x.car===r.car&&x.lap>r.lap);
+      const tSF=st.t0[r.lap+1]!=null?st.t0[r.lap+1]:(newer?r.tend:null);
+      let tS4=st.sc[r.lap*5+4];
+      if(tS4==null){
+        for(let k=3;k>=1;k--){
+          const ts=st.sc[r.lap*5+k];if(ts==null)continue;
+          let cum=0,ok=true;
+          for(let i=k;i<4;i++){if(r.s[i]==null){ok=false;break;}cum+=r.s[i];}
+          if(ok){tS4=ts+cum;break;}
+        }
+      }
+      if(tSF==null||tS4==null)continue;
+      const d5=tSF-tS4;if(d5>5&&d5<900)r.s[4]=d5;
+    }
     return raw;
   }
   function liveTick(){
@@ -4733,6 +4795,7 @@ buildStartGrid();
           car:String(r.car),lap:r.lap,klass:r.klass,
           s:[r.s1,r.s2,r.s3,r.s4,r.s5],spd:[r.s1_kmh,r.s2_kmh,r.s3_kmh,r.s4_kmh,r.s5_kmh],
           tend:r.lap_end_tod,rt:r.lap_time,inpit:!!r.inpit,fast:!!r.fastest,drv:r.driver,veh:r.vehicle})));
+        window.__ownRt={};for(const rr of raw)if(rr.rt!=null)window.__ownRt[rr.car+'|'+rr.lap]=rr.rt;
         // True data frontier = newest actual lap-end time-of-day; robust even if a
         // corrupt leg still pushes the derived DB.tmax into the future.
         liveFrontier=-Infinity;for(const rr of raw){const t=rr.tend;if(t!=null&&isFinite(+t)&&+t>liveFrontier)liveFrontier=+t;}
