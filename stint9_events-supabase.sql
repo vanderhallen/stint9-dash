@@ -108,7 +108,7 @@ create or replace function public.stint9_archive_event(p_date date, p_slug text 
 as $function$
 declare
   v_slug text; v_name text := p_name; v_label text := p_label; v_end date := p_end;
-  v_round_slug text; v_round_name text;
+  v_round_slug text; v_round_name text; v_suffix text;
   v_win_lo timestamptz; v_win_hi timestamptz;
   v_cars int; v_timing jsonb; v_overlay jsonb; v_bundle jsonb;
 begin
@@ -124,6 +124,28 @@ begin
 
   v_name := coalesce(v_name, v_round_name, v_label);
   v_slug := coalesce(p_slug, v_round_slug, public.stint9_event_slug(v_label, v_name, p_date));
+
+  -- Auto-append a human session suffix for non-race sessions so "which NLS9
+  -- is this" is always answerable from `name` alone, without relying on the
+  -- caller to have typed it into p_name (NLS9-quali didn't, on 2026-09-13,
+  -- which made it render identically to NLS9's race in index.html's SIM
+  -- event picker and on admin.html's cards).
+  if v_label is not null and lower(v_label) not in ('race','') then
+    v_suffix := case lower(v_label)
+      when 'quali' then 'Qualifying'
+      when 'practice' then 'Practice'
+      when 'zeittraining' then 'Zeittraining'
+      when 'training' then 'Training'
+      when 'warm' then 'Warm-up'
+      when 'pitwalk' then 'Pitwalk'
+      else initcap(v_label)
+    end;
+    if v_name is null or v_name = '' then
+      v_name := v_suffix;
+    elsif v_name !~* v_suffix then
+      v_name := v_name || ' — ' || v_suffix;
+    end if;
+  end if;
 
   -- Timing: WIGE never sends S5 for the Nordschleife (s5 is always null on the
   -- raw row) -- index.html's LIVE-mode liveTick() reconstructs it client-side

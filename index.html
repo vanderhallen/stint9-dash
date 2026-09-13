@@ -6319,7 +6319,13 @@ applyWxReel(false);
      name. The round lives in the slug for archived races (NLS6, NLS7) but only in
      the name for ad-hoc snapshots (slug EVT-2026-08-02, name "practice NLS7"), so
      look in both; when it came from the name, strip it there to avoid repeating it.
-     No round at all (an unmatched event) → just date — name. */
+     No round at all (an unmatched event) → just date — name.
+     Quali/practice/etc share the round's slug+name with the race (NLS9 vs
+     NLS9-quali both round NLS9), so append a session suffix from `label` —
+     the reliable field — rather than trusting `name` to already carry it
+     (it didn't for NLS9-quali, which made both entries render identically). */
+  const SESSION_SUFFIX={quali:'Qualifying',practice:'Practice',zeittraining:'Zeittraining',
+    training:'Training',warm:'Warm-up',pitwalk:'Pitwalk'};
   function raceLabel(e){
     const date=String(e.event_date||'').slice(0,10);
     const rx=/NLS\s*(\d+)/i;
@@ -6328,6 +6334,8 @@ applyWxReel(false);
     if(fromSlug){round='NLS'+fromSlug[1];}
     else{const fromName=rx.exec(name);
       if(fromName){round='NLS'+fromName[1];name=name.replace(fromName[0],'').replace(/\s{2,}/g,' ').trim();}}
+    const suffix=SESSION_SUFFIX[(e.label||'').toLowerCase()];
+    if(suffix&&!new RegExp(suffix,'i').test(name))name=(name?name+' — ':'')+suffix;
     return [date,round,name].filter(Boolean).join(' — ');
   }
   function fillRaces(){
