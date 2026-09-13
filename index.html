@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="nl"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>STINT9 Add-on</title>
 <!-- installable to the home screen: opens without browser chrome, which is worth
      a row of cars on a phone at the pit wall -->
@@ -456,9 +456,16 @@
      scroll. body.m covers the background behind the overlay. */
   body.m{touch-action:none}
   body.m #mobileview{display:flex}
-  /* --- fixed header: pinned, never repainted by paging --- */
+  /* --- fixed header: pinned, never repainted by paging ---
+     Safe-area insets everywhere: with viewport-fit=cover the page paints edge to
+     edge, INCLUDING under the notch and the home indicator. In landscape the
+     notch takes a side, so the left/right insets matter as much as the top —
+     without them the header's first control sits under it. env() is 0 on
+     everything that has no cutout, so this is inert on desktop. */
   .mfixhdr{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;
-    padding:10px 12px 9px;background:var(--bg);border-bottom:1px solid var(--border);z-index:2}
+    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px
+            calc(12px + env(safe-area-inset-left));
+    background:var(--bg);border-bottom:1px solid var(--border);z-index:2}
   /* --- stage: exactly one slide, filling the rest of the viewport ---
      min-height:0 is what lets the flex child actually shrink instead of being
      pushed past the bottom edge by a tall slide. */
@@ -466,8 +473,12 @@
   /* Slides are stacked and toggled, not translated: the moved-in cards (trackmap,
      ranking, the reel) each own their sizing, and a strip transform would fight
      the renderers that measure clientWidth/Height on them. */
+  /* Right padding clears the arrow column; the insets keep content off the
+     home indicator and out from under a landscape notch. */
   .mslide{position:absolute;inset:0;display:none;flex-direction:column;
-    padding:10px 46px 26px 10px;box-sizing:border-box}
+    padding:10px calc(46px + env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom))
+            calc(10px + env(safe-area-inset-left));
+    box-sizing:border-box}
   .mslide.on{display:flex}
   /* The ESSENTIALS slide is the one that scrolls (it is a card stack, not a chart). */
   .mslide.mscroll{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;gap:10px}
@@ -507,23 +518,44 @@
   .mslide .cmpwrap,.mslide .msglist,.mslide .fblist,.mslide #rn-feed,
   .mslide #reelview .reelpanel.tall{touch-action:pan-y}
   /* --- right-edge arrows: one pair, thumb side --- */
-  .mnav{position:fixed;right:9px;top:50%;transform:translateY(-50%);z-index:3;
+  .mnav{position:fixed;right:calc(9px + env(safe-area-inset-right));top:50%;transform:translateY(-50%);z-index:3;
     display:flex;flex-direction:column;gap:14px}
   .mnav .reelbtn{width:36px;height:52px;font-size:16px;opacity:.92}
-  .mslidelbl{position:fixed;left:12px;bottom:9px;z-index:3;
+  .mslidelbl{position:fixed;left:calc(12px + env(safe-area-inset-left));
+    bottom:calc(9px + env(safe-area-inset-bottom));z-index:3;
     font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;
     color:var(--muted);background:var(--bg);padding:3px 7px;border-radius:7px;pointer-events:none}
   .mslidelbl b{color:var(--ink);font-weight:700}
+  /* Add-to-home-screen hint. iOS Safari gives a page NO way to hide its own tab
+     bar or address bar — there is no element fullscreen on iPhone — so the only
+     route to a genuinely full screen is installing it, which the manifest and
+     apple-mobile-web-app-capable already support. Shown once, then remembered. */
+  #a2hs{display:none;position:fixed;left:50%;transform:translateX(-50%);
+    /* clears the slide label, which owns the bottom-left corner */
+    bottom:calc(42px + env(safe-area-inset-bottom));z-index:5;
+    max-width:min(430px,calc(100% - 26px));align-items:center;gap:10px;
+    background:var(--ink);color:#fff;border-radius:12px;padding:10px 11px 10px 13px;
+    box-shadow:0 6px 22px rgba(0,0,0,.3);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.45}
+  body.m #a2hs.on{display:flex}
+  #a2hs b{font-weight:700}
+  #a2hs .x{margin-left:auto;flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+    border:none;background:rgba(255,255,255,.18);color:#fff;font-size:15px;line-height:1;cursor:pointer}
   /* The reel's own arrows are redundant in the phone view — .mnav drives it, and
      a second pair on the LEFT is exactly what the right-side-only layout avoids.
      !important because #reelnav carries an inline display:flex. */
   body.m #reelnav{display:none!important}
   /* Landscape: the header drops to a single row so the stage keeps the height. */
   @media (orientation:landscape){
-    body.m .mfixhdr{flex-direction:row;align-items:center;gap:10px;padding:7px 12px}
+    /* Keep the safe-area terms here too. Landscape is where they matter MOST:
+       the notch moves to a side, so a flat 12px would tuck the first control
+       under it — and a bare padding shorthand would silently drop the insets. */
+    body.m .mfixhdr{flex-direction:row;align-items:center;gap:10px;
+      padding:calc(7px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 7px
+              calc(12px + env(safe-area-inset-left))}
     body.m .mfixhdr .mhdr{flex:0 0 auto}
     body.m .mfixhdr .mselrow{flex:1 1 auto;min-width:0}
-    body.m .mslide{padding-top:6px;padding-bottom:20px}
+    body.m .mslide{padding-top:6px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   }
   .mhdr{display:flex;align-items:center;gap:10px}
   .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
@@ -3518,6 +3550,25 @@ function setMob(i,force){
 function __mobEnable(on){
   if(on){setMob(mobIdx,true);}
   else{const def=__mobDef(mobIdx);if(def&&def.el)__mMove(def.el(),def.k,null);__placeMini(false);}}
+/* Add-to-home-screen hint — the only honest answer to "hide the browser chrome".
+   iOS Safari does not let a page hide its tab/address bar: there is no element
+   fullscreen on iPhone, and the toolbar only collapses on scroll, which this view
+   never does (html/body are overflow:hidden). Installed, the same page opens with
+   no chrome at all — display:standalone in the manifest plus the apple-mobile-web
+   -app meta. So: if we're on iOS and NOT already standalone, say it once. */
+function __initA2HS(){
+  if(__initA2HS.done)return;
+  const el=document.getElementById('a2hs');if(!el)return;
+  __initA2HS.done=true;
+  const standalone=window.navigator.standalone===true||
+    (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+  const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+    (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  let dismissed=false;try{dismissed=localStorage.getItem('stint9_a2hs')==='1';}catch(e){}
+  el.querySelector('.x').onclick=function(){
+    el.classList.remove('on');try{localStorage.setItem('stint9_a2hs','1');}catch(e){}};
+  if(iOS&&!standalone&&!dismissed)el.classList.add('on');
+}
 /* Wired lazily, NOT in an IIFE: this script runs far above #mobileview's markup,
    so at parse time the arrows don't exist yet and the handlers would land on
    null. Same reason renderMobile() defers its own wiring behind __wired. */
@@ -3551,6 +3602,7 @@ function renderMobile(){
      stage and arrows still don't exist. This tick (250ms, phone mode only) mounts
      as soon as they do — and re-mounts if a slide ever loses its card. */
   __wireMobNav();
+  __initA2HS();
   if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
   __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
   if(!renderMobile.__wired){renderMobile.__wired=true;
@@ -6954,6 +7006,10 @@ applyWxReel(false);
     <button class="reelbtn" id="m_dn" type="button" title="Next view">&#9660;</button>
   </div>
   <div class="mslidelbl" id="m_slidelbl"></div>
+  <div id="a2hs">
+    <span>Full screen, no tabs: <b>Share</b> &rarr; <b>Add to Home Screen</b></span>
+    <button type="button" class="x" title="Dismiss">&times;</button>
+  </div>
 </div>
 <script>
 /* ================= LOGIN / per-car access gate =================
