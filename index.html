@@ -689,6 +689,51 @@
       </div>
       <div id="reelview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="reelstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
+          <div class="reelpanel"><svg id="lapchart"></svg></div>
+          <div class="reelpanel"><svg id="stintsvg"></svg></div>
+          <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
+          <div class="reelpanel" style="position:relative"><svg id="ltgraph" data-fit></svg><div class="selstint" id="selstint" style="display:none"></div></div>
+          <div class="reelpanel"><div id="ptimewrap"></div></div>
+          <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
+          <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
+            <div id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px">
+              <button type="button" class="seg on" data-v="lap">Lap</button>
+              <button type="button" class="seg" data-v="s1">S1</button>
+              <button type="button" class="seg" data-v="s2">S2</button>
+              <button type="button" class="seg" data-v="s3">S3</button>
+              <button type="button" class="seg" data-v="s4">S4</button>
+              <button type="button" class="seg" data-v="s5">S5</button>
+            </div>
+            <svg id="compsvg" style="flex:1 1 auto;min-height:0"></svg>
+          </div></div>
+          <div class="reelpanel"><div id="gridtablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
+          <div class="reelpanel"><div id="niektablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
+          <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
+          <div class="reelpanel"><svg id="p1barsvg"></svg></div>
+          <div class="reelpanel"><svg id="flowsvg"></svg></div>
+          <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
+          <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
+          <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
+          <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805d" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel"><div id="champreel"></div></div>
+          <div class="reelpanel"><div id="ytreel">
+            <div class="vrhd">YOUTUBE STREAM</div>
+            <div class="vrgrid">
+              <label class="vrfield vrwide"><span class="vrlbl">YouTube link</span><input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off"></label>
+            </div>
+            <div class="vrbtns"><button class="rnbtn" id="yt-start">START</button><span id="yt-err" class="vrhint"></span></div>
+            <button id="yt-close" title="Back to link entry">&times;</button>
+            <div id="yt-player"></div>
+          </div></div>
+          <div class="reelpanel"><div id="videoreel">
+            <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
+            <div class="vrgrid">
+              <label class="vrfield vrwide"><span class="vrlbl">Race video folder (from this computer)</span><input id="rn-video-file" type="file" accept="video/*" multiple webkitdirectory></label>
+              <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="60"></label>
+            </div>
+            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-spin" class="vrspin" role="progressbar" aria-label="analysing video"></span><span id="rn-progress" class="vrhint"></span></div>
+            <div id="rn-clips"></div>
+          </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Fuel is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="fuelpanel" class="fuelpanel">
             <div class="fuelhd">FUEL OVERVIEW · <span id="fuelcar">#—</span></div>
             <div class="fuelset">
@@ -712,51 +757,6 @@
           </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
-          <div class="reelpanel"><svg id="lapchart"></svg></div>
-          <div class="reelpanel"><svg id="stintsvg"></svg></div>
-          <div class="reelpanel"><div id="ptimewrap"></div></div>
-          <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
-          <div class="reelpanel" style="position:relative"><svg id="ltgraph" data-fit></svg><div class="selstint" id="selstint" style="display:none"></div></div>
-          <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
-            <div id="compmetric" style="align-self:flex-start;margin:4px 0 0 10px">
-              <button type="button" class="seg on" data-v="lap">Lap</button>
-              <button type="button" class="seg" data-v="s1">S1</button>
-              <button type="button" class="seg" data-v="s2">S2</button>
-              <button type="button" class="seg" data-v="s3">S3</button>
-              <button type="button" class="seg" data-v="s4">S4</button>
-              <button type="button" class="seg" data-v="s5">S5</button>
-            </div>
-            <svg id="compsvg" style="flex:1 1 auto;min-height:0"></svg>
-          </div></div>
-          <div class="reelpanel"><div id="gridtablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
-          <div class="reelpanel"><div id="niektablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
-          <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
-          <div class="reelpanel"><svg id="p1barsvg"></svg></div>
-          <div class="reelpanel"><svg id="flowsvg"></svg></div>
-          <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
-          <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
-          <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
-          <div class="reelpanel"><div id="ytreel">
-            <div class="vrhd">YOUTUBE STREAM</div>
-            <div class="vrgrid">
-              <label class="vrfield vrwide"><span class="vrlbl">YouTube link</span><input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off"></label>
-            </div>
-            <div class="vrbtns"><button class="rnbtn" id="yt-start">START</button><span id="yt-err" class="vrhint"></span></div>
-            <button id="yt-close" title="Back to link entry">&times;</button>
-            <div id="yt-player"></div>
-          </div></div>
-          <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805d" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel"><div id="champreel"></div></div>
-          <div class="reelpanel"><div id="videoreel">
-            <div class="vrhd">RACE VIDEO — <span id="vr-car">#—</span> overtake clips <span id="vr-count" class="vrcount"></span></div>
-            <div class="vrgrid">
-              <label class="vrfield vrwide"><span class="vrlbl">Race video folder (from this computer)</span><input id="rn-video-file" type="file" accept="video/*" multiple webkitdirectory></label>
-              <label class="vrfield"><span class="vrlbl">± seconds around overtake</span><input id="rn-pad" type="number" min="1" step="1" value="60"></label>
-            </div>
-            <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-spin" class="vrspin" role="progressbar" aria-label="analysing video"></span><span id="rn-progress" class="vrhint"></span></div>
-            <div id="rn-clips"></div>
-          </div></div>
         </div>
       </div>
     </div>
@@ -819,7 +819,7 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=4;const REELN=22;
+let reelIdx=0;const REELN=22;
 /* Which block the keyboard's Up/Down drives. Claimed by clicking a block's own
    on-screen arrows, so the hardware keys carry on where you last pointed:
    nudge the right block's arrows and Up/Down keep stepping the right block,
@@ -829,11 +829,11 @@ let keyReelSide='';
    The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
    both carry the SAME full list of all 22 reels, each with its own selection —
    so any reel can be put in either block, including the same reel in both at
-   once. Reel order (both blocks): 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
-   5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
-   13 BARS, 14 FLOW, 15 WEATHER, 16 TEMP, 17 TIMETABLE, 18 YOUTUBE, 19 PIT,
-   20 CHAMP, 21 VIDEO. 0-14 keep the numbers they always had, so every
-   existing reelIdx=== gate, PREFS.reel and keyboard handler stays valid.
+   once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 PACE, 4 P-TIME,
+   5 SECT, 6 COMP, 7 GRID, 8 NIEK, 9 DRV, 10 BARS, 11 FLOW, 12 WEATHER,
+   13 TEMP, 14 TIMETABLE, 15 PIT, 16 CHAMP, 17 YOUTUBE, 18 VIDEO, 19 FUEL,
+   20 TYRE, 21 SERVICE. The panels themselves are the source of truth: they
+   sit in #reelstrip in exactly this order, and every index below follows it.
 
    #reelstrip holds the ONE canonical copy of the panel markup, keeping the
    element ids every render function already looks up. #wxstrip is built from
@@ -995,25 +995,25 @@ function applyReel(anim){const strip=document.getElementById('reelstrip'),up=doc
    change — they still look their elements up by their original id. */
 function paintReel(T,idx,all,side){
   withSide(side,()=>{
-    if(idx===0||all)renderFuel(T);
-    if(idx===3||all)renderSecTab(T);
-    if(idx===4||all)renderChart(T);
-    if(idx===5||all)renderStints(T);
-    if(idx===6||all)renderPTime(T);
-    if(idx===7||all)renderSectors(T);
-    if(idx===8||all)renderLapTrace(T);
-    if(idx===9||all)renderComp(T);
-    if(idx===10||all)renderSectGrid(T);
-    if(idx===11||all)renderNiekGrid(T);
-    if(idx===12||all)renderDrvGrid(T);
-    if(idx===13||all)renderP1Bar(T);
-    if(idx===14||all)renderFlow(T);
-    // 15 WEATHER / 16 TEMP own their own fetch+draw loop (initWeather), 17
-    // TIMETABLE redraws off the schedule, and 19 PIT is an iframe — they are
+    if(idx===0||all)renderChart(T);
+    if(idx===1||all)renderStints(T);
+    if(idx===2||all)renderSecTab(T);
+    if(idx===3||all)renderLapTrace(T);
+    if(idx===4||all)renderPTime(T);
+    if(idx===5||all)renderSectors(T);
+    if(idx===6||all)renderComp(T);
+    if(idx===7||all)renderSectGrid(T);
+    if(idx===8||all)renderNiekGrid(T);
+    if(idx===9||all)renderDrvGrid(T);
+    if(idx===10||all)renderP1Bar(T);
+    if(idx===11||all)renderFlow(T);
+    if(idx===19||all)renderFuel(T);
+    // 12 WEATHER / 13 TEMP own their own fetch+draw loop (initWeather), 14
+    // TIMETABLE redraws off the schedule, and 15 PIT is an iframe — they are
     // driven by reelShown() and their own timers, not by the frame loop.
-    if(idx===17&&typeof renderTimetable==='function')renderTimetable();
-    if(idx===20&&typeof renderChampionship==='function')renderChampionship();
-    if(idx===21&&typeof renderVideoReel==='function')renderVideoReel();
+    if(idx===14&&typeof renderTimetable==='function')renderTimetable();
+    if(idx===16&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -1024,20 +1024,20 @@ function paintReel(T,idx,all,side){
    resize and must not re-poke the iframes each time. */
 function reelShown(i,side){
   withSide(side,()=>{
-    if(i===1&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
-    if(i===2&&typeof svcH==='function')svcH(-1);                // SERVICE: land on SERVICE, not ARCHIVE
-    if(i===15){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
-    if(i===19&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+    if(i===20&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
+    if(i===21&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
+    if(i===12){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
+    if(i===15&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
       if(typeof pitH==='function')pitH(0);
     }
-    if(i===20&&typeof renderChampionship==='function')renderChampionship();
-    if(i===21&&typeof renderVideoReel==='function')renderVideoReel();
+    if(i===16&&typeof renderChampionship==='function')renderChampionship();
+    if(i===18&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
     // scrolling away. Stop this block's player the moment it is not shown.
-    if(i!==18&&typeof stopYtPlayer==='function')stopYtPlayer();
+    if(i!==17&&typeof stopYtPlayer==='function')stopYtPlayer();
   });
 }
 // Height/width ratio for the reel viewport. Un-zoomed, reels inherit the
@@ -3584,11 +3584,11 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
     // Left/Right flip the TYRE board's horizontal sub-reel (STINT|BOARD|STOCK)
     if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
-      if(cur.id==='reelcard'&&reelIdx===1){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
-      else if(cur.id==='reelcard'&&reelIdx===2){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
+      if(cur.id==='reelcard'&&reelIdx===20){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
+      else if(cur.id==='reelcard'&&reelIdx===21){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
       // PIT lives in the weather reel, so its Left/Right keys are gated on that
       // reel being focused and on PIT being its current panel
-      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===19){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
+      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===15){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
       return;
     }
     // while a reel is zoomed/focused, Up/Down arrows step through its reels
@@ -3694,7 +3694,7 @@ function pushPit(force){
   // The FIELD page walks every car, so it is only worth building while PIT is the
   // visible right-reel panel, and then no faster than once a second.
   let field=window.__pitField||null;
-  if((wxReelIdx===19||reelIdx===19)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
+  if((wxReelIdx===15||reelIdx===15)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
     window.__pitFieldT=Date.now();
     field=[];
     try{
@@ -3761,7 +3761,7 @@ document.addEventListener('keydown',e=>{
      block has no use for them its partner still gets them — the old "left reel
      keeps precedence, PIT picks up the rest" rule, now symmetric. */
   const act=keyReelSide?wxReelIdx:reelIdx,oth=keyReelSide?reelIdx:wxReelIdx,oSide=keyReelSide?'':RSUF;
-  const hKey={1:boardH,2:svcH,19:pitH};
+  const hKey={20:boardH,21:svcH,15:pitH};
   if(hKey[act]){e.preventDefault();withSide(keyReelSide,()=>hKey[act](dir));}
   else if(hKey[oth]){e.preventDefault();withSide(oSide,()=>hKey[oth](dir));}
 });
@@ -6104,7 +6104,7 @@ setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule ta
    order note by REELN), so its bounds are REELN too. It opens on WEATHER,
    which is index 15 now that the seven former weather-side reels sit at the
    end of the shared list. */
-var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,+PREFS.reelR)):15;const WXN=REELN;
+var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,+PREFS.reelR)):12;const WXN=REELN;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -6646,7 +6646,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','STINT','P-TIME','SECT','PACE','COMP','GRID','NIEK','DRV','BARS','FLOW'];
+  var NAMES=['POS','STINT','TIMES','PACE','P-TIME','SECT','COMP','GRID','NIEK','DRV','BARS','FLOW','WEATHER','TEMP','TIMETABLE','PIT','CHAMP','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
