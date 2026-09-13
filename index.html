@@ -608,6 +608,7 @@
       <div id="liveBar" style="display:none;height:32px;align-items:center;gap:8px;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">
         <button class="btn" id="liveUpdate" title="Pull a fresh snapshot from the WIGE live timing now">&#8635; Update</button>
         <span id="liveEvent" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:600;white-space:nowrap" title="Detected event · track · heat (auto-detected from the live feed)">event —</span>
+        <span id="liveKind" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:600;white-space:nowrap" title="How the leaderboard ranks: timesheet = fastest lap (quali/practice); race Px = most laps then shortest time">Px —</span>
         <span id="liveSig" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:700;white-space:nowrap;display:none;transition:color .4s" title="Live-timing data points received (increments each time a sector/lap update arrives from WIGE)">&#9662; 0</span>
         <span id="liveMsg">live feed not connected</span>
       </div>
@@ -1383,6 +1384,24 @@ function currentWindowLabel(){
   return prev?prev.label:null;
 }
 const TIMESHEET_RE=/quali|zeittraining|training|practice|warm/i;
+// Ceremonial pre-race windows have no WIGE timing session of their own.
+// Ranking must not fall through to race just because the timetable moved on
+// (README 15.4c — pitwalk overrun with heat still empty).
+const CEREMONIAL_RE=/^(pitwalk|lineup|startaufstellung|pitlane|gridwalk)$/i;
+function priorTimesheet(){
+  if(!SCHEDULE||!SCHEDULE.rows)return false;
+  const now=Date.now();
+  const rows=SCHEDULE.rows.filter(r=>r.start).sort((a,b)=>a.start-b.start);
+  let seen=false;
+  for(const r of rows){
+    if(r.start.getTime()>now)break;
+    const lab=r.label||'';
+    if(lab==='race')return false;
+    if(CEREMONIAL_RE.test(lab))continue;
+    if(TIMESHEET_RE.test(lab))seen=true;
+  }
+  return seen;
+}
 function sessionKind(){
   if(window.dataMode!=='LIVE'){
     const lbl=window.__eventLabel||null;
@@ -1393,21 +1412,13 @@ function sessionKind(){
   // is ever allowed to downgrade it back to quali (the "a race can never be
   // re-ranked by accident" invariant, 15.4c/15.4c-gap).
   if(lbl==='race')return 'race';
-  // Second overrun found 2026-09-13: the FIRST gap fix (currentWindowLabel's
-  // carry-forward) only covers the gap BEFORE the next row starts. Here the
-  // schedule had already moved on to "pitwalk" (its own window started, so
-  // carry-forward no longer applies) while WIGE's own heat still read
-  // "Zeittraining" — the on-track session was STILL running, 22+ minutes
-  // past its planned end, and #665's fastest lap on screen again lost P1 to
-  // lap-count tiebreaks. Ceremonial pre-race labels (pitwalk/lineup/
-  // startaufstellung) and schedule gaps have no timing session of their own
-  // on WIGE, so heat can only still be naming the PRECEDING quali/practice
-  // session (or be blank) until the race itself actually goes live — that is
-  // exactly why trusting it HERE is safe, unlike the general case 15.4c
-  // deliberately doesn't trust it for. window.__liveHeat is kept current by
-  // refreshStatus(), called every liveTick() (~5s).
+  if(TIMESHEET_RE.test(lbl||''))return 'quali';
+  // Pitwalk / lineup / startaufstellung (or a gap whose carried label is one
+  // of those): inherit the last time-sheet. Does not need WIGE heat — heat
+  // is only a backup when the schedule has not loaded yet.
+  if((CEREMONIAL_RE.test(lbl||'')||!lbl)&&priorTimesheet())return 'quali';
   if(TIMESHEET_RE.test(window.__liveHeat||''))return 'quali';
-  return (lbl&&TIMESHEET_RE.test(lbl))?'quali':'race';
+  return 'race';
 }
 /* Time-sheet order: fastest lap first. carStats().fast is reused deliberately —
    it is exactly the number the FASTEST column shows, so POS and the times on
@@ -2961,7 +2972,15 @@ function liveEtaSF(st,T){
   for(const sec of remaining){const d=liveRefDuration(st,sec);if(!(d>0))return null;cum+=d;}
   return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
 }
-function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
+function paintSessionKind(){
+  const el=document.getElementById('liveKind');if(!el)return;
+  const k=sessionKind();
+  el.textContent=k==='quali'?'timesheet':'race Px';
+  el.title=k==='quali'
+    ?'Quali/practice ranking: P1 = fastest completed lap'
+    :'Race ranking: P1 = most laps, then earliest to that distance';
+}
+function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);try{paintSessionKind();}catch(e){}
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
   _c60=(typeof code60Sectors==='function')?code60Sectors():[];
@@ -5583,10 +5602,17 @@ function renderTimetable(){
   let di=days.findIndex(d=>d.rows.some(r=>(r.end||r.start).getTime()>now));
   if(di<0)di=days.length-1;
   const day=days[di],next=days[di+1]||null;
-  const rowHtml=(r,dim)=>'<div style="display:grid;grid-template-columns:1fr auto;column-gap:18px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border)'+(dim?';color:var(--muted)':'')+'"><span style="min-width:130px">'+label(r.label)+'</span><span style="font-weight:600;text-align:right;min-width:110px;font-variant-numeric:tabular-nums">'+fmtHM(r.start)+(endTxt(r)?('&ndash;'+endTxt(r)):'')+'</span></div>';
+  // "Currently happening" reuses currentWindowLabel() — the SAME function
+  // sessionKind() calls for ranking (README 15.4c/15.4c-gap/15.4c-gap2) — so
+  // this highlight and the leaderboard's quali/race decision can never
+  // disagree about what's live right now, including the carry-forward for a
+  // session running past its own scheduled slot. Only checked against TODAY's
+  // rows: "next day" rows are always in the future, never current.
+  const curLabel=currentWindowLabel();
+  const rowHtml=(r,dim,active)=>'<div style="display:grid;grid-template-columns:1fr auto;column-gap:18px;align-items:baseline;padding:6px 8px;margin:0 -8px;border-radius:6px;border-top:1px solid var(--border)'+(dim?';color:var(--muted)':'')+(active?';background:#fdecea;border-top-color:transparent':'')+'"><span style="min-width:130px'+(active?';font-weight:700;color:var(--accent,#e0301e)':'')+'">'+label(r.label)+(active?' &middot; NOW':'')+'</span><span style="font-weight:600;text-align:right;min-width:110px;font-variant-numeric:tabular-nums">'+fmtHM(r.start)+(endTxt(r)?('&ndash;'+endTxt(r)):'')+'</span></div>';
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:6px 4px">';
   h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;font-size:14px">Race day timetable &middot; '+day.date+'</div>';
-  day.rows.forEach(r=>{h+=rowHtml(r,false);});
+  day.rows.forEach(r=>{h+=rowHtml(r,false,r.label===curLabel);});
   if(next){
     h+='<div style="font-weight:700;letter-spacing:1px;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;font-size:13px;border-top:2px solid var(--border);padding-top:12px">Next day &middot; '+next.date+'</div>';
     next.rows.forEach(r=>{h+=rowHtml(r,true);});
