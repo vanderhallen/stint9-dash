@@ -433,18 +433,98 @@
   #ytreel.playing #yt-close{display:block}
   #ytreel.playing #yt-player{margin-top:0;border-radius:0}
   /* ---------- Mobile view (phones) ----------
-     A readable, native-size race-essentials panel that overlays the scaled-down
-     desktop layout on small screens. Toggled by body.m. It reads the SAME live
-     computations as the desktop (livePos/gaps/carStats/fuel), so it never drifts. */
+     A readable, native-size overlay on small screens, toggled by body.m. It reads
+     the SAME live computations as the desktop (livePos/gaps/carStats/fuel), so it
+     never drifts.
+
+     Shape: a FIXED header (brand + clock/mode + the class & car pickers) that never
+     moves, over a single-slide stage. One slide fills the stage; the right-edge
+     arrows page through every view the desktop has — the four zoomable cards, all
+     22 reels, then racenotes/messages/feedback. See __mobSlides for the list.
+
+     This is why no 90deg-rotation trick is needed: a slide fills whatever box it
+     is given, so rotating the phone just turns a tall slide into a wide one. (And
+     iOS can't lock orientation from a web page anyway — screen.orientation.lock()
+     is unsupported in Safari on iPhone and the manifest's orientation member is
+     ignored there.) */
   #mobileview{display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);
-    overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 32px;
-    font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);flex-direction:column;gap:10px;
+    overflow:hidden;
+    font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);flex-direction:column;
     touch-action:pan-y}
   /* Block zoom on phones: touch-action stops pinch AND double-tap zoom (iOS's
      reliable path, alongside the gesture-event block below); pan-y keeps vertical
      scroll. body.m covers the background behind the overlay. */
   body.m{touch-action:none}
   body.m #mobileview{display:flex}
+  /* --- fixed header: pinned, never repainted by paging --- */
+  .mfixhdr{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;
+    padding:10px 12px 9px;background:var(--bg);border-bottom:1px solid var(--border);z-index:2}
+  /* --- stage: exactly one slide, filling the rest of the viewport ---
+     min-height:0 is what lets the flex child actually shrink instead of being
+     pushed past the bottom edge by a tall slide. */
+  .mstage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden}
+  /* Slides are stacked and toggled, not translated: the moved-in cards (trackmap,
+     ranking, the reel) each own their sizing, and a strip transform would fight
+     the renderers that measure clientWidth/Height on them. */
+  .mslide{position:absolute;inset:0;display:none;flex-direction:column;
+    padding:10px 46px 26px 10px;box-sizing:border-box}
+  .mslide.on{display:flex}
+  /* The ESSENTIALS slide is the one that scrolls (it is a card stack, not a chart). */
+  .mslide.mscroll{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;gap:10px}
+  /* A moved-in desktop card fills its slide instead of keeping its desktop flex
+     basis. !important because those bases (46%/56%/44%) are INLINE styles on
+     #reelcard/#cmpbox/#gapbox, which a plain rule would lose to. */
+  /* Content-sized cards HUG their content and centre in the slide — a four-row
+     standings table or a wide/short chart stretched to full height is mostly
+     white space. The reel and the scrolling streams override this below. */
+  .mslide{justify-content:center}
+  .mslide>.card,.mslide>#racenotebox{flex:0 1 auto!important;min-height:0;min-width:0;
+    max-height:100%;max-width:none!important;width:auto!important;margin:0}
+  /* These four are built to fill their box, so they take the whole slide. */
+  .mslide>#reelcard,.mslide>#msgcard,.mslide>#fbcard,.mslide>#racenotebox{
+    flex:1 1 auto!important;height:100%}
+  /* A slide IS the whole screen, so its card has to show even where the desktop
+     logic hides it: renderGap() writes #gapbox display:none before a car is
+     picked, and #racenotebox is display:none until the first note lands. Only
+     !important beats renderGap's inline write, which is re-applied every tick.
+     Scoped to .mslide, so the desktop keeps hiding them exactly as before. */
+  .mslide>#cmpbox,.mslide>#gapbox{display:flex!important;flex-direction:column}
+  .mslide>#racenotebox{display:flex!important}
+  .mslide>.card.stage{display:flex;align-items:center;justify-content:center;padding:4px}
+  /* height:auto, not 100% — these carry a viewBox (the trackmap is 2000x1300),
+     so a forced full height just letterboxes a tiny map into a tall white card.
+     Letting the intrinsic ratio drive the height fills the width instead. */
+  .mslide>.card.stage>svg#svg,.mslide>.card>svg#gapchart{width:100%;height:auto;max-height:100%}
+  /* #mini is a 268-square circle with #gapgauge pinned absolutely to the card's
+     right edge; leave the gauge its column so it can't clip the circle. */
+  .mslide>.card.stage>svg#mini{width:calc(100% - 96px)!important;height:auto!important;
+    max-height:100%;margin:0 auto 0 0}
+  .mslide>.card.stage>svg#gapgauge{height:88%!important;width:auto!important;max-width:86px}
+  /* The reel's viewport is given an explicit px height by syncReel()/growMaps()
+     for the desktop grid; in a slide it just fills the card. */
+  .mslide #reelview{height:100%!important}
+  /* Inner scrollers opt back into panning — body.m killed touch-action globally. */
+  .mslide .cmpwrap,.mslide .msglist,.mslide .fblist,.mslide #rn-feed,
+  .mslide #reelview .reelpanel.tall{touch-action:pan-y}
+  /* --- right-edge arrows: one pair, thumb side --- */
+  .mnav{position:fixed;right:9px;top:50%;transform:translateY(-50%);z-index:3;
+    display:flex;flex-direction:column;gap:14px}
+  .mnav .reelbtn{width:36px;height:52px;font-size:16px;opacity:.92}
+  .mslidelbl{position:fixed;left:12px;bottom:9px;z-index:3;
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--muted);background:var(--bg);padding:3px 7px;border-radius:7px;pointer-events:none}
+  .mslidelbl b{color:var(--ink);font-weight:700}
+  /* The reel's own arrows are redundant in the phone view — .mnav drives it, and
+     a second pair on the LEFT is exactly what the right-side-only layout avoids.
+     !important because #reelnav carries an inline display:flex. */
+  body.m #reelnav{display:none!important}
+  /* Landscape: the header drops to a single row so the stage keeps the height. */
+  @media (orientation:landscape){
+    body.m .mfixhdr{flex-direction:row;align-items:center;gap:10px;padding:7px 12px}
+    body.m .mfixhdr .mhdr{flex:0 0 auto}
+    body.m .mfixhdr .mselrow{flex:1 1 auto;min-width:0}
+    body.m .mslide{padding-top:6px;padding-bottom:20px}
+  }
   .mhdr{display:flex;align-items:center;gap:10px}
   .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
   .mhdrright{margin-left:auto;display:flex;align-items:center;gap:8px}
@@ -3358,12 +3438,121 @@ var __miniHome=null,__miniNext=null;
 function __placeMini(mobile){var mini=document.getElementById('mini');if(!mini)return;
   if(mobile){var slot=document.getElementById('m_track');if(slot&&mini.parentNode!==slot){if(!__miniHome){__miniHome=mini.parentNode;__miniNext=mini.nextSibling;}slot.appendChild(mini);}}
   else if(__miniHome&&mini.parentNode!==__miniHome){__miniHome.insertBefore(mini,__miniNext);}}
-function __applyMobileView(){var mob=Math.min(window.innerWidth,window.innerHeight)<600;document.body.classList.toggle('m',mob);__placeMini(mob);}
+/* ---------- Mobile slides: every desktop view, one at a time ----------
+   The phone view reaches ALL the information the desktop page has, paged by the
+   single pair of arrows on the right edge (thumb side). The flat list is:
+
+     0                  ESSENTIALS  the summary card stack (mobile-only)
+     1                  TRACKMAP    the desktop's own map card, moved in
+     2                  DETAIL MAP  the #mini / gap-gauge / fuel card, moved in
+     3                  RANKING     #cmpbox, moved in
+     4                  GAP         #gapbox, moved in
+     5 .. 5+REELN-1     the reels   #reelcard, moved in once and paged by setReel()
+     then               RACENOTES / MESSAGES / FEEDBACK
+
+   One continuous index: inside the reel band the arrows call setReel() instead of
+   swapping slides, so holding the down arrow flows straight through all of it.
+
+   Cards are MOVED, never cloned — the ~20 render functions look their elements up
+   by id, so the real nodes keep painting with no duplication and no drift. Each
+   move remembers its home + next sibling and is undone on the way out, exactly
+   like __placeMini already does for #mini. Only the ACTIVE slide's card is out of
+   the desktop layout at any moment; every other card stays where it is and keeps
+   being measured/rendered normally behind the overlay. */
+
+/* Reel labels keyed by each panel's own marker id — by CONTENT, not position, so
+   reordering #reelstrip needs no edit here. The panels are the source of truth
+   (see the reel-order note by REELN) and that order has already moved twice. */
+const REELLBL={lapchart:'POS',stintsvg:'STINT',sectabwrap:'TIMES',ltgraph:'PACE',sectorsvg:'SECT',
+  compmetric:'COMP',gridtablewrap:'GRID',drvtablewrap:'DRV',niektablewrap:'NIEK',p1barsvg:'BARS',
+  flowsvg:'FLOW',weather:'WEATHER',tempoverlay:'TEMP',timetable:'TIMETABLE',pitframe:'PIT',
+  ptimewrap:'P-TIME',champreel:'CHAMP',ytreel:'YOUTUBE',videoreel:'VIDEO',fuelpanel:'FUEL',
+  boardframe:'TYRE',svcframe:'SERVICE'};
+function __reelLabel(i){
+  const p=document.querySelectorAll('#reelstrip>.reelpanel')[i];
+  if(p)for(const id in REELLBL){if(p.querySelector('#'+id))return REELLBL[id];}
+  return 'REEL '+(i+1);}
+/* Generalised move-and-restore (the __placeMini pattern, keyed so several cards
+   can each remember their own home). */
+var __mHome={};
+function __mMove(el,key,slot){if(!el)return;
+  if(slot){if(el.parentNode!==slot){if(!__mHome[key])__mHome[key]={p:el.parentNode,n:el.nextSibling};slot.appendChild(el);}}
+  else{const h=__mHome[key];if(h&&el.parentNode!==h.p)h.p.insertBefore(el,h.n);}}
+const MHEAD=[
+  {k:'essentials',lbl:'ESSENTIALS'},
+  {k:'map',       lbl:'TRACKMAP',     el:()=>{const s=document.getElementById('svg');return s&&s.closest('.card');}},
+  {k:'mini',      lbl:'DETAIL MAP',   el:()=>{const s=document.getElementById('mini');return s&&s.closest('.card');}},
+  {k:'rank',      lbl:'RANKING',      el:()=>document.getElementById('cmpbox')},
+  {k:'gap',       lbl:'GAP TO LEADER',el:()=>document.getElementById('gapbox')}];
+const MTAIL=[
+  {k:'racenotes',lbl:'RACENOTES',el:()=>document.getElementById('racenotebox')},
+  {k:'messages', lbl:'MESSAGES', el:()=>document.getElementById('msgcard')},
+  {k:'feedback', lbl:'FEEDBACK', el:()=>document.getElementById('fbcard')}];
+const REEL0=MHEAD.length;
+function __mobCount(){return REEL0+REELN+MTAIL.length;}
+function __mobDef(i){
+  if(i<REEL0)return MHEAD[i];
+  if(i<REEL0+REELN)return {k:'reel',lbl:__reelLabel(i-REEL0),reel:i-REEL0,el:()=>document.getElementById('reelcard')};
+  return MTAIL[i-REEL0-REELN];}
+var mobIdx=0;
+try{const s=+localStorage.getItem('stint9_mob');if(s>0)mobIdx=s;}catch(e){}
+function __mobSlot(k){return document.querySelector('#mstage>.mslide[data-slide="'+k+'"]');}
+function setMob(i,force){
+  __wireMobNav();                           // no-op once the arrows are bound
+  const n=__mobCount();i=Math.max(0,Math.min(n-1,i));
+  const prev=__mobDef(mobIdx),def=__mobDef(i);
+  if(i===mobIdx&&!force)return;
+  // Put the outgoing card back in the desktop layout, unless the incoming slide
+  // is the very same card (paging inside the reel band).
+  if(prev&&prev.el&&!(def&&def.k===prev.k))__mMove(prev.el(),prev.k,null);
+  mobIdx=i;
+  __placeMini(i===0);                       // #mini belongs to ESSENTIALS or to its own card
+  if(def.el)__mMove(def.el(),def.k,__mobSlot(def.k));
+  document.querySelectorAll('#mstage>.mslide').forEach(s=>s.classList.toggle('on',s.dataset.slide===def.k));
+  if(def.reel!=null){keyReelSide='';setReel(def.reel);}   // claim the left block for the keys too
+  const lb=document.getElementById('m_slidelbl');
+  if(lb)lb.innerHTML='<b>'+def.lbl+'</b> &nbsp;'+(i+1)+' / '+n;
+  const u=document.getElementById('m_up'),d=document.getElementById('m_dn');
+  if(u)u.disabled=(i===0);if(d)d.disabled=(i===n-1);
+  try{localStorage.setItem('stint9_mob',String(i));}catch(e){}}
+function __mobEnable(on){
+  if(on){setMob(mobIdx,true);}
+  else{const def=__mobDef(mobIdx);if(def&&def.el)__mMove(def.el(),def.k,null);__placeMini(false);}}
+/* Wired lazily, NOT in an IIFE: this script runs far above #mobileview's markup,
+   so at parse time the arrows don't exist yet and the handlers would land on
+   null. Same reason renderMobile() defers its own wiring behind __wired. */
+function __wireMobNav(){
+  if(__wireMobNav.done)return;
+  const u=document.getElementById('m_up'),d=document.getElementById('m_dn'),st=document.getElementById('mstage');
+  if(!u||!d||!st)return;                 // markup not parsed yet — try again next call
+  __wireMobNav.done=true;
+  u.onclick=()=>setMob(mobIdx-1);
+  d.onclick=()=>setMob(mobIdx+1);
+  // Vertical swipe as a second input. Ignored when the gesture starts inside a
+  // scroller (ESSENTIALS, the standings/message lists) so it can't hijack them.
+  let y0=null;
+  if(st){st.addEventListener('touchstart',e=>{
+      const sc=e.target.closest&&e.target.closest('.mscroll,.cmpwrap,.msglist,.fblist,#rn-feed');
+      y0=sc?null:(e.touches[0]?e.touches[0].clientY:null);},{passive:true});
+    st.addEventListener('touchend',e=>{if(y0==null)return;
+      const t=e.changedTouches[0];if(!t)return;const dy=t.clientY-y0;y0=null;
+      if(Math.abs(dy)>60)setMob(mobIdx+(dy<0?1:-1));},{passive:true});}
+}
+function __applyMobileView(){var mob=Math.min(window.innerWidth,window.innerHeight)<600;
+  var was=document.body.classList.contains('m');
+  document.body.classList.toggle('m',mob);
+  if(mob!==was)__mobEnable(mob); else if(mob)__placeMini(mobIdx===0);}
 function __mirrorSel(mid,did){var m=document.getElementById(mid),d=document.getElementById(did);if(!m||!d)return;
   if(m.__sig!==d.innerHTML){m.innerHTML=d.innerHTML;m.__sig=d.innerHTML;}
   if(m.value!==d.value)m.value=d.value;}
 function renderMobile(){
-  __placeMini(true);
+  /* First mount happens here, not at load: #mobileview's markup is parsed AFTER
+     this script, so the bootstrap __applyMobileView() call below runs while the
+     stage and arrows still don't exist. This tick (250ms, phone mode only) mounts
+     as soon as they do — and re-mounts if a slide ever loses its card. */
+  __wireMobNav();
+  if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
+  __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
   if(!renderMobile.__wired){renderMobile.__wired=true;
     [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
     var clickMode=function(mode){var b=document.querySelector('.modebtn[data-mode="'+mode+'"]');if(b)b.click();};
@@ -4587,6 +4776,12 @@ function growMaps(){
   syncReelPanels();   // the grown panel height changes which charts need to scroll
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
+  /* Phone view: the scaled 1722px layout is completely hidden behind #mobileview,
+     so every transform/measure below is invisible work. It runs on each LIVE poll
+     (~5s), and with one card moved out into a slide its measurements are wrong
+     anyway — the scale would jitter on every page. Skipping it also drops the
+     sustained compositing that the iPhone crash guard above is about. */
+  if(document.body.classList.contains('m'))return;
   __fit=1;w.style.transform='none';
   syncSideHeights();
   syncReel();
@@ -6689,6 +6884,8 @@ applyWxReel(false);
 })();
 </script>
 <div id="mobileview">
+  <!-- Fixed header: pinned above the stage, untouched by paging. -->
+  <div class="mfixhdr">
   <div class="mhdr"><div class="mbrand">stint<b>9</b></div>
     <div class="mhdrright">
       <select id="m_speed" class="mspeed"></select>
@@ -6697,6 +6894,13 @@ applyWxReel(false);
     </div>
   </div>
   <div class="mselrow"><select id="m_class"></select><select id="m_car"></select></div>
+  </div>
+  <!-- Stage: exactly one slide shown at a time, driven by .mnav (see __mobSlides).
+       The slots below are empty on purpose — the desktop's own cards are MOVED
+       into them on entering phone mode and moved back on leaving, so every
+       renderer keeps painting the same nodes by the same ids. -->
+  <div class="mstage" id="mstage">
+  <div class="mslide mscroll" data-slide="essentials">
   <div class="mcard">
     <div class="mtop">
       <div class="mtopl">
@@ -6735,6 +6939,21 @@ applyWxReel(false);
       </table>
     </div>
   </div>
+  </div>
+    <div class="mslide" data-slide="map"></div>
+    <div class="mslide" data-slide="mini"></div>
+    <div class="mslide" data-slide="rank"></div>
+    <div class="mslide" data-slide="gap"></div>
+    <div class="mslide" data-slide="reel"></div>
+    <div class="mslide" data-slide="racenotes"></div>
+    <div class="mslide" data-slide="messages"></div>
+    <div class="mslide" data-slide="feedback"></div>
+  </div>
+  <div class="mnav">
+    <button class="reelbtn" id="m_up" type="button" title="Previous view">&#9650;</button>
+    <button class="reelbtn" id="m_dn" type="button" title="Next view">&#9660;</button>
+  </div>
+  <div class="mslidelbl" id="m_slidelbl"></div>
 </div>
 <script>
 /* ================= LOGIN / per-car access gate =================

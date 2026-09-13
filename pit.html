@@ -151,6 +151,71 @@
 </style>
 </head>
 <body>
+<!-- Portrait nudge. This page is laid out for a landscape screen; rather than
+     rotate or squeeze it, say so and let the reader turn the phone. Self-contained
+     so it needs no shared stylesheet (there isn't one).
+     iOS cannot be made to rotate on its own: screen.orientation.lock() is
+     unsupported in Safari on iPhone and the manifest's orientation member is
+     ignored there, so asking is the only honest option. -->
+<div id="rotnudge" hidden>
+  <div class="rn-ico">&#10227;</div>
+  <div class="rn-t">Rotate your phone</div>
+  <div class="rn-s">PIT is laid out for a landscape screen.</div>
+  <button type="button" class="rn-b">show anyway</button>
+</div>
+<style>
+  #rotnudge{position:fixed;left:0;top:0;width:100%;height:100%;z-index:99999;background:#fff;color:#16202b;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:12px;text-align:center;padding:30px;box-sizing:border-box;
+    font-family:'IBM Plex Mono',ui-monospace,monospace}
+  #rotnudge[hidden]{display:none}
+  #rotnudge .rn-ico{font-size:54px;line-height:1;color:#6b7480}
+  #rotnudge .rn-t{font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+  #rotnudge .rn-s{font-size:12px;color:#6b7480;max-width:22em;line-height:1.5}
+  #rotnudge .rn-b{margin-top:8px;font-family:inherit;font-size:12px;font-weight:700;
+    letter-spacing:1px;color:#16202b;background:#eceff2;border:none;border-radius:8px;
+    padding:11px 16px;cursor:pointer}
+</style>
+<script>
+(function(){
+  /* Only when this page is the top document. pit/service/tyre are ALSO embedded as
+     iframes in the dashboard's reel, where this overlay would cover the panel. */
+  if(window.top!==window.self)return;
+  var el=document.getElementById('rotnudge');if(!el)return;
+  var dismissed=false;
+  el.querySelector('.rn-b').addEventListener('click',function(){dismissed=true;apply();});
+  function apply(){
+    /* Orientation from the viewport, but SIZE from the device screen. These pages
+       have no maximum-scale in their viewport meta, so a browser widens the layout
+       viewport to fit the wide kiosk layout (innerWidth reads ~1560 on a 390px
+       iPhone) — innerWidth would never look like a phone. screen.* is the device. */
+    var portrait=window.matchMedia('(orientation:portrait)').matches;
+    var sw=(window.screen&&screen.width)||window.innerWidth;
+    var sh=(window.screen&&screen.height)||window.innerHeight;
+    var phone=Math.min(sw,sh)<620;
+    el.hidden=dismissed||!portrait||!phone;
+  }
+  /* These pages carry no maximum-scale, so the LAYOUT viewport can be far wider
+     than the screen (a 390px iPhone lays pit.html out at ~1560px to fit the
+     four-page reel). position:fixed anchors to that layout viewport, which would
+     centre this overlay off-screen — so size it from the VISUAL viewport, which
+     is what the reader is actually looking at. */
+  function place(){
+    var v=window.visualViewport;if(!v)return;
+    el.style.left=v.offsetLeft+'px';el.style.top=v.offsetTop+'px';
+    el.style.width=v.width+'px';el.style.height=v.height+'px';
+  }
+  function update(){apply();place();}
+  update();
+  window.addEventListener('resize',update);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',update);
+    window.visualViewport.addEventListener('scroll',place);
+  }
+  /* A deliberate rotate back to portrait should ask again. */
+  window.addEventListener('orientationchange',function(){dismissed=false;setTimeout(update,50);});
+})();
+</script>
 <div id="wrap">
 
   <div class="page" id="pStops">
