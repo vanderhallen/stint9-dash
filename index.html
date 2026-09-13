@@ -213,6 +213,13 @@
      column out to half the modal whenever a car has only a few laps in. */
   .card.zoomed #sectabwrap table{font-size:calc(23px*var(--zt,1))!important}
   .card.zoomed #sectabwrap th,.card.zoomed #sectabwrap td{padding:calc(14px*var(--zt,1)) calc(20px*var(--zt,1))!important}
+  /* TIMES at its content size leaves the tall/wide modal mostly empty with the
+     table pinned top-left (#sectabwrap fills 100% of the panel, which defeats
+     the reelpanel's own align-items/justify-content:center on that child).
+     Shrink #sectabwrap to its content instead — same fix as #champreel above —
+     so the reelpanel centers the table as a block; max-width/height plus its
+     own overflow:auto keep it scrollable if a long stint ever outgrows the modal. */
+  .card.zoomed #sectabwrap{width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important}
   .card.zoomed #gridtablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
   .card.zoomed #gridtablewrap span,.card.zoomed #drvtablewrap span{width:calc(12px*var(--zt,1))!important;height:calc(28px*var(--zt,1))!important;border-radius:2px!important}
   /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
