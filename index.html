@@ -197,24 +197,24 @@
   #compmetric .seg:last-child{border-right:none}
   #compmetric .seg:hover{background:#f1f3f5}
   #compmetric .seg.on{background:#16202b;color:#fff}
-  /* zoomed reel tables (GRID/SNAP/DRV/TIMES): scale up so the big modal fills and reads better */
+  /* zoomed reel tables (GRID/DRV/TIMES): scale up so the big modal fills and reads better */
   /* Every length in the zoomed-table rules below is multiplied through --zt, the
      fit factor fitZoomTable() writes onto the wrap after each render. It is 1 —
      i.e. exactly the sizes tuned here — whenever the table already fits, and only
      ever drops below 1 to pull a table that would overflow back inside the modal,
      font and padding shrinking together so the proportions hold. These stay the
      intended MAXIMUM; see fitZoomTable() for why measuring beats guessing. */
-  .card.zoomed #gridtablewrap table,.card.zoomed #niektablewrap table,.card.zoomed #snaptablewrap table,.card.zoomed #drvtablewrap table,.card.zoomed #ptimewrap table{font-size:calc(19px*var(--zt,1))!important}
-  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #snaptablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child,.card.zoomed #ptimewrap>div:first-child{font-size:calc(16px*var(--zt,1))!important;padding:0 4px calc(16px*var(--zt,1))!important}
-  .card.zoomed #gridtablewrap th,.card.zoomed #snaptablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #ptimewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #snaptablewrap td,.card.zoomed #drvtablewrap td,.card.zoomed #ptimewrap td{padding:calc(6px*var(--zt,1)) calc(10px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap table,.card.zoomed #niektablewrap table,.card.zoomed #drvtablewrap table,.card.zoomed #ptimewrap table{font-size:calc(19px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child,.card.zoomed #ptimewrap>div:first-child{font-size:calc(16px*var(--zt,1))!important;padding:0 4px calc(16px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #ptimewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #drvtablewrap td,.card.zoomed #ptimewrap td{padding:calc(6px*var(--zt,1)) calc(10px*var(--zt,1))!important}
   /* TIMES is only 8 rows, so at its inline size it leaves the modal mostly
      empty. Scale it harder than the other tables and let the rows breathe —
      but keep the table content-width: stretching it to 100% blows the row-label
      column out to half the modal whenever a car has only a few laps in. */
   .card.zoomed #sectabwrap table{font-size:calc(23px*var(--zt,1))!important}
   .card.zoomed #sectabwrap th,.card.zoomed #sectabwrap td{padding:calc(14px*var(--zt,1)) calc(20px*var(--zt,1))!important}
-  .card.zoomed #gridtablewrap td>div,.card.zoomed #snaptablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
-  .card.zoomed #gridtablewrap span,.card.zoomed #snaptablewrap span,.card.zoomed #drvtablewrap span{width:calc(12px*var(--zt,1))!important;height:calc(28px*var(--zt,1))!important;border-radius:2px!important}
+  .card.zoomed #gridtablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
+  .card.zoomed #gridtablewrap span,.card.zoomed #drvtablewrap span{width:calc(12px*var(--zt,1))!important;height:calc(28px*var(--zt,1))!important;border-radius:2px!important}
   /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
      align-items:center centres the (short) table vertically in the tall modal
      instead of pinning it to the top. max-height keeps it scrollable if ever tall. */
@@ -706,7 +706,6 @@
           </div></div>
           <div class="reelpanel"><div id="gridtablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><div id="niektablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
-          <div class="reelpanel"><div id="snaptablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="p1compsvg"></svg></div>
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
@@ -734,19 +733,14 @@
           <rect x="14" y="30" width="10" height="16" fill="#22B14C"/><rect x="25" y="30" width="10" height="16" fill="#A020F0"/><rect x="36" y="30" width="10" height="16" fill="#F5C500"/><rect x="47" y="30" width="10" height="16" fill="#F5C500"/><rect x="58" y="30" width="10" height="16" fill="#F5C500"/>
           <rect x="14" y="50" width="10" height="16" fill="#F5C500"/><rect x="25" y="50" width="10" height="16" fill="#F5C500"/><rect x="36" y="50" width="10" height="16" fill="#22B14C"/><rect x="47" y="50" width="10" height="16" fill="#A020F0"/><rect x="58" y="50" width="10" height="16" fill="#F5C500"/>
         </svg></div>
-        <div class="reelthumb" data-i="12" title="Sector colours grid — frozen per lap, never recoloured"><span class="thumbcap">SNAP</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
-          <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#F5C500"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/><rect x="35" y="10" width="8" height="14" fill="#22B14C"/><rect x="44" y="10" width="8" height="14" fill="#F5C500"/>
-          <rect x="8" y="29" width="8" height="14" fill="#22B14C"/><rect x="17" y="29" width="8" height="14" fill="#22B14C"/><rect x="26" y="29" width="8" height="14" fill="#A020F0"/><rect x="35" y="29" width="8" height="14" fill="#F5C500"/><rect x="44" y="29" width="8" height="14" fill="#22B14C"/>
-          <rect x="8" y="48" width="8" height="14" fill="#F5C500"/><rect x="17" y="48" width="8" height="14" fill="#A020F0"/><rect x="26" y="48" width="8" height="14" fill="#22B14C"/><rect x="35" y="48" width="8" height="14" fill="#22B14C"/><rect x="44" y="48" width="8" height="14" fill="#F5C500"/>
-        </svg></div>
-        <div class="reelthumb" data-i="13" title="Sector colours by driver — selected car only"><span class="thumbcap">DRV</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
+        <div class="reelthumb" data-i="12" title="Sector colours by driver — selected car only"><span class="thumbcap">DRV</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet">
           <rect x="8" y="10" width="8" height="14" fill="#A020F0"/><rect x="17" y="10" width="8" height="14" fill="#22B14C"/><rect x="26" y="10" width="8" height="14" fill="#F5C500"/>
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="14" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
-        <div class="reelthumb" data-i="15" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
-        <div class="reelthumb" data-i="16" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="13" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
+        <div class="reelthumb" data-i="14" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
+        <div class="reelthumb" data-i="15" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -837,7 +831,7 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=4;const REELN=17;
+let reelIdx=4;const REELN=16;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 let PTIME={};try{PTIME=JSON.parse(localStorage.getItem('stint9_ptime')||'{}')||{};}catch(e){PTIME={};}
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
@@ -1664,20 +1658,6 @@ function driverColor(name){
   if(!stintDrvColor[name]){const n=Object.keys(stintDrvColor).length;stintDrvColor[name]=STINT_PALETTE[n%STINT_PALETTE.length];}
   return stintDrvColor[name];
 }
-// SNAP reel: once a sector's purple/green/yellow colour is determined (at
-// the moment that lap actually completed), it's frozen here forever — a
-// later lap beating it does NOT recolour it, unlike the GRID reel which
-// always reflects current knowledge. done[car][lap] = [col0..col4];
-// overallBest/personalBest are the running minimums as of the last
-// processed (chronologically) event, only ever updated forward.
-// `T` is the clock the frozen state was built up to. It only ever grows while
-// playing, but SIM can scrub BACKWARDS — and then every cell frozen after the new
-// clock is a lap that hasn't happened yet. Freezing is deterministic (replay the
-// events in boundary order), so renderSectGridFrozen just throws the state away and
-// rebuilds it from T on a backward move.
-let gridFreeze=null;
-function resetGridFreeze(){gridFreeze={done:{},overallBest:[Infinity,Infinity,Infinity,Infinity,Infinity],personalBest:{},T:-Infinity};}
-resetGridFreeze();
 function renderFuel(T){const panel=document.getElementById('fuelpanel');if(!panel)return;
   const setR=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   setR('fuelcar',selCar?('#'+selCar):'#—');
@@ -2312,89 +2292,15 @@ function renderNiekGrid(T){
   h+='</tbody></table>';
   wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:3px 4px 7px;line-height:1.4">NIEK &middot; last 3 laps &mdash; purple/green vs this window only, not the whole session.</div>'+h;
 }
-/* SNAP reel: same cars-x-laps sector-colour table as GRID, except colours
-   are decided once — at the moment each sector boundary is actually
-   crossed — and then frozen in gridFreeze forever. Each render only needs
-   to process events that crossed their boundary since the last call: it
-   collects those, sorts them into the chronological order they actually
-   happened in (across every car/lap), and runs them one at a time through
-   the persistent running bests, freezing each event's colour immediately
-   after. A later lap beating an earlier one never touches the earlier
-   cell — unlike GRID, which always reflects current knowledge. */
-function renderSectGridFrozen(T){
-  const wrap=document.getElementById('snaptablewrap');if(!wrap)return;
-  // scrubbed back: drop the frozen state and re-freeze from the start up to T, so the
-  // table can't keep showing laps that are now in the future (forward play is untouched
-  // — it stays incremental, only the events that crossed since the last call are added).
-  if(T<gridFreeze.T-1e-6)resetGridFreeze();
-  gridFreeze.T=T;
-  const newEvents=[];
-  DB.cars.forEach(st=>{
-    const stm=DB.sectimes[st]||{},bx=BX[st]||{};
-    if(!gridFreeze.done[st])gridFreeze.done[st]={};
-    if(!gridFreeze.personalBest[st])gridFreeze.personalBest[st]=[Infinity,Infinity,Infinity,Infinity,Infinity];
-    for(let L=1;L<=maxN;L++){
-      const s=stm[L];if(!s)continue;
-      const frozen=gridFreeze.done[st][L];
-      for(let k=0;k<5;k++){
-        if(frozen&&frozen[k]!=null)continue;
-        const b=bx[(L-1)*5+(k+1)];
-        if(b==null||b>T||s[k]==null)continue;
-        newEvents.push({st,L,k,b,v:s[k]});
-      }
-    }
-  });
-  newEvents.sort((a,b)=>a.b-b.b);
-  newEvents.forEach(({st,L,k,v})=>{
-    const ob=gridFreeze.overallBest,pb=gridFreeze.personalBest[st];
-    const col=(v<=ob[k])?'#A020F0':(v<=pb[k])?'#22B14C':'#F5C500';
-    if(!gridFreeze.done[st][L])gridFreeze.done[st][L]=[null,null,null,null,null];
-    gridFreeze.done[st][L][k]=col;
-    if(v<ob[k])ob[k]=v;
-    if(v<pb[k])pb[k]=v;
-  });
-  let lapsSoFar=0;
-  DB.cars.forEach(st=>{const d=gridFreeze.done[st];if(!d)return;for(const L in d)if(d[L].some(c=>c!=null)&&+L>lapsSoFar)lapsSoFar=+L;});
-  if(!lapsSoFar){
-    wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">sector grid — no completed sectors yet</div>';
-    return;
-  }
-  const lp=livePos(T);
-  const order=DB.cars.slice().sort((a,b)=>{const pa=lp[a],pb2=lp[b];if(pa==null&&pb2==null)return 0;if(pa==null)return 1;if(pb2==null)return -1;return pa-pb2;});
-  let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;white-space:nowrap">';
-  h+='<thead><tr><th style="position:sticky;left:0;top:0;z-index:3;background:#fff;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec">Car</th>';
-  for(let L=1;L<=lapsSoFar;L++)h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 6px;border-bottom:1px solid #e6e8ec;color:#9aa1a9;font-weight:400">'+L+'</th>';
-  h+='</tr></thead><tbody>';
-  order.forEach(st=>{
-    const isSel=st===selCar,rowBg=isSel?'#d5d9de':'#fff',posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
-    const d=gridFreeze.done[st]||{};
-    h+='<tr'+(isSel?' style="background:#d5d9de"':'')+'>';
-    h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+posLbl+'#'+st+'</td>';
-    for(let L=1;L<=lapsSoFar;L++){
-      const cols=d[L];
-      h+='<td style="padding:3px 4px;border-bottom:1px solid #f3f4f6">';
-      if(cols){
-        h+='<div style="display:flex;gap:1px">';
-        for(let k=0;k<5;k++)h+='<span style="width:6px;height:14px;display:inline-block;border-radius:1px;background:'+(cols[k]||'#eceef1')+'"></span>';
-        h+='</div>';
-      }
-      h+='</td>';
-    }
-    h+='</tr>';
-  });
-  h+='</tbody></table>';
-  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:3px 4px 7px;line-height:1.4">SNAP &middot; frozen &mdash; each cell keeps the colour from the moment that sector was set.</div>'+h;
-}
 /* DRV reel: same sector-colour table idea as GRID, but rows are the
    SELECTED car's own drivers (stint order) instead of every car in the
    class — a cell only gets coloured blocks for a lap that driver actually
    drove; laps driven by a team-mate stay blank in this row. Colours
    compare across all of this car's drivers (purple = fastest of any
    driver so far, green = this driver's own best so far), recomputed from
-   final known values each render (GRID's live convention, not SNAP's
-   frozen one) — drivers only ever appear at their own, non-overlapping
-   stint laps, so "comparing across drivers" is really comparing sector
-   times set at different points in the race. */
+   final known values each render — drivers only ever appear at their own,
+   non-overlapping stint laps, so "comparing across drivers" is really
+   comparing sector times set at different points in the race. */
 function renderDrvGrid(T){
   const wrap=document.getElementById('drvtablewrap');if(!wrap)return;
   const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
@@ -2482,7 +2388,7 @@ let _fitZoomSig=null;
 function fitZoomTable(){
   const card=document.querySelector('.card.zoomed');
   if(!card){_fitZoomSig=null;return;}
-  const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#snaptablewrap,#drvtablewrap,#ptimewrap');
+  const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#drvtablewrap,#ptimewrap');
   const table=wrap&&wrap.querySelector('table');
   if(!wrap||!table){_fitZoomSig=null;return;}
   // render() calls this every frame (~20-30x/s) so a new lap's row is caught
@@ -3131,8 +3037,8 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60();
   const _tk=Date.now()-_thT>=300;
   // reel dispatch — order: 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
-  // 5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 SNAP, 12 DRV,
-  // 13 DIFF, 14 BARS, 15 FLOW, 16 was FLOW — NIEK is 11
+  // 5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
+  // 13 DIFF, 14 BARS, 15 FLOW
   if(reelIdx===0||_tk)renderFuel(T);
   if(reelIdx===3||_tk)renderSecTab(T);
   if(reelIdx===4||_tk)renderChart(T);
@@ -3143,11 +3049,10 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(reelIdx===9||_tk)renderComp(T);
   if(reelIdx===10||_tk)renderSectGrid(T);
   if(reelIdx===11||_tk)renderNiekGrid(T);
-  if(reelIdx===12||_tk)renderSectGridFrozen(T);
-  if(reelIdx===13||_tk)renderDrvGrid(T);
-  if(reelIdx===14||_tk)renderP1Comp(T);
-  if(reelIdx===15||_tk)renderP1Bar(T);
-  if(reelIdx===16||_tk)renderFlow(T);
+  if(reelIdx===12||_tk)renderDrvGrid(T);
+  if(reelIdx===13||_tk)renderP1Comp(T);
+  if(reelIdx===14||_tk)renderP1Bar(T);
+  if(reelIdx===15||_tk)renderFlow(T);
   fitZoomTable();   // after the reel that owns the zoomed table has redrawn — new laps change its height
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
@@ -4042,7 +3947,7 @@ function buildClass(cls){
   DB.cars=_all?allClassCars():(DB.classes[cls]||[]);
   maxN=DB.maxN=_all?allClassMaxN():(DB.classMaxN[cls]||1);
   DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
-  stintDrvColor={};resetGridFreeze();
+  stintDrvColor={};
   _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
   window.__pitField=null;window.__pitFieldT=0;   // and the PIT field table built on top of them
   const SAFE=['#E6194B','#4363D8','#3CB44B','#911EB4','#42D4F4','#F032E6','#469990','#E60073','#2E8B57','#1F77B4','#6A0DAD','#17BECF','#C71585','#00A878','#2A5CFF','#7B2D8E'];
@@ -6349,7 +6254,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','STINT','P-TIME','SECT','PACE','COMP','GRID','NIEK','SNAP','DRV','DIFF','BARS','FLOW'];
+  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','STINT','P-TIME','SECT','PACE','COMP','GRID','NIEK','DRV','DIFF','BARS','FLOW'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
