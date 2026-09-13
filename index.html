@@ -2665,8 +2665,10 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
   const vis=flowCache.cols.filter(c=>bx[c.bkey]<=T),curLap=(activeLeg(selCar,T)||[])[0]||null;
   if(vis.length===flowLastN&&curLap===flowLastLap&&svg.childNodes.length)return;flowLastN=vis.length;flowLastLap=curLap;
   if(!vis.length){ph('track-position flow — building as laps complete…');return;}
-  const positions=vis.map(c=>c.pos),minP=Math.min.apply(null,positions),maxP=Math.max.apply(null,positions);
-  const rowMin=Math.max(1,minP-1),rowMax=Math.min(nC,maxP+1),nR=rowMax-rowMin+1;
+  // Every position in the class, not just the band #650 has actually occupied --
+  // rows it never touches just stay empty (no red pill, no blue rival band),
+  // but the full grid is there for context instead of resizing around one car.
+  const rowMin=1,rowMax=nC,nR=rowMax-rowMin+1;
   const cap=15,hLap=20,hSec=18,top=cap+hLap+hSec+4,xL=46,colW=(1000-8-xL)/Math.max(1,maxN*5-1),colX=k=>xL+(k-1)*colW;
   // White margin above/below the pill = size of the gap ahead/behind. Scale to the
   // largest gap actually on screen so the margins reflect the real spread instead of
