@@ -3869,7 +3869,9 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       frames.push({time:ts,precip:omP[i]||0,forecast:true});
     }
     if(!frames.length)return;
-    const layers=frames.map(fr=>fr.path?L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,zIndex:250}).addTo(map):null);
+    if(!map.getPane('wxradar')){map.createPane('wxradar');map.getPane('wxradar').style.zIndex=450;map.getPane('wxradar').style.pointerEvents='none';}
+    const layers=frames.map(fr=>fr.path?L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,pane:'wxradar'}).addTo(map):null);
+    let lastObs=0;for(let i=0;i<frames.length;i++)if(frames[i].path)lastObs=i;
     const fcFrom=frames.findIndex(fr=>fr.time>nowSec+30);const fcIdx=fcFrom<0?frames.length:fcFrom;
     const bar=document.getElementById('wxradar'),playBtn=document.getElementById('wxplay'),tl=document.getElementById('wxtl'),
           fill=document.getElementById('wxtlfill'),nowMk=document.getElementById('wxtlnow'),tLbl=document.getElementById('wxtime');
@@ -3893,8 +3895,12 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       return{fill:true,fillColor:'#2a5cff',fillOpacity:Math.min(0.55,0.12+mm*0.18)};
     }
     function show(i){idx=i;
-      layers.forEach((l,k)=>{if(l)l.setOpacity((!frames[i].forecast&&k===i)?0.6:0);});
-      precipCirc.setStyle(frames[i].forecast?precipStyle(frames[i].precip):{fill:false,fillOpacity:0});
+      const fc=!!frames[i].forecast;
+      layers.forEach((l,k)=>{if(!l)return;
+        if(!fc&&k===i)l.setOpacity(0.65);
+        else if(fc&&k===lastObs)l.setOpacity(0.5);
+        else l.setOpacity(0);});
+      precipCirc.setStyle(fc?precipStyle(frames[i].precip):{fill:false,fillOpacity:0});
       if(fill&&frames.length>1)fill.style.width=(i/(frames.length-1)*100).toFixed(1)+'%';
       if(tLbl){tLbl.textContent=relLabel(i);tLbl.classList.toggle('fc',!!frames[i].forecast||i>=fcIdx);}}
     function start(){if(tmr){clearTimeout(tmr);tmr=null;}playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';
