@@ -2524,15 +2524,17 @@ function renderSecTab(T){
     // convention as cmpCell elsewhere. The best cell IS best[k], so its delta
     // is always 0 — shown anyway as a green ▲0.0, same font-size as every
     // other cell's delta line, so the purple cell keeps the same two-line
-    // shape as its row-mates instead of reading as sparser/shorter despite
-    // its own number already being the biggest in the row.
+    // shape as its row-mates instead of reading as sparser/shorter. Purple's
+    // own number also stays the same font-size as every other cell's (no
+    // 14px bump) — purple/bold/shaded background carries the "best" signal,
+    // not a bigger typeface.
     if(bestHit){
       txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:10px">▲0.0</span>';
     }else if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){
       const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
       txt+='<br><span style="color:'+col+';font-weight:700;font-size:10px">'+tri+Math.abs(dv).toFixed(1)+'</span>';
     }
-    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;font-size:14px;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')+(bg?';'+bg:'')))+'">'+txt+'</td>';
+    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')+(bg?';'+bg:'')))+'">'+txt+'</td>';
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
   // row 1 — LAP number header
@@ -2555,7 +2557,7 @@ function renderSecTab(T){
   const [lmin,lmax]=rowRange(laps.map(L=>cells[L].tot));
   laps.forEach(L=>{const t=cells[L].tot;
     if(t==null){h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;color:#c9ced4">&mdash;</td>';}
-    else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';font-size:14px;background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
+    else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
   h+='</tr></tbody></table>';
   wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>'+h;
