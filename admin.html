@@ -45,8 +45,13 @@
   .ev .evhead{display:flex;align-items:center;gap:12px;padding:11px 13px;flex-wrap:wrap;cursor:pointer}
   .ev .evhead:hover{background:#fafbfc}
   .ev .slug{font-weight:700;letter-spacing:1px;font-size:14px;background:var(--ink);color:#fff;border-radius:6px;padding:3px 9px}
-  .ev .evname{font-weight:700;font-size:13px}
-  .ev .evsub{color:var(--muted);font-size:11px;letter-spacing:.5px}
+  /* name+sub column: shrinks to fit instead of wrapping the sub line onto a
+     second row (min-width:0 is what lets a flex child shrink below its
+     content size at all) — the sub line grew a real timestamp alongside the
+     relative one and started wrapping on non-huge screens. */
+  .ev .evinfo{flex:1 1 auto;min-width:0;overflow:hidden}
+  .ev .evname{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev .evsub{color:var(--muted);font-size:11px;letter-spacing:.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ev .evacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
   .ev .evacts a,.ev .evacts button{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 10px;border-radius:6px;text-decoration:none;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink)}
   .ev .evacts a.prim{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -369,7 +374,7 @@ function renderEvents(rows,liveNow,roundInfo){
     liveHtml='<div class="ev live">'+
       '<div class="evhead">'+
         '<span class="slug"><span class="livedot"></span>LIVE</span>'+
-        '<span><span class="evname">'+esc(name)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evinfo"><span class="evname">'+esc(name)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
         '<span class="evacts"><a class="prim" href="index.html" target="_blank" rel="noopener">Open LIVE →</a></span>'+
       '</div>'+
     '</div>';
@@ -388,7 +393,7 @@ function renderEvents(rows,liveNow,roundInfo){
         // official NLS calendar, so stint9_event_rounds has nothing for it
         // either) — the slug is more informative than repeating "race" with
         // nothing to distinguish it from any other race entry.
-        '<span><span class="evname">'+esc((e.name&&e.name!==e.label)?e.name:e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evinfo"><span class="evname">'+esc((e.name&&e.name!==e.label)?e.name:e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
         '<span class="evacts" onclick="event.stopPropagation()">'+
           '<a class="prim" href="'+q+'&overlay=1" target="_blank" rel="noopener">SIM + overlay →</a>'+
           '<a href="'+q+'" target="_blank" rel="noopener">SIM →</a>'+
