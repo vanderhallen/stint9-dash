@@ -2465,7 +2465,7 @@ function renderSecTab(T){
     // purple, delta would just be a redundant "0.0").
     if(!bestHit&&dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){
       const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
-      txt+=' <span style="color:'+col+';font-weight:700">'+tri+Math.abs(dv).toFixed(1)+'</span>';
+      txt+='<br><span style="color:'+col+';font-weight:700;font-size:10px">'+tri+Math.abs(dv).toFixed(1)+'</span>';
     }
     return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700':('color:#16202b'+(strong?';font-weight:700':'')))+'">'+txt+'</td>';
   };
