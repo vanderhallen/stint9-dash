@@ -296,7 +296,11 @@ function loadEvents(){
   evDetailCache={};evBundleCache={};
   document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
   Promise.all([
-    fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
+    // event_date ties (a round's quali and race bundles share the same start
+    // date) break on archived_at DESC, so the race — archived later, once its
+    // own grace window passes — sorts above its earlier-archived quali, not
+    // the other way round.
+    fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc,archived_at.desc',{headers:H})
       .then(function(r){return r.ok?r.json():[];}),
     // Most recent live status row, regardless of date — used ONLY to show a
     // "session running now" placeholder (see renderEvents), so a live event
@@ -327,6 +331,15 @@ function relTime(iso){
   if(s<172800)return Math.round(s/3600)+'h ago';
   return Math.round(s/86400)+'d ago';
 }
+// Exact archive instant alongside the relative time — "17h ago" alone doesn't
+// say WHICH 17 hours, and it's what actually decides the sort order now
+// (event_date ties break on archived_at DESC) between a round's quali and
+// race bundles.
+function absTime(iso){
+  var d=new Date(iso);if(isNaN(d.getTime()))return '';
+  var p=function(n){return String(n).padStart(2,'0');};
+  return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+' UTC';
+}
 // liveNow = the stint9_live_status row for a currently-running session (or
 // undefined); roundInfo = its {slug,name} from stint9_event_rounds, if the
 // schedule scraper has already named this round. Renders a status-only card
@@ -349,7 +362,7 @@ function renderEvents(rows,liveNow,roundInfo){
   if(!rows||!rows.length){box.innerHTML=liveHtml+'<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent=liveNow?'1 session running now':'';return;}
   box.innerHTML=liveHtml+rows.map(function(e){
     var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
-    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)):'')].filter(Boolean).join(' · ');
+    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)+' ('+absTime(e.archived_at)+')'):'')].filter(Boolean).join(' · ');
     var q='index.html?event='+encodeURIComponent(e.slug);
     return '<div class="ev" id="ev-'+esc(e.slug)+'">'+
       '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+
