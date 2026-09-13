@@ -86,7 +86,13 @@ Fixed **1280px design width** (never reflows), scaled by JS (`fitPage`) to fit *
 
 **Lap chart** — position-over-time, built per sector as time advances (only completed sections drawn). Thin lines (1.15, selected 1.6). Left P1..P16 axis. Right labels: `#car driver ▲/▼<posΔ> PIT <n>` (PIT hidden if 0). `rowH=30`, enlarged fonts.
 
-**Weather radar** — Leaflet + Carto light tiles + **RainViewer** radar (`maxNativeZoom:7` so tiles resolve at the 10 km view), 10 km circle around GPS 50.359/6.960, `fitBounds` framing, **◎ center** reset button. Height synced to the lap chart. Only shows precip when there is rain in the Eifel.
+**Weather radar** — Leaflet + OpenStreetMap tiles + **RainViewer** radar (`maxNativeZoom:7` so tiles resolve at the 10 km view), 10 km circle around GPS 50.359/6.960, `fitBounds` framing, **◎ center** reset button. Height synced to the lap chart. Only shows precip when there is rain in the Eifel.
+
+**Rain timeline (past → forecast)** — the play/scrub bar over the map animates ~2 h back to +2 h ahead, split at the blue **now** divider.
+- *Past frames* are RainViewer radar tiles.
+- *Future frames* are **our own rain field**: RainViewer's `radar.nowcast` array comes back **empty** in this region (0 frames, verified 2026-09-13), so everything right of *now* had no imagery at all — the clouds froze on the last observed frame and only the circle tinted, which read as "the animation stops at now". We now fetch a **15×15 Open-Meteo ICON-D2 grid** (`minutely_15=precipitation`, ~11 km cells over ~155 km) in one call, bilinear-interpolate each 15-min step into a PNG (Mercator-correct rows, RainViewer-ish blue→navy→yellow ramp) and lay it over the map as an `imageOverlay`. On a forecast frame the radar tiles are hidden so the two never show at once.
+- **Budget**: Open-Meteo's free tier counts **locations, not requests** — 600/min, 5000/h. A 19×19 grid (361) 429'd the *second* page load from the same IP inside a minute, hence 15×15 plus a **localStorage cache keyed to the 15-min slot** (`s9wxgrid1`), so reloads inside one forecast step cost nothing. Roughly ~5 browsers per public IP before the hourly cap bites; if the pit box outgrows that, move the fetch behind a Supabase edge function that refreshes once per 15 min.
+- **Fallbacks**, in order: ICON-D2 → Open-Meteo `best_match` (only when the model answered but has no coverage — a 429 is *not* retried) → single-point forecast tinting the 10 km circle → holding the last radar frame.
 
 **Main track map** — smoothed 5-sector polyline (Chaikin + moving-average denoise on S1/S2/S3/S5; S4 lighter; all sector boundaries snapped to shared midpoints so segments connect). Animated dots placed on real sector-boundary timestamps, gliding between. Dot radius scales by position (`0.95^(pos-1)`); **#label fixed size 30**; anti-overlap declutter. **DELAY** label (48px) when a section is >threshold% over its average (Delay % input, default 50). Selected car = red outline + 50% translucent + raised on top. **Centre badge**: `#xxx Px Lx` (black) + `−ahead/+behind` gap seconds + driver name; position nudged over the track.
 
@@ -413,8 +419,8 @@ fully "shield" a client-side site. The real levers are:
   holding the digitized Nürburgring track (`poly` polygon = thousands of
   coordinate points, sector layout, `W/H` dimensions). **This is the crown
   jewel and it sits in plain text in the browser** — copyable in seconds.
-- External calls: Leaflet, Google Fonts, `api.rainviewer.com` (public weather,
-  no key). All harmless.
+- External calls: Leaflet, Google Fonts, `api.rainviewer.com` and
+  `api.open-meteo.com` (public weather, no key). All harmless.
 - ✅ No API keys / tokens / passwords / base64 secrets baked in.
 - ✅ `source/` (raw CSV, PDF, backups) is gitignored — not in the repo.
 
@@ -960,8 +966,9 @@ for the same `(car, lap)` — a corrupt mix.
 
 **Automated (2026-09-13).** Cron `stint9_session_rotate` (`* * * * *`) calls
 `stint9_maybe_rotate_session()` using `stint9_schedule_windows`. In the **gap
-between events** — 15 min after a time-sheet window (`quali`/`practice`/…) ends
-(the scrape pad), before the next window — it:
+between events** — after a time-sheet window (`quali`/`practice`/…) has ended
+(+15 min scrape pad) and **30 minutes before the race window** (not the 10 min
+scrape pad, which is too late) — it:
 
 1. snapshots today's `stint9_live_timing` via `stint9_archive_event` as
    `{round}-{label}` (e.g. `NLS8-quali`),
@@ -976,6 +983,24 @@ windows). Apply `stint9_events-supabase.sql` (the new functions + cron) on the
 project if the job is not scheduled yet.
 
 Check: `select * from cron.job where jobname='stint9_session_rotate';`
+
+**When to apply this SQL (do not run it during a live race).** The create
+script defines a function that *contains* a `DELETE` on `stint9_live_timing`.
+Supabase will warn “destructive operations.” Defining it should not wipe the
+table immediately, but a live 4h race is the wrong moment to install anything
+that can delete that table. **Cancel / wait until the race is over** (admin
+shows the race archive, or after the race window end). Then paste the
+“Session rotate” block at the bottom of `stint9_events-supabase.sql` in the
+SQL editor and Run.
+
+After it is installed, `select public.stint9_maybe_rotate_session();` must
+**not** return `"rotated": true` while cars are on track. Expected reasons:
+`next-window-already-started` (race underway), `empty` (already cleared),
+`no-ended-timesheet`, or `wait-until-30min-before-race`.
+
+NLS9 (2026-09-13): quali was snapshotted by hand as `NLS9-quali` and the live
+table cleared before the race; this cron was **not** applied during the race
+on purpose. Apply after NLS9 so the next quali→race gap (NLS10) is automatic.
 
 ## Lesson 5 — LIVE motion is SIM's logic; the frontier estimator was REMOVED
 LIVE renders through SIM's exact loop (`activeLeg`+`ptAlong` interpolation). SIM

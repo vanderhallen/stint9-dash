@@ -266,7 +266,7 @@
   .wxi-h{font-size:10px;color:#8a929b;letter-spacing:.5px}
   .wxi-e{font-size:30px;line-height:1.15}
   .wxi-p{font-size:10px;font-weight:700;color:#2a5cff;min-height:12px;white-space:nowrap}
-  /* animated rain-radar timeline control (past -> nowcast) */
+  /* animated rain-radar timeline control (observed past -> forecast field) */
   /* insets clear the Leaflet zoom control (top-left) and the "center" button (top-right) so the bar never sits under them */
   #wxradar{position:absolute;left:52px;right:128px;top:8px;z-index:800;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.92);border:1px solid #d3d7dc;border-radius:9px;padding:5px 9px 15px;box-shadow:0 1px 4px rgba(0,0,0,.14);font-family:'IBM Plex Mono',monospace}
   .wxtk{position:absolute;top:9px;font-size:8px;line-height:1;color:#8a929b;white-space:nowrap;pointer-events:none;font-family:'IBM Plex Mono',monospace}
@@ -3770,32 +3770,100 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
   window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
-  /* animated rain radar: RainViewer past (+ nowcast when they publish it) and
-     Open-Meteo 15-min precipitation for the next 2h. RainViewer nowcast is often
-     empty in this region, so the timeline used to stop at "−7 min". Forecast
-     frames tint the 10 km circle; the blue divider is "now". */
+  /* animated rain radar: RainViewer past + our own forecast rain field for the
+     next 2h. RainViewer's nowcast array has been coming back EMPTY (0 frames,
+     verified 2026-09-13), so everything right of the "now" divider had no
+     imagery at all: the clouds froze on the last observed radar frame and only
+     the 10 km circle tinted, which read as "the animation stops at now"
+     (reported 2026-09-13). So we build the future frames ourselves — see
+     wxField below. The blue divider is "now". */
   const precipCirc=L.circle([lat,lon],{radius:10000,stroke:false,fill:false,fillColor:'#2a5cff',fillOpacity:0,zIndex:240}).addTo(map);
+  /* ---- forecast rain field ----
+     Open-Meteo serves many locations in one request, so we pull a GN x GN grid
+     of ICON-D2 (2.2 km model, 15-min steps) precipitation around the circuit
+     — ~11 km cells over ~155 x 155 km, one ~130 KB call — and paint each step
+     into a PNG that is laid over the map as an image overlay. That gives the
+     future half of the timeline a real, moving rain field instead of a frozen
+     radar tile.
+     GN is capped by Open-Meteo's free-tier budget, which is counted per
+     LOCATION, not per request: at 600 locations/minute a 19x19 (361) grid let
+     one page load through and 429'd the next one from the same IP within the
+     minute (measured 2026-09-13). 15x15 = 225 leaves room for the pit box's
+     other screens, and the 15-min localStorage cache below means a reload
+     inside the same forecast step costs nothing at all. */
+  const GN=15,GLAT=0.10,GLON=0.16,gLat=[],gLon=[];
+  for(let i=0;i<GN;i++){gLat.push(+(lat+(i-(GN-1)/2)*GLAT).toFixed(4));gLon.push(+(lon+(i-(GN-1)/2)*GLON).toFixed(4));}
+  const gPts=[];for(let r=0;r<GN;r++)for(let c=0;c<GN;c++)gPts.push([gLat[r],gLon[c]]);
+  // Returns {times:[epoch s], vals:[Float32Array(GN*GN) per step]}, the string
+  // 'nodata' when the model answered but has no coverage here, or null on a
+  // failed/rate-limited request. Only 'nodata' is worth a retry — retrying a
+  // 429 just burns the next slot of the same budget.
+  function fetchGrid(model){
+    return fetch('https://api.open-meteo.com/v1/forecast?latitude='+gPts.map(p=>p[0]).join(',')+
+      '&longitude='+gPts.map(p=>p[1]).join(',')+'&minutely_15=precipitation&forecast_minutely_15=12'+
+      (model?'&models='+model:'')+'&timezone=UTC')
+      .then(r=>r.json()).then(j=>{
+        if(!Array.isArray(j)||j.length!==GN*GN||!j[0]||!j[0].minutely_15)return null;
+        const ts=j[0].minutely_15.time||[];if(!ts.length)return null;
+        let seen=0;
+        const vals=ts.map((_,ti)=>{const a=new Float32Array(GN*GN);
+          for(let k=0;k<GN*GN;k++){const m=j[k]&&j[k].minutely_15,v=m&&m.precipitation?m.precipitation[ti]:null;
+            if(v!=null){a[k]=v;seen++;}}
+          return a;});
+        return seen?{times:ts.map(s=>Date.parse(/Z$/.test(s)?s:s+'Z')/1000),vals:vals}:'nodata';
+      }).catch(()=>null);
+  }
+  // The grid only changes on 15-min boundaries, so cache it per 15-min slot:
+  // reloads (and the other screens in the box, each on their own browser) then
+  // re-use it instead of spending another 225 locations of the minute budget.
+  const GRID_CK='s9wxgrid1',gridSlot=()=>Math.floor(Date.now()/9e5);
+  function loadGrid(){
+    try{const j=JSON.parse(localStorage.getItem(GRID_CK)||'null');
+      if(j&&j.slot===gridSlot()&&j.gn===GN&&j.times&&j.vals&&j.vals.length===j.times.length&&j.vals[0].length===GN*GN)
+        return Promise.resolve({times:j.times,vals:j.vals.map(a=>Float32Array.from(a))});
+    }catch(e){}
+    return fetchGrid('icon_d2').then(g=>g==='nodata'?fetchGrid(''):g).then(g=>{
+      if(!g||g==='nodata')return null;
+      try{localStorage.setItem(GRID_CK,JSON.stringify({slot:gridSlot(),gn:GN,times:g.times,
+        vals:g.vals.map(a=>Array.from(a,v=>+v.toFixed(2)))}));}catch(e){}
+      return g;
+    });
+  }
+  /* Grid unavailable (rate limit, outage): fall back to the single-point
+     forecast that used to drive the 10 km circle tint, so the future frames at
+     least still say wet/dry over the circuit. One location costs ~nothing
+     against the budget, so this usually gets through when the grid does not. */
+  function fetchPoint(){
+    return fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+      '&minutely_15=precipitation&forecast_minutely_15=12&timezone=UTC').then(r=>r.json()).then(j=>{
+        const m=j&&j.minutely_15;if(!m||!m.time)return null;
+        return{times:m.time.map(s=>Date.parse(/Z$/.test(s)?s:s+'Z')/1000),p:m.precipitation||[]};
+      }).catch(()=>null);
+  }
   Promise.all([
     fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()),
-    fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&minutely_15=precipitation&forecast_days=1&timezone=auto').then(r=>r.json()).catch(()=>null)
-  ]).then(([d,om])=>{
+    loadGrid()
+  ]).then(([d,grid])=>grid?[d,grid,null]:fetchPoint().then(pt=>[d,null,pt]))
+  .then(([d,grid,pt])=>{
     const host=d.host,past=(d.radar&&d.radar.past)||[],rvFc=(d.radar&&d.radar.nowcast)||[];
     const nowSec=Date.now()/1000;
     const frames=past.concat(rvFc).map(fr=>({time:fr.time,path:fr.path,forecast:false}));
     const lastRadarT=frames.length?frames[frames.length-1].time:nowSec;
-    const omT=(om&&om.minutely_15&&om.minutely_15.time)||[];
-    const omP=(om&&om.minutely_15&&om.minutely_15.precipitation)||[];
-    const omOff=(om&&typeof om.utc_offset_seconds==='number')?om.utc_offset_seconds:0;
+    const gTimes=(grid&&grid.times)||[],gVals=(grid&&grid.vals)||[];
+    const gridOK=gTimes.length>0;
+    const CTR=((GN-1)/2)*GN+(GN-1)/2; // grid cell over the circuit, for the fallback circle
+    // nearest grid step to a frame time, or -1 when it is out of the grid's range
+    const gStepAt=ts=>{let bi=-1,bd=Infinity;
+      for(let k=0;k<gTimes.length;k++){const dd=Math.abs(gTimes[k]-ts);if(dd<bd){bd=dd;bi=k;}}
+      return(bi<0||bd>1200)?-1:bi;};
     const precipAt=ts=>{
+      if(gridOK){const k=gStepAt(ts);return k<0?0:gVals[k][CTR];}
+      if(!pt)return 0;
       let best=0,bd=Infinity;
-      for(let i=0;i<omT.length;i++){
-        const s=omT[i],t=(/Z$|[+-]\d{2}:\d{2}$/.test(s)?new Date(s).getTime():new Date(s+'Z').getTime()-omOff*1000)/1000;
-        const dd=Math.abs(t-ts);if(dd<bd){bd=dd;best=omP[i]||0;}
-      }
-      return best;
-    };
+      for(let i=0;i<pt.times.length;i++){const dd=Math.abs(pt.times[i]-ts);if(dd<bd){bd=dd;best=pt.p[i]||0;}}
+      return best;};
     // Always add 15-min slots from just after the last radar through +2h so
-    // playback never dies at "now" even if Open-Meteo times don't parse.
+    // playback never dies at "now" even if the forecast grid is unavailable.
     const step=900,end=nowSec+2*3600;
     let t0=Math.ceil((lastRadarT+60)/step)*step;
     if(t0<=lastRadarT)t0+=step;
@@ -3804,6 +3872,55 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     if(!map.getPane('wxradar')){map.createPane('wxradar');map.getPane('wxradar').style.zIndex=450;map.getPane('wxradar').style.pointerEvents='none';}
     const layers=frames.map(fr=>fr.path?L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,pane:'wxradar'}).addTo(map):null);
     let lastObs=0;for(let i=0;i<frames.length;i++)if(frames[i].path)lastObs=i;
+    /* paint the grid steps the forecast frames actually use into image overlays.
+       Colours approximate RainViewer's "universal blue" scheme (light blue ->
+       navy -> yellow -> red) so the future frames read as the same map as the
+       past ones. Stops are mm/h; the grid is mm per 15 min, hence the x4. */
+    const RAMP=[[0.08,166,206,227,.30],[0.3,90,170,220,.46],[1,40,120,200,.58],[2.5,25,70,160,.66],
+                [6,20,40,110,.72],[12,242,230,60,.78],[25,244,160,45,.82],[50,224,48,30,.86]],MIN=0.04;
+    function wxColor(mmh){
+      if(mmh<MIN)return null;
+      if(mmh<=RAMP[0][0]){const f=(mmh-MIN)/(RAMP[0][0]-MIN);return[RAMP[0][1],RAMP[0][2],RAMP[0][3],RAMP[0][4]*f];}
+      let i=0;while(i<RAMP.length-1&&mmh>RAMP[i+1][0])i++;
+      if(i>=RAMP.length-1)return[RAMP[i][1],RAMP[i][2],RAMP[i][3],RAMP[i][4]];
+      const a=RAMP[i],b=RAMP[i+1],f=(Math.log(mmh)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]));
+      return[a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f,a[3]+(b[3]-a[3])*f,a[4]+(b[4]-a[4])*f];
+    }
+    const IMW=224,IMH=224,south=gLat[0],north=gLat[GN-1],west=gLon[0],east=gLon[GN-1];
+    // Leaflet stretches an image overlay linearly in Web Mercator, so pick each
+    // row's latitude through the inverse projection instead of linearly in lat.
+    const mercY=la=>Math.log(Math.tan(Math.PI/4+la*Math.PI/360));
+    const invMercY=y=>(Math.atan(Math.exp(y))-Math.PI/4)*360/Math.PI;
+    function fieldPng(vals){
+      const cv=document.createElement('canvas');cv.width=IMW;cv.height=IMH;
+      const ctx=cv.getContext('2d'),img=ctx.createImageData(IMW,IMH),px=img.data;
+      const yT=mercY(north),yB=mercY(south);let wet=false;
+      for(let j=0;j<IMH;j++){
+        const la=invMercY(yT+(j+0.5)/IMH*(yB-yT)),
+              gy=Math.max(0,Math.min(GN-1.001,(la-south)/GLAT)),r0=Math.floor(gy),fy=gy-r0,r1=r0+1;
+        for(let i=0;i<IMW;i++){
+          const lo=west+(i+0.5)/IMW*(east-west),
+                gx=Math.max(0,Math.min(GN-1.001,(lo-west)/GLON)),c0=Math.floor(gx),fx=gx-c0,c1=c0+1;
+          const v=(vals[r0*GN+c0]*(1-fx)+vals[r0*GN+c1]*fx)*(1-fy)+(vals[r1*GN+c0]*(1-fx)+vals[r1*GN+c1]*fx)*fy,
+                col=wxColor(v*4);
+          if(!col)continue;
+          const o=(j*IMW+i)*4;
+          px[o]=col[0];px[o+1]=col[1];px[o+2]=col[2];px[o+3]=Math.round(col[3]*255);wet=true;
+        }
+      }
+      if(!wet)return null; // dry step: no overlay at all rather than a blank image
+      ctx.putImageData(img,0,0);return cv.toDataURL('image/png');
+    }
+    const fieldBounds=L.latLngBounds([south,west],[north,east]),fieldLayers=[];
+    if(gridOK){
+      const byStep={};
+      frames.forEach(fr=>{if(!fr.forecast)return;
+        const k=gStepAt(fr.time);if(k<0)return;
+        if(byStep[k]==null){byStep[k]=fieldLayers.length;
+          const u=fieldPng(gVals[k]);
+          fieldLayers.push(u?L.imageOverlay(u,fieldBounds,{opacity:0,pane:'wxradar',interactive:false}).addTo(map):null);}
+        fr.fieldIdx=byStep[k];});
+    }
     const fcFrom=frames.findIndex(fr=>fr.time>nowSec+30);const fcIdx=fcFrom<0?frames.length:fcFrom;
     const bar=document.getElementById('wxradar'),playBtn=document.getElementById('wxplay'),tl=document.getElementById('wxtl'),
           fill=document.getElementById('wxtlfill'),nowMk=document.getElementById('wxtlnow'),tLbl=document.getElementById('wxtime');
@@ -3828,9 +3945,16 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     }
     function radarFor(i){return(frames[i]&&frames[i].path)?i:lastObs;}
     function show(i){idx=Math.max(0,Math.min(frames.length-1,i));
-      const rk=radarFor(idx),fc=!!frames[idx].forecast;
+      const fr=frames[idx],fc=!!fr.forecast,fld=fc&&gridOK&&fr.fieldIdx!=null;
+      // On a forecast frame with a field of our own, drop the radar entirely —
+      // holding the last observed tile under a moving forecast showed two
+      // different rain fields at once. Without a field we keep that hold.
+      const rk=(fc&&gridOK)?-1:radarFor(idx);
       layers.forEach((l,k)=>{if(l)l.setOpacity(k===rk?0.65:0);});
-      precipCirc.setStyle(fc?precipStyle(frames[idx].precip):{fill:false,fillOpacity:0});
+      // 0.8 over the ramp's baked alpha lands the field at the same visual
+      // weight as the radar tiles' 0.65, so past/future read as one animation
+      fieldLayers.forEach((l,k)=>{if(l)l.setOpacity(fld&&k===fr.fieldIdx?0.8:0);});
+      precipCirc.setStyle((fc&&!gridOK)?precipStyle(fr.precip):{fill:false,fillOpacity:0});
       if(fill&&frames.length>1)fill.style.width=(idx/(frames.length-1)*100).toFixed(1)+'%';
       if(tLbl){tLbl.textContent=relLabel(idx);tLbl.classList.toggle('fc',fc||idx>=fcIdx);}}
     function start(){if(tmr){clearTimeout(tmr);tmr=null;}playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';
