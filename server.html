@@ -103,6 +103,7 @@
       <div class="row">
         <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">offline</span></span>
         <span id="scanPos"></span>
+        <button class="btn ghost" id="recalibBtn" onclick="showCalibration()" disabled style="margin-left:auto">Recalibrate</button>
       </div>
       <div class="previewwrap" id="previewWrap">
         <img id="previewImg" alt="stream preview">
@@ -272,6 +273,7 @@ var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFai
 function resetMonitorUi(){
   document.getElementById('startBtn').disabled=false;
   document.getElementById('stopBtn').disabled=true;
+  document.getElementById('recalibBtn').disabled=true;
   document.getElementById('previewWrap').classList.remove('on');
   document.getElementById('calibRow').style.display='none';
   document.getElementById('scanPos').textContent='';
@@ -338,6 +340,7 @@ async function pollStatus(){
   }
   document.getElementById('startBtn').disabled=true;
   document.getElementById('stopBtn').disabled=false;
+  document.getElementById('recalibBtn').disabled=!st.previewReady;
   if(st.videoId && st.videoId!==ytVideoId){
     ytVideoId=st.videoId;
     const inp=document.getElementById('yt-url');
@@ -381,7 +384,14 @@ function showCalibration(){
     wireCropBoxDrag();
   };
 }
+var cropDragWired=false;
 function wireCropBoxDrag(){
+  // idempotent: Recalibrate can call showCalibration() (and thus this) many
+  // times per page load, but the box/rz elements never get re-created, so
+  // wiring their handlers -- and the document-level drag listeners -- once
+  // is enough; re-running addEventListener each time would stack duplicates.
+  if(cropDragWired)return;
+  cropDragWired=true;
   const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('previewWrap');
   let mode=null,sx=0,sy=0,ox=0,oy=0,ow=0,oh=0;
   function down(e,m){mode=m;const p=(e.touches?e.touches[0]:e);sx=p.clientX;sy=p.clientY;
