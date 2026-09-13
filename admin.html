@@ -331,8 +331,19 @@ function loadEvents(){
         // ranking decision: past a point, an "overrun" reads more like heat is
         // stuck than like a real session, and the card should stop claiming
         // LIVE rather than sit there indefinitely.
-        var now=Date.now(),ended=(windows||[]).map(function(w){return Date.parse(w.end_ts);}).filter(function(t){return !isNaN(t)&&t<=now;});
-        if(ended.length){var lastEnd=Math.max.apply(null,ended);if(now-lastEnd>30*60*1000)liveNow=null;}
+        //
+        // Only applies once EVERY window for the day has actually ended --
+        // otherwise a still-open later window (e.g. the race, 08:00-09:40's
+        // quali/practice already long done but the 14:00 race window still in
+        // progress) got compared against an earlier, unrelated window's end
+        // time instead, nulling out a genuinely live race that still had
+        // nearly an hour left to run.
+        var now=Date.now();
+        var stillOpen=(windows||[]).some(function(w){var e=Date.parse(w.end_ts);return !isNaN(e)&&e>now;});
+        if(!stillOpen){
+          var ended=(windows||[]).map(function(w){return Date.parse(w.end_ts);}).filter(function(t){return !isNaN(t);});
+          if(ended.length){var lastEnd=Math.max.apply(null,ended);if(now-lastEnd>30*60*1000)liveNow=null;}
+        }
         if(!liveNow){renderEvents(rows);return;}
         fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
           .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
