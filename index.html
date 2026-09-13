@@ -3768,7 +3768,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
   /* animated rain radar: RainViewer past (+ nowcast when they publish it) and
-     Open-Meteo 15-min precipitation for the next 6h. RainViewer nowcast is often
+     Open-Meteo 15-min precipitation for the next 2h. RainViewer nowcast is often
      empty in this region, so the timeline used to stop at "−7 min". Forecast
      frames tint the 10 km circle; the blue divider is "now". */
   const precipCirc=L.circle([lat,lon],{radius:10000,stroke:false,fill:false,fillColor:'#2a5cff',fillOpacity:0,zIndex:240}).addTo(map);
