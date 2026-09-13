@@ -316,9 +316,24 @@ function loadEvents(){
     // for admin's slower, manually-refreshed polling.
     if(ls&&ls.live&&ls.updated_at&&(Date.now()-Date.parse(ls.updated_at))<300000)liveNow=ls;
     if(!liveNow){renderEvents(rows);return;}
-    fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
+    fetch(SB+'/rest/v1/stint9_schedule_windows?select=end_ts&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
       .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
-      .then(function(rr){renderEvents(rows,liveNow,rr&&rr[0]);});
+      .then(function(windows){
+        // Third close condition: more than 30 min past whichever scheduled
+        // window most recently ended, regardless of what heat/updated_at say.
+        // heat is trusted for RANKING (sessionKind() in index.html — a session
+        // legitimately overrunning by a few minutes is common and must stay
+        // ranked correctly), but this admin card is a status display, not a
+        // ranking decision: past a point, an "overrun" reads more like heat is
+        // stuck than like a real session, and the card should stop claiming
+        // LIVE rather than sit there indefinitely.
+        var now=Date.now(),ended=(windows||[]).map(function(w){return Date.parse(w.end_ts);}).filter(function(t){return !isNaN(t)&&t<=now;});
+        if(ended.length){var lastEnd=Math.max.apply(null,ended);if(now-lastEnd>30*60*1000)liveNow=null;}
+        if(!liveNow){renderEvents(rows);return;}
+        fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
+          .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+          .then(function(rr){renderEvents(rows,liveNow,rr&&rr[0]);});
+      });
   }).catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
 }
 // "3h ago" / "2d ago" — surfaces how fresh each archive is, so a just-finished
