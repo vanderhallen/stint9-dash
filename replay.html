@@ -12,42 +12,19 @@
   h1{font-size:22px;letter-spacing:3px;text-transform:uppercase;margin:0}
   .sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:4px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .card.offline{border-color:#f6cfc9;background:#fff8f7}
-  .inert{opacity:.5;pointer-events:none}
   .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-top:8px;line-height:1.5}
   a.btn,button.btn{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--ink);border:none;padding:11px 18px;border-radius:8px;text-decoration:none;display:inline-block;cursor:pointer}
-  button.btn:disabled{opacity:.45;cursor:default}
   a.btn.ghost,button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
   button.btn.copied{background:var(--green)}
-  input[type=text]{font-family:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;flex:1 1 320px;min-width:0}
   .err{color:var(--red);font-size:11px;margin-top:6px;min-height:14px}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block;flex:0 0 auto}
-  .dot.on{background:var(--green)}
+  .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:20px;background:#eef1f4;color:var(--muted)}
+  .status.active{background:#fdecea;color:var(--red)}
   .stepnum{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:700;flex:0 0 auto}
   .step{display:flex;align-items:center;gap:10px;margin:9px 0}
   .step code{font-size:11px;color:var(--muted)}
-  .yt-embed{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
-  .yt-embed.on{display:block}
-  .yt-embed iframe{width:100%;height:100%;border:0;display:block}
-  .previewwrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
-  .previewwrap.on{display:block}
-  .previewwrap img{width:100%;display:block}
-  #cropbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.15);cursor:move;touch-action:none}
-  #cropbox .rz{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#ff3b30;border-radius:3px;cursor:nwse-resize}
-  .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:20px;background:#eef1f4;color:var(--muted)}
-  .status .sdot{width:8px;height:8px;border-radius:50%;background:currentColor}
-  .status.watching{background:#eaf6ee;color:var(--green)}
-  .status.active{background:#fdecea;color:var(--red)}
-  .status.catchup{background:#eaf1fb;color:var(--blue)}
-  .status.active .sdot{animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  #scanPos{font-size:11px;color:var(--muted);letter-spacing:.5px}
   table.clips{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-  table.clips th{text-align:left;color:var(--muted);font-weight:700;letter-spacing:1px;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px}
-  table.clips td{padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
-  .carno{font-weight:700;color:#1e8f3a}
   .empty{color:var(--muted);font-size:13px;padding:8px 0}
   .hits{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media (max-width:820px){.hits{grid-template-columns:1fr}}
@@ -57,25 +34,27 @@
   .summary{margin:14px 0 18px;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
   .summary video{width:100%;display:block;background:#000;aspect-ratio:16/9}
   .summary .cap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:10px 12px;background:#fff}
-  #authOverlay{position:fixed;inset:0;background:rgba(15,20,26,.72);z-index:50;align-items:center;justify-content:center;padding:20px}
 </style>
 </head>
 <body>
-<div id="authOverlay" style="display:none">
-  <div class="card" style="max-width:360px;width:100%">
-    <h2>Password required</h2>
-    <div class="meta" style="margin:0 0 12px">This link is reachable from the internet — enter the capture password to control monitoring. (Printed in the server's terminal window at startup.)</div>
-    <div class="row">
-      <input id="authPw" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()">
-      <button class="btn" onclick="submitAuth()">Unlock</button>
-    </div>
-    <div class="err" id="authErr"></div>
-  </div>
-</div>
 <div class="wrap">
   <div>
     <h1>STINT9 · Replay clips</h1>
     <div class="sub">A local script watches a livestream for the REPLAY badge and auto-catches every clip — runs independently of any browser tab.</div>
+  </div>
+
+  <!-- ---- starting/stopping monitoring only works from the capture Mac itself
+       (it needs a local ffmpeg/python process) -- this deployed page can't reach
+       it over HTTPS, so it just links out to the local control page instead ---- -->
+  <div class="card" id="controlCard">
+    <h2>Control monitoring</h2>
+    <div class="meta" style="margin:0 0 12px">Starting or stopping a capture happens on the capture Mac's own control page — open it there, or from another device on the same network.</div>
+    <div class="row">
+      <a class="btn" href="http://ivos-macbook-air.local:5057/server.html" target="_blank" rel="noopener">Open control page →</a>
+    </div>
+    <div class="meta" style="margin-top:14px">Not running yet? On the capture Mac:</div>
+    <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
+    <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
   </div>
 
   <!-- ---- browse clips: reads Supabase Storage directly, no local server needed --
@@ -94,168 +73,9 @@
     <div class="hits" id="browseGrid" style="margin-top:14px"></div>
     <div class="meta" id="browseMeta"></div>
   </div>
-
-  <!-- ---- server offline: setup instructions, mirrors the hoc-tracker kenteken tool ---- -->
-  <div class="card offline" id="offlineCard">
-    <h2><span class="dot" id="statusDot"></span> Server offline</h2>
-    <div class="meta" style="margin:0 0 12px">Start the local server to download and scan livestreams. It runs entirely on this machine — the deployed site never talks to YouTube or ffmpeg itself.</div>
-    <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="openTerminal()" id="openTerminalBtn">Open Terminal</button><span class="meta" id="openTerminalFeedback" style="margin:0"></span></div>
-    <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
-    <div class="step"><span class="stepnum">3</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
-    <div class="meta" style="margin-top:12px">This page picks it up automatically within a few seconds — no need to reopen anything.</div>
-    <div class="meta" style="margin-top:6px">First time only: <code>brew install tesseract</code>, then <code>pip install pytesseract</code> inside that venv.</div>
-  </div>
-
-  <!-- ---- source + monitor + clips: always visible now (Clips reads Supabase
-       directly and works offline; Source/Monitor need the local server, so
-       those two alone go inert — dimmed, Start disabled — while it's offline,
-       rather than the whole block disappearing behind the offline card above ---- -->
-  <div id="onlineCards">
-    <div class="card inert" id="sourceCard">
-      <h2>Source</h2>
-      <div class="row">
-        <input id="yt-url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…" autocomplete="off">
-        <button class="btn" id="startBtn" onclick="startMonitoring()" disabled>Start monitoring</button>
-        <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
-      </div>
-      <div class="err" id="startErr"></div>
-      <div class="yt-embed" id="yt-embed"></div>
-    </div>
-
-    <div class="card inert" id="monitorCard">
-      <h2>Monitor</h2>
-      <div class="row">
-        <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">offline</span></span>
-        <span id="scanPos"></span>
-      </div>
-      <div class="previewwrap" id="previewWrap">
-        <img id="previewImg" alt="stream preview">
-        <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
-      </div>
-      <div class="row" id="calibRow" style="display:none;margin-top:10px">
-        <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm — scanning is paused until you do.</div>
-        <button class="btn" onclick="confirmCalib()">Confirm region →</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Clips</h2>
-      <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div></div>
-      <div class="meta" id="clipsMeta"></div>
-    </div>
-
-    <div class="card" id="hitsCard" style="display:none">
-      <h2>REPLAY found</h2>
-      <div class="hits" id="hitsGrid"></div>
-    </div>
-  </div>
 </div>
 
 <script>
-/* This page is served two ways: (a) the deployed stint9.com/GitHub Pages copy --
-   BASE must point at the capture Mac's stable Bonjour/.local hostname (NOT
-   'localhost', which from any other laptop just means itself), so this same
-   link works for the operator's own Mac *and* any other laptop on the same
-   network, with no dependency on a DHCP IP that changes when the network does;
-   (b) directly from the replay server itself -- localhost, the .local name, a
-   raw LAN IP, or a Cloudflare Tunnel's *.trycloudflare.com address (HTTPS on
-   the standard port, so no ':5057' in the URL at all) -- where BASE must stay
-   same-origin or a viewer would hit their own machine instead. */
-var CAPTURE_HOST='ivos-macbook-air.local';   // update if this Mac's name (System Settings > Sharing) ever changes
-function isCaptureHost(host){
-  return host==='localhost' || host==='127.0.0.1' || host.endsWith('.local') || host.endsWith('.trycloudflare.com') ||
-    /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
-}
-var BASE=isCaptureHost(location.hostname) ? location.origin : ('http://'+CAPTURE_HOST+':5057');
-
-/* ---- tunnel password gate: the server only enforces this over a
-   *.trycloudflare.com host (LAN/.local/localhost stay unauthenticated) --
-   a 401 from any control endpoint means show the prompt, not "offline". ---- */
-var authOverlayShown=false;
-function showAuthOverlay(){
-  if(authOverlayShown)return;
-  authOverlayShown=true;
-  document.getElementById('authOverlay').style.display='flex';
-}
-function hideAuthOverlay(){
-  if(!authOverlayShown)return;
-  authOverlayShown=false;
-  document.getElementById('authOverlay').style.display='none';
-}
-async function apiFetch(url,opts){
-  const res=await fetch(url,opts);
-  if(res.status===401){
-    showAuthOverlay();
-    const e=new Error('auth required');e.authRequired=true;throw e;
-  }
-  return res;
-}
-async function submitAuth(){
-  const pw=document.getElementById('authPw').value,err=document.getElementById('authErr');
-  err.textContent='';
-  try{
-    const res=await fetch(BASE+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-    if(res.ok){document.getElementById('authPw').value='';hideAuthOverlay();pollStatus();return;}
-    err.textContent='wrong password';
-  }catch(e){err.textContent='could not reach server';}
-}
-
-/* ---- Supabase Storage (same project + publishable key as the rest of stint9-dash);
-   the local server does the uploading now, this page only reads the clip list back ---- */
-var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
-var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
-var BUCKET='replay-clips';
-
-/* ---- server online/offline detection: same pattern as the hoc-tracker kenteken tool
-   (poll /health every 4s while offline, stop polling once online) ---- */
-var healthTimer=null,serverOnline=false;
-async function checkServer(){
-  try{
-    const res=await fetch(BASE+'/health',{signal:AbortSignal.timeout(2000),cache:'no-store'});
-    const data=await res.json();
-    if(data.status==='ok'){setServerOnline();return true;}
-  }catch(e){}
-  setServerOffline();
-  return false;
-}
-function setServerOnline(){
-  if(serverOnline)return;serverOnline=true;
-  if(healthTimer){clearInterval(healthTimer);healthTimer=null;}
-  document.getElementById('offlineCard').style.display='none';
-  document.getElementById('sourceCard').classList.remove('inert');
-  document.getElementById('monitorCard').classList.remove('inert');
-  document.getElementById('startBtn').disabled=false;
-  restoreYtUrl();
-  pollStatus();
-  statusTimer=setInterval(pollStatus,1000);
-}
-function setServerOffline(){
-  serverOnline=false;
-  document.getElementById('offlineCard').style.display='';
-  document.getElementById('sourceCard').classList.add('inert');
-  document.getElementById('monitorCard').classList.add('inert');
-  if(!healthTimer)healthTimer=setInterval(checkServer,4000);
-  if(statusTimer){clearInterval(statusTimer);statusTimer=null;}
-  resetMonitorUi();
-  document.getElementById('startBtn').disabled=true;
-  setStatus('offline');
-}
-checkServer();
-restoreYtUrl();   // Clips reads Supabase directly, so show past clips even while the local server is offline
-
-/* ---- offline-card buttons: same mechanics as the hoc-tracker kenteken tool ---- */
-async function openTerminal(){
-  const btn=document.getElementById('openTerminalBtn'),fb=document.getElementById('openTerminalFeedback');
-  btn.disabled=true;
-  try{
-    const res=await apiFetch(BASE+'/api/open-terminal',{cache:'no-store'});
-    const data=await res.json();
-    if(data.status==='ok'){fb.textContent='Terminal opened.';btn.disabled=false;return;}
-  }catch(e){if(e&&e.authRequired){btn.disabled=false;return;}}
-  try{await navigator.clipboard.writeText('Terminal');}catch(e){}
-  fb.textContent='Copied — press ⌘ Space and paste.';
-  btn.disabled=false;
-}
 function copyCmd(btn,text){
   navigator.clipboard.writeText(text).then(()=>{
     const orig=btn.textContent;btn.textContent='Copied!';btn.classList.add('copied');
@@ -263,201 +83,25 @@ function copyCmd(btn,text){
   });
 }
 
-/* ---- YouTube preview embed: just a bare iframe for the user's own convenience —
-   detection no longer needs any client-side control of the player ---- */
+/* ---- Supabase Storage (same project + publishable key the local server uploads
+   into) -- this page only ever reads the clip list back, never writes ---- */
+var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
+var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
+var BUCKET='replay-clips';
+
 function ytId(v){
   v=(v||'').trim();if(!v)return null;
   const m=v.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
   if(m)return m[1];
   return /^[A-Za-z0-9_-]{11}$/.test(v)?v:null;
 }
-function embedYt(id){
-  const box=document.getElementById('yt-embed');
-  box.innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0" '+
-    'title="YouTube video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
-  box.classList.add('on');
-}
-function restoreYtUrl(){
-  try{
-    const s=localStorage.getItem('stint9_replay_ytlink');
-    if(!s)return;
-    document.getElementById('yt-url').value=s;
-    const id=ytId(s);
-    if(id){ytVideoId=id;loadClipsTable();}
-  }catch(e){}
-}
-
-/* ---- start/stop monitoring: hands the URL to the local server, which does
-   everything else (download, detect, cut, upload) independently of this page ---- */
-var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0,lastHitsSig='',lastClipsLoad=0;
-function resetMonitorUi(){
-  document.getElementById('startBtn').disabled=false;
-  document.getElementById('stopBtn').disabled=true;
-  document.getElementById('previewWrap').classList.remove('on');
-  document.getElementById('calibRow').style.display='none';
-  document.getElementById('scanPos').textContent='';
-  document.getElementById('hitsCard').style.display='none';
-  document.getElementById('hitsGrid').innerHTML='';
-  calibShown=false;
-  lastClipsFound=-1;
-  lastHitsSig='';
-  lastClipsLoad=0;
-  setStatus('idle');
-}
-async function startMonitoring(){
-  const url=document.getElementById('yt-url').value,err=document.getElementById('startErr');
-  const id=ytId(url);
-  if(!id){err.textContent='not a YouTube link — paste the URL from the address bar or share button';return;}
-  err.textContent='';ytVideoId=id;
-  try{localStorage.setItem('stint9_replay_ytlink',url);}catch(e){}
-  embedYt(id);
-  document.getElementById('startBtn').disabled=true;
-  try{
-    const res=await apiFetch(BASE+'/api/monitor/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
-    const data=await res.json();
-    if(data.status==='error'){err.textContent=data.message||'could not start';document.getElementById('startBtn').disabled=false;return;}
-  }catch(e){
-    document.getElementById('startBtn').disabled=false;
-    if(!(e&&e.authRequired))err.textContent='could not reach the local server';
-    return;
-  }
-  document.getElementById('stopBtn').disabled=false;
-  calibShown=false;
-  lastClipsFound=-1;
-  loadClipsTable();
-}
-async function stopMonitoring(){
-  try{await apiFetch(BASE+'/api/monitor/stop',{method:'POST'});}catch(e){if(e&&e.authRequired)return;}
-  resetMonitorUi();
-}
-
-/* ---- status polling drives the status pill, the calibration snapshot, and the
-   clips-table refresh — all the actual work happens server-side ---- */
-function setStatus(s){
-  const pill=document.getElementById('statusPill'),txt=document.getElementById('statusTxt');
-  const cls=s==='active'?'active':s==='watching'?'watching':s==='catching up'?'catchup':'';
-  pill.className='status'+(cls?' '+cls:'');
-  txt.textContent=s;
-}
 function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-async function pollStatus(){
-  let st;
-  try{
-    const res=await apiFetch(BASE+'/api/monitor/status',{cache:'no-store',signal:AbortSignal.timeout(2000)});
-    st=await res.json();
-    statusFails=0;
-  }catch(e){
-    if(e && e.authRequired)return;   // server's up, it's just locked -- not a connectivity problem
-    statusFails++;
-    if(statusFails>=3)setServerOffline();
-    return;
-  }
-  hideAuthOverlay();
-  if(!st.active){
-    if(!document.getElementById('stopBtn').disabled)resetMonitorUi();
-    return;
-  }
-  document.getElementById('startBtn').disabled=true;
-  document.getElementById('stopBtn').disabled=false;
-  if(st.videoId && st.videoId!==ytVideoId){
-    ytVideoId=st.videoId;
-    const inp=document.getElementById('yt-url');
-    if(!inp.value)inp.value='https://www.youtube.com/watch?v='+st.videoId;
-    if(!document.getElementById('yt-embed').classList.contains('on'))embedYt(st.videoId);
-    loadClipsTable();
-  }
-  const err=document.getElementById('startErr');
-  if(st.error)err.textContent=st.error;
-  if(st.badgeOn)setStatus('active');
-  else if(!st.calibrated)setStatus(st.previewReady?'awaiting calibration':'downloading…');
-  else setStatus(st.scanMode==='catchup'?'catching up':'watching');
-  let pos='';
-  if(st.calibrated && st.scanMode==='catchup')pos=fmtDur(st.scannedT)+' scanned';
-  else if(!st.calibrated && st.lastDlLine)pos=st.lastDlLine;
-  document.getElementById('scanPos').textContent=pos;
-  if(st.previewReady&&!st.calibrated&&!calibShown){calibShown=true;showCalibration();}
-  renderHits(st.hits||[]);
-  const now=Date.now();
-  if(typeof st.clipsFound==='number' && st.clipsFound!==lastClipsFound){
-    lastClipsFound=st.clipsFound;
-    loadClipsTable();
-  }else if(now-lastClipsLoad>3000){
-    loadClipsTable();
-  }
-}
-
-/* ---- calibration: same draggable-crop-box UX as before, now overlaid on a static
-   preview snapshot the server grabbed, instead of a live captured video frame ---- */
-function showCalibration(){
-  const wrap=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
-  img.src=BASE+'/api/monitor/preview.jpg?t='+Date.now();
-  img.onload=()=>{
-    wrap.classList.add('on');
-    const box=document.getElementById('cropbox');
-    box.style.display='block';
-    const initW=wrap.clientWidth*0.16,initH=wrap.clientHeight*0.10;
-    box.style.left=(wrap.clientWidth*0.78)+'px';box.style.top=(wrap.clientHeight*0.10)+'px';
-    box.style.width=initW+'px';box.style.height=initH+'px';
-    document.getElementById('calibRow').style.display='flex';
-    wireCropBoxDrag();
-  };
-}
-function wireCropBoxDrag(){
-  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('previewWrap');
-  let mode=null,sx=0,sy=0,ox=0,oy=0,ow=0,oh=0;
-  function down(e,m){mode=m;const p=(e.touches?e.touches[0]:e);sx=p.clientX;sy=p.clientY;
-    ox=parseFloat(box.style.left);oy=parseFloat(box.style.top);ow=parseFloat(box.style.width);oh=parseFloat(box.style.height);
-    e.preventDefault();e.stopPropagation();}
-  box.onmousedown=e=>down(e,'move');box.ontouchstart=e=>down(e,'move');
-  rz.onmousedown=e=>down(e,'resize');rz.ontouchstart=e=>down(e,'resize');
-  function move(e){if(!mode)return;const p=(e.touches?e.touches[0]:e);const dx=p.clientX-sx,dy=p.clientY-sy;
-    if(mode==='move'){let nx=Math.max(0,Math.min(stage.clientWidth-ow,ox+dx));let ny=Math.max(0,Math.min(stage.clientHeight-oh,oy+dy));
-      box.style.left=nx+'px';box.style.top=ny+'px';}
-    else{let nw=Math.max(24,Math.min(stage.clientWidth-ox,ow+dx));let nh=Math.max(16,Math.min(stage.clientHeight-oy,oh+dy));
-      box.style.width=nw+'px';box.style.height=nh+'px';}}
-  document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});
-  document.addEventListener('mouseup',()=>mode=null);document.addEventListener('touchend',()=>mode=null);
-}
-async function confirmCalib(){
-  const box=document.getElementById('cropbox'),stage=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
-  const iw=img.naturalWidth||stage.clientWidth,ih=img.naturalHeight||stage.clientHeight;
-  const sxr=iw/stage.clientWidth,syr=ih/stage.clientHeight;
-  const x=parseFloat(box.style.left)*sxr,y=parseFloat(box.style.top)*syr;
-  const w=parseFloat(box.style.width)*sxr,h=parseFloat(box.style.height)*syr;
-  const calib={x:x/iw,y:y/ih,w:w/iw,h:h/ih};
-  document.getElementById('cropbox').style.display='none';
-  document.getElementById('calibRow').style.display='none';
-  document.getElementById('previewWrap').classList.remove('on');
-  try{await apiFetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
-}
-
-/* ---- clips table: reads straight from Supabase Storage — unchanged from before,
-   the local server just uploads into the same bucket ---- */
-var clipRows={};
 function fmtClock(ms){return new Date(ms).toLocaleTimeString();}
-function renderClipsTable(){
-  const wrap=document.getElementById('clipsTableWrap');
-  const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
-  if(!rows.length){wrap.innerHTML='<div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div>';return;}
-  let html='<table class="clips"><tr><th>Clip</th><th>No.</th><th>Start time</th><th>Duration</th><th>Link</th></tr>';
-  rows.forEach((r,i)=>{
-    html+='<tr><td>clip '+(i+1)+'</td><td class="carno">'+(r.car?'#'+r.car:'')+'</td><td>'+fmtClock(r.startedAtMs)+'</td><td>'+fmtDur(r.durationS)+'</td><td>'+
-      '<a class="btn ghost" style="padding:5px 10px" href="'+r.url+'" target="_blank" rel="noopener">▶ play / download</a></td></tr>';
-  });
-  html+='</table>';
-  wrap.innerHTML=html;
-}
 function parseDashedIso(s){
   const m=s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/);
   if(!m)return 0;
   const ms=Date.parse(m[1]+'T'+m[2]+':'+m[3]+':'+m[4]+'.'+m[5]+'Z');
   return isNaN(ms)?0:ms;
-}
-function clipFileName(obj){
-  let n=obj.name||'';
-  const pfx=ytVideoId+'/';
-  if(n.startsWith(pfx))n=n.slice(pfx.length);
-  return n.split('/').pop();
 }
 function parseClipName(name){
   const m=(name||'').match(/^(.+)_(\d+)s(?:_n(\d+)|_av)?\.(webm|mp4)$/);
@@ -489,52 +133,6 @@ async function fetchCarMeta(videoId){
     return d&&typeof d==='object'?d:{};
   }catch(e){return {};}
 }
-async function loadClipsTable(){
-  if(!ytVideoId)return;
-  lastClipsLoad=Date.now();
-  const meta=document.getElementById('clipsMeta');
-  try{
-    const cars=await fetchCarMeta(ytVideoId);
-    const res=await fetch(SB+'/storage/v1/object/list/'+BUCKET,{
-      method:'POST',
-      headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({prefix:ytVideoId+'/',limit:200,sortBy:{column:'name',order:'asc'}})
-    });
-    if(!res.ok)return;
-    const list=await res.json();
-    clipRows={};
-    (list||[]).forEach(obj=>{
-      const name=clipFileName(obj);
-      const p=parseClipName(name);if(!p)return;
-      const path=ytVideoId+'/'+name;
-      clipRows[path]={startedAtMs:parseDashedIso(p.iso),durationS:p.durationS,car:p.car||cars[name]||cars[p.iso+'_'+p.durationS+'s.mp4']||null,av:!!p.av,url:SB+'/storage/v1/object/public/'+BUCKET+'/'+encodeURI(path)};
-    });
-    const kept=dedupeClips(Object.values(clipRows));
-    clipRows={};
-    kept.forEach(r=>{clipRows[r.url]=r;});
-    renderClipsTable();
-    meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
-    renderHitsFromClips();
-  }catch(e){}
-}
-function renderHits(hits){
-  const sig=JSON.stringify(hits);
-  if(sig===lastHitsSig)return;
-  lastHitsSig=sig;
-  if(hits && hits.length){
-    const grid=document.getElementById('hitsGrid');
-    document.getElementById('hitsCard').style.display='';
-    grid.innerHTML=hits.map(h=>
-      '<div class="hit">'+
-        '<img src="'+BASE+'/api/monitor/hit/'+h.id+'.jpg?t='+Date.now()+'" alt="REPLAY at '+fmtDur(h.t)+'">'+
-        '<div class="cap"><span class="status active" style="padding:4px 10px">REPLAY</span>'+
-        '<span>'+fmtDur(h.t)+' into the recording</span></div>'+
-      '</div>'
-    ).join('');
-    return;
-  }
-  renderHitsFromClips();
-}
 function buildClipsGalleryHtml(rows){
   if(!rows.length)return '';
   return rows.map((r,i)=>{
@@ -549,20 +147,12 @@ function buildClipsGalleryHtml(rows){
     '</div>';
   }).join('');
 }
-function renderHitsFromClips(){
-  if(lastHitsSig && lastHitsSig!=='[]')return;
-  const rows=Object.values(clipRows).sort((a,b)=>a.startedAtMs-b.startedAtMs);
-  const card=document.getElementById('hitsCard');
-  if(!rows.length){card.style.display='none';document.getElementById('hitsGrid').innerHTML='';return;}
-  card.style.display='';
-  document.getElementById('hitsGrid').innerHTML=buildClipsGalleryHtml(rows);
-}
 
 /* ---- Browse clips: independent of the local capture server -- lists every
    video folder in the public Supabase Storage bucket (a root-level list()
    call returns folders as entries with id:null) and renders its clips
    straight from Storage. Works from the deployed site, any laptop, any
-   network -- unlike the monitor controls above, no local process involved. */
+   network -- no local process involved. */
 function objToClipRow(videoId,obj,cars){
   const name=(obj.name||'').split('/').pop();
   const p=parseClipName(name);

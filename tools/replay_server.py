@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local server for the STINT9 replay-clip catcher (replay.html).
+"""Local server for the STINT9 replay-clip catcher (server.html).
 
 Runs entirely on your own Mac, independent of any browser tab: downloads a
 YouTube livestream from its actual start (yt-dlp --live-from-start) to a
@@ -816,9 +816,14 @@ def serve_replay():
     return send_from_directory(REPO_ROOT, 'replay.html')
 
 
+@app.route('/server.html')
+def serve_server_page():
+    return send_from_directory(REPO_ROOT, 'server.html')
+
+
 @app.route('/')
 def index():
-    return send_from_directory(REPO_ROOT, 'replay.html')
+    return send_from_directory(REPO_ROOT, 'server.html')
 
 
 def lan_ip():
@@ -836,15 +841,15 @@ def lan_ip():
 if __name__ == '__main__':
     ip = lan_ip()
     local_host = subprocess.run(['scutil', '--get', 'LocalHostName'], capture_output=True, text=True).stdout.strip()
-    print(f'STINT9 replay server starting on http://localhost:{PORT}')
+    print(f'STINT9 replay server starting on http://localhost:{PORT}/server.html')
     if local_host:
         # stable across network changes (unlike the DHCP-assigned IP below) --
-        # this is the address replay.html itself falls back to when opened
-        # from the deployed site, so keep it in sync with CAPTURE_HOST there
-        # if this Mac's name (System Settings > Sharing) ever changes.
-        print(f'  fixed link for other laptops on this network: http://{local_host}.local:{PORT}/replay.html')
+        # this is the address replay.html's "Open control page" link points at,
+        # so keep it in sync there if this Mac's name (System Settings > Sharing)
+        # ever changes.
+        print(f'  fixed link for other laptops on this network: http://{local_host}.local:{PORT}/server.html')
     if ip:
-        print(f'  (raw LAN IP right now, will change: http://{ip}:{PORT}/replay.html)')
+        print(f'  (raw LAN IP right now, will change: http://{ip}:{PORT}/server.html)')
     print(f'  if you run a Cloudflare Tunnel (cloudflared tunnel --url http://localhost:{PORT}) for internet access,'
           f' the *.trycloudflare.com link it prints will ask for this password: {AUTH["password"]}')
     # 0.0.0.0: other machines on the same LAN/hotspot can open the dashboard too
