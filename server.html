@@ -126,6 +126,10 @@
       <h2>Clips</h2>
       <div id="clipsTableWrap"><div class="empty">No clips caught yet — start monitoring to catch one, or clips from a past session for this video will load here.</div></div>
       <div class="meta" id="clipsMeta"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" id="summaryBtn" onclick="buildSummary()">Build summary reel</button>
+        <span class="meta" id="summaryFeedback" style="margin:0"></span>
+      </div>
     </div>
 
     <div class="card" id="hitsCard" style="display:none">
@@ -556,6 +560,50 @@ async function loadClipsTable(){
     meta.textContent=Object.keys(clipRows).length?'':'no past clips found for this video yet.';
     renderHitsFromClips();
   }catch(e){}
+}
+/* ---- summary reel: one button, server-side ffmpeg concatenates every clip
+   caught for this video (title card + all clips, deduped/ordered the same
+   way the clips table is) and uploads it back into the same Supabase folder
+   as summary.mp4 / summary-titled.mp4 -- replay.html already knows how to
+   show whichever one exists, no change needed there. ---- */
+var summaryPollTimer=null;
+async function buildSummary(){
+  const btn=document.getElementById('summaryBtn'),fb=document.getElementById('summaryFeedback');
+  if(!ytVideoId){fb.textContent='no video selected yet — start monitoring or open a video first';return;}
+  btn.disabled=true;fb.textContent='starting…';
+  try{
+    const res=await apiFetch(BASE+'/api/summary/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({videoId:ytVideoId})});
+    const data=await res.json();
+    if(data.status==='error'){fb.textContent=data.message||'could not start';btn.disabled=false;return;}
+  }catch(e){
+    if(!(e&&e.authRequired)){fb.textContent='could not reach the local server';btn.disabled=false;}
+    return;
+  }
+  if(summaryPollTimer)clearInterval(summaryPollTimer);
+  summaryPollTimer=setInterval(pollSummary,1500);
+  pollSummary();
+}
+async function pollSummary(){
+  const btn=document.getElementById('summaryBtn'),fb=document.getElementById('summaryFeedback');
+  let st;
+  try{
+    const res=await apiFetch(BASE+'/api/summary/status',{cache:'no-store'});
+    st=await res.json();
+  }catch(e){return;}
+  if(!st.active&&!st.done){return;}   // nothing running, nothing to report
+  if(st.error){
+    clearInterval(summaryPollTimer);summaryPollTimer=null;
+    fb.textContent='failed: '+st.error;btn.disabled=false;
+    return;
+  }
+  if(st.done){
+    clearInterval(summaryPollTimer);summaryPollTimer=null;
+    fb.textContent='Done — '+(st.clip_count||0)+' clips combined. Refresh Browse clips on replay.html to see it.';
+    btn.disabled=false;
+    if(ytVideoId===st.video_id)loadClipsTable();
+    return;
+  }
+  fb.textContent=st.stage||'working…';
 }
 function renderHits(hits){
   const sig=JSON.stringify(hits);

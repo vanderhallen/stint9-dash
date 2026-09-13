@@ -16,7 +16,7 @@ leave us with nothing to scan until the stream ended — that's why we don't.
 One-time setup:
     brew install tesseract
     source ~/Documents/Terminal/venv/bin/activate
-    pip install pytesseract requests flask flask_cors opencv-python
+    pip install pytesseract requests flask flask_cors opencv-python pillow
 
 Run:
     source ~/Documents/Terminal/venv/bin/activate
@@ -26,12 +26,15 @@ import json
 import os
 import re
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 import cv2
@@ -40,6 +43,7 @@ import pytesseract
 import requests
 from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
+from PIL import Image, ImageDraw, ImageFont
 
 PORT = 5057
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -88,6 +92,7 @@ CORS(app, allow_private_network=True)
 lock = threading.Lock()
 capture_session = None   # single active capture session; this is a one-user local tool, not multi-tenant
                           # (named apart from Flask's `session` import, used below for the tunnel auth gate)
+summary_job = None        # {'video_id','stage','error','done','summary_url','titled_url'} or None -- see build_summary_job
 
 
 def yt_id(url):
@@ -554,6 +559,234 @@ def cut_and_upload(sess, start_t, end_t, idx):
     clip_path.unlink(missing_ok=True)
 
 
+# ---- summary video: concatenate every clip caught for a video into one
+# reel, with a title card up front -- "as we did previously" for vvTv_nIhDxg,
+# now a repeatable one-button job instead of an ad-hoc manual ffmpeg session. ----
+CLIP_NAME_RE = re.compile(r'^(.+)_(\d+)s(?:_n(\d+)|_av)?\.(webm|mp4)$')
+SUMMARY_W, SUMMARY_H = 1280, 720
+
+
+def parse_clip_name(name):
+    m = CLIP_NAME_RE.match(name)
+    if not m:
+        return None
+    iso, dur, car, ext = m.groups()
+    return {'iso': iso, 'duration_s': int(dur), 'car': car, 'av': name.endswith('_av.' + ext)}
+
+
+def parse_dashed_iso_ms(iso):
+    m = re.match(r'^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$', iso)
+    if not m:
+        return 0
+    date, hh, mm, ss, ms = m.groups()
+    dt = datetime.strptime(f'{date}T{hh}:{mm}:{ss}.{ms}000', '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=timezone.utc)
+    return int(dt.timestamp() * 1000)
+
+
+def clip_rank(row):
+    if row.get('av'):
+        return 2
+    if row.get('car'):
+        return 1
+    return 0
+
+
+def dedupe_clips(rows):
+    """Same collision rule as the frontend's dedupeClips() -- an av (audio+video
+    merged) variant beats a car-tagged variant beats a plain one for the same
+    (start, duration), so a badge caught mid-download and re-cut later after
+    the merge doesn't end up in the summary twice."""
+    by_key = {}
+    for r in rows:
+        k = (r['started_at_ms'], r['duration_s'])
+        prev = by_key.get(k)
+        if prev is None:
+            by_key[k] = r
+            continue
+        if not r.get('car') and prev.get('car'):
+            r['car'] = prev['car']
+        if not prev.get('car') and r.get('car'):
+            prev['car'] = r['car']
+        if clip_rank(r) > clip_rank(prev):
+            by_key[k] = r
+    return sorted(by_key.values(), key=lambda r: r['started_at_ms'])
+
+
+def list_clips_for_video(video_id):
+    r = requests.post(
+        f'{SB}/storage/v1/object/list/{BUCKET}',
+        headers={'apikey': KEY, 'Authorization': f'Bearer {KEY}', 'Content-Type': 'application/json'},
+        json={'prefix': f'{video_id}/', 'limit': 500, 'sortBy': {'column': 'name', 'order': 'asc'}},
+        timeout=30,
+    )
+    r.raise_for_status()
+    rows = []
+    for o in r.json() or []:
+        name = o.get('name') or ''
+        p = parse_clip_name(name)
+        if not p:
+            continue
+        rows.append({
+            'name': name, 'car': p['car'], 'av': p['av'],
+            'duration_s': p['duration_s'], 'started_at_ms': parse_dashed_iso_ms(p['iso']),
+            'url': f"{SB}/storage/v1/object/public/{BUCKET}/{video_id}/{name}",
+        })
+    return dedupe_clips(rows)
+
+
+def _ffmpeg(cmd, timeout=600):
+    return subprocess.run(cmd, capture_output=True, timeout=timeout)
+
+
+def make_title_card(dest_png):
+    """Solid --ink background + white/muted text, matching the dashboard's own
+    palette -- reliable and on-brand without depending on any specific clip's
+    frame looking good as a backdrop. Homebrew's ffmpeg here has no drawtext
+    (not built with libfreetype), so this is rendered with Pillow instead."""
+    img = Image.new('RGB', (SUMMARY_W, SUMMARY_H), (0x16, 0x20, 0x2b))
+    d = ImageDraw.Draw(img)
+    f_big = ImageFont.truetype('/System/Library/Fonts/HelveticaNeue.ttc', 120)
+    f_small = ImageFont.truetype('/System/Library/Fonts/HelveticaNeue.ttc', 46)
+
+    def centered(txt, font, y, color):
+        box = d.textbbox((0, 0), txt, font=font)
+        d.text(((SUMMARY_W - (box[2] - box[0])) / 2, y), txt, font=font, fill=color)
+
+    centered('STINT9', f_big, 250, (255, 255, 255))
+    centered('REPLAY SUMMARY', f_small, 410, (181, 188, 196))
+    img.save(dest_png)
+
+
+def build_summary_job(video_id):
+    global summary_job
+    with lock:
+        summary_job = {'video_id': video_id, 'stage': 'listing clips', 'error': None, 'done': False}
+    workdir = Path(tempfile.mkdtemp(prefix='stint9_summary_'))
+    try:
+        clips = list_clips_for_video(video_id)
+        if not clips:
+            with lock:
+                summary_job['error'] = 'no clips found for this video'
+                summary_job['done'] = True
+            return
+
+        local_paths = []
+        for i, c in enumerate(clips):
+            with lock:
+                summary_job['stage'] = f'downloading clip {i + 1}/{len(clips)}'
+            dest = workdir / f'in_{i:03d}.mp4'
+            r = requests.get(c['url'], timeout=60)
+            r.raise_for_status()
+            dest.write_bytes(r.content)
+            local_paths.append(dest)
+
+        with lock:
+            summary_job['stage'] = 'building title card'
+        title_png = workdir / 'title.png'
+        make_title_card(title_png)
+        title_clip = workdir / 'title.mp4'
+        r = _ffmpeg(['ffmpeg', '-y', '-loop', '1', '-t', '2', '-i', str(title_png),
+                     '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', '2',
+                     '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast',
+                     '-c:a', 'aac', '-shortest', str(title_clip)], timeout=60)
+        if not title_clip.exists():
+            with lock:
+                summary_job['error'] = 'title clip render failed: ' + r.stderr.decode(errors='replace')[-300:]
+                summary_job['done'] = True
+            return
+
+        all_in = [title_clip] + local_paths
+        titled = workdir / 'summary-titled.mp4'
+        last_err = b''
+        # Supabase's project-wide upload limit is ~50MB; a long race can pile up
+        # enough clips that 720p/CRF23 blows past it (measured: 10 clips over
+        # ~4min, 1080p sources -> 50MB+). Retry at progressively smaller
+        # scale/bitrate until it fits rather than guess one setting up front.
+        for attempt, (w, h, crf, maxrate_k, audio_k) in enumerate([
+            (1280, 720, 23, None, 160), (960, 540, 26, 1200, 128),
+            (854, 480, 28, 800, 96), (640, 360, 30, 500, 80),
+        ]):
+            with lock:
+                summary_job['stage'] = f'encoding {len(local_paths)} clips' + (f' (pass {attempt + 1}, smaller)' if attempt else '')
+            inputs, filt_parts = [], []
+            for i, p in enumerate(all_in):
+                inputs += ['-i', str(p)]
+                filt_parts.append(
+                    f'[{i}:v]scale={w}:{h}:force_original_aspect_ratio=decrease,'
+                    f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[v{i}]'
+                )
+                filt_parts.append(f'[{i}:a]aformat=sample_rates=44100:channel_layouts=stereo[a{i}]')
+            concat_refs = ''.join(f'[v{i}][a{i}]' for i in range(len(all_in)))
+            filt = ';'.join(filt_parts) + f';{concat_refs}concat=n={len(all_in)}:v=1:a=1[vout][aout]'
+            rate_args = ['-maxrate', f'{maxrate_k}k', '-bufsize', f'{maxrate_k * 2}k'] if maxrate_k else []
+            r = _ffmpeg(['ffmpeg', '-y', *inputs, '-filter_complex', filt,
+                         '-map', '[vout]', '-map', '[aout]',
+                         '-c:v', 'libx264', '-preset', 'veryfast', '-crf', str(crf), *rate_args,
+                         '-c:a', 'aac', '-b:a', f'{audio_k}k', '-movflags', '+faststart', str(titled)],
+                        timeout=900)
+            if not titled.exists() or titled.stat().st_size == 0:
+                last_err = r.stderr
+                continue
+            if titled.stat().st_size <= 45 * 1024 * 1024:
+                break
+        if not titled.exists() or titled.stat().st_size == 0:
+            with lock:
+                summary_job['error'] = 'ffmpeg concat failed: ' + last_err.decode(errors='replace')[-400:]
+                summary_job['done'] = True
+            return
+
+        with lock:
+            summary_job['stage'] = 'cutting the untitled variant'
+        plain = workdir / 'summary.mp4'
+        # Same body, minus the 2s title clip -- trimming the finished encode is
+        # cheap (stream copy) versus re-running the whole concat a second time.
+        _ffmpeg(['ffmpeg', '-y', '-ss', '2', '-i', str(titled), '-c', 'copy',
+                 '-avoid_negative_ts', 'make_zero', str(plain)], timeout=60)
+        if not plain.exists() or plain.stat().st_size == 0:
+            shutil.copy(titled, plain)   # stream-copy trim failed -- ship the titled cut rather than nothing
+
+        plain_poster = workdir / 'summary.jpg'
+        _ffmpeg(['ffmpeg', '-y', '-i', str(plain), '-vframes', '1', str(plain_poster)], timeout=60)
+
+        with lock:
+            summary_job['stage'] = 'uploading'
+        uploads = [
+            (titled, f'{video_id}/summary-titled.mp4', 'video/mp4'),
+            (title_png, f'{video_id}/summary-titled.jpg', 'image/jpeg'),
+            (plain, f'{video_id}/summary.mp4', 'video/mp4'),
+            (plain_poster, f'{video_id}/summary.jpg', 'image/jpeg'),
+        ]
+        for local, obj_path, ctype in uploads:
+            if not local.exists():
+                continue
+            with open(local, 'rb') as f:
+                resp = requests.post(
+                    f'{SB}/storage/v1/object/{BUCKET}/{obj_path}',
+                    headers={'apikey': KEY, 'Authorization': f'Bearer {KEY}',
+                             'Content-Type': ctype, 'x-upsert': 'true'},
+                    data=f.read(), timeout=120,
+                )
+            if resp.status_code >= 400:
+                with lock:
+                    summary_job['error'] = f'upload of {obj_path} failed {resp.status_code}: {resp.text[:180]}'
+                    summary_job['done'] = True
+                return
+
+        with lock:
+            summary_job['stage'] = None
+            summary_job['done'] = True
+            summary_job['clip_count'] = len(clips)
+            summary_job['summary_url'] = f'{SB}/storage/v1/object/public/{BUCKET}/{video_id}/summary.mp4'
+            summary_job['titled_url'] = f'{SB}/storage/v1/object/public/{BUCKET}/{video_id}/summary-titled.mp4'
+    except Exception as e:
+        with lock:
+            if summary_job is not None:
+                summary_job['error'] = str(e)
+                summary_job['done'] = True
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 def set_scan_mode(sess, next_t):
     """'catching up' vs 'watching' in the UI. Derived from wall-clock lag behind
     the actual broadcast start, not from whether a read happened to hit EOF --
@@ -827,6 +1060,32 @@ def monitor_stop():
         capture_session = None
     kill_proc(proc)
     return jsonify(status='ok')
+
+
+@app.route('/api/summary/build', methods=['POST'])
+def summary_build():
+    global summary_job
+    data = request.get_json(force=True) or {}
+    video_id = data.get('videoId')
+    if not video_id:
+        with lock:
+            if capture_session:
+                video_id = capture_session.get('video_id')
+    if not video_id:
+        return jsonify(status='error', message='no video specified and nothing currently monitored'), 400
+    with lock:
+        if summary_job and not summary_job.get('done'):
+            return jsonify(status='error', message='a summary build is already running'), 409
+    threading.Thread(target=build_summary_job, args=(video_id,), daemon=True).start()
+    return jsonify(status='started', videoId=video_id)
+
+
+@app.route('/api/summary/status')
+def summary_status():
+    with lock:
+        if not summary_job:
+            return jsonify(active=False)
+        return jsonify(active=not summary_job.get('done'), **summary_job)
 
 
 @app.route('/api/restart', methods=['POST'])
