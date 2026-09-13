@@ -59,6 +59,18 @@ const HOLD_MS = 149000;        // hold mode: ~149s, just under the free-plan 150
 const FLUSH_MS = 5000;         // hold mode: upsert changed rows to Supabase this often
 const GUARD_STALE_MS = 15000;  // hold mode: if the status row advanced within this,
                                // another holder/relay is live -> stand down (no WIGE connect)
+// A holder dying at its ~149s cap and the 60s cron only noticing once
+// GUARD_STALE_MS has elapsed left a real gap (empirically 15-50s, recurring
+// every ~149-180s — see the LIVE map "freezes for ~20s" reports) between one
+// holder's last flush and the next one's first: 149s isn't a multiple of the
+// 60s cron interval, so the replacement could be up to a full cron tick late,
+// on top of its own discovery+connect time. HANDOFF_LEAD_MS has a holder
+// launch its own successor this many ms before its OWN hold expires (see
+// triggerHandoff() below), so the new socket is already flushing before the
+// old one closes — no gap to wait out. The cron's stale-status check remains
+// as a fallback for the rare case a holder dies early (WS error) before
+// reaching its handoff point.
+const HANDOFF_LEAD_MS = 12000;
 // Frame archive (public.stint9_live_frames): keep whole WIGE payloads, not just the
 // ~18 fields mapCar() maps. Anything the feed sends is then answerable from stored
 // data instead of a 24h-retention console.log — see live-frames-supabase.sql.
@@ -243,6 +255,10 @@ type CollectOpts = {
   // size — lets HOLD mode stream both to Supabase mid-socket. `frames` carries the
   // raw payloads sampled since the last tick (drained, so memory stays flat).
   onFlush?: (rows: TimingRow[], meta: Meta | null, total: number, messages: MessageRow[], frames: FrameRow[]) => void | Promise<void>;
+  // Fired once, HANDOFF_LEAD_MS before holdMs elapses (hold mode only) — see
+  // HANDOFF_LEAD_MS above. Fire-and-forget from the caller's side; collect()
+  // itself keeps running unaffected until its own holdMs timer fires done().
+  onHandoff?: () => void | Promise<void>;
 };
 
 // Open the socket, subscribe to ids, gather snapshots for opts.holdMs. When
@@ -294,8 +310,19 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
   await new Promise<void>((resolve) => {
     let ws: WebSocket;
     let flushTimer: ReturnType<typeof setInterval> | undefined;
-    const done = () => { if (flushTimer !== undefined) clearInterval(flushTimer); try { ws.close(); } catch { /* noop */ } resolve(); };
+    let handoffTimer: ReturnType<typeof setTimeout> | undefined;
+    const done = () => {
+      if (flushTimer !== undefined) clearInterval(flushTimer);
+      if (handoffTimer !== undefined) clearTimeout(handoffTimer);
+      try { ws.close(); } catch { /* noop */ } resolve();
+    };
     const timer = setTimeout(done, opts.holdMs);
+    // Launch the successor BEFORE this holder actually dies (see HANDOFF_LEAD_MS)
+    // instead of leaving it to a cron tick to notice the gap after the fact.
+    // Skipped if a WS error calls done() early — the cron guard covers that case.
+    if (opts.onHandoff && opts.holdMs > HANDOFF_LEAD_MS) {
+      handoffTimer = setTimeout(() => { try { Promise.resolve(opts.onHandoff!()).catch(() => { /* noop */ }); } catch { /* noop */ } }, opts.holdMs - HANDOFF_LEAD_MS);
+    }
     try { ws = new WebSocket(WS_URL); } catch { clearTimeout(timer); return resolve(); }
     // eventPid [0,4] = leaderboard/trackState, 3 = race-control messages.
     ws.onopen = () => { for (const id of ids) ws.send(JSON.stringify({ eventId: id, eventPid: [0, 4, 3], clientLocalTime: Date.now() })); };
@@ -392,6 +419,35 @@ async function activeHolder(ed: string, staleMs: number): Promise<boolean> {
   } catch { return false; }
 }
 
+// A self-triggered handoff (see triggerHandoff()) bypasses stint9_maybe_scrape_wige(),
+// the SQL function that normally gates every wige-scrape call on
+// stint9_schedule_windows — so without this check a handoff chain would keep
+// re-launching itself forever after a session ends, one overlapping ~149s holder
+// after another. Mirrors that function's own window math (start_ts - 10min ..
+// coalesce(end_ts,start_ts) + 15min) client-side since PostgREST can't filter on
+// column arithmetic. Fails CLOSED (false) on a lookup error: worst case one chain
+// ends a little early, and the cron re-establishes a fresh one at the next real
+// window regardless — better than a holder looping indefinitely on a stuck check.
+async function isScheduleActive(): Promise<boolean> {
+  try {
+    const now = Date.now();
+    const since = new Date(now - 24 * 3600 * 1000).toISOString();
+    const until = new Date(now + 24 * 3600 * 1000).toISOString();
+    const res = await fetch(
+      `${SB_URL}/rest/v1/stint9_schedule_windows?select=start_ts,end_ts&start_ts=gte.${since}&start_ts=lte.${until}`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
+    );
+    if (!res.ok) return false;
+    const rows: { start_ts: string; end_ts: string | null }[] = await res.json();
+    for (const r of rows) {
+      const start = new Date(r.start_ts).getTime() - 10 * 60 * 1000;
+      const end = new Date(r.end_ts ?? r.start_ts).getTime() + 15 * 60 * 1000;
+      if (now >= start && now <= end) return true;
+    }
+    return false;
+  } catch { return false; }
+}
+
 function idRange(spec: string | null): string[] {
   const m = spec?.match(/^(\d+)-(\d+)$/);
   if (m) { const out: string[] = []; for (let n = +m[1]; n <= +m[2] && out.length < 200; n++) out.push(String(n)); return out; }
@@ -428,12 +484,20 @@ Deno.serve(async (req) => {
     let range = url.searchParams.get('range');
     const hp = url.searchParams.get('hold');
     let hold = hp != null && hp !== '0' && hp !== 'false';
-    if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; if (b.hold != null) hold = !!b.hold; } catch { /* no body */ } }
+    // handoff=1: this call was launched by a dying holder's own onHandoff (see
+    // HANDOFF_LEAD_MS), not by the cron. It already knows the live eventId and
+    // knows — better than any staleness check could — that a fresh holder is
+    // wanted right now, so it skips BOTH activeHolder() and discoverEventId().
+    let handoff = false;
+    if (req.method === 'POST') { try { const b = await req.json(); eventId = b.eventId ?? eventId; range = b.range ?? range; if (b.hold != null) hold = !!b.hold; if (b.handoff != null) handoff = !!b.handoff; } catch { /* no body */ } }
 
-    // ---- HOLD mode (pg_cron): one long-held socket, flush every ~5s ----------
+    // ---- HOLD mode (pg_cron, or a handoff from the previous holder): one
+    // long-held socket, flush every ~5s ----------------------------------------
     if (hold) {
-      // Another ~149s holder — or the vds-relay — is already streaming: stand down.
-      if (await activeHolder(ed, GUARD_STALE_MS))
+      // Another ~149s holder — or the vds-relay — is already streaming: stand
+      // down. Skipped for a handoff call: its whole purpose is to overlap with
+      // the (still briefly live) holder that launched it.
+      if (!handoff && await activeHolder(ed, GUARD_STALE_MS))
         return Response.json({ ok: true, held: false, reason: 'collector-active', event_date: ed }, { headers: CORS });
       if (!eventId) eventId = (await discoverEventId()) ?? '';
       // No live event id: don't hold a doomed socket for 149s — bail fast so the
@@ -441,6 +505,23 @@ Deno.serve(async (req) => {
       if (!eventId)
         return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
       const replaySet = await fetchReplaySet(ed);
+      // Fire-and-forget: ask our own successor to start ~HANDOFF_LEAD_MS before
+      // THIS holder's socket closes, so the two overlap instead of leaving a
+      // gap. Never awaited — a slow/failed self-call must not stall this
+      // holder's own flush loop, and the cron's stale-status check still
+      // covers the case where this never fires or the successor 404s. Checks
+      // isScheduleActive() first so the chain actually ends when the session
+      // does, instead of looping forever outside stint9_maybe_scrape_wige()'s
+      // own gating (see that function's comment above).
+      const selfUrl = `${url.protocol}//${url.host}${url.pathname}`;
+      const triggerHandoff = async () => {
+        if (!(await isScheduleActive())) return;
+        fetch(selfUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hold: true, eventId, handoff: true }),
+        }).catch(() => { /* the 60s cron guard is the fallback if this is lost */ });
+      };
 
       let flushed = 0, msgFlushed = 0, frameFlushed = 0;
       const onFlush = (rows: TimingRow[], meta: Meta | null, total: number, msgs: MessageRow[], frames: FrameRow[]) => (async () => {
@@ -452,7 +533,7 @@ Deno.serve(async (req) => {
         frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
         await upsert('stint9_live_status', [statusRow(ed, meta, eventId, total)], 'event_date');
       })();
-      const { meta, rows, messages, frames } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush, replaySet });
+      const { meta, rows, messages, frames } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush, replaySet, onHandoff: triggerHandoff });
       // Tail: frames sampled after the final flush tick.
       frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
       // Final status write with the true field size (last flush carried a batch count).

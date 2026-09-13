@@ -1004,7 +1004,9 @@ function syncReel(){const v=document.getElementById('reelview');if(!v)return;con
     if(wc&&wc.classList.contains('zoomed')){
       // Cap just under #focusHost's 95vh max-height so it never clips/overflows.
       wv.style.height=Math.round(window.innerHeight*0.9)+'px';
-      if(window.__syncWx)setTimeout(window.__syncWx,0); // let Leaflet re-measure at the new size
+      // re-measure only — NOT a view reset (see resizeWx()'s comment): this runs
+      // on every fitPage(), which must not fight a user's pan/zoom mid-session.
+      if(window.__resizeWx)setTimeout(window.__resizeWx,0);
     }else{
       const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';
     }
@@ -3684,8 +3686,19 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   L.polyline(NLS_TRACK,{color:'#fff',weight:4,opacity:.9,lineJoin:'round',interactive:false}).addTo(map);
   L.polyline(NLS_TRACK,{color:'#16202b',weight:2,opacity:.95,lineJoin:'round',interactive:false}).addTo(map);
   function frame(){map.fitBounds(circ.getBounds(),{padding:[22,22]});}
+  // syncWx() (full: re-measure AND re-centre) is for actions that actually mean
+  // "give me the default view back" — first load, the ⊙ center button, closing/
+  // opening the zoomed popup (initFocus's resync()), switching reels vertically
+  // onto this panel (applyWxReel). resizeWx() (re-measure ONLY, no fitBounds) is
+  // for everything that just changes the container's SIZE without the user
+  // asking for a view reset — fitPage() runs this on every LIVE poll tick
+  // (~5s) and window resize, and syncReel() runs it whenever the zoomed panel's
+  // height is recalculated; calling the full syncWx() from either used to snap
+  // back to the default center/zoom mid-pan, every few seconds, while the radar
+  // timelapse played (reported 2026-09-13).
+  function resizeWx(){const wd=document.getElementById('weather');if(wd)map.invalidateSize({pan:false});}
   function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
-  window.__syncWx=syncWx;syncWx();setTimeout(syncWx,150);
+  window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
   /* animated rain radar: past (observed) + nowcast (forecast) frames from
      RainViewer, cycled with a play/pause button and a timeline clock. The blue
@@ -4151,10 +4164,12 @@ function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
   document.documentElement.style.overflow='hidden';document.body.style.overflow='hidden';
   growMaps();
   // sync the Leaflet radar AFTER growMaps: growMaps is what sets the weather
-  // panel's final height, and invalidateSize/fitBounds against the pre-grow
-  // size left the map off-centre (worst with small classes, where the grow
-  // changes the panel height the most)
-  if(window.__syncWx)window.__syncWx();
+  // panel's final height, and an un-resized map left the tiles wrong-sized
+  // (worst with small classes, where the grow changes the panel height the
+  // most). Re-measure ONLY, not a view reset — fitPage() runs on every LIVE
+  // poll tick (~5s) and on window resize, and a full re-centre here used to
+  // snap the map back to default zoom/pan mid-pan every few seconds.
+  if(window.__resizeWx)window.__resizeWx();
   syncSideHeights();syncRightSplit();try{fitDrv();}catch(e){}
   // One corrective pass if the content overshoots the window bottom: s and the
   // grow budget above were computed against the layout as it was on entry,
