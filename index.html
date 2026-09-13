@@ -716,7 +716,6 @@
           <div class="reelpanel"><div id="gridtablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><div id="niektablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
-          <div class="reelpanel"><svg id="p1compsvg"></svg></div>
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
         </div>
@@ -747,9 +746,8 @@
           <rect x="35" y="29" width="8" height="14" fill="#22B14C"/><rect x="44" y="29" width="8" height="14" fill="#F5C500"/><rect x="53" y="29" width="8" height="14" fill="#22B14C"/>
           <rect x="62" y="48" width="8" height="14" fill="#F5C500"/><rect x="71" y="48" width="8" height="14" fill="#A020F0"/><rect x="80" y="48" width="8" height="14" fill="#22B14C"/>
         </svg></div>
-        <div class="reelthumb" data-i="13" title="Selected car vs P1 (race leader) — laptime, delta, cumulative delta"><span class="thumbcap">DIFF</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><path d="M4 20 C20 22,30 18,40 20 S60 22,70 19 S90 20,96 18" fill="none" stroke="#2f5fd0" stroke-width="2.5"/><path d="M4 60 C20 55,30 62,40 50 S60 58,70 40 S90 56,96 52" fill="none" stroke="#c0392b" stroke-width="2.5"/><path d="M4 62 C20 60,30 61,40 56 S60 54,70 46 S90 50,96 48" fill="none" stroke="#e8871e" stroke-width="2.5"/></svg></div>
-        <div class="reelthumb" data-i="14" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
-        <div class="reelthumb" data-i="15" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="reelthumb" data-i="13" title="Selected car vs P1 (race leader) — per-lap delta bars + cumulative"><span class="thumbcap">BARS</span><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet"><rect x="6" y="36" width="8" height="14" fill="#1e8f3a"/><rect x="17" y="24" width="8" height="26" fill="#1e8f3a"/><rect x="28" y="36" width="8" height="20" fill="#c0392b"/><rect x="39" y="36" width="8" height="10" fill="#1e8f3a"/><rect x="50" y="36" width="8" height="16" fill="#c0392b"/><rect x="61" y="36" width="8" height="8" fill="#1e8f3a"/><rect x="72" y="36" width="8" height="12" fill="#c0392b"/><rect x="83" y="36" width="8" height="6" fill="#1e8f3a"/><path d="M10 40 L21 30 L32 38 L43 32 L54 40 L65 34 L76 38 L87 32" fill="none" stroke="#9aa1a9" stroke-width="2"/></svg></div>
+        <div class="reelthumb" data-i="14" title="Track-position flow"><span class="thumbcap">FLOW</span><svg id="thumb4" preserveAspectRatio="xMidYMid meet"></svg></div>
       </div>
     </div>
     <div class="card" data-focus style="flex:1 1 44%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
@@ -834,7 +832,7 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=4;const REELN=16;
+let reelIdx=4;const REELN=15;
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 let PTIME={};try{PTIME=JSON.parse(localStorage.getItem('stint9_ptime')||'{}')||{};}catch(e){PTIME={};}
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
@@ -2490,70 +2488,16 @@ function renderSecTab(T){
 /* leaderAtLap: the car actually running in P1 (real running order) the
    moment it crosses the line to complete lap L — from DB.lappos, which
    records each car's own position at each of its own lap completions.
-   Shared by the DIFF and BARS reels so "vs P1" means the real race
-   leader, not a synthetic best-of-field time. */
+   Used by the BARS reel so "vs P1" means the real race leader, not a
+   synthetic best-of-field time. */
 function leaderAtLap(L){
   for(let i=0;i<DB.cars.length;i++){const st=DB.cars[i],lp=DB.lappos[st];if(lp&&lp[L]===1)return st;}
   return null;
 }
-/* DIFF reel: selected car vs whichever car actually holds race position 1
-   the moment it completes each lap — laptime on the right axis, per-lap
-   delta and its running cumulative sum sharing the left axis (both are
-   "difference", same unit). Builds out lap by lap as both the selected
-   car and that lap's leader complete it. */
-function renderP1Comp(T){
-  const svg=document.getElementById('p1compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){ph('select a car');return;}
-  const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
-  const pts=[];let cum=0;
-  for(let L=1;L<=maxN;L++){
-    const leader=leaderAtLap(L);if(!leader)continue;
-    const m=lapT(leader,L);
-    const mine=lapT(selCar,L);
-    if(mine==null||m==null)continue;
-    const delta=mine-m;cum+=delta;
-    pts.push({L,mine,delta,cum});
-  }
-  if(!pts.length){ph('vs P1 (race leader) — no completed laps yet');return;}
-  // x-axis spans only the laps run so far (not the full race distance maxN)
-  const lmax=Math.max(1,pts[pts.length-1].L);
-  const X=fx=>xL+(lmax<=1?0:(fx-1)/(lmax-1))*(xR-xL);
-  const yT2=64,yB2=CH-30;
-  let loL=0,hiL=0;
-  pts.forEach(p=>{if(p.delta<loL)loL=p.delta;if(p.delta>hiL)hiL=p.delta;if(p.cum<loL)loL=p.cum;if(p.cum>hiL)hiL=p.cum;});
-  const padL=Math.max(2,(hiL-loL)*0.08);loL-=padL;hiL+=padL;
-  const YL=v=>yB2-(v-loL)/((hiL-loL)||1)*(yB2-yT2);
-  let loR=Infinity,hiR=-Infinity;
-  pts.forEach(p=>{if(p.mine<loR)loR=p.mine;if(p.mine>hiR)hiR=p.mine;});
-  const padR=Math.max(2,(hiR-loR)*0.15);loR-=padR;hiR+=padR;
-  const YR=v=>yB2-(v-loR)/((hiR-loR)||1)*(yB2-yT2);
-  let s='';
-  for(let i=0;i<=4;i++){const v=loL+(hiL-loL)*i/4,y=YL(v);
-    s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#e8871e" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
-  for(let i=0;i<=4;i++){const v=loR+(hiR-loR)*i/4,y=YR(v);
-    s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="15" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
-  for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);
-    s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
-    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YL(0).toFixed(1)+'" y2="'+YL(0).toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
-  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs P1 (race leader)</text>';
-  s+='<text x="10" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">— laptime (right, s)</text>';
-  s+='<text x="230" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">— Δ per lap (left, s)</text>';
-  s+='<text x="450" y="'+(yT2-18).toFixed(1)+'" font-size="12" font-weight="700" fill="#c0392b" font-family="IBM Plex Mono,monospace">— cumulative Δ (left, s)</text>';
-  const cumPts=pts.map(p=>[X(p.L),YL(p.cum)]);
-  const zeroY=YL(0).toFixed(1);
-  s+='<path d="'+smoothPath(cumPts)+' L'+cumPts[cumPts.length-1][0].toFixed(1)+','+zeroY+' L'+cumPts[0][0].toFixed(1)+','+zeroY+' Z" fill="#c0392b" opacity="0.175" stroke="none"/>';
-  s+='<path d="'+smoothPath(cumPts)+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 8"/>';
-  s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YL(p.delta)]))+'" fill="none" stroke="#e8871e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
-  s+='<path d="'+smoothPath(pts.map(p=>[X(p.L),YR(p.mine)]))+'" fill="none" stroke="#2f5fd0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
-  svg.innerHTML=s;
-}
-/* BARS reel: same selected-car-vs-race-leader delta as DIFF, but as a bar
-   per lap (green = faster than that lap's leader, red = slower) sharing
-   one axis with a grey cumulative-delta line, matching a single-scale
-   bar+line reference layout rather than DIFF's dual-axis line chart. */
+/* BARS reel: selected car vs whichever car actually holds race position 1 the
+   moment it completes each lap -- a bar per lap (green = faster than that
+   lap's leader, red = slower) sharing one axis with a grey cumulative-delta
+   line. */
 function renderP1Bar(T){
   const svg=document.getElementById('p1barsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
@@ -3066,7 +3010,7 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   const _tk=Date.now()-_thT>=300;
   // reel dispatch — order: 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
   // 5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
-  // 13 DIFF, 14 BARS, 15 FLOW
+  // 13 BARS, 14 FLOW
   if(reelIdx===0||_tk)renderFuel(T);
   if(reelIdx===3||_tk)renderSecTab(T);
   if(reelIdx===4||_tk)renderChart(T);
@@ -3078,9 +3022,8 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(reelIdx===10||_tk)renderSectGrid(T);
   if(reelIdx===11||_tk)renderNiekGrid(T);
   if(reelIdx===12||_tk)renderDrvGrid(T);
-  if(reelIdx===13||_tk)renderP1Comp(T);
-  if(reelIdx===14||_tk)renderP1Bar(T);
-  if(reelIdx===15||_tk)renderFlow(T);
+  if(reelIdx===13||_tk)renderP1Bar(T);
+  if(reelIdx===14||_tk)renderFlow(T);
   fitZoomTable();   // after the reel that owns the zoomed table has redrawn — new laps change its height
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
@@ -6289,7 +6232,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','STINT','P-TIME','SECT','PACE','COMP','GRID','NIEK','DRV','DIFF','BARS','FLOW'];
+  var NAMES=['FUEL','TYRE','SERVICE','TIMES','POS','STINT','P-TIME','SECT','PACE','COMP','GRID','NIEK','DRV','BARS','FLOW'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
