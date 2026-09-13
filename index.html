@@ -3889,25 +3889,32 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       tk(0,relLabel(0),'','translateX(0)');
       if(nowPct>8&&nowPct<92)tk(nowPct,'now','now','translateX(-50%)');
       tk(100,relLabel(frames.length-1),'','translateX(-100%)');}
-    let idx=Math.max(0,fcIdx-1),playing=false,tmr=null;
+    let idx=Math.max(0,lastObs),playing=false,tmr=null;
     function precipStyle(mm){
       if(!(mm>0.05))return{fill:false,fillOpacity:0};
       return{fill:true,fillColor:'#2a5cff',fillOpacity:Math.min(0.55,0.12+mm*0.18)};
     }
-    function show(i){idx=i;
-      const fc=!!frames[i].forecast;
-      layers.forEach((l,k)=>{if(!l)return;
-        if(!fc&&k===i)l.setOpacity(0.65);
-        else if(fc&&k===lastObs)l.setOpacity(0.5);
-        else l.setOpacity(0);});
-      precipCirc.setStyle(fc?precipStyle(frames[i].precip):{fill:false,fillOpacity:0});
-      if(fill&&frames.length>1)fill.style.width=(i/(frames.length-1)*100).toFixed(1)+'%';
-      if(tLbl){tLbl.textContent=relLabel(i);tLbl.classList.toggle('fc',!!frames[i].forecast||i>=fcIdx);}}
+    function radarFor(i){return(frames[i]&&frames[i].path)?i:lastObs;}
+    function show(i){idx=Math.max(0,Math.min(frames.length-1,i));
+      const rk=radarFor(idx),fc=!!frames[idx].forecast;
+      layers.forEach((l,k)=>{if(l)l.setOpacity(k===rk?0.65:0);});
+      precipCirc.setStyle(fc?precipStyle(frames[idx].precip):{fill:false,fillOpacity:0});
+      if(fill&&frames.length>1)fill.style.width=(idx/(frames.length-1)*100).toFixed(1)+'%';
+      if(tLbl){tLbl.textContent=relLabel(idx);tLbl.classList.toggle('fc',fc||idx>=fcIdx);}}
     function start(){if(tmr){clearTimeout(tmr);tmr=null;}playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';
-      function tick(){show((idx+1)%frames.length);tmr=setTimeout(tick,frames[idx].forecast?2200:1400);}
-      tmr=setTimeout(tick,frames[idx].forecast?2200:1400);}
+      function tick(){
+        let n=idx+1;
+        while(n<frames.length&&!frames[n].path)n++;
+        if(n>=frames.length)n=0;
+        show(n);
+        tmr=setTimeout(tick,1400);
+      }
+      tmr=setTimeout(tick,1400);}
     function stop(){playing=false;if(tmr){clearTimeout(tmr);tmr=null;}if(playBtn)playBtn.innerHTML='&#9658;';}
     if(playBtn)playBtn.onclick=()=>{playing?stop():start();};
+    if(tl){tl.style.cursor='pointer';
+      tl.onclick=e=>{const r=tl.getBoundingClientRect();
+        stop();show(Math.round(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(frames.length-1)));};}
     show(idx);start();
   }).catch(()=>{});
   /* ---- temperature overlay: prev 2h (solid) + next 2h forecast (dashed), same GPS as the rain radar ---- */
