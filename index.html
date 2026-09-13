@@ -294,11 +294,12 @@
   /* Find-car search hit in the message board: outline + brief flash on Enter */
   .msgitem.found{background:#fff8d6;box-shadow:inset 3px 0 0 #d6a417;border-radius:4px;animation:msgflash 1.2s ease-out 1}
   @keyframes msgflash{0%{background:#ffe89a}100%{background:#fff8d6}}
-  /* A message that arrived since the last poll: 1 minute of standout, fading
-     over the last 10s rather than snapping off so it doesn't feel like it
-     vanished mid-read. See initMessages()'s newlyArrivedAt. */
-  .msgitem.justin{background:#e8f6ee;box-shadow:inset 3px 0 0 #1e8f3a;border-radius:4px;transition:background 10s ease,box-shadow 10s ease}
-  .msgitem.justin.fading{background:transparent;box-shadow:inset 3px 0 0 transparent}
+  /* A feedback message that arrived since the last poll: 1 minute of
+     standout, fading over the last 10s rather than snapping off so it
+     doesn't feel like it vanished mid-read. See initFeedback()'s
+     newlyArrivedAt. */
+  .fbitem.justin{background:#e8f6ee;box-shadow:inset 3px 0 0 #1e8f3a;border-radius:4px;transition:background 10s ease,box-shadow 10s ease}
+  .fbitem.justin.fading{background:transparent;box-shadow:inset 3px 0 0 transparent}
   /* race-control popup: fired once per session when a message names the
      selected car. OK closes it; the board row stays highlighted (.ours). */
   #msgModal{position:fixed;inset:0;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:1000}
@@ -5762,12 +5763,31 @@ applyWxReel(false);
     const code=window.prompt('Admin code to delete this message:');
     if(code===null||code.trim()!==ADMIN_CODE)return; // wrong/cancelled code: just close, nothing happens
     fetch(SB_URL+'/rest/v1/stint9_feedback?id=eq.'+id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
-      .then(r=>{if(r.ok)item.remove();});
+      .then(r=>{if(r.ok){item.remove();
+        // Also drop it from the cache the 5s highlight-only re-render (below)
+        // reads from — otherwise that ticker resurrects the just-deleted row
+        // within 5s, since removing the DOM node alone doesn't touch lastRows.
+        lastRows=lastRows.filter(x=>String(x.id)!==String(id));
+      }});
   }
+  // Highlight a message for 1 minute after it first shows up on THIS board —
+  // knownIds establishes a baseline on the very first load (so the whole
+  // existing history doesn't flash as "new" the moment the page opens); only
+  // ids that appear in a LATER loadFeedback() that weren't in knownIds yet
+  // get a timestamp here. lastRows + the 5s ticker below re-render from cache
+  // so the highlight actually fades/expires between loadFeedback()'s own 30s
+  // polls, without an extra network round-trip each time.
+  let knownIds=null,lastRows=[];
+  const newlyArrivedAt={};
+  const HIGHLIGHT_MS=60000,FADE_MS=10000;   // total highlight, then fade over the last FADE_MS of it
   function renderList(rows){
+    lastRows=rows;
     list.innerHTML='';
     rows.forEach(r=>{
-      const item=document.createElement('div');item.className='fbitem';
+      const arrivedAt=newlyArrivedAt[String(r.id)],age=arrivedAt?Date.now()-arrivedAt:Infinity;
+      let cls='fbitem';
+      if(age<HIGHLIGHT_MS)cls+=' justin'+(age>HIGHLIGHT_MS-FADE_MS?' fading':'');
+      const item=document.createElement('div');item.className=cls;
       const del=document.createElement('span');del.className='fbdel';del.textContent='×';del.title='delete';
       const time=document.createElement('div');time.className='fbtime';time.textContent=fmtTime(r.created_at);
       const msg=document.createElement('div');msg.className='fbmsg';msg.textContent=r.message;
@@ -5779,7 +5799,17 @@ applyWxReel(false);
   function loadFeedback(){
     fetch(SB_URL+'/rest/v1/stint9_feedback?select=id,message,created_at&order=created_at.desc&limit=50',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
       .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(rows=>{fbLoaded=true;renderList(rows);if(!/^thanks/.test(status.textContent))status.textContent='';})
+      .then(rows=>{
+        fbLoaded=true;
+        // First load ever (knownIds still null): baseline every id silently —
+        // otherwise the whole existing history would flash "just in" the
+        // moment the page opens. Only ids missing from a KNOWN baseline on a
+        // later load are genuinely new arrivals.
+        if(knownIds){for(const r of rows)if(!knownIds.has(String(r.id)))newlyArrivedAt[String(r.id)]=Date.now();}
+        else knownIds=new Set();
+        for(const r of rows)knownIds.add(String(r.id));
+        renderList(rows);if(!/^thanks/.test(status.textContent))status.textContent='';
+      })
       .catch(()=>{
         // Never wipe the list on a transient failure: the messages are safe in
         // the DB (deletion needs the admin code), so an empty panel must not be
@@ -5798,6 +5828,9 @@ applyWxReel(false);
   };
   loadFeedback();
   setInterval(loadFeedback,30000); // refresh so new feedback appears and a failed load self-heals
+  // Re-render from cache (no fetch) so the "justin"/"fading" highlight ages
+  // and clears smoothly between loadFeedback()'s 30s polls, not just at them.
+  setInterval(()=>{if(lastRows.length)renderList(lastRows);},5000);
 })();
 
 /* ---- message board (race-control items: penalties, incidents etc) ----
@@ -5821,14 +5854,6 @@ applyWxReel(false);
   // real rows exist the board stays empty (LIVE and SIM alike) until the scraper
   // or an archived event supplies genuine race-control messages.
   let serverRows=null;
-  // Highlight a message for 1 minute after it first shows up on THIS board —
-  // knownIds establishes a baseline on the very first load (so the whole
-  // existing history doesn't flash as "new" the moment the page opens); only
-  // ids that appear in a LATER loadMessages() that weren't in knownIds yet
-  // get a timestamp here. HIGHLIGHT_MS/FADE_MS below read it.
-  let knownIds=null;
-  const newlyArrivedAt={};
-  const HIGHLIGHT_MS=60000,FADE_MS=10000;   // total highlight, then fade over the last FADE_MS of it
   // created_at (UTC instant) -> Europe/Berlin seconds-of-day — the same units
   // as SIM's T (CSV TAGESZEIT is already track-local, no shift needed there;
   // see clockOffsetS()'s comment). Inverse of berlinToUtcISO() in the scrapers.
@@ -5876,10 +5901,7 @@ applyWxReel(false);
     let highlight=false;
     rows.forEach(m=>{
       const isOurs=!!(selCar&&m.car&&String(m.car)===String(selCar));if(isOurs)highlight=true;
-      const arrivedAt=newlyArrivedAt[String(m.id)],age=arrivedAt?Date.now()-arrivedAt:Infinity;
-      let cls='msgitem'+(isOurs?' ours':'');
-      if(age<HIGHLIGHT_MS)cls+=' justin'+(age>HIGHLIGHT_MS-FADE_MS?' fading':'');
-      const item=document.createElement('div');item.className=cls;
+      const item=document.createElement('div');item.className='msgitem'+(isOurs?' ours':'');
       const meta=document.createElement('div');meta.className='msgmeta';meta.textContent=metaOf(m);
       const txt=document.createElement('div');txt.className='msgtxt';txt.textContent=m.message;
       item.appendChild(meta);item.appendChild(txt);list.appendChild(item);
@@ -5915,17 +5937,7 @@ applyWxReel(false);
       .then(r=>r.ok?r.json():[])
       // Only real rows land in serverRows; a transient failure leaves the board
       // empty rather than injecting anything (activeMessages() never fabricates rows).
-      .then(rows=>{
-        const list2=Array.isArray(rows)?rows:[];
-        // First load ever (knownIds still null): baseline every id silently —
-        // otherwise the whole existing history would flash "just in" the
-        // moment the page opens. Only ids missing from a KNOWN baseline on a
-        // later load are genuinely new arrivals.
-        if(knownIds){for(const m of list2)if(!knownIds.has(String(m.id)))newlyArrivedAt[String(m.id)]=Date.now();}
-        else knownIds=new Set();
-        for(const m of list2)knownIds.add(String(m.id));
-        serverRows=list2;renderMessages();
-      })
+      .then(rows=>{serverRows=Array.isArray(rows)?rows:[];renderMessages();})
       .catch(()=>{renderMessages();});
   }
   loadMessages();setInterval(loadMessages,5*60*1000);
