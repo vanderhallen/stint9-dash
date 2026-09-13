@@ -2834,10 +2834,11 @@ function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=documen
   if(!series.length){box.style.display='none';return;}
   document.getElementById('gaphd').textContent='#'+ref;
   let mn=0,mx=0;series.forEach(sr=>sr.pts.forEach(pt=>{if(pt[1]<mn)mn=pt[1];if(pt[1]>mx)mx=pt[1];}));
-  // The end-of-line labels get pushed apart (26 units each) whenever two are too
-  // close — fine for 3 lines against a 100-unit-tall plot, but the whole field's
-  // worth of labels needs a taller viewBox or they'd overflow past yB and clip.
-  const xL=46,xR=978,yT=18,yB=zoomed?Math.max(118,yT+series.length*26+20):118;
+  // Zoomed: stretch the plot itself taller (not just bigger overall) so the
+  // same gap spread reads with more vertical resolution — plus keep the
+  // end-of-line-label safety margin (26 units each, pushed apart whenever two
+  // are too close) from an unusually long selected-car label list.
+  const xL=46,xR=978,yT=18,yB=zoomed?Math.max(340,yT+series.length*26+20):118;
   svg.setAttribute('viewBox','0 0 1000 '+(yB+22));
   const X=L=>xL+(maxN<=1?0:(L-1)/(maxN-1))*(xR-xL);
   const pad=Math.max(8,(mx-mn)*0.18),lo=mn-pad,hi=mx+pad,Y=g=>yB-(g-lo)/((hi-lo)||1)*(yB-yT);
