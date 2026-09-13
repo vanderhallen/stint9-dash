@@ -5311,7 +5311,18 @@ function updateRacenote(T){
   // handoff doesn't have to wait on the slower signal. (Archived/SIM replay
   // now has real S5 immediately per the 2026-08-02 archiver fix, so bx[5]
   // alone is already correct there — bx[6] is purely a LIVE-mode safety net.)
-  const active=(bx[5]!=null&&bx[5]<=T)||(bx[6]!=null&&bx[6]<=T);
+  const lapDone=(bx[5]!=null&&bx[5]<=T)||(bx[6]!=null&&bx[6]<=T);
+  // LIVE only: stint9_live_timing is keyed (event_date,car,lap) with no session
+  // id, so quali and the race SHARE the same lap rows on one event_date — the
+  // selected car's lap 1 from QUALIFYING already satisfies lapDone, switching
+  // to racenotes right after quali and staying there through pitwalk/lineup/
+  // startaufstellung, instead of showing the starting grid car images through
+  // that whole pre-race stretch as intended. Gate on sessionKind() too (the
+  // same quali/race split as the leaderboard ranking, README 15.4c/-gap/-gap2)
+  // so the grid keeps showing until the RACE itself is genuinely under way,
+  // regardless of leftover quali-lap evidence. SIM is unaffected — each
+  // archived event is its own clean dataset with no cross-session rows.
+  const active=lapDone&&(window.dataMode!=='LIVE'||sessionKind()==='race');
   const sl=document.getElementById('gridstartline'),gw=document.getElementById('gridwrap'),gs=document.getElementById('gridsource');
   if(sl)sl.style.display=active?'none':'';
   if(gw)gw.style.display=active?'none':'';
