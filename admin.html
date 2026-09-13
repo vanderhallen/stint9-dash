@@ -383,7 +383,12 @@ function renderEvents(rows,liveNow,roundInfo){
       '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+
         '<span class="caret">▶</span>'+
         '<span class="slug">'+esc(e.slug)+'</span>'+
-        '<span><span class="evname">'+esc(e.name||e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        // A name that's just the bare label (e.g. "race") means no real title
+        // was ever known when this was archived (EVT-2026-08-02: not on the
+        // official NLS calendar, so stint9_event_rounds has nothing for it
+        // either) — the slug is more informative than repeating "race" with
+        // nothing to distinguish it from any other race entry.
+        '<span><span class="evname">'+esc((e.name&&e.name!==e.label)?e.name:e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
         '<span class="evacts" onclick="event.stopPropagation()">'+
           '<a class="prim" href="'+q+'&overlay=1" target="_blank" rel="noopener">SIM + overlay →</a>'+
           '<a href="'+q+'" target="_blank" rel="noopener">SIM →</a>'+
