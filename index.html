@@ -1825,12 +1825,15 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     // stint bars below (not here) so it always paints on top of them — a
     // stint starting at lap 0 (WIGE's laps-completed convention can report a
     // driver at lap 0) reaches x0 into this gutter, and with the fully-opaque
-    // selected-car bar that used to bury the car number under it. The
-    // selected car's own label is picked out in the accent colour too — same
-    // convention as the mobile standings row (.mstand tr.sel) — so it reads
-    // at a glance which row is "ours" without having to compare bar opacity
-    // row by row.
-    const posLabelSvg='<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace" fill="'+(sel?'#e0301e':'#16202b')+'">'+posLbl+'#'+st+'</text>';
+    // selected-car bar that used to bury the car number under it. A stint bar
+    // can be almost any hue (driverColor()), so picking the selected row out
+    // in a FIXED colour (previously the red accent) reads fine on some bars
+    // and unreadably on others (e.g. red-on-purple). A white halo behind bolder
+    // text keeps the same dark ink for every row — legible against any bar
+    // colour — while still reading at a glance which row is "ours" without
+    // comparing bar opacity row by row.
+    const posLabelSvg=(sel?'<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="800" font-family="IBM Plex Mono,monospace" stroke="#fff" stroke-width="3" paint-order="stroke" fill="#16202b">'+posLbl+'#'+st+'</text>':'')+
+      '<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="'+(sel?'800':'700')+'" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
@@ -2019,7 +2022,13 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
   const sIdx=metric.charAt(0)==='s'?(+metric.charAt(1)-1):null; // null = full lap time
   const series=[];
   DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};const pts=[];
-    for(let L=1;L<=maxN;L++){const s=stm[L];if(!s)continue;
+    // Start at 0: WIGE numbers a car's first flying lap 0 in LIVE/archived-from-LIVE
+    // events (see the lap-0 note above carStats()). Lap mode needs the FOLLOWING
+    // lap to exist before S5 backfills (prepLiveRaw), so excluding lap 0 here was
+    // costing every car its only available "Lap" point early in a session — S1..S5
+    // don't have that requirement, which is why they kept showing lines when Lap
+    // mode's line was empty until the legend hover rescaled the axis around it.
+    for(let L=0;L<=maxN;L++){const s=stm[L];if(!s)continue;
       let v,bkey;
       if(sIdx==null){if(s[0]==null||s[1]==null||s[2]==null||s[3]==null||s[4]==null)continue;v=s[0]+s[1]+s[2]+s[3]+s[4];bkey=(L-1)*5+5;}
       else{if(s[sIdx]==null)continue;v=s[sIdx];bkey=(L-1)*5+(sIdx+1);}
@@ -2027,9 +2036,12 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
       pts.push([L,v]);}
     if(pts.length)series.push({st,pts});});
   if(!series.length){ph((sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet');return;}
-  // x-axis spans only the laps run so far (not the full race distance maxN)
-  let lmax=1;series.forEach(({pts})=>{if(pts.length){const L=pts[pts.length-1][0];if(L>lmax)lmax=L;}});
-  const X=fx=>xL+(lmax<=1?0:(fx-1)/(lmax-1))*(xR-xL);
+  // x-axis spans only the laps run so far (not the full race distance maxN).
+  // lmin isn't always 1 any more: a car's earliest plotted point can be lap 0.
+  let lmin=Infinity,lmax=1;
+  series.forEach(({pts})=>{if(pts.length){if(pts[0][0]<lmin)lmin=pts[0][0];const L=pts[pts.length-1][0];if(L>lmax)lmax=L;}});
+  if(!isFinite(lmin))lmin=1;
+  const X=fx=>xL+(lmax<=lmin?0:(fx-lmin)/(lmax-lmin))*(xR-xL);
   const yT2=44,yB2=CH-26;
   const legRowH=(yB2-yT2)/Math.max(1,DB.cars.length);
   // (Re)draw the whole reel focused on one car: the y-axis is scaled to that
@@ -2050,7 +2062,7 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
       s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
       const tsec=Math.round(v),lbl=Math.floor(tsec/60)+':'+String(tsec%60).padStart(2,'0');
       s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
-    for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);
+    for(let L=lmin;L<=lmax;L++){if(L!==lmin&&L!==lmax&&(L-lmin)%5!==0)continue;const gx=X(L);
       s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
       s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
     s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
