@@ -81,6 +81,11 @@
   <div class="card" id="offlineCard">
     <h2><span class="dot" id="statusDot"></span> <span id="statusHeading">Server offline</span></h2>
     <div class="meta" style="margin:0 0 12px" id="statusMeta">The local capture process isn't responding — it may have crashed or been stopped. Restart it:</div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="restartBtn" onclick="restartServer()">Restart server</button>
+      <span class="meta" id="restartFeedback" style="margin:0"></span>
+    </div>
+    <div class="meta" style="margin:0 0 8px">If that button doesn't come back within ~10s (e.g. the process died outright), it needs a terminal instead:</div>
     <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
     <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
     <div class="meta" style="margin-top:12px">This page picks it up automatically within a few seconds — no need to reopen anything.</div>
@@ -242,6 +247,31 @@ function copyCmd(btn,text){
   }else if(legacyCopy(text)){
     flash();
   }
+}
+
+/* ---- restart without a terminal: tells the server to stop any capture and
+   re-exec itself in place (same PID, same port -- see /api/restart), then
+   polls /health until it answers again ---- */
+async function restartServer(){
+  const btn=document.getElementById('restartBtn'),fb=document.getElementById('restartFeedback');
+  btn.disabled=true;fb.textContent='Restarting…';
+  try{
+    await apiFetch(BASE+'/api/restart',{method:'POST'});
+  }catch(e){
+    if(e&&e.authRequired){btn.disabled=false;fb.textContent='';return;}
+    // a dropped connection here is expected -- that's the process re-exec'ing mid-response
+  }
+  for(let i=0;i<20;i++){
+    await new Promise(r=>setTimeout(r,500));
+    if(await checkServer()){
+      fb.textContent='Back online.';
+      setTimeout(()=>{fb.textContent='';},3000);
+      btn.disabled=false;
+      return;
+    }
+  }
+  fb.textContent="Still not responding — restart it from a terminal instead.";
+  btn.disabled=false;
 }
 
 /* ---- YouTube preview embed: just a bare iframe for the user's own convenience —

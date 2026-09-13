@@ -28,6 +28,7 @@ import re
 import secrets
 import signal
 import subprocess
+import sys
 import threading
 import time
 from collections import Counter
@@ -807,6 +808,35 @@ def monitor_stop():
     return jsonify(status='ok')
 
 
+@app.route('/api/restart', methods=['POST'])
+def restart_server():
+    # so you can restart without a terminal: stop any active capture cleanly
+    # (same as /api/monitor/stop), spawn a fresh copy of this script, then hard
+    # -exit this process. (Tried os.execv-in-place first -- re-execing the same
+    # PID should reuse the same fd table, but empirically the old listening
+    # socket didn't free up in time and the new image's app.run() immediately
+    # died with "address already in use", killing the server outright with no
+    # process left standing. Spawning the replacement *before* exiting sidesteps
+    # that: heavy imports (cv2 etc.) give the old process plenty of time to
+    # fully exit and release the port before the new one's app.run() binds --
+    # and that bind now retries for a few seconds regardless, just in case.)
+    global capture_session
+    proc = None
+    with lock:
+        if capture_session:
+            capture_session['stopped'] = True
+            proc = capture_session.get('proc')
+        capture_session = None
+    kill_proc(proc)
+
+    def _relaunch():
+        time.sleep(0.3)   # let this response reach the browser first
+        subprocess.Popen([sys.executable, str(Path(__file__).resolve())], start_new_session=True)
+        os._exit(0)
+    threading.Thread(target=_relaunch, daemon=True).start()
+    return jsonify(status='ok')
+
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json(force=True) or {}
@@ -875,4 +905,15 @@ if __name__ == '__main__':
     # 0.0.0.0: other machines on the same LAN/hotspot can open the dashboard too
     # (they only view/control this Mac's single capture session, same as this tab).
     # macOS may prompt to allow incoming connections for Python the first time.
-    app.run(debug=False, host='0.0.0.0', port=PORT)
+    # Retry the bind for a few seconds -- covers /api/restart's brief window
+    # where the old process hasn't released the port yet, and a plain manual
+    # relaunch racing a not-quite-dead previous instance.
+    for attempt in range(10):
+        try:
+            app.run(debug=False, host='0.0.0.0', port=PORT)
+            break
+        except OSError as e:
+            if attempt == 9:
+                raise
+            print(f'  port {PORT} still in use ({e}), retrying...')
+            time.sleep(0.5)
