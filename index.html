@@ -735,6 +735,7 @@
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
+          <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
           <div class="reelpanel"><div id="ytreel">
             <div class="vrhd">YOUTUBE STREAM</div>
@@ -818,15 +819,15 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=4;const REELN=21;
+let reelIdx=4;const REELN=22;
 /* ---- TWO INDEPENDENT REEL BLOCKS -----------------------------------------
    The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
    both carry the SAME full list of all 22 reels, each with its own selection —
    so any reel can be put in either block, including the same reel in both at
    once. Reel order (both blocks): 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
    5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
-   13 BARS, 14 FLOW, 15 WEATHER, 16 TIMETABLE, 17 YOUTUBE, 18 PIT,
-   19 CHAMP, 20 VIDEO. 0-14 keep the numbers they always had, so every
+   13 BARS, 14 FLOW, 15 WEATHER, 16 TEMP, 17 TIMETABLE, 18 YOUTUBE, 19 PIT,
+   20 CHAMP, 21 VIDEO. 0-14 keep the numbers they always had, so every
    existing reelIdx=== gate, PREFS.reel and keyboard handler stays valid.
 
    #reelstrip holds the ONE canonical copy of the panel markup, keeping the
@@ -1002,12 +1003,12 @@ function paintReel(T,idx,all,side){
     if(idx===12||all)renderDrvGrid(T);
     if(idx===13||all)renderP1Bar(T);
     if(idx===14||all)renderFlow(T);
-    // 15 WEATHER owns its own fetch+draw loop (initWeather), 16
-    // TIMETABLE redraws off the schedule, and 18 PIT is an iframe — they are
+    // 15 WEATHER / 16 TEMP own their own fetch+draw loop (initWeather), 17
+    // TIMETABLE redraws off the schedule, and 19 PIT is an iframe — they are
     // driven by reelShown() and their own timers, not by the frame loop.
-    if(idx===16&&typeof renderTimetable==='function')renderTimetable();
-    if(idx===19&&typeof renderChampionship==='function')renderChampionship();
-    if(idx===20&&typeof renderVideoReel==='function')renderVideoReel();
+    if(idx===17&&typeof renderTimetable==='function')renderTimetable();
+    if(idx===20&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===21&&typeof renderVideoReel==='function')renderVideoReel();
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -1021,17 +1022,17 @@ function reelShown(i,side){
     if(i===1&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
     if(i===2&&typeof svcH==='function')svcH(-1);                // SERVICE: land on SERVICE, not ARCHIVE
     if(i===15){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
-    if(i===18&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+    if(i===19&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
       if(typeof pitH==='function')pitH(0);
     }
-    if(i===19&&typeof renderChampionship==='function')renderChampionship();
-    if(i===20&&typeof renderVideoReel==='function')renderVideoReel();
+    if(i===20&&typeof renderChampionship==='function')renderChampionship();
+    if(i===21&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
     // scrolling away. Stop this block's player the moment it is not shown.
-    if(i!==17&&typeof stopYtPlayer==='function')stopYtPlayer();
+    if(i!==18&&typeof stopYtPlayer==='function')stopYtPlayer();
   });
 }
 // Height/width ratio for the reel viewport. Un-zoomed, reels inherit the
