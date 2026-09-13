@@ -3547,6 +3547,17 @@ function carXY(st,T){const lg=activeLeg(st,T);if(lg){const f=(T-lg[2])/((lg[3]-l
   // main map was correctly showing that same car predicted and moving.
   if(window.dataMode==='LIVE'){const res=liveCarXY(st,T);if(res)return res.xy;}
   return null;}
+// "Is this car sitting in the pit right now" — same two cases render()'s main-map
+// label already covers (flagged pitInfo(), or LIVE-predicted .parked from
+// liveCarXY()), pulled out so renderMini() (the zoom-view minimap) can show the
+// same " PIT" note on its own labels without a second hand-rolled copy of this
+// logic — see the carXY()/liveCarXY() comment above about what that already cost.
+function pitLike(st,T){
+  if(activeLeg(st,T))return false;
+  if(pitInfo(st,T))return true;
+  if(window.dataMode==='LIVE'){const res=liveCarXY(st,T);if(res)return res.parked;}
+  return false;
+}
 function fmt(s){const m=Math.floor(s/60);return m>0?(m+':'+(s-60*m).toFixed(1).padStart(4,'0')):s.toFixed(1);}
 let miniEvents=[];
 const miniG=document.getElementById('miniG'),MEL={};
@@ -3631,11 +3642,12 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     const R2=selq?r*1.5:r;E.c.setAttribute('r',R2);E.c.setAttribute('stroke',selq?'#e0301e':'#111');E.c.setAttribute('stroke-width',selq?'2':'1');E.c.setAttribute('fill-opacity',selq?'0.5':'1');
     E.c.setAttribute('fill',pos===1?'#F9A800':pos===2?'#C0C0C0':pos===3?'#7E4B26':DB.carcol[st]);
     E.p.textContent=pos<=3?('P'+pos):'';if(pos<=3){E.p.setAttribute('font-size',(R2*0.82).toFixed(1));E.p.setAttribute('y',(R2*0.3).toFixed(1));E.p.setAttribute('fill','#fff');E.p.setAttribute('stroke','#1a1a1a');E.p.setAttribute('stroke-width','0.6');E.p.setAttribute('paint-order','stroke');}
-    return {st,x:xy[0],y:xy[1],r:R2,E,selq};});
+    const pit=pitLike(st,T);E.t.textContent=pit?('#'+st+' PIT'):('#'+st);
+    return {st,x:xy[0],y:xy[1],r:R2,E,selq,pit};});
   dots.slice().sort((a,b)=>(lp[b.st]||99)-(lp[a.st]||99)).forEach(d=>miniG.appendChild(d.E.g));
   const fs=9.3; // #xxx car labels on the zoom map, +50% for legibility
   dots.forEach(dt=>{const E=dt.E;E.t.setAttribute('font-size',fs);E.t.setAttribute('fill',dt.selq?'#e0301e':'#16202b');
-    const lw=('#'+dt.st).length*fs*0.62,lh=fs,half=Math.max(lw,lh)/2,gap=3;
+    const lw=('#'+dt.st+(dt.pit?' PIT':'')).length*fs*0.62,lh=fs,half=Math.max(lw,lh)/2,gap=3;
     const base=Math.atan2(DB.cy-dt.y,DB.cx-dt.x);
     const dirs=[0,25,-25,50,-50,80,-80].map(a=>{const t=base+a*Math.PI/180;return [Math.cos(t),Math.sin(t)];});
     let best=null,bestPen=Infinity;
