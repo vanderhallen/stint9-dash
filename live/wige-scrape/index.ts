@@ -159,13 +159,50 @@ function berlinToUtcISO(dateStr: string, hms: string): string | null {
   return new Date(guess.getTime() - (berlin.getTime() - utc.getTime())).toISOString();
 }
 
+// Some WIGE sessions (verified 2026-09-12/13: two different session codes, one a
+// day apart) rebroadcast a PRIOR day's channel-[3] message log verbatim — same
+// MESSAGE text at the same MESSAGETIME wall-clock — under the current day's
+// event_date. Downstream that reads as "today's" race control, even though it is
+// yesterday's board replaying (an upstream WIGE feed quirk, not our scrape logic).
+// replayKey() gives collect() a fingerprint to check new items against a set of
+// (time, text) pairs already seen on an EARLIER event_date; a hit means "WIGE is
+// replaying old data" and the item is dropped before it ever reaches
+// stint9_messages. The raw frame is still archived verbatim in
+// stint9_live_frames regardless, so nothing is lost for forensics.
+function normHms(s: string): string {
+  const m = s.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}:${m[3]}` : s;
+}
+function replayKey(hms: string, message: string): string { return `${normHms(hms)}|${message}`; }
+function berlinHms(iso: string): string {
+  try { return new Date(iso).toLocaleTimeString('en-GB', { timeZone: 'Europe/Berlin', hour12: false }); } catch { return ''; }
+}
+// Best-effort, non-fatal: on any failure this returns an empty set, which means
+// "don't filter anything" — a lookup outage must never block real messages.
+async function fetchReplaySet(ed: string): Promise<Set<string>> {
+  const set = new Set<string>();
+  try {
+    const since = new Date(`${ed}T00:00:00Z`); since.setUTCDate(since.getUTCDate() - 7);
+    const sinceStr = `${since.getUTCFullYear()}-${p2(since.getUTCMonth() + 1)}-${p2(since.getUTCDate())}`;
+    const res = await fetch(
+      `${SB_URL}/rest/v1/stint9_messages?select=message,created_at&event_date=gte.${sinceStr}&event_date=lt.${ed}&limit=5000`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
+    );
+    if (!res.ok) return set;
+    const rows: { message: string; created_at: string }[] = await res.json();
+    for (const r of rows) { const hms = berlinHms(r.created_at); if (hms) set.add(replayKey(hms, r.message)); }
+  } catch { /* offline lookup -> no filtering this run, better than blocking real messages */ }
+  return set;
+}
+
 // deno-lint-ignore no-explicit-any
-function mapMessages(items: any[], ed: string): MessageRow[] {
+function mapMessages(items: any[], ed: string, replaySet?: Set<string>): MessageRow[] {
   const out: MessageRow[] = [];
   for (const it of items || []) {
     const message = String(it?.MESSAGE ?? '').trim();
     if (!message) continue;
     const mtime = String(it?.MESSAGETIME ?? '').trim();
+    if (replaySet?.has(replayKey(mtime, message))) continue; // stale rebroadcast of a prior day — do not surface as "new"
     const carM = message.match(/#\s*(\d+)/);            // first car number named, if any
     const created = berlinToUtcISO(ed, mtime);
     out.push({
@@ -198,6 +235,9 @@ function fnv1a(s: string): string {
 type CollectOpts = {
   holdMs: number;
   flushMs?: number;
+  // (time, text) fingerprints of messages already seen on an earlier event_date —
+  // see fetchReplaySet(). Matching channel-[3] items are dropped, not collected.
+  replaySet?: Set<string>;
   // Called every flushMs with the timing rows that CHANGED and any race-control
   // messages NOT yet flushed since the last tick, plus the full current field
   // size — lets HOLD mode stream both to Supabase mid-socket. `frames` carries the
@@ -268,7 +308,7 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
       // the one exception (skipped above) — they carry no race data.
       archiveFrame(m);
       // Channel [3]: race-control message frame (no RESULT). Collect & dedup.
-      if (Array.isArray(m.MESSAGES)) { for (const r of mapMessages(m.MESSAGES, ed)) messages.set(r.ext_key, r); return; }
+      if (Array.isArray(m.MESSAGES)) { for (const r of mapMessages(m.MESSAGES, ed, opts.replaySet)) messages.set(r.ext_key, r); return; }
       if (!Array.isArray(m.RESULT) || !m.RESULT.length) return;
       // P1-2: skip wrong-series snapshots while range-scanning.
       if (gated && !acceptEvent(m)) { const id = String(m.EXPORTID ?? ''); if (id) rejected.add(id); return; }
@@ -400,6 +440,7 @@ Deno.serve(async (req) => {
       // next cron tick can try again cheaply.
       if (!eventId)
         return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
+      const replaySet = await fetchReplaySet(ed);
 
       let flushed = 0, msgFlushed = 0, frameFlushed = 0;
       const onFlush = (rows: TimingRow[], meta: Meta | null, total: number, msgs: MessageRow[], frames: FrameRow[]) => (async () => {
@@ -411,7 +452,7 @@ Deno.serve(async (req) => {
         frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
         await upsert('stint9_live_status', [statusRow(ed, meta, eventId, total)], 'event_date');
       })();
-      const { meta, rows, messages, frames } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush });
+      const { meta, rows, messages, frames } = await collect([eventId], /* gated */ false, { holdMs: HOLD_MS, flushMs: FLUSH_MS, onFlush, replaySet });
       // Tail: frames sampled after the final flush tick.
       frameFlushed += await upsert('stint9_live_frames', frames, 'event_date,pid,body_hash', 'ignore-duplicates').catch(() => 0);
       // Final status write with the true field size (last flush carried a batch count).
@@ -425,7 +466,8 @@ Deno.serve(async (req) => {
     // asked for — a bare range scan is known-broken, see above.
     if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
     const ids = eventId ? [eventId] : idRange(range);
-    const { meta, rows, messages, frames, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS });
+    const replaySet = await fetchReplaySet(ed);
+    const { meta, rows, messages, frames, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS, replaySet });
 
     const nT = await upsert('stint9_live_timing', rows, 'event_date,car,lap');
     // Race-control messages (channel [3]) -> stint9_messages, deduped on ext_key.
