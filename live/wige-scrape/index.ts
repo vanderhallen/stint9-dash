@@ -136,7 +136,12 @@ type Meta = { event_id: string; session: string | null; heat: string | null; tra
 // deno-lint-ignore no-explicit-any
 function mapCar(c: any, ed: string, rootTod: number | null, nSectors: number): TimingRow | null {
   const car = String(c.STNR ?? '').trim();
-  const lap = Number(c.LAPS ?? c.LAP);
+  // +1: WIGE's own LAPS counter is 0 for a car's first FLYING lap (it never
+  // logs the untimed formation lap as a row of its own), so passed straight
+  // through this made the dashboard's first real, timed lap read "L0" instead
+  // of "L1" — both in LIVE and in any later SIM replay of that event, since
+  // both read this same stored lap number via the shared build-db.js.
+  const lap = Number(c.LAPS ?? c.LAP) + 1;
   if (!car || !Number.isFinite(lap)) return null;
   // P2: sector count from the feed. Table has s1..s5, so cap at 5.
   const s = (k: number) => (k <= nSectors ? secOrNull(c[`S${k}TIME`]) : null);

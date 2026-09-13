@@ -119,7 +119,10 @@ function mapSnapshot(msg, ed) {
   const rows = [];
   for (const c of msg.RESULT || []) {
     const car = String(c.STNR ?? '').trim();
-    const lap = Number(c.LAPS ?? c.LAP);
+    // +1: WIGE's own LAPS counter is 0 for a car's first FLYING lap (it never
+    // logs the untimed formation lap as a row of its own) — kept in sync with
+    // the same fix in live/wige-scrape/index.ts's mapCar().
+    const lap = Number(c.LAPS ?? c.LAP) + 1;
     if (!car || !Number.isFinite(lap)) continue;
     const sec = {};
     for (let k = 1; k <= 5; k++) {
