@@ -1961,6 +1961,30 @@ every unrecognised label race-ranks. Verified against the real 2026-09-12 quali
 rows: P1 #664 9:10.9 (3 laps) · #650 9:14.0 · #653 9:25.7 · #670 9:28.5 ·
 #661 9:38.6 · #665 9:43.6 · #652 9:47.2 · #651 9:51.0 · #667 9:51.7 · #677 no time.
 
+**Gap follow-up — fixed 2026-09-13.** "Anything not positively identified
+falls through to race" (above) also caught a session running past its OWN
+scheduled end: NLS9's quali window was `06:30–08:00`, but at `08:09` WIGE's
+own `heat` still read `Zeittraining [T]` — the field was still qualifying,
+just running long — while the next scheduled row (`pitwalk`, `08:20`) hadn't
+started. `currentWindowLabel()` found no row containing *now* and returned
+`null`, so `sessionKind()` fell back to race ranking and #665 (fastest lap on
+screen) showed as P6 behind cars with more laps — the *exact* #670 symptom
+this section already describes, just from a schedule GAP rather than an
+unrecognised label. Fixed by having `currentWindowLabel()` carry forward the
+label of whichever row most recently **ended**, for exactly the gap between
+it and the next row's start — a real race's own start still takes over
+immediately via the exact-match check first, so the "a race can never be
+re-ranked by accident" property above is unaffected; only inter-session gaps
+change.
+
+**General principle worth restating:** ranking method is a property of the
+*session type*, not of this reel or that one. Every place that reads
+`livePos()` (leaderboard, STINT, GRID, the zoom minimap, …) inherits whichever
+ranking `sessionKind()` picked — there should never be a second, hand-rolled
+"is this quali" check anywhere else. If a panel ever shows the wrong car at
+P1 with the best time on screen, check `sessionKind()`/`currentWindowLabel()`
+first, not that panel's own code.
+
 ## 15.5 Feature-parity audit — SIM vs LIVE
 
 Traced every `window.dataMode` branch point in `index.html` (24 occurrences).

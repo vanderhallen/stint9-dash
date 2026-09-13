@@ -77,6 +77,44 @@ const order = lp => Object.keys(lp).sort((x, y) => lp[x] - lp[y]);
   check('practice ranks as a time sheet', rank('practice', 'LIVE').sessionKind() === 'quali');
 }
 
+/* 2026-09-13: a session overrunning its scheduled slot must not be silently
+ * race-ranked in the gap before the next scheduled row starts — NLS9's quali
+ * (06:30-08:00) was still running (WIGE's own heat: "Zeittraining") at 08:09,
+ * with the next row (pitwalk) not due until 08:20; #665 held the fastest lap
+ * on screen but showed P6 because currentWindowLabel() found no row
+ * containing "now" and fell straight to race ranking. */
+{
+  const DB = { cars: Object.keys(CARS) };
+  const now = Date.now(), min = 60e3;
+  const gapRows = { rows: [
+    { label: 'quali', start: new Date(now - 90 * min), end: new Date(now - 9 * min) },
+    { label: 'pitwalk', start: new Date(now + 11 * min), end: new Date(now + 40 * min) },
+  ] };
+  const mkGap = () => new Function('DB', 'SCHEDULE', 'window', 'carStats', 'carProgress', `
+    ${src}
+    return {livePos, sessionKind};`)(
+      DB, gapRows, { dataMode: 'LIVE' },
+      st => ({ fast: CARS[st].fast }), st => ({ p: CARS[st].p, t: CARS[st].t }));
+  const gap = mkGap();
+  check('a gap after quali\'s end (before the next row starts) still ranks as a time sheet',
+        gap.sessionKind() === 'quali', gap.sessionKind());
+  check('P1 in that gap is still the fastest lap (#670), not race-tiebroken',
+        order(gap.livePos(1e9))[0] === '670', order(gap.livePos(1e9)));
+
+  // once pitwalk's OWN start time arrives, it must pre-empt the carried-forward
+  // quali label immediately — a race window can never be blocked by this.
+  const mkPitwalk = () => new Function('DB', 'SCHEDULE', 'window', 'carStats', 'carProgress', `
+    ${src}
+    return {livePos, sessionKind};`)(
+      DB, { rows: [
+        { label: 'quali', start: new Date(now - 90 * min), end: new Date(now - 9 * min) },
+        { label: 'pitwalk', start: new Date(now - 1 * min), end: new Date(now + 30 * min) },
+      ] }, { dataMode: 'LIVE' },
+      st => ({ fast: CARS[st].fast }), st => ({ p: CARS[st].p, t: CARS[st].t }));
+  check('once pitwalk\'s own window starts it pre-empts the carried-forward quali label',
+        mkPitwalk().sessionKind() === 'race', mkPitwalk().sessionKind());
+}
+
 /* SIM replay uses the archived bundle's label, not the wall clock */
 {
   const DB = { cars: Object.keys(CARS) };
