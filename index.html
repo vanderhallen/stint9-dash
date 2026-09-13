@@ -638,7 +638,7 @@
     <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 56%;min-width:0;padding:4px 6px;display:none">
       <table class="stints cmp"><thead><tr><th>Pos</th><th>Driver</th><th>Gap</th><th>Fastest</th><th>Last lap</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead><tbody id="cmpbody"></tbody></table>
     </div>
-    <div class="card" id="gapbox" style="flex:1 1 44%;min-width:0;padding:6px 12px;display:none">
+    <div class="card" id="gapbox" data-focus style="flex:1 1 44%;min-width:0;padding:6px 12px;display:none">
       <div class="colhead" style="margin:0 0 2px">Cumulative gap to <span id="gaphd"></span></div>
       <svg id="gapchart" viewBox="0 0 1000 140" style="display:block;width:100%;height:auto"></svg>
     </div>
@@ -2820,15 +2820,29 @@ function askAgent(q){
 function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=document.getElementById('gapchart');const p=lp[selCar];
   if(!selCar||!p){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const ref=byPos[1];if(!ref){box.style.display='none';return;}
-  const col=st=>DB.carcol[st]||'#888';const plot=[];[2,3].forEach(pp=>{if(byPos[pp])plot.push(byPos[pp]);});
-  if(p>3&&plot.indexOf(selCar)<0&&selCar!==ref)plot.push(selCar);
+  const col=st=>DB.carcol[st]||'#888';
+  // Zoomed: every other car in the class vs the leader, not just P2/P3 +
+  // selected — same "show the whole field" intent as the podium table's zoom.
+  const zoomed=box.classList.contains('zoomed');
+  let plot;
+  if(zoomed){
+    plot=DB.cars.filter(st=>st!==ref);
+  }else{
+    plot=[];[2,3].forEach(pp=>{if(byPos[pp])plot.push(byPos[pp]);});
+    if(p>3&&plot.indexOf(selCar)<0&&selCar!==ref)plot.push(selCar);
+  }
   const series=plot.map(st=>{const pts=[];for(let L=1;L<=maxN;L++){const ts=BX[st][L*5],tc=BX[ref][L*5];if(ts==null||tc==null)continue;if(ts>T||tc>T)break;pts.push([L,ts-tc]);}
     const lb=lastCommon(st,ref,T);if(lb!=null){const tsL=BX[st][lb],tcL=BX[ref][lb];if(tsL!=null&&tcL!=null){const gL=tsL-tcL,LL=Math.floor((lb-1)/5)+1,sg=keySec(lb),fx=(LL-1)+sg/5;if(!pts.length||fx>pts[pts.length-1][0]+1e-6)pts.push([fx,gL]);else pts[pts.length-1]=[fx,gL];}}
     return {st,pts};}).filter(sr=>sr.pts.length);
   if(!series.length){box.style.display='none';return;}
   document.getElementById('gaphd').textContent='#'+ref;
   let mn=0,mx=0;series.forEach(sr=>sr.pts.forEach(pt=>{if(pt[1]<mn)mn=pt[1];if(pt[1]>mx)mx=pt[1];}));
-  const xL=46,xR=978,yT=18,yB=118,X=L=>xL+(maxN<=1?0:(L-1)/(maxN-1))*(xR-xL);
+  // The end-of-line labels get pushed apart (26 units each) whenever two are too
+  // close — fine for 3 lines against a 100-unit-tall plot, but the whole field's
+  // worth of labels needs a taller viewBox or they'd overflow past yB and clip.
+  const xL=46,xR=978,yT=18,yB=zoomed?Math.max(118,yT+series.length*26+20):118;
+  svg.setAttribute('viewBox','0 0 1000 '+(yB+22));
+  const X=L=>xL+(maxN<=1?0:(L-1)/(maxN-1))*(xR-xL);
   const pad=Math.max(8,(mx-mn)*0.18),lo=mn-pad,hi=mx+pad,Y=g=>yB-(g-lo)/((hi-lo)||1)*(yB-yT);
   let s='';
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+Y(0).toFixed(1)+'" y2="'+Y(0).toFixed(1)+'" stroke="'+col(ref)+'" stroke-width="3" stroke-dasharray="7 6"/>';
