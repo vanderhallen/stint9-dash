@@ -725,12 +725,6 @@
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
-        </div>
-      </div>
-    </div>
-    <div class="card" data-focus style="flex:1 1 auto;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
-      <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
-        <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
@@ -754,6 +748,12 @@
             <div class="vrbtns"><button class="rnbtn" id="rn-analyse">ANALYSE &amp; CLIP</button><span id="rn-spin" class="vrspin" role="progressbar" aria-label="analysing video"></span><span id="rn-progress" class="vrhint"></span></div>
             <div id="rn-clips"></div>
           </div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" data-focus style="flex:1 1 auto;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
+      <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
+        <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
         </div>
       </div>
       <div id="wxnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
@@ -810,7 +810,85 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=4;const REELN=15;
+let reelIdx=4;const REELN=22;
+/* ---- TWO INDEPENDENT REEL BLOCKS -----------------------------------------
+   The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
+   both carry the SAME full list of all 22 reels, each with its own selection —
+   so any reel can be put in either block, including the same reel in both at
+   once. Reel order (both blocks): 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
+   5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
+   13 BARS, 14 FLOW, 15 WEATHER, 16 TEMP, 17 TIMETABLE, 18 YOUTUBE, 19 PIT,
+   20 CHAMP, 21 VIDEO. 0-14 keep the numbers they always had, so every
+   existing reelIdx=== gate, PREFS.reel and keyboard handler stays valid.
+
+   #reelstrip holds the ONE canonical copy of the panel markup, keeping the
+   element ids every render function already looks up. #wxstrip is built from
+   it at load with cloneNode, every id inside rewritten to id+'_r'. There is
+   only one piece of panel markup, so the two lists can never drift apart —
+   add a reel to #reelstrip and both blocks get it.
+
+   Painting the clone needs NO change to the ~20 render functions: withSide()
+   flips a document.getElementById shim that resolves 'ltgraph' to
+   '#ltgraph_r', falling back to the canonical node for anything that lives
+   outside a reel (e.g. '#carsel'), so a renderer paints whichever side it is
+   called for. The same trick re-runs the interactive panels' own init code
+   (fuel inputs, the weather map, the iframes, YouTube) against the clone. */
+const RSUF='_r';
+let RSIDE='';
+const _gebi=document.getElementById.bind(document);
+document.getElementById=function(id){
+  if(RSIDE){const e=_gebi(id+RSIDE);if(e)return e;}
+  return _gebi(id);
+};
+function withSide(side,fn){const prev=RSIDE;RSIDE=side;try{return fn();}finally{RSIDE=prev;}}
+/* Which block does this element live in? Lets a handler bound to a control
+   inside a panel (COMP's metric buttons, a privlock LOGIN) act on its own
+   block rather than always the left one. */
+function reelSideOf(el){return (el&&el.closest&&el.closest('#wxstrip'))?RSUF:'';}
+/* Per-side handles for the panels that own a live widget rather than just
+   re-rendered markup: each side's weather map and pit iframe register their
+   own resize/refit callback here (see the init re-run at the end of this
+   script), so reelShown() can wake the right one. */
+const SIDEFN={'':{},[RSUF]:{}};
+/* Each interactive panel's init IIFE drops itself in here (first line of its
+   own body) so the same code can be re-run against the clone's inputs, iframes
+   and map at the end of this script — see the right-block init pass there. */
+const RINIT={};
+/* ids that exist twice after cloning — needed by the CSS mirror below */
+let RCLONED=[];
+(function buildRightStrip(){
+  const src=_gebi('reelstrip'),dst=_gebi('wxstrip');
+  if(!src||!dst||dst.children.length)return;
+  const clone=src.cloneNode(true);
+  clone.querySelectorAll('[id]').forEach(el=>{RCLONED.push(el.id);el.id=el.id+RSUF;});
+  while(clone.firstChild)dst.appendChild(clone.firstChild);
+  /* The stylesheet targets panel internals by id (#champreel, #ytreel, …), and
+     those selectors do not match the suffixed clone — it would render unstyled.
+     Rather than hand-maintaining a second copy of ~50 rules, mirror at runtime:
+     any rule whose selector names a cloned id is re-inserted with the id
+     suffixed. Recurses into @media so the zoomed-table rules come along too.
+     Fully automatic, so a future CSS tweak needs no twin edit. */
+  if(!RCLONED.length)return;
+  const idRe=new RegExp('#('+RCLONED.map(s=>s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g,'\\$&')).join('|')+')(?![\\w-])','g');
+  const mirror=parent=>{
+    let rules;try{rules=parent.cssRules;}catch(e){return;}
+    if(!rules)return;
+    const add=[];
+    for(const r of rules){
+      // @media / @supports only. NOT `if(r.cssRules)`: since CSS nesting
+      // shipped, a plain CSSStyleRule exposes an (empty) .cssRules too, so
+      // that test skipped every rule in the sheet and mirrored nothing.
+      if(r.cssRules&&!r.selectorText){mirror(r);continue;}
+      if(!r.selectorText)continue;
+      idRe.lastIndex=0;
+      if(!idRe.test(r.selectorText))continue;
+      idRe.lastIndex=0;
+      add.push(r.selectorText.replace(idRe,'#$1'+RSUF)+'{'+r.style.cssText+'}');
+    }
+    add.forEach(t=>{try{parent.insertRule(t,(parent.cssRules||[]).length);}catch(e){}});
+  };
+  for(const sheet of document.styleSheets){try{mirror(sheet);}catch(e){}}
+})();
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 let PTIME={};try{PTIME=JSON.parse(localStorage.getItem('stint9_ptime')||'{}')||{};}catch(e){PTIME={};}
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
@@ -888,7 +966,58 @@ function syncFuelNoteIfLive(car,L,note){
       body:JSON.stringify({event_date:(DB.event&&DB.event.date)||'',car:String(car),lap:L,note:note,updated_at:new Date().toISOString()})}).catch(()=>{});
   },800);
 }
-function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;document.querySelectorAll('.reelthumb').forEach(t=>t.classList.toggle('active',+t.dataset.i===reelIdx));}
+function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;}
+/* Paint one block's reels. `side` selects which copy of the panels the render
+   functions resolve to (see withSide); `all` sweeps every reel rather than
+   just the visible one. Every renderer below is untouched by the two-block
+   change — they still look their elements up by their original id. */
+function paintReel(T,idx,all,side){
+  withSide(side,()=>{
+    if(idx===0||all)renderFuel(T);
+    if(idx===3||all)renderSecTab(T);
+    if(idx===4||all)renderChart(T);
+    if(idx===5||all)renderStints(T);
+    if(idx===6||all)renderPTime(T);
+    if(idx===7||all)renderSectors(T);
+    if(idx===8||all)renderLapTrace(T);
+    if(idx===9||all)renderComp(T);
+    if(idx===10||all)renderSectGrid(T);
+    if(idx===11||all)renderNiekGrid(T);
+    if(idx===12||all)renderDrvGrid(T);
+    if(idx===13||all)renderP1Bar(T);
+    if(idx===14||all)renderFlow(T);
+    // 15 WEATHER / 16 TEMP own their own fetch+draw loop (initWeather), 17
+    // TIMETABLE redraws off the schedule, and 19 PIT is an iframe — they are
+    // driven by reelShown() and their own timers, not by the frame loop.
+    if(idx===17&&typeof renderTimetable==='function')renderTimetable();
+    if(idx===20&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===21&&typeof renderVideoReel==='function')renderVideoReel();
+  });
+}
+/* Per-reel "it just became the visible one" work, for whichever block scrolled
+   to it: `side` is '' for the left block's canonical panels or RSUF for the
+   right block's clone, so each block wakes up ITS OWN iframe/map/player rather
+   than the other block's. Called from setReel/setWxReel (a real change) and
+   once per block at boot — not from applyReel(), which also runs on every
+   resize and must not re-poke the iframes each time. */
+function reelShown(i,side){
+  withSide(side,()=>{
+    if(i===1&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
+    if(i===2&&typeof svcH==='function')svcH(-1);                // SERVICE: land on SERVICE, not ARCHIVE
+    if(i===15){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
+    if(i===19&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+      pushPit(true);
+      const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
+      if(typeof pitH==='function')pitH(0);
+    }
+    if(i===20&&typeof renderChampionship==='function')renderChampionship();
+    if(i===21&&typeof renderVideoReel==='function')renderVideoReel();
+    // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
+    // DOM, so a playing embed would keep running — and making noise — after
+    // scrolling away. Stop this block's player the moment it is not shown.
+    if(i!==18&&typeof stopYtPlayer==='function')stopYtPlayer();
+  });
+}
 // Height/width ratio for the reel viewport. Un-zoomed, reels inherit the
 // leaderboard aspect (CH/1000), which is short for small classes. When the
 // card is zoomed (detail view) EVERY reel uses the TYRE board's native
@@ -951,7 +1080,10 @@ function reelFitHeight(w){
    <svg> children and reads each one's own viewBox, so it self-corrects when a
    chart uses a different aspect. */
 function syncReelPanels(){
-  const v=document.getElementById('reelview');if(!v)return;
+  // both blocks hold the same 22 panels now, so size the panels in each
+  [_gebi('reelview'),_gebi('wxview')].forEach(v=>{if(v)syncReelPanelsIn(v);});
+}
+function syncReelPanelsIn(v){
   const h=v.clientHeight,w=v.clientWidth;if(h<10||w<10)return;
   v.querySelectorAll('.reelpanel>svg').forEach(svg=>{
     const panel=svg.parentElement;
@@ -967,8 +1099,7 @@ function syncReelPanels(){
   });
 }
 function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reelIdx=i;
-  if(i===1)boardCenter();   // arriving on the TYRE row via the vertical reel: centre it on BOARD
-  if(i===2)svcH(-1);        // arriving on the SERVICE row: always show SERVICE (ARCHIVE only via right arrow)
+  reelShown(i,'');          // TYRE centring, SERVICE landing, pit/weather/YouTube wake-ups — see reelShown()
   // Only re-size on switch while zoomed — each reel can want a different
   // height now (see reelHeightRatio()). Inline, the reel height is owned by
   // growMaps() (grown to fill the page) — don't clobber it back down.
@@ -2057,7 +2188,7 @@ function renderPTime(T){
   h+='</tbody></table>';
   wrap.innerHTML=h;
 }
-(function initPTime(){
+(function initPTime(){RINIT.initPTime=initPTime;
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
   wrap.addEventListener('input',function(e){
     const el=e.target;if(!el||!el.classList.contains('ptime-in'))return;
@@ -2099,7 +2230,11 @@ function smoothPath(pts){
 let compHoverCar=null;
 function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
   const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  const metricEl=document.querySelector('#compmetric .seg.on'),metric=metricEl?metricEl.dataset.v:'lap';
+  // via getElementById (not a '#compmetric' querySelector) so the shim resolves
+  // it to whichever block this render pass is painting — each block's COMP reel
+  // keeps its own metric selection.
+  const _mbox=document.getElementById('compmetric');
+  const metricEl=_mbox&&_mbox.querySelector('.seg.on'),metric=metricEl?metricEl.dataset.v:'lap';
   const sIdx=metric.charAt(0)==='s'?(+metric.charAt(1)-1):null; // null = full lap time
   const series=[];
   DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};const pts=[];
@@ -3062,22 +3197,15 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   gd.querySelectorAll('text').forEach(t=>{t.style.display=lbls.checked?'':'none';});
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60();
   const _tk=Date.now()-_thT>=300;
-  // reel dispatch — order: 0 FUEL, 1 TYRE, 2 SERVICE, 3 TIMES, 4 POS,
-  // 5 STINT, 6 P-TIME, 7 SECT, 8 PACE, 9 COMP, 10 GRID, 11 NIEK, 12 DRV,
-  // 13 BARS, 14 FLOW
-  if(reelIdx===0||_tk)renderFuel(T);
-  if(reelIdx===3||_tk)renderSecTab(T);
-  if(reelIdx===4||_tk)renderChart(T);
-  if(reelIdx===5||_tk)renderStints(T);
-  if(reelIdx===6||_tk)renderPTime(T);
-  if(reelIdx===7||_tk)renderSectors(T);
-  if(reelIdx===8||_tk)renderLapTrace(T);
-  if(reelIdx===9||_tk)renderComp(T);
-  if(reelIdx===10||_tk)renderSectGrid(T);
-  if(reelIdx===11||_tk)renderNiekGrid(T);
-  if(reelIdx===12||_tk)renderDrvGrid(T);
-  if(reelIdx===13||_tk)renderP1Bar(T);
-  if(reelIdx===14||_tk)renderFlow(T);
+  // Reel dispatch, once per block — see the reel order note by REELN. The LEFT
+  // block keeps the long-standing behaviour of sweeping every reel on the _tk
+  // tick; the RIGHT block paints only the one reel it is actually showing, so
+  // running a second full 22-reel list costs one extra renderer per tick
+  // instead of another thirteen. wxReelIdx is `var` and assigned far below, so
+  // on the boot render it is still undefined here — every === is then false and
+  // this is a no-op for the right block, which is exactly what we want.
+  paintReel(T,reelIdx,_tk,'');
+  paintReel(T,wxReelIdx,false,RSUF);
   fitZoomTable();   // after the reel that owns the zoomed table has redrawn — new laps change its height
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
@@ -3362,7 +3490,16 @@ sel.onchange=e=>{selCar=e.target.value;if(selCar)wantCar=String(selCar);   // ex
 document.getElementById('reelup').onclick=()=>setReel(reelIdx-1);
 document.getElementById('reeldn').onclick=()=>setReel(reelIdx+1);
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));
-document.querySelectorAll('#compmetric .seg').forEach(b=>b.onclick=()=>{document.querySelectorAll('#compmetric .seg').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderComp(T);});
+/* Both blocks carry a COMP reel, so wire both metric selectors and keep each
+   one's choice to its own block: the toggle is scoped to the button's own
+   group, and only that block is repainted. reelSideOf() reads which strip the
+   button ended up in. */
+document.querySelectorAll('#compmetric .seg,#compmetric'+RSUF+' .seg').forEach(b=>b.onclick=()=>{
+  const box=b.parentElement;
+  box.querySelectorAll('.seg').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  withSide(reelSideOf(b),()=>renderComp(T));
+});
 // #agentModal is position:fixed;inset:0 to centre on the viewport, but it
 // lives inside .agentbar -> .wrap, and fitPage() applies a CSS transform:scale
 // to .wrap whenever the page needs shrinking to fit -- any transformed
@@ -3442,7 +3579,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
 /* BOARD reel: scale the embedded tyre.html board (logical ~1340x700) to fit
    its reel panel, re-fitting whenever the panel resizes (incl. on zoom). */
-(function initBoardFrame(){
+(function initBoardFrame(){RINIT.initBoardFrame=initBoardFrame;
   const f=document.getElementById('boardframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
@@ -3463,7 +3600,7 @@ function boardCenter(){const f=document.getElementById('boardframe');if(f&&f.con
 /* SERVICE reel scales like the TYRE board: service.html renders at a fixed
    logical 1340x700 and is transform:scaled to fit its panel (small inline or
    large zoomed), so it looks the same either way instead of squashing. */
-(function initSvcFrame(){
+(function initSvcFrame(){RINIT.initSvcFrame=initSvcFrame;
   const f=document.getElementById('svcframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
@@ -3479,7 +3616,7 @@ function boardCenter(){const f=document.getElementById('boardframe');if(f&&f.con
 function svcH(dir){const f=document.getElementById('svcframe');if(f&&f.contentWindow)f.contentWindow.postMessage({type:'svcH',dir},'*');}
 /* PIT reel scales exactly like TYRE/SERVICE -- pit.html renders at the same
    logical 1340x700 and is transform:scaled, so it reads the same inline or zoomed. */
-(function initPitFrame(){
+(function initPitFrame(){RINIT.initPitFrame=initPitFrame;
   const f=document.getElementById('pitframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
@@ -3598,7 +3735,7 @@ document.addEventListener('keydown',e=>{
   // there, so when it sits anywhere else the keys are free for PIT's pages.
   else if(wxReelIdx===4){e.preventDefault();pitH(e.key==='ArrowRight'?1:-1);}
 });
-(function initFuel(){const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
+(function initFuel(){RINIT.initFuel=initFuel;const cap=document.getElementById('fcap'),cons=document.getElementById('fcons'),frm=document.getElementById('fform'),st=document.getElementById('fstart');if(!cap)return;
   cap.value=FUEL.cap;cons.value=FUEL.cons;frm.value=FUEL.form;st.value=FUEL.start;
   cap.oninput=()=>{FUEL.cap=Math.max(0,parseFloat(cap.value||'0'));saveFuel();render();};
   cons.oninput=()=>{FUEL.cons=Math.max(0,parseFloat(cons.value||'0'));saveFuel();render();};
@@ -3746,7 +3883,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   setNb(mAhead,ah,'▲',p-1);setNb(mBehind,be,'▼',p+1);setEv(T);}
 
 /* ---- weather radar (RainViewer) ---- */
-(function initWeather(){if(typeof L==='undefined'){return setTimeout(initWeather,300);}
+(function initWeather(){RINIT.initWeather=initWeather;if(typeof L==='undefined'){return setTimeout(initWeather,300);}
   // Carto's basemaps.cartocdn.com free tier now requires an API key we never
   // had — every tile came back as a placeholder PNG with "API KEY REQUIRED"
   // baked into it, reported 2026-09-12. OpenStreetMap's own tile server needs
@@ -4167,7 +4304,7 @@ function buildClass(cls){
 // '' != null the next load restored an empty wantCar and buildClass fell to
 // DB.cars[0] -- the lowest number in the class.
 function prefCar(){return wantCar||selCar||(PREFS&&PREFS.car)||'';}
-function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({pace:String(paceThr),speed:document.getElementById('speed').value,car:prefCar(),cls:document.getElementById('classsel').value,reel:reelIdx}));}catch(e){}}
+function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({pace:String(paceThr),speed:document.getElementById('speed').value,car:prefCar(),cls:document.getElementById('classsel').value,reel:reelIdx,reelR:(typeof wxReelIdx!=='undefined'?wxReelIdx:null)}));}catch(e){}}
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
 if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='10';}
@@ -5106,7 +5243,7 @@ let rnCar='';                            // the racenote target = the currently 
 const RN_SECKM=[3.3,3.3,6.0,9.4,2.4];   // NLS 5-sector estimated lengths (nls-sector-layout.md)
 const RN_GAP_THR=1.0;                     // seconds/lap of closing before a "gap" note fires
 let rnClass=null,rnCars=[],rnBX={},rnLegs={},rnTok=null,rnIdentTok=null;
-let rnNotes=[],rnSeen=new Set(),rnPosted=new Set(),rnLoaded=false,rnLastScan=0,rnWired=false;
+let rnNotes=[],rnSeen=new Set(),rnPosted=new Set(),rnLoaded=false,rnLastScan=0,rnWired={};
 // The feed is rendered against the playback clock, not against everything detected so
 // far: SIM lets you scrub back, and a note whose tod is still in the future must not be
 // on screen. rnNotes keeps them (they were already detected, and rnSeen stops a re-emit),
@@ -5527,8 +5664,9 @@ async function rnAnalyse(){
 // wire the VIDEO reel's Analyse button once, at load — it works independently of
 // whether the racenote sidebar panel is active (the analyse UI now lives in a reel).
 function rnWire(){
-  if(rnWired)return;const an=document.getElementById('rn-analyse');if(!an)return;rnWired=true;
-  an.onclick=rnAnalyse;
+  // keyed by side: both blocks carry a VIDEO reel, each with its own button
+  if(rnWired[RSIDE])return;const an=document.getElementById('rn-analyse');if(!an)return;rnWired[RSIDE]=true;
+  an.onclick=()=>withSide(reelSideOf(an),rnAnalyse);
 }
 // VIDEO reel: reflect the selected car + how many on-track (S2–S5) overtake clips
 // are currently available.
@@ -5902,24 +6040,19 @@ setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule ta
    that read hit the temporal dead zone and threw, aborting the ENTIRE remainder
    of this script block: no fitPage (page unscaled/unfitted), no message board,
    no SIM event picker. var hoists as undefined, so the read is simply !==3. */
-var wxReelIdx=0;const WXN=7;   // 3 = YOUTUBE, 4 = PIT (pit.html), 5 = CHAMPIONSHIP, 6 = VIDEO clips
+/* The right block runs the SAME 22-reel list as the left one (see the reel
+   order note by REELN), so its bounds are REELN too. It opens on WEATHER,
+   which is index 15 now that the seven former weather-side reels sit at the
+   end of the shared list. */
+var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,+PREFS.reelR)):15;const WXN=REELN;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
   strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';
   strip.style.transform='translateY(-'+(wxReelIdx*100)+'%)';
   if(up)up.disabled=wxReelIdx<=0;if(dn)dn.disabled=wxReelIdx>=WXN-1;
-  if(wxReelIdx===0&&window.__syncWx)setTimeout(window.__syncWx,520);
-  if(wxReelIdx===4){pushPit(true);if(window.__fitPit)setTimeout(window.__fitPit,520);pitH(0);}  // PIT panel: refit + land on STOPS
-  if(wxReelIdx===5&&typeof renderChampionship==='function')renderChampionship();   // CHAMPIONSHIP panel
-  if(wxReelIdx===6&&typeof renderVideoReel==='function')renderVideoReel();         // VIDEO panel: refresh clip count
-  // YOUTUBE panel: the strip TRANSLATES pages rather than removing them from the
-  // DOM (see the transform above), so a playing embed would keep running — and
-  // making noise — after scrolling away. Stop it the moment this panel is no
-  // longer the visible one; the user presses START again to resume.
-  if(wxReelIdx!==3&&typeof stopYtPlayer==='function')stopYtPlayer();
 }
-function setWxReel(i){i=Math.max(0,Math.min(WXN-1,i));if(i===wxReelIdx)return;wxReelIdx=i;applyWxReel(true);}
+function setWxReel(i){i=Math.max(0,Math.min(WXN-1,i));if(i===wxReelIdx)return;wxReelIdx=i;applyWxReel(true);reelShown(wxReelIdx,RSUF);if(typeof savePrefs==='function')savePrefs();}
 const wxUpBtn=document.getElementById('wxup'),wxDnBtn=document.getElementById('wxdn');
 if(wxUpBtn)wxUpBtn.onclick=()=>setWxReel(wxReelIdx-1);
 if(wxDnBtn)wxDnBtn.onclick=()=>setWxReel(wxReelIdx+1);
@@ -5931,7 +6064,7 @@ applyWxReel(false);
    feature and were never present here. Accepts every common link shape
    (watch?v=, youtu.be/, /embed/, /shorts/, with any extra query params
    still attached) plus a bare 11-char video id pasted on its own. */
-(function initYtReel(){
+(function initYtReel(){RINIT.initYtReel=initYtReel;
   const reel=document.getElementById('ytreel'),url=document.getElementById('yt-url'),btn=document.getElementById('yt-start'),
         err=document.getElementById('yt-err'),box=document.getElementById('yt-player'),close=document.getElementById('yt-close');
   if(!reel||!url||!btn||!box)return;
@@ -6382,6 +6515,41 @@ applyWxReel(false);
     closeModal();
     location.href='index.html?event='+encodeURIComponent(slug);
   };
+})();
+
+/* ---- RIGHT BLOCK: bring the cloned panels to life -------------------------
+   Everything above wired the canonical (left) copy of the panels as it always
+   did. The clone in #wxstrip is live markup but inert: its fuel inputs have no
+   handlers, its weather div has no map, its ANALYSE button does nothing. Run
+   exactly the SAME init code a second time with the id shim pointed at the
+   clone, and each of those panels comes up as a genuinely independent second
+   instance — its own Leaflet map and forecast fetch, its own scaled iframes,
+   its own YouTube player, its own fuel/P-TIME/COMP/VIDEO inputs.
+
+   Gated on Leaflet being present because initWeather() otherwise defers itself
+   with a bare setTimeout, which would lose the side and build the right-hand
+   map onto the LEFT block's div. By the time L is loaded the re-run is safe. */
+(function initRightBlock(){
+  if(typeof L==='undefined')return setTimeout(initRightBlock,300);
+  // what the canonical pass registered, before the re-run overwrites the globals
+  SIDEFN['']={syncWx:window.__syncWx,resizeWx:window.__resizeWx,fitPit:window.__fitPit};
+  withSide(RSUF,()=>{
+    Object.keys(RINIT).forEach(n=>{try{RINIT[n]();}catch(e){console.error('right-block init '+n,e);}});
+    if(typeof rnWire==='function')try{rnWire();}catch(e){}
+    if(typeof renderTimetable==='function')try{renderTimetable();}catch(e){}
+    if(typeof renderChampionship==='function')try{renderChampionship();}catch(e){}
+    if(typeof renderVideoReel==='function')try{renderVideoReel();}catch(e){}
+  });
+  SIDEFN[RSUF]={syncWx:window.__syncWx,resizeWx:window.__resizeWx,fitPit:window.__fitPit};
+  /* There are two of each of these now. reelShown() picks the one belonging to
+     the block that just scrolled; these globals stay as the "both blocks"
+     form, which is what the outside callers (syncReel, the zoom modal, the
+     resize handler) actually mean. */
+  const fan=k=>function(){['',RSUF].forEach(s=>{const f=SIDEFN[s]&&SIDEFN[s][k];if(f)withSide(s,f);});};
+  window.__syncWx=fan('syncWx');window.__resizeWx=fan('resizeWx');window.__fitPit=fan('fitPit');
+  // both blocks land on their stored reel and wake whatever lives there
+  reelShown(reelIdx,'');reelShown(wxReelIdx,RSUF);
+  if(typeof syncReelPanels==='function')syncReelPanels();
 })();
 </script>
 <script>
