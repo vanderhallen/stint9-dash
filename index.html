@@ -220,6 +220,10 @@
      so the reelpanel centers the table as a block; max-width/height plus its
      own overflow:auto keep it scrollable if a long stint ever outgrows the modal. */
   .card.zoomed #sectabwrap{width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important}
+  /* Same fix for P-TIME: #ptimewrap's own width/height:100% (rule above) made it
+     fill the panel, so the reelpanel's align-items/justify-content:center had
+     nothing to centre and the wrap's flex-start pinned the table top-left. */
+  .card.zoomed #ptimewrap{width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important}
   .card.zoomed #gridtablewrap td>div,.card.zoomed #drvtablewrap td>div{gap:2px!important}
   .card.zoomed #gridtablewrap span,.card.zoomed #drvtablewrap span{width:calc(12px*var(--zt,1))!important;height:calc(28px*var(--zt,1))!important;border-radius:2px!important}
   /* zoomed CHAMPIONSHIP reel: shrink to content height so the reelpanel's
@@ -1529,7 +1533,7 @@ function renderChart(T){const shown=[];
   let ml=1;DB.cars.forEach(st=>{(DB.chart[st]||[]).forEach(pt=>{if(pt[2]<=T&&pt[0]>ml)ml=pt[0];});});
   axMax=Math.max(1,Math.ceil(ml));if(axMax!==lastAxMax){lastAxMax=axMax;rebuildPosAxis();}
   const oBest=[Infinity,Infinity,Infinity,Infinity,Infinity],secLatest={},secPB={};DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{},lat=[null,null,null,null,null],pb=[Infinity,Infinity,Infinity,Infinity,Infinity];Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(L=>{const s=stm[L];if(!s)return;for(let k=0;k<5;k++){const tc=bx[(L-1)*5+(k+1)];if(tc!=null&&tc<=T){const v=s[k];lat[k]=v;if(v<pb[k])pb[k]=v;}}});secLatest[st]=lat;secPB[st]=pb;for(let k=0;k<5;k++)if(pb[k]<oBest[k])oBest[k]=pb[k];});DB.cars.forEach(st=>{const arr=DB.chart[st]||[];const done=arr.filter(pt=>pt[2]<=T);const pl=CLINE[st],tp=CTIP[st],rt=CRT[st];
-  pl.setAttribute('stroke-width',st===selCar?'1.6':'1.15');pl.setAttribute('opacity',(selCar&&st!==selCar)?'0.22':'1');
+  pl.setAttribute('stroke-width',st===selCar?'3.4':'1.7');pl.setAttribute('opacity',(selCar&&st!==selCar)?'0.22':'1');
   if(!done.length){pl.setAttribute('points','');tp.style.display='none';rt.style.display='none';CSEC[st].forEach(r=>r.style.display='none');return;}
   pl.setAttribute('points',done.map(pt=>X(pt[0])+','+Y(pt[1])).join(' '));
   const last=done[done.length-1];const finished=last[0]>=maxN-0.001;
