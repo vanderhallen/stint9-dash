@@ -1886,7 +1886,21 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
    minutes and seconds — so the crew can type the clock they are holding. */
 function pTimeDate(){return (DB.event&&DB.event.date)||(typeof liveEventDate==='function'?liveEventDate():'');}
 function savePTime(){try{localStorage.setItem('stint9_ptime',JSON.stringify(PTIME));}catch(e){}}
+// Drop every OTHER day's entries the first time a given event date is seen this
+// session, so a device that still has last event's pit-time notes in
+// localStorage starts the new event blank instead of quietly inheriting them
+// (pTimeRow()'s cross-day fallback below existed to survive a same-day reload,
+// not to carry values across events). Guarded so it runs once per date, not
+// every render tick.
+let _ptimePrunedFor=null;
+function prunePTimeForNewEvent(){
+  const day=pTimeDate();if(!day||day===_ptimePrunedFor)return;
+  _ptimePrunedFor=day;
+  const stale=Object.keys(PTIME).filter(k=>k!==day);
+  if(stale.length){stale.forEach(k=>delete PTIME[k]);savePTime();}
+}
 function pTimeRow(car){
+  prunePTimeForNewEvent();
   const ids=[String(car),String(car).replace(/^#/,'')];
   const pick=d=>{if(!d)return null;for(let i=0;i<ids.length;i++)if(d[ids[i]])return d[ids[i]];return null;};
   const hit=pick(PTIME[pTimeDate()]);
@@ -1920,6 +1934,7 @@ function pTimeNCols(){
 let _ptimeSig=null;
 function renderPTime(T){
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
+  prunePTimeForNewEvent();   // before pTimeNCols()/pTimeRow() below touch PTIME
   const ae=document.activeElement;
   if(ae&&wrap.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return;
   if(!DB.cars||!DB.cars.length){
@@ -2337,7 +2352,11 @@ function renderSecTab(T){
   if(!selCar){ph('select a car');return;}
   const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{},dl=DB.drvlap[selCar]||{};
   const laps=[],cells={},drvs={},best=[Infinity,Infinity,Infinity,Infinity,Infinity];let bestLap=Infinity;
-  for(let L=1;L<=maxN;L++){
+  // Start at 0, not 1: WIGE numbers a car's first flying lap 0 in LIVE (and any
+  // event archived from LIVE rows), so a loop starting at 1 silently drops that
+  // whole lap's splits — see the lap-0 note above carStats(). SIM's own baked
+  // CSV has no lap 0, so this is a no-op there (stm[0] just doesn't exist).
+  for(let L=0;L<=maxN;L++){
     const s=stm[L];if(!s||s.length<5)continue;
     const vals=[null,null,null,null,null];let any=false,full=true;
     for(let k=0;k<5;k++){
