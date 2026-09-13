@@ -65,11 +65,14 @@ const GUARD_STALE_MS = 15000;  // hold mode: if the status row advanced within t
 // holder's last flush and the next one's first: 149s isn't a multiple of the
 // 60s cron interval, so the replacement could be up to a full cron tick late,
 // on top of its own discovery+connect time. HANDOFF_LEAD_MS has a holder
-// launch its own successor this many ms before its OWN hold expires (see
-// triggerHandoff() below), so the new socket is already flushing before the
-// old one closes — no gap to wait out. The cron's stale-status check remains
-// as a fallback for the rare case a holder dies early (WS error) before
-// reaching its handoff point.
+// launch its own successor AND end its own turn together, this many ms before
+// its OWN hold would otherwise expire (see the handoffTimer callback in
+// collect() below) — ending its turn early rather than overlapping with the
+// successor, since production logs showed the platform killing every holder
+// at 150000-151243ms regardless of our own "graceful" cutoff, with no sign an
+// overlapping second connection ever survived (see that callback's comment
+// for the full story). The cron's stale-status check remains as the fallback
+// for a holder that dies even earlier (WS error) or whose handoff is lost.
 const HANDOFF_LEAD_MS = 12000;
 // Frame archive (public.stint9_live_frames): keep whole WIGE payloads, not just the
 // ~18 fields mapCar() maps. Anything the feed sends is then answerable from stored
@@ -316,12 +319,36 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
       if (handoffTimer !== undefined) clearTimeout(handoffTimer);
       try { ws.close(); } catch { /* noop */ } resolve();
     };
+    // Safety-net only when there's no onHandoff (one-shot mode, or hold mode
+    // without a callback) — the handoff timer below is what actually ends a
+    // hold-mode holder's turn in the normal case; see its comment.
     const timer = setTimeout(done, opts.holdMs);
-    // Launch the successor BEFORE this holder actually dies (see HANDOFF_LEAD_MS)
-    // instead of leaving it to a cron tick to notice the gap after the fact.
-    // Skipped if a WS error calls done() early — the cron guard covers that case.
+    // Originally this fired onHandoff and left THIS holder running its own
+    // full holdMs, so the two would overlap for HANDOFF_LEAD_MS. In practice
+    // that bought nothing: production logs showed the platform killing every
+    // holder at 150000-151243ms (504 IDLE_TIMEOUT / 546 WORKER_RESOURCE_LIMIT)
+    // regardless — our HOLD_MS=149000 "graceful" cutoff left ~0 margin for the
+    // pre-collect setup (activeHolder/fetchReplaySet) and post-collect tail
+    // upserts to finish before that wall — and successful holders kept
+    // recurring on the pre-fix ~180s/cron-reactive cadence, with no sign either
+    // side of an overlap surviving. Most likely WIGE's socket does not tolerate
+    // two simultaneous subscriptions to the same event id, so the new one
+    // errored out immediately while the old one looked fine from in here.
+    // Firing the handoff and ending THIS holder's own turn in the same tick
+    // sidesteps that either way, and — just as importantly — moves this
+    // holder's own natural end from ~149s to ~holdMs-HANDOFF_LEAD_MS (~137s),
+    // comfortably inside the ~150s the platform actually enforces instead of
+    // racing it.
     if (opts.onHandoff && opts.holdMs > HANDOFF_LEAD_MS) {
-      handoffTimer = setTimeout(() => { try { Promise.resolve(opts.onHandoff!()).catch(() => { /* noop */ }); } catch { /* noop */ } }, opts.holdMs - HANDOFF_LEAD_MS);
+      handoffTimer = setTimeout(() => {
+        // Await the handoff (isScheduleActive() + dispatching the fetch — NOT
+        // its ~137s response) before closing OUR OWN socket, so the successor
+        // is already on its way in before this one's slot frees up, rather
+        // than racing done()'s ws.close() against triggerHandoff's own first
+        // await. Costs this holder a few hundred ms of its own runtime, well
+        // inside the margin HANDOFF_LEAD_MS already budgets for.
+        (async () => { try { await opts.onHandoff!(); } catch { /* noop */ } done(); })();
+      }, opts.holdMs - HANDOFF_LEAD_MS);
     }
     try { ws = new WebSocket(WS_URL); } catch { clearTimeout(timer); return resolve(); }
     // eventPid [0,4] = leaderboard/trackState, 3 = race-control messages.
@@ -494,9 +521,10 @@ Deno.serve(async (req) => {
     // ---- HOLD mode (pg_cron, or a handoff from the previous holder): one
     // long-held socket, flush every ~5s ----------------------------------------
     if (hold) {
-      // Another ~149s holder — or the vds-relay — is already streaming: stand
-      // down. Skipped for a handoff call: its whole purpose is to overlap with
-      // the (still briefly live) holder that launched it.
+      // Another ~137s holder — or the vds-relay — is already streaming: stand
+      // down. Skipped for a handoff call: it already knows, from being the
+      // very holder that's about to end, that it's time for a new one —
+      // no need to ask stint9_live_status whether one looks active.
       if (!handoff && await activeHolder(ed, GUARD_STALE_MS))
         return Response.json({ ok: true, held: false, reason: 'collector-active', event_date: ed }, { headers: CORS });
       if (!eventId) eventId = (await discoverEventId()) ?? '';
@@ -505,14 +533,14 @@ Deno.serve(async (req) => {
       if (!eventId)
         return Response.json({ ok: true, held: false, reason: 'no-live-event', event_date: ed }, { headers: CORS });
       const replaySet = await fetchReplaySet(ed);
-      // Fire-and-forget: ask our own successor to start ~HANDOFF_LEAD_MS before
-      // THIS holder's socket closes, so the two overlap instead of leaving a
-      // gap. Never awaited — a slow/failed self-call must not stall this
-      // holder's own flush loop, and the cron's stale-status check still
-      // covers the case where this never fires or the successor 404s. Checks
-      // isScheduleActive() first so the chain actually ends when the session
-      // does, instead of looping forever outside stint9_maybe_scrape_wige()'s
-      // own gating (see that function's comment above).
+      // Called by collect()'s handoffTimer ~HANDOFF_LEAD_MS before this
+      // holder's own hold would expire, which then ends this holder's own
+      // turn right after — see that callback's comment for why they're no
+      // longer separated. Checks isScheduleActive() first so the chain
+      // actually ends when the session does, instead of looping forever
+      // outside stint9_maybe_scrape_wige()'s own gating (see that function's
+      // comment above). fetch() itself stays fire-and-forget — its own ~137s
+      // response is never awaited, only its dispatch.
       const selfUrl = `${url.protocol}//${url.host}${url.pathname}`;
       const triggerHandoff = async () => {
         if (!(await isScheduleActive())) return;
