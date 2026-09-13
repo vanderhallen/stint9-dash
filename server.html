@@ -216,11 +216,30 @@ function setServerOffline(){
 checkServer();
 restoreYtUrl();
 
+function legacyCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  let ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  document.body.removeChild(ta);
+  return ok;
+}
 function copyCmd(btn,text){
-  navigator.clipboard.writeText(text).then(()=>{
+  const flash=()=>{
     const orig=btn.textContent;btn.textContent='Copied!';btn.classList.add('copied');
     setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied');},2000);
-  });
+  };
+  // navigator.clipboard needs a secure context -- unavailable when this page is
+  // opened over plain http from a .local hostname or LAN IP (only localhost and
+  // https: qualify), so fall back to the old execCommand trick in that case.
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(flash, ()=>{if(legacyCopy(text))flash();});
+  }else if(legacyCopy(text)){
+    flash();
+  }
 }
 
 /* ---- YouTube preview embed: just a bare iframe for the user's own convenience —
