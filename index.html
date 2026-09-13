@@ -231,6 +231,8 @@
   table.stints td{padding:4.5px 6px;border-bottom:1px solid var(--border)}
   table.stints .g{color:#1e8f3a;font-weight:600}table.stints .d{color:#c0392b;font-weight:600}
   table.stints.cmp{font-size:10px}table.stints.cmp th,table.stints.cmp td{padding:4px 4px;white-space:nowrap}
+  .card.zoomed table.stints.cmp{font-size:15px!important}
+  .card.zoomed table.stints.cmp th,.card.zoomed table.stints.cmp td{padding:7px 10px!important}
   .footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#aab0b8}
   .sidecard{display:flex;flex-direction:column;padding:12px 10px;box-sizing:border-box;min-height:0}
   .sidehd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -633,7 +635,7 @@
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:stretch;margin-top:6px">
-    <div class="card cmpwrap" id="cmpbox" style="flex:1 1 56%;min-width:0;padding:4px 6px;display:none">
+    <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 56%;min-width:0;padding:4px 6px;display:none">
       <table class="stints cmp"><thead><tr><th>Pos</th><th>Driver</th><th>Gap</th><th>Fastest</th><th>Last lap</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead><tbody id="cmpbody"></tbody></table>
     </div>
     <div class="card" id="gapbox" style="flex:1 1 44%;min-width:0;padding:6px 12px;display:none">
@@ -1594,8 +1596,15 @@ function cmpCell(v,dv){let s=(v==null?'—':fmt(v));if(dv!=null&&isFinite(dv)&&M
 function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.getElementById('cmpbody');
   if(!selCar||!lp[selCar]){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const leader=byPos[1];if(!leader){box.style.display='none';return;}
-  const order=[];[1,2,3].forEach(pp=>{if(byPos[pp])order.push(byPos[pp]);});
-  if(lp[selCar]>3&&order.indexOf(selCar)<0)order.push(selCar);
+  // Zoomed: show the whole class, ordered by track position, instead of
+  // just the podium + selected car — that's the point of zooming in.
+  let order;
+  if(box.classList.contains('zoomed')){
+    order=DB.cars.slice().sort((a,b)=>{const pa=lp[a],pb=lp[b];if(pa==null&&pb==null)return 0;if(pa==null)return 1;if(pb==null)return -1;return pa-pb;});
+  }else{
+    order=[];[1,2,3].forEach(pp=>{if(byPos[pp])order.push(byPos[pp]);});
+    if(lp[selCar]>3&&order.indexOf(selCar)<0)order.push(selCar);
+  }
   if(!order.length){box.style.display='none';return;}
   const A=carStats(leader,T),dOf=(v,rv)=>(v!=null&&rv!=null)?(v-rv):null;
   const rows=order.map(st=>{const stat=carStats(st,T),isRef=(st===leader),ref=isRef?null:A,selq=(st===selCar);
@@ -3775,7 +3784,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     const omP=(om&&om.minutely_15&&om.minutely_15.precipitation)||[];
     for(let i=0;i<omT.length;i++){
       const ts=new Date(omT[i]).getTime()/1000;
-      if(!(ts>lastRadarT+30)||ts>nowSec+6*3600)continue;
+      if(!(ts>lastRadarT+30)||ts>nowSec+2*3600)continue;
       frames.push({time:ts,precip:omP[i]||0,forecast:true});
     }
     if(!frames.length)return;
@@ -3813,13 +3822,10 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       if(tLbl){tLbl.textContent=relLabel(idx);tLbl.classList.toggle('fc',fc||idx>=fcIdx);}}
     function start(){if(tmr){clearTimeout(tmr);tmr=null;}playing=true;if(playBtn)playBtn.innerHTML='&#10073;&#10073;';
       function tick(){
-        let n=idx+1;
-        while(n<frames.length&&!frames[n].path)n++;
-        if(n>=frames.length)n=0;
-        show(n);
-        tmr=setTimeout(tick,1400);
+        show((idx+1)%frames.length);
+        tmr=setTimeout(tick,frames[idx].forecast?2000:1400);
       }
-      tmr=setTimeout(tick,1400);}
+      tmr=setTimeout(tick,frames[idx].forecast?2000:1400);}
     function stop(){playing=false;if(tmr){clearTimeout(tmr);tmr=null;}if(playBtn)playBtn.innerHTML='&#9658;';}
     if(playBtn)playBtn.onclick=()=>{playing?stop():start();};
     if(tl){tl.style.cursor='pointer';
