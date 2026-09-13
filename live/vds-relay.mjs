@@ -192,6 +192,35 @@ function mapMessages(items, ed) {
 const TRACK_RE = new RegExp(process.env.TRACK_MATCH || 'n[uü]rburgring|nordschleife', 'i');
 function acceptEvent(m) { return TRACK_RE.test(String(m.TRACKNAME || '')); }
 
+let lastRotateCheck = 0;
+async function rotateIfEventChanged(ed, newEventId) {
+  const t = Date.now();
+  if (t - lastRotateCheck < 30000) return;
+  lastRotateCheck = t;
+  try {
+    await fetch(SB_URL + '/rest/v1/rpc/stint9_maybe_rotate_session', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  } catch { /* cron is primary */ }
+  if (!newEventId) return;
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/stint9_live_status?select=event_id&event_date=eq.' + ed, {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
+    });
+    if (!res.ok) return;
+    const prev = (await res.json())?.[0]?.event_id;
+    if (!prev || String(prev) === String(newEventId)) return;
+    log(`event id ${prev} → ${newEventId} — rotating live_timing so sessions do not merge`);
+    await fetch(SB_URL + '/rest/v1/rpc/stint9_rotate_live_timing', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_date: ed }),
+    });
+  } catch (e) { log('rotate warning:', e.message || e); }
+}
+
 async function upsert(rows) {
   if (!rows.length || DRY) return;
   for (let i = 0; i < rows.length; i += 500) {
@@ -403,6 +432,7 @@ function connect() {
     stat.lastUpsert = now;
     try {
       const rows = mapSnapshot(m, stat.ed);
+      await rotateIfEventChanged(stat.ed, String(m.EXPORTID ?? activeEventId ?? ''));
       await upsert(rows);
       stat.upserts++; stat.rows = rows.length;
       log(`snapshot ${stat.snapshots}: ${rows.length} cars ${DRY ? 'mapped (dry)' : '-> Supabase'} (HEAT ${m.HEAT})`);

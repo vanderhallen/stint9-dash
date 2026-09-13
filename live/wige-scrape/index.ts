@@ -425,6 +425,32 @@ async function upsert(table: string, rows: unknown[], onConflict: string, resolu
   return rows.length;
 }
 
+async function rotateIfEventChanged(ed: string, newEventId: string | null) {
+  // Schedule-gap rotate (primary): snapshot+clear live_timing between sessions.
+  try {
+    await fetch(`${SB_URL}/rest/v1/rpc/stint9_maybe_rotate_session`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  } catch { /* cron is the primary caller; this is a backup */ }
+  if (!newEventId) return;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/stint9_live_status?select=event_id&event_date=eq.${ed}`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    });
+    if (!res.ok) return;
+    const prev = (await res.json())?.[0]?.event_id;
+    if (!prev || String(prev) === String(newEventId)) return;
+    // Event id changed (quali → race) and the gap cron may not have fired yet.
+    await fetch(`${SB_URL}/rest/v1/rpc/stint9_rotate_live_timing`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_date: ed }),
+    });
+  } catch { /* next write still guarded by on_conflict; worse case is one mixed batch */ }
+}
+
 function statusRow(ed: string, meta: Meta | null, eventId: string, cars: number) {
   return {
     event_date: ed, live: !!meta, event_id: meta?.event_id ?? eventId ?? null,
@@ -528,6 +554,7 @@ Deno.serve(async (req) => {
       if (!handoff && await activeHolder(ed, GUARD_STALE_MS))
         return Response.json({ ok: true, held: false, reason: 'collector-active', event_date: ed }, { headers: CORS });
       if (!eventId) eventId = (await discoverEventId()) ?? '';
+      await rotateIfEventChanged(ed, eventId || null);
       // No live event id: don't hold a doomed socket for 149s — bail fast so the
       // next cron tick can try again cheaply.
       if (!eventId)
@@ -574,6 +601,7 @@ Deno.serve(async (req) => {
     // Only fall back to the (mass-subscribe) range scan if a range was explicitly
     // asked for — a bare range scan is known-broken, see above.
     if (!eventId && !range) eventId = (await discoverEventId()) ?? '';
+    await rotateIfEventChanged(ed, eventId || null);
     const ids = eventId ? [eventId] : idRange(range);
     const replaySet = await fetchReplaySet(ed);
     const { meta, rows, messages, frames, rejected } = await collect(ids, /* gated */ !eventId, { holdMs: COLLECT_MS, replaySet });

@@ -113,8 +113,10 @@ const order = lp => Object.keys(lp).sort((x, y) => lp[x] - lp[y]);
     return {livePos, sessionKind};`)(
       DB, pitwalkRows, { dataMode: 'LIVE', __liveHeat: heat },
       st => ({ fast: CARS[st].fast }), st => ({ p: CARS[st].p, t: CARS[st].t }));
-  check('with no heat signal, pitwalk\'s own window pre-empts the carried-forward quali label',
-        mkPitwalk(undefined).sessionKind() === 'race', mkPitwalk(undefined).sessionKind());
+  check('pitwalk with NO heat still ranks as a time sheet (inherit last quali; heat must not be required)',
+        mkPitwalk(undefined).sessionKind() === 'quali', mkPitwalk(undefined).sessionKind());
+  check('P1 during pitwalk with no heat is still the fastest lap (#670)',
+        order(mkPitwalk(undefined).livePos(1e9))[0] === '670');
 
   /* 2026-09-13, second overrun: the SAME quali session was still running
    * 22+ minutes past its scheduled end, by which point the schedule had

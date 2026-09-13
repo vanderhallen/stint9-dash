@@ -608,7 +608,6 @@
       <div id="liveBar" style="display:none;height:32px;align-items:center;gap:8px;padding:0 8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)">
         <button class="btn" id="liveUpdate" title="Pull a fresh snapshot from the WIGE live timing now">&#8635; Update</button>
         <span id="liveEvent" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:600;white-space:nowrap" title="Detected event · track · heat (auto-detected from the live feed)">event —</span>
-        <span id="liveKind" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:600;white-space:nowrap" title="How the leaderboard ranks: timesheet = fastest lap (quali/practice); race Px = most laps then shortest time">Px —</span>
         <span id="liveSig" style="padding:2px 7px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:700;white-space:nowrap;display:none;transition:color .4s" title="Live-timing data points received (increments each time a sector/lap update arrives from WIGE)">&#9662; 0</span>
         <span id="liveMsg">live feed not connected</span>
       </div>
@@ -2972,15 +2971,7 @@ function liveEtaSF(st,T){
   for(const sec of remaining){const d=liveRefDuration(st,sec);if(!(d>0))return null;cum+=d;}
   return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
 }
-function paintSessionKind(){
-  const el=document.getElementById('liveKind');if(!el)return;
-  const k=sessionKind();
-  el.textContent=k==='quali'?'timesheet':'race Px';
-  el.title=k==='quali'
-    ?'Quali/practice ranking: P1 = fastest completed lap'
-    :'Race ranking: P1 = most laps, then earliest to that distance';
-}
-function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);try{paintSessionKind();}catch(e){}
+function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
   _c60=(typeof code60Sectors==='function')?code60Sectors():[];
@@ -4339,16 +4330,32 @@ function buildStartGrid(){
   // where the full grid is the most interesting thing to look at.
   const isAll=(typeof isAllCls==='function')&&isAllCls(curCls);
   const carClass={};Object.keys(DB.classes).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
-  const order=Array.isArray(gridRows)
-    ? gridRows.filter(r=>isAll||carClass[String(r.car_no)]===curCls).sort((a,b)=>a.pos_overall-b.pos_overall).map((r,i)=>({car:r.car_no,classPos:i+1,fieldPos:r.pos_overall}))
-    : [];
+  let order,provisional=false;
+  if(Array.isArray(gridRows)&&gridRows.length){
+    order=gridRows.filter(r=>isAll||carClass[String(r.car_no)]===curCls).sort((a,b)=>a.pos_overall-b.pos_overall).map((r,i)=>({car:r.car_no,classPos:i+1,fieldPos:r.pos_overall}));
+  }else if(gridRows!==undefined&&window.dataMode==='LIVE'&&DB.cars&&DB.cars.length){
+    // Provisional fallback: the official grid PDF only gets published once
+    // qualifying FULLY finishes, but we already have every car's live best
+    // lap for the leaderboard (carStats().fast — the exact number qualiPos()
+    // ranks by). Use that instead of sitting on "no qualifying data" while
+    // the field is still on track. gridRows!==undefined means the official
+    // fetch was checked and genuinely came back empty, not still loading.
+    // SIM is excluded: an archived event either has a real published grid
+    // or none at all — there's no live timing to derive one from.
+    const withFast=DB.cars.map(st=>({car:st,fast:carStats(st,T).fast})).filter(x=>x.fast!=null);
+    withFast.sort((a,b)=>a.fast-b.fast);
+    const fieldPosOf={};withFast.forEach((x,i)=>{fieldPosOf[x.car]=i+1;});
+    const filtered=withFast.filter(x=>isAll||carClass[String(x.car)]===curCls);
+    order=filtered.map((x,i)=>({car:x.car,classPos:i+1,fieldPos:fieldPosOf[x.car]}));
+    provisional=order.length>0;
+  }else order=[];
   const CARLEN=74,CARW=35,GAP=14,VSTEP=Math.round(CARLEN*0.6);
   const boxW=Math.max(CARW+20,host.clientWidth||170);
   const N=order.length;
   if(!N){
     const loading=gridRows===undefined;    // fetch still in flight
     svg.setAttribute('viewBox','0 0 '+boxW+' 120');svg.setAttribute('width',boxW);svg.setAttribute('height',120);
-    const l1=loading?'loading grid…':'no qualifying data';
+    const l1=loading?'loading grid…':(window.dataMode==='LIVE'?'no lap times yet':'no qualifying data');
     const l2=loading?'':('for '+(window.dataMode==='LIVE'?'LIVE':((DB.event&&DB.event.name)||'this event')));
     svg.innerHTML='<text x="'+(boxW/2)+'" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">'+l1+'</text>'+(l2?('<text x="'+(boxW/2)+'" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#9aa1a9">'+l2+'</text>'):'');
     if(src)src.textContent=loading?'':'No qualifying/starting-grid data available for this event.';
@@ -4378,7 +4385,9 @@ function buildStartGrid(){
   });
   svg.innerHTML=s;
   host.scrollLeft=0;host.scrollTop=0;
-  if(src)src.textContent='Data: NLS qualifying ('+(evDate||'—')+') · '+curCls+' · '+N+' cars';
+  if(src)src.textContent=provisional
+    ? 'PROVISIONAL — live best laps ('+(evDate||'—')+') · '+curCls+' · '+N+' cars · official grid not yet published'
+    : 'Data: NLS qualifying ('+(evDate||'—')+') · '+curCls+' · '+N+' cars';
 }
 buildStartGrid();
 

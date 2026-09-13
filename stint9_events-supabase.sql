@@ -217,3 +217,104 @@ begin
     end if;
   end loop;
 end $function$;
+
+-- ============================================================
+--  Session rotate — between schedule windows (Lesson 4)
+--  stint9_live_timing is keyed (event_date, car, lap) with no session id.
+--  WIGE's event id often changes quali → race the same day, so race laps
+--  would overwrite quali laps. Between sessions (after a time-sheet window's
+--  scrape pad, before the next window) we snapshot the live table under the
+--  ended window's label, DELETE those rows, and null event_id so the next
+--  scrape rediscovers WIGE's id on a clean table.
+-- ============================================================
+
+create or replace function public.stint9_rotate_live_timing(p_date date, p_label text default null)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_n int;
+  v_slug text;
+  v_round text;
+  v_name text;
+begin
+  select count(*) into v_n from public.stint9_live_timing where event_date = p_date;
+  if v_n = 0 then
+    return jsonb_build_object('ok', true, 'rotated', false, 'reason', 'empty');
+  end if;
+  if p_label is null or p_label = '' then
+    select sw.label into p_label
+      from public.stint9_schedule_windows sw
+     where sw.event_date = p_date
+       and sw.label ~* 'quali|zeittraining|training|practice|warm'
+       and sw.end_ts is not null and sw.end_ts <= now()
+     order by sw.end_ts desc
+     limit 1;
+  end if;
+  select slug, name into v_round, v_name from public.stint9_event_rounds where event_date = p_date;
+  v_slug := coalesce(v_round, 'EVT-' || to_char(p_date, 'YYYY-MM-DD'));
+  if p_label is not null and p_label <> '' then
+    v_slug := v_slug || '-' || p_label;
+  end if;
+  perform public.stint9_archive_event(p_date, v_slug, p_label, v_name, null);
+  delete from public.stint9_live_timing where event_date = p_date;
+  update public.stint9_live_status
+     set event_id = null, live = false, session = null, heat = null, cars = 0, updated_at = now()
+   where event_date = p_date;
+  return jsonb_build_object('ok', true, 'rotated', true, 'slug', v_slug, 'rows', v_n, 'label', p_label);
+end $function$;
+
+create or replace function public.stint9_maybe_rotate_session()
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_ended record;
+  v_next timestamptz;
+begin
+  -- Most recently ended window in the last 18h (covers a morning quali before
+  -- an afternoon race). Must be a time-sheet session — not pitwalk/race.
+  select sw.* into v_ended
+    from public.stint9_schedule_windows sw
+   where sw.end_ts is not null
+     and sw.end_ts <= now()
+     and sw.end_ts > now() - interval '18 hours'
+     and sw.label ~* 'quali|zeittraining|training|practice|warm'
+   order by sw.end_ts desc
+   limit 1;
+  if v_ended is null then
+    return jsonb_build_object('rotated', false, 'reason', 'no-ended-timesheet');
+  end if;
+  -- Wait out the scrape pad (+15 min after end_ts) so the last WIGE holder
+  -- has flushed. Then we are in the real gap between events.
+  if now() < v_ended.end_ts + interval '15 minutes' then
+    return jsonb_build_object('rotated', false, 'reason', 'still-in-scrape-pad', 'label', v_ended.label);
+  end if;
+  -- Do not wait until the next window has already started — but if it has,
+  -- still rotate (better than merging). Skip only if we are inside the next
+  -- window's scrape pad AND live_timing is already empty.
+  select min(start_ts) into v_next
+    from public.stint9_schedule_windows
+   where start_ts > v_ended.end_ts
+     and event_date between v_ended.event_date - 1 and v_ended.event_date + 1;
+  return public.stint9_rotate_live_timing(v_ended.event_date, v_ended.label);
+end $function$;
+
+grant execute on function public.stint9_rotate_live_timing(date, text) to anon, authenticated, service_role;
+grant execute on function public.stint9_maybe_rotate_session() to anon, authenticated, service_role;
+
+-- Every minute, no-op except in the quali→race (etc.) gap. Same cadence as
+-- stint9_wige_autoscan; that job only POSTs wige-scrape *inside* windows, so
+-- rotate has to be its own job to run *between* them.
+do $cron$
+begin
+  if not exists (select 1 from cron.job where jobname = 'stint9_session_rotate') then
+    perform cron.schedule('stint9_session_rotate', '* * * * *',
+      'select public.stint9_maybe_rotate_session();');
+  end if;
+end $cron$;
+

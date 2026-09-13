@@ -956,20 +956,26 @@ The live **event id is not stable**:
 
 **The risk:** `stint9_live_timing` is keyed `(event_date, car, lap)` with no session
 id. If quali and race run the same day, race rows **overwrite/merge** quali rows
-for the same `(car, lap)` — a corrupt mix. Two ways to handle it:
-- **Split per session (preferred).** Treat each event id as a separate dataset —
-  e.g. add an `event_id` column to `stint9_live_timing` and filter the LIVE view by
-  the current `stint9_live_status.event_id`; then quali and race are distinct and
-  can be archived/loaded separately (like the `?event=<slug>` SIM loader). Needs a
-  one-column migration + scraper/collector/dashboard tweak.
-- **Clear on session change (quick).** When the discovered event id differs from
-  the last one written, delete the day's `stint9_live_timing` rows before writing
-  the new session, so only the current session is live. Loses in-place history, but
-  the hourly archiver still snapshots each session for later.
+for the same `(car, lap)` — a corrupt mix.
 
-Until one of those lands, **manually clear between sessions** if quali data lingers
-into the race: `delete from stint9_live_timing where event_date = current_date;`
-(then let the current session refill it).
+**Automated (2026-09-13).** Cron `stint9_session_rotate` (`* * * * *`) calls
+`stint9_maybe_rotate_session()` using `stint9_schedule_windows`. In the **gap
+between events** — 15 min after a time-sheet window (`quali`/`practice`/…) ends
+(the scrape pad), before the next window — it:
+
+1. snapshots today's `stint9_live_timing` via `stint9_archive_event` as
+   `{round}-{label}` (e.g. `NLS8-quali`),
+2. **deletes** those live rows,
+3. **nulls `stint9_live_status.event_id`** so the next scrape rediscovers
+   WIGE's id from `vln.html` on a clean table.
+
+Idempotent: once the table is empty the job is a no-op. `wige-scrape` and
+`vds-relay` also call the same rotate if the discovered event id **differs**
+from the last status row (covers a short gap where the cron never sat between
+windows). Apply `stint9_events-supabase.sql` (the new functions + cron) on the
+project if the job is not scheduled yet.
+
+Check: `select * from cron.job where jobname='stint9_session_rotate';`
 
 ## Lesson 5 — LIVE motion is SIM's logic; the frontier estimator was REMOVED
 LIVE renders through SIM's exact loop (`activeLeg`+`ptAlong` interpolation). SIM
@@ -2008,6 +2014,21 @@ transition). A positively-scheduled `race` window is checked and returned
 accident" still holds unconditionally — verified in `test-quali-rank.mjs`
 by a case that fabricates a live `race` window with heat still saying
 "Zeittraining" and asserts race ranking wins anyway.
+
+**Third hole — ceremonial window, heat empty (2026-09-13).** The heat upgrade
+only fires after `refreshStatus()` has a Zeittraining-like string. If heat is
+blank, `null`, or not fetched yet, `sessionKind()` still fell through to
+**race** the moment the timetable said `pitwalk` — same #665/#670 symptom,
+no heat required to reproduce. Fix: labels `pitwalk|lineup|startaufstellung|
+pitlane|gridwalk` are **not ranking sessions**. Inherit the last time-sheet
+until a scheduled `race` window starts. Heat stays as a backup when the
+schedule has not loaded. `formation` is left alone (Einführungsrunde is the
+race). Tests: `node live/test-quali-rank.mjs` — pitwalk with `__liveHeat`
+unset must stay quali; an active race window with heat still Zeittraining
+must stay race.
+
+LIVE badge `#liveKind` shows `timesheet` vs `race Px` so a wrong P1 is
+visible without reading code.
 
 ## 15.5 Feature-parity audit — SIM vs LIVE
 
