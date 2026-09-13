@@ -3900,6 +3900,22 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   setNb(mAhead,ah,'▲',p-1);setNb(mBehind,be,'▼',p+1);setEv(T);}
 
 /* ---- weather radar (RainViewer) ---- */
+/* Both blocks run their OWN weather instance (own map, own draw loop), so
+   without this they each hit open-meteo and RainViewer on load and on every
+   refresh — double the external calls for byte-identical answers, and enough
+   to trip open-meteo's free tier, whose 429 fails silently and leaves the TEMP
+   reel blank. Share one in-flight request per URL instead; the answers are
+   read-only, so both instances can draw from the same object. A rejected
+   request is dropped from the cache rather than cached as "the answer". */
+const WXCACHE={};
+function wxFetchShared(url,ttlMs){
+  const hit=WXCACHE[url];
+  if(hit&&(Date.now()-hit.t)<(ttlMs||5*60*1000))return hit.p;
+  const p=fetch(url).then(r=>r.json());
+  WXCACHE[url]={t:Date.now(),p};
+  p.catch(()=>{if(WXCACHE[url]&&WXCACHE[url].p===p)delete WXCACHE[url];});
+  return p;
+}
 (function initWeather(){RINIT.initWeather=initWeather;if(typeof L==='undefined'){return setTimeout(initWeather,300);}
   /* This module finishes its work in fetch callbacks, and withSide() only
      holds the side for the SYNCHRONOUS part of a call — by the time the
@@ -3968,10 +3984,10 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   // failed/rate-limited request. Only 'nodata' is worth a retry — retrying a
   // 429 just burns the next slot of the same budget.
   function fetchGrid(model){
-    return fetch('https://api.open-meteo.com/v1/forecast?latitude='+gPts.map(p=>p[0]).join(',')+
+    return wxFetchShared('https://api.open-meteo.com/v1/forecast?latitude='+gPts.map(p=>p[0]).join(',')+
       '&longitude='+gPts.map(p=>p[1]).join(',')+'&minutely_15=precipitation&forecast_minutely_15=12'+
       (model?'&models='+model:'')+'&timezone=UTC')
-      .then(r=>r.json()).then(j=>{
+      .then(j=>{
         if(!Array.isArray(j)||j.length!==GN*GN||!j[0]||!j[0].minutely_15)return null;
         const ts=j[0].minutely_15.time||[];if(!ts.length)return null;
         let seen=0;
@@ -4003,14 +4019,14 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
      least still say wet/dry over the circuit. One location costs ~nothing
      against the budget, so this usually gets through when the grid does not. */
   function fetchPoint(){
-    return fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
-      '&minutely_15=precipitation&forecast_minutely_15=12&timezone=UTC').then(r=>r.json()).then(j=>{
+    return wxFetchShared('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+      '&minutely_15=precipitation&forecast_minutely_15=12&timezone=UTC').then(j=>{
         const m=j&&j.minutely_15;if(!m||!m.time)return null;
         return{times:m.time.map(s=>Date.parse(/Z$/.test(s)?s:s+'Z')/1000),p:m.precipitation||[]};
       }).catch(()=>null);
   }
   Promise.all([
-    fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json()),
+    wxFetchShared('https://api.rainviewer.com/public/weather-maps.json'),
     loadGrid()
   ]).then(([d,grid])=>grid?[d,grid,null]:fetchPoint().then(pt=>[d,null,pt]))
   .then(([d,grid,pt])=>{
@@ -4140,7 +4156,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     show(idx);start();
   }).catch(()=>{});
   /* ---- temperature overlay: prev 2h (solid) + next 2h forecast (dashed), same GPS as the rain radar ---- */
-  let tempSeries=null; // [[Date,celsius], ...] hourly, from Open-Meteo (free, no API key, CORS-enabled)
+  let tempSeries=null,tempErr=null; // [[Date,celsius], ...] hourly, from Open-Meteo (free, no API key, CORS-enabled)
   let condSeries=null; // [[Date, wmoCode, precipProb%], ...] hourly conditions, same source
   // WMO weather-interpretation code -> [emoji, short label]
   function wcIcon(c){
@@ -4184,20 +4200,27 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   window.__wxNow=wxNow;
   // log one temperature reading to Supabase (LIVE only) — builds the history to compare against lap times
   function logWeather(){
+    if(MYSIDE)return;   // one logger per page: the second block's instance would duplicate every stint9_weather row
     if(window.dataMode!=='LIVE')return;const w=wxNow();if(!w||w.temp==null)return;
     fetch(FUEL_SB_URL+'/rest/v1/stint9_weather',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
       body:JSON.stringify({event_date:liveEventDate(),recorded_at:new Date().toISOString(),temp_c:+w.temp.toFixed(1),weather_code:w.code,precip_prob:w.precip,lat:lat,lon:lon})}).catch(()=>{});
   }
   function fetchTemps(){
-    fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&hourly=temperature_2m,weather_code,precipitation_probability&past_days=1&forecast_days=2&timezone=auto')
-      .then(r=>r.json()).then(d=>{const h=d.hourly;if(!h||!h.time)return;
+    wxFetchShared('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&hourly=temperature_2m,weather_code,precipitation_probability&past_days=1&forecast_days=2&timezone=auto',19*60*1000)
+      .then(d=>{const h=d&&d.hourly;
+        if(!h||!h.time){tempErr=(d&&d.reason)?String(d.reason):'no forecast data';renderTempOverlay();return;}
+        tempErr=null;
         tempSeries=h.time.map((t,i)=>[new Date(t),h.temperature_2m[i]]);
         condSeries=h.time.map((t,i)=>[new Date(t),h.weather_code?h.weather_code[i]:null,h.precipitation_probability?h.precipitation_probability[i]:null]);
         renderTempOverlay();renderWxIcons();logWeather();})
-      .catch(()=>{});
+      .catch(()=>{tempErr='forecast unreachable';renderTempOverlay();});
   }
   function renderTempOverlay(){
-    const svg=wxEl('tempoverlay');if(!svg||!tempSeries)return;
+    const svg=wxEl('tempoverlay');if(!svg)return;
+    /* "no data" is not "nothing to draw": open-meteo can rate-limit (429) or be
+       unreachable, and this used to return silently and leave the TEMP reel an
+       empty rectangle that reads as a broken reel. Say what is going on. */
+    if(!tempSeries){svg.innerHTML='<text x="200" y="116" text-anchor="middle" font-size="13" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">TEMPERATURE &#183; '+(tempErr?'forecast unavailable':'loading&#8230;')+'</text>'+(tempErr?'<text x="200" y="136" text-anchor="middle" font-size="9" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+String(tempErr).replace(/[<>&]/g,'').slice(0,64)+'</text>':'');return;}
     const now=new Date();
     const W=400,H=240,padL=40,padR=38,padT=34,padB=30,gx0=padL,gx1=W-padR,gy0=padT,gy1=H-padB;
     const winStart=new Date(now.getTime()-2*3600000),winEnd=new Date(now.getTime()+2*3600000);
@@ -4241,7 +4264,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     s+='<text x="'+X(now).toFixed(1)+'" y="'+(Y(nowT)-11).toFixed(1)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="14" fill="#16202b" stroke="#fff" stroke-width="3" paint-order="stroke">'+nowT.toFixed(1)+'&#176;</text>';
     svg.innerHTML=s;
   }
-  fetchTemps();setInterval(fetchTemps,20*60*1000);setInterval(function(){renderTempOverlay();renderWxIcons();},5*60*1000);})();
+  renderTempOverlay();fetchTemps();setInterval(fetchTemps,20*60*1000);setInterval(function(){renderTempOverlay();renderWxIcons();},5*60*1000);})();
 
 /* ---- lap-time logging (LIVE only) ---- one row per newly completed lap, stamped with the
    temperature at log time, so temp<->laptime can be compared in SQL (stint9_laptimes). */
