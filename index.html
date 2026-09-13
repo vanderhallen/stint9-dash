@@ -310,9 +310,9 @@
   #msgModal .mtxt{font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.45;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:18px}
   #msgModal .mok{display:block;margin-left:auto;font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:9px 24px;border-radius:8px;cursor:pointer}
   #msgModal .mok:hover{background:var(--accent);border-color:var(--accent)}
-  #agentModal{position:fixed;inset:0;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:1000}
+  #agentModal{position:fixed!important;inset:0!important;left:0!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100dvh!important;margin:0!important;transform:none!important;background:rgba(22,32,43,.45);display:none;align-items:center;justify-content:center;z-index:30000}
   #agentModal.show{display:flex}
-  #agentModal .mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:560px;width:calc(100% - 40px);padding:22px 22px 18px;box-shadow:0 24px 64px rgba(0,0,0,.32)}
+  #agentModal .mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;max-width:560px;width:min(560px,calc(100vw - 40px));margin:auto;padding:22px 22px 18px;box-shadow:0 24px 64px rgba(0,0,0,.32)}
   #agentModal .mhd{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:12px}
   #agentModal .mq{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:10px;word-break:break-word}
   #agentModal .mtxt{font-family:'IBM Plex Mono',monospace;font-size:14px;line-height:1.55;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:18px;max-height:60vh;overflow-y:auto}
@@ -583,6 +583,12 @@
     <button type="button" class="simevGo" id="simevGo">SIMULATE</button>
   </div>
 </div>
+<div id="agentModal"><div class="mbox">
+  <div class="mhd">&#129302; Agent answer</div>
+  <div class="mq" id="agentModalQ"></div>
+  <div class="mtxt" id="agentModalText"></div>
+  <button type="button" class="mok" id="agentModalOk">OK</button>
+</div></div>
 <div class="wrap" style="display:flex;gap:16px;align-items:stretch">
   <div id="gridcard" class="card sidecard" style="flex:0 0 190px;width:190px">
     <div class="sidehd"><span id="gridclock">&mdash;</span><span id="gridnext">&mdash;</span></div>
@@ -782,12 +788,6 @@
     <input id="agentq" type="text" placeholder="ask agent a question" autocomplete="off" spellcheck="false">
     <button id="agentgo" class="agentgo">ask</button>
     <div class="agentsug"><span>Try:</span><button class="sug">What's the likely outcome for our car?</button><button class="sug">Which sector are we losing time?</button><button class="sug">What's the gap ahead?</button><button class="sug">What is the average speed over full lap?</button></div>
-    <div id="agentModal"><div class="mbox">
-      <div class="mhd">&#129302; Agent answer</div>
-      <div class="mq" id="agentModalQ"></div>
-      <div class="mtxt" id="agentModalText"></div>
-      <button type="button" class="mok" id="agentModalOk">OK</button>
-    </div></div>
   </div>
   </div><!-- /.maincol -->
   <div id="rightcol" style="flex:0 0 220px;width:220px;display:flex;flex-direction:column">
@@ -2673,9 +2673,14 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
     if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.max(0,Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg))),gB=Math.max(0,Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg))),iy=y+gA,ih=Math.max(rowH*0.14,Math.min(rowH,rowH-gA-gB));
       s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
   svg.innerHTML=s;}
+function placeAgentModal(){
+  const m=document.getElementById('agentModal');if(!m)return m;
+  if(m.parentNode!==document.body)document.body.appendChild(m);
+  return m;
+}
 function closeAgentModal(){const m=document.getElementById('agentModal');if(m)m.classList.remove('show');}
 function agentAsk(){
-  const m=document.getElementById('agentModal'),q=document.getElementById('agentq').value;
+  const m=placeAgentModal(),q=document.getElementById('agentq').value;
   if(!m)return;
   document.getElementById('agentModalQ').textContent=q.trim()?('“'+q.trim()+'”'):'';
   document.getElementById('agentModalText').innerHTML=askAgent(q);
