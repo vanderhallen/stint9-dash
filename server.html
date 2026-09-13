@@ -32,10 +32,10 @@
   .yt-embed{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
   .yt-embed.on{display:block}
   .yt-embed iframe{width:100%;height:100%;border:0;display:block}
-  .previewwrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;display:none}
-  .previewwrap.on{display:block}
-  .previewwrap img{width:100%;display:block}
-  #cropbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.15);cursor:move;touch-action:none}
+  .videoStage{position:relative}
+  #cropOverlay{position:absolute;inset:0;display:none;pointer-events:none}
+  #cropOverlay.on{display:block}
+  #cropbox{position:absolute;border:2px solid #ff3b30;background:rgba(255,59,48,.15);cursor:move;touch-action:none;pointer-events:auto}
   #cropbox .rz{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#ff3b30;border-radius:3px;cursor:nwse-resize}
   .status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:20px;background:#eef1f4;color:var(--muted)}
   .status .sdot{width:8px;height:8px;border-radius:50%;background:currentColor}
@@ -95,7 +95,12 @@
         <button class="btn ghost" id="stopBtn" onclick="stopMonitoring()" disabled>Stop</button>
       </div>
       <div class="err" id="startErr"></div>
-      <div class="yt-embed" id="yt-embed"></div>
+      <div class="videoStage" id="videoStage">
+        <div class="yt-embed" id="yt-embed"></div>
+        <div id="cropOverlay">
+          <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
+        </div>
+      </div>
     </div>
 
     <div class="card inert" id="monitorCard">
@@ -104,10 +109,6 @@
         <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">offline</span></span>
         <span id="scanPos"></span>
         <button class="btn ghost" id="recalibBtn" onclick="showCalibration()" disabled style="margin-left:auto">Recalibrate</button>
-      </div>
-      <div class="previewwrap" id="previewWrap">
-        <img id="previewImg" alt="stream preview">
-        <div id="cropbox" style="display:none"><div class="rz" id="cropRz"></div></div>
       </div>
       <div class="row" id="calibRow" style="display:none;margin-top:10px">
         <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm — scanning is paused until you do.</div>
@@ -274,7 +275,7 @@ function resetMonitorUi(){
   document.getElementById('startBtn').disabled=false;
   document.getElementById('stopBtn').disabled=true;
   document.getElementById('recalibBtn').disabled=true;
-  document.getElementById('previewWrap').classList.remove('on');
+  document.getElementById('cropOverlay').classList.remove('on');
   document.getElementById('calibRow').style.display='none';
   document.getElementById('scanPos').textContent='';
   document.getElementById('hitsCard').style.display='none';
@@ -368,21 +369,22 @@ async function pollStatus(){
   }
 }
 
-/* ---- calibration: same draggable-crop-box UX as before, now overlaid on a static
-   preview snapshot the server grabbed, instead of a live captured video frame ---- */
+/* ---- calibration: draggable crop box overlaid directly on the live YouTube
+   embed (not a static server-grabbed frame) -- the embed is just the user's
+   own real-time view of the same stream the server is downloading, and since
+   both render at the same 16:9 box, a box drawn as a fraction of the embed's
+   rendered size lines up with the same fraction of the server's own decoded
+   frame, which is what actually gets cropped for OCR. ---- */
 function showCalibration(){
-  const wrap=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
-  img.src=BASE+'/api/monitor/preview.jpg?t='+Date.now();
-  img.onload=()=>{
-    wrap.classList.add('on');
-    const box=document.getElementById('cropbox');
-    box.style.display='block';
-    const initW=wrap.clientWidth*0.16,initH=wrap.clientHeight*0.10;
-    box.style.left=(wrap.clientWidth*0.78)+'px';box.style.top=(wrap.clientHeight*0.10)+'px';
-    box.style.width=initW+'px';box.style.height=initH+'px';
-    document.getElementById('calibRow').style.display='flex';
-    wireCropBoxDrag();
-  };
+  const stage=document.getElementById('videoStage');
+  document.getElementById('cropOverlay').classList.add('on');
+  const box=document.getElementById('cropbox');
+  box.style.display='block';
+  const initW=stage.clientWidth*0.16,initH=stage.clientHeight*0.10;
+  box.style.left=(stage.clientWidth*0.78)+'px';box.style.top=(stage.clientHeight*0.10)+'px';
+  box.style.width=initW+'px';box.style.height=initH+'px';
+  document.getElementById('calibRow').style.display='flex';
+  wireCropBoxDrag();
 }
 var cropDragWired=false;
 function wireCropBoxDrag(){
@@ -392,7 +394,7 @@ function wireCropBoxDrag(){
   // is enough; re-running addEventListener each time would stack duplicates.
   if(cropDragWired)return;
   cropDragWired=true;
-  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('previewWrap');
+  const box=document.getElementById('cropbox'),rz=document.getElementById('cropRz'),stage=document.getElementById('videoStage');
   let mode=null,sx=0,sy=0,ox=0,oy=0,ow=0,oh=0;
   function down(e,m){mode=m;const p=(e.touches?e.touches[0]:e);sx=p.clientX;sy=p.clientY;
     ox=parseFloat(box.style.left);oy=parseFloat(box.style.top);ow=parseFloat(box.style.width);oh=parseFloat(box.style.height);
@@ -408,15 +410,16 @@ function wireCropBoxDrag(){
   document.addEventListener('mouseup',()=>mode=null);document.addEventListener('touchend',()=>mode=null);
 }
 async function confirmCalib(){
-  const box=document.getElementById('cropbox'),stage=document.getElementById('previewWrap'),img=document.getElementById('previewImg');
-  const iw=img.naturalWidth||stage.clientWidth,ih=img.naturalHeight||stage.clientHeight;
-  const sxr=iw/stage.clientWidth,syr=ih/stage.clientHeight;
-  const x=parseFloat(box.style.left)*sxr,y=parseFloat(box.style.top)*syr;
-  const w=parseFloat(box.style.width)*sxr,h=parseFloat(box.style.height)*syr;
-  const calib={x:x/iw,y:y/ih,w:w/iw,h:h/ih};
+  const box=document.getElementById('cropbox'),stage=document.getElementById('videoStage');
+  const calib={
+    x:parseFloat(box.style.left)/stage.clientWidth,
+    y:parseFloat(box.style.top)/stage.clientHeight,
+    w:parseFloat(box.style.width)/stage.clientWidth,
+    h:parseFloat(box.style.height)/stage.clientHeight,
+  };
   document.getElementById('cropbox').style.display='none';
   document.getElementById('calibRow').style.display='none';
-  document.getElementById('previewWrap').classList.remove('on');
+  document.getElementById('cropOverlay').classList.remove('on');
   try{await apiFetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
 }
 

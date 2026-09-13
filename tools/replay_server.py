@@ -578,6 +578,19 @@ def detection_loop(sess):
                     break
                 calib = sess.get('calib')
                 need_preview = not sess.get('preview_ready')
+                do_reset = sess.pop('reset_scan', False)
+
+            if do_reset:
+                close_cap()
+                next_t = 0.0
+                badge_on = False
+                pending, pending_n = None, 0
+                clip_start_t = None
+                pending_off_t = None
+                with lock:
+                    sess['badge_on'] = False
+                    sess['scan_mode'] = 'catchup'
+                    sess['scanned_t'] = 0.0
 
             path = resolve_video_path(sess)
             if path is None:
@@ -767,10 +780,17 @@ def monitor_calibrate():
     with lock:
         if not capture_session:
             return jsonify(status='error'), 400
+        had_calib = capture_session['calib'] is not None
         try:
             capture_session['calib'] = {k: float(data[k]) for k in ('x', 'y', 'w', 'h')}
         except (KeyError, TypeError, ValueError):
             return jsonify(status='error', message='bad crop region'), 400
+        # a redo (not the first calibration) means whatever was already scanned
+        # used the old, wrong crop region -- rescan the whole recording so far
+        # from the start with the corrected one instead of picking up where the
+        # old scan left off.
+        if had_calib:
+            capture_session['reset_scan'] = True
     return jsonify(status='ok')
 
 
