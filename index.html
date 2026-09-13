@@ -2457,9 +2457,17 @@ function renderSecTab(T){
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
   const th0='position:sticky;left:0;top:0;z-index:4;background:#f2f3f6;padding:4px 10px;text-align:left;border-right:1px solid #d5d9df;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
   const rowLbl='position:sticky;left:0;z-index:1;background:#f7f8fa;padding:3px 10px;text-align:left;font-weight:700;border-right:1px solid #d5d9df;border-bottom:1px solid #f3f4f6;color:#6b7480';
-  const num=(v,bestHit,strong)=>{
+  const num=(v,bestHit,strong,dv)=>{
     if(v==null)return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
-    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700':('color:#16202b'+(strong?';font-weight:700':'')))+'">'+fmt(v)+'</td>';
+    let txt=fmt(v);
+    // Delta vs this sector's own personal best (best[k]) — same green-▲/red-▼
+    // convention as cmpCell elsewhere. Skipped on the best cell itself (already
+    // purple, delta would just be a redundant "0.0").
+    if(!bestHit&&dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){
+      const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
+      txt+=' <span style="color:'+col+';font-weight:700">'+tri+Math.abs(dv).toFixed(1)+'</span>';
+    }
+    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700':('color:#16202b'+(strong?';font-weight:700':'')))+'">'+txt+'</td>';
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
   // row 1 — LAP number header
@@ -2473,7 +2481,7 @@ function renderSecTab(T){
   // rows 3..7 — S1..S5
   ['S1','S2','S3','S4','S5'].forEach((lbl,k)=>{
     h+='<tr><td style="'+rowLbl+'">'+lbl+'</td>';
-    laps.forEach(L=>{const v=cells[L].vals[k];h+=num(v,eq(v,best[k]),false);});
+    laps.forEach(L=>{const v=cells[L].vals[k];h+=num(v,eq(v,best[k]),false,v!=null?v-best[k]:null);});
     h+='</tr>';
   });
   // final row — LAP total
@@ -2483,7 +2491,7 @@ function renderSecTab(T){
     else{h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(eq(t,bestLap)?'#7b2fbe':'#16202b')+'">'+fmt(t)+'</td>';}
   });
   h+='</tr></tbody></table>';
-  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best.</div>'+h;
+  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>'+h;
 }
 /* leaderAtLap: the car actually running in P1 (real running order) the
    moment it crosses the line to complete lap L — from DB.lappos, which
