@@ -1,0 +1,1609 @@
+{
+  "event": {
+    "slug": "NLS9-quali",
+    "name": "66. ADAC ACAS Cup (4h)",
+    "date": "2026-09-13",
+    "end": null,
+    "label": "quali"
+  },
+  "generated_at": "2026-09-13T09:48:05.098907+00:00",
+  "fuel": [],
+  "fuel_notes": [],
+  "tyres": [
+    {
+      "car": "680",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T05:08:12.238Z",
+          "0002": "2026-09-12T05:08:12.238Z",
+          "0003": "2026-09-12T05:08:12.238Z",
+          "0004": "2026-09-12T05:08:12.238Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
+      "car": "670",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T08:41:45.556Z",
+          "0002": "2026-09-12T08:41:45.556Z",
+          "0003": "2026-09-12T08:41:45.556Z",
+          "0004": "2026-09-12T08:41:45.556Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
+      "car": "665",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "32"
+            },
+            "active": [
+              "hl",
+              "dry",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "32"
+            },
+            "active": [
+              "hr",
+              "dry",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "32"
+            },
+            "active": [
+              "vl",
+              "dry",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "32"
+            },
+            "active": [
+              "vr",
+              "dry",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "dry",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "dry",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "dry",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "dry",
+              "hot"
+            ]
+          }
+        },
+        "stock": {
+          "stock-0-0": {
+            "cond": "dry"
+          },
+          "stock-0-1": {
+            "cond": "dry"
+          },
+          "stock-0-2": {
+            "cond": "dry"
+          },
+          "stock-0-3": {
+            "cond": "dry"
+          },
+          "stock-3-0": {
+            "km": "561"
+          },
+          "stocknew-0": {
+            "km": "0",
+            "cond": "wet",
+            "wear": "new"
+          }
+        },
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-08-04T10:13:38.728Z",
+          "0002": "2026-08-04T10:13:38.728Z",
+          "0003": "2026-08-04T10:13:38.728Z",
+          "0004": "2026-08-04T10:13:38.728Z",
+          "XXXX": "2026-07-31T22:50:07.037Z"
+        },
+        "stockAdds": [
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          }
+        ],
+        "emptyBands": [
+          "v1",
+          "v2",
+          "v3",
+          "v4"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stock-1-0",
+          "stock-1-1",
+          "stock-1-2",
+          "stock-1-3",
+          "stock-2-0",
+          "stock-2-1",
+          "stock-2-2",
+          "stock-2-3",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3",
+          "stocknew-0",
+          "stock-0-0",
+          "stock-0-1",
+          "stock-0-2",
+          "stock-0-3",
+          "stock-4-0",
+          "stock-4-1",
+          "stock-4-2",
+          "stock-4-3"
+        ]
+      }
+    }
+  ],
+  "tyre_bands": [],
+  "racenotes": [
+    {
+      "car": "1",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P3 · lost to #175 in S1"
+    },
+    {
+      "car": "1",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P2 · passed #170 in S1"
+    },
+    {
+      "car": "1",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:18.5s"
+    },
+    {
+      "car": "1",
+      "lap": 3,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #164 · 513.2s → 93.3s"
+    },
+    {
+      "car": "1",
+      "lap": 5,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #164 in S1"
+    },
+    {
+      "car": "1",
+      "lap": 5,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:10.5"
+    },
+    {
+      "car": "1",
+      "lap": 6,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 8:41.0"
+    },
+    {
+      "car": "650",
+      "lap": 0,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:22.0s"
+    },
+    {
+      "car": "650",
+      "lap": 0,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:17.6s"
+    },
+    {
+      "car": "650",
+      "lap": 0,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:33.4s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P3 · passed #665 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P3 · passed #667 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:21.6s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.9s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P3→P2 · passed #664 in S3"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:14.3s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:30.7s"
+    },
+    {
+      "car": "650",
+      "lap": 1,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 54.7s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #652 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:17.9s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.3s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:30.6s"
+    },
+    {
+      "car": "650",
+      "lap": 2,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:13.6"
+    },
+    {
+      "car": "650",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #652 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 4,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P2→P1 · passed #652 in S1"
+    },
+    {
+      "car": "650",
+      "lap": 4,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:16.9s"
+    },
+    {
+      "car": "650",
+      "lap": 5,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:16.8s"
+    },
+    {
+      "car": "651",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P6→P5 · passed #665 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P5→P6 · lost to #665 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P5→P6 · lost to #677 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P5→P6 · passed #667 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P4 · passed #665 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P4 · passed #677 in S1"
+    },
+    {
+      "car": "651",
+      "lap": 3,
+      "sector": 5,
+      "kind": "pit",
+      "body": "PIT IN · stop 1 · from P4"
+    },
+    {
+      "car": "651",
+      "lap": 4,
+      "sector": 1,
+      "kind": "pit",
+      "body": "PIT OUT · P3 at S1 · +255.5s"
+    },
+    {
+      "car": "651",
+      "lap": 4,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #652 · 805.3s → 649.5s"
+    },
+    {
+      "car": "651",
+      "lap": 6,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #650 · 959.1s → 703.7s"
+    },
+    {
+      "car": "651",
+      "lap": 6,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 30.3s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:33.2s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:36.3s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:21.6s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 4,
+      "kind": "fastest",
+      "body": "class-best S4 · 3:34.4s"
+    },
+    {
+      "car": "664",
+      "lap": 0,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 57.9s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P1→P2 · lost to #652 in S1"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:22.1s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:15.4s"
+    },
+    {
+      "car": "664",
+      "lap": 1,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P2→P3 · lost to #650 in S3"
+    },
+    {
+      "car": "664",
+      "lap": 2,
+      "sector": 3,
+      "kind": "overtake",
+      "body": "P3→P2 · passed #652 in S3"
+    },
+    {
+      "car": "664",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P3→P3 · lost to #652 in S1"
+    },
+    {
+      "car": "664",
+      "lap": 4,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:13.2s"
+    },
+    {
+      "car": "664",
+      "lap": 4,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:12.1"
+    },
+    {
+      "car": "664",
+      "lap": 5,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P5 · lost to #677 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 2,
+      "kind": "fastest",
+      "body": "class-best S2 · 1:25.0s"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 3,
+      "kind": "fastest",
+      "body": "class-best S3 · 2:19.4s"
+    },
+    {
+      "car": "665",
+      "lap": 0,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "class-best S5 · 55.5s"
+    },
+    {
+      "car": "665",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P6 · lost to #650 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 1,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P6 · lost to #651 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 1,
+      "sector": 4,
+      "kind": "overtake",
+      "body": "P6→P7 · lost to #677 in S4"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P4 · passed #667 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P7→P5 · passed #651 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P7→P6 · passed #677 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:17.8s"
+    },
+    {
+      "car": "665",
+      "lap": 2,
+      "sector": 5,
+      "kind": "gap",
+      "body": "closing on #664 · 546.4s → 471.3s"
+    },
+    {
+      "car": "665",
+      "lap": 3,
+      "sector": 1,
+      "kind": "fastest",
+      "body": "class-best S1 · 1:16.8s"
+    },
+    {
+      "car": "665",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P6 · lost to #651 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 3,
+      "sector": 1,
+      "kind": "overtake",
+      "body": "P4→P6 · lost to #677 in S1"
+    },
+    {
+      "car": "665",
+      "lap": 3,
+      "sector": 5,
+      "kind": "fastest",
+      "body": "fastest lap so far · 9:17.0"
+    }
+  ],
+  "messages": [
+    {
+      "car": "22",
+      "source": "wige",
+      "message": "# 22 black flag with orange disc - check timekeeping-transponder - no signal",
+      "created_at": "2026-09-13T06:59:42+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "22",
+      "source": "wige",
+      "message": "# 22 Schwarze Flagge mit oranger Scheibe - Zeitnahme-Transponder pr?fen - kein Signal",
+      "created_at": "2026-09-13T06:59:46+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 check driver ID - you send no signal",
+      "created_at": "2026-09-13T07:00:13+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "# 321 Fahrer-ID pr?fen - Sie senden kein Signal",
+      "created_at": "2026-09-13T07:00:17+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Test",
+      "created_at": "2026-09-13T07:02:26+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Test",
+      "created_at": "2026-09-13T07:03:06+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "899",
+      "source": "wige",
+      "message": "#899 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:04:07+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "898",
+      "source": "wige",
+      "message": "#898 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:04:30+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "test",
+      "created_at": "2026-09-13T07:05:29+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "102",
+      "source": "wige",
+      "message": "# 102 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-13T07:20:25+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "899",
+      "source": "wige",
+      "message": "#899 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:20:26+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "102",
+      "source": "wige",
+      "message": "# 102 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-13T07:20:30+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "84",
+      "source": "wige",
+      "message": "# 84 ? overspeeding pitlane under investigation",
+      "created_at": "2026-09-13T07:20:35+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "84",
+      "source": "wige",
+      "message": "# 84 ? Geschwindigkeits?berschreitung Boxengasse wird untersucht",
+      "created_at": "2026-09-13T07:20:39+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "898",
+      "source": "wige",
+      "message": "#898 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:20:42+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "520",
+      "source": "wige",
+      "message": "# 520 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-13T07:23:13+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "520",
+      "source": "wige",
+      "message": "# 520 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-13T07:23:21+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "47",
+      "source": "wige",
+      "message": "Incident involved #47 and #64 under investigation",
+      "created_at": "2026-09-13T07:23:28+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "84",
+      "source": "wige",
+      "message": "# 84 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-13T07:23:52+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "84",
+      "source": "wige",
+      "message": "# 84 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-13T07:24:00+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "632",
+      "source": "wige",
+      "message": "Incident involved #632 and #13 under investigation",
+      "created_at": "2026-09-13T07:30:50+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "47",
+      "source": "wige",
+      "message": "Incident involed #47 and #64 referd to the Stewards",
+      "created_at": "2026-09-13T07:32:17+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "470",
+      "source": "wige",
+      "message": "# 470 first noise violation",
+      "created_at": "2026-09-13T07:33:17+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "470",
+      "source": "wige",
+      "message": "# 470 erste L?rm?berschreitung",
+      "created_at": "2026-09-13T07:33:22+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "999",
+      "source": "wige",
+      "message": "#999 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:39:40+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "652",
+      "source": "wige",
+      "message": "#652 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:41:12+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "321",
+      "source": "wige",
+      "message": "#321 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T07:41:51+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "102",
+      "source": "wige",
+      "message": "# 102 stop-and-go penalty 30 sec ? overspeeding pitlane",
+      "created_at": "2026-09-13T07:47:47+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "102",
+      "source": "wige",
+      "message": "# 102 Stop-and-Go Strafe 30 Sek ? Geschwindigkeits?berschreitung Boxengasse",
+      "created_at": "2026-09-13T07:47:58+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "13",
+      "source": "wige",
+      "message": "#13 drop of 3 Grid Positions for the Race",
+      "created_at": "2026-09-13T08:03:33+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "13",
+      "source": "wige",
+      "message": "#13 drop of 3 positions for Grid Positions for the Race",
+      "created_at": "2026-09-13T08:03:33+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "47",
+      "source": "wige",
+      "message": "Incident #47 and #64 no further action",
+      "created_at": "2026-09-13T08:14:28+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "651",
+      "source": "wige",
+      "message": "#651 under investigation",
+      "created_at": "2026-09-13T08:16:48+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "651",
+      "source": "wige",
+      "message": "Incident #651 referd to the Stewards",
+      "created_at": "2026-09-13T08:19:51+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "524",
+      "source": "wige",
+      "message": "#524 failed to manage Code 60 under investigation",
+      "created_at": "2026-09-13T08:20:46+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Startaufstellung beginnt um 11:10 Uhr",
+      "created_at": "2026-09-13T09:02:01+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "grid procedure will start at 11:10 hrs",
+      "created_at": "2026-09-13T09:02:04+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Ausfahrt Boxengasse gr?nes Licht f?r 20 Min - Beginn Startaufstellung",
+      "created_at": "2026-09-13T09:09:59+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "pit exit green light for 20 min - begin grid procedure",
+      "created_at": "2026-09-13T09:10:12+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Race is wet race",
+      "created_at": "2026-09-13T09:26:20+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "Ausfahrt Boxengasse geschlossen",
+      "created_at": "2026-09-13T09:30:03+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "pit exit closed",
+      "created_at": "2026-09-13T09:30:08+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    },
+    {
+      "car": "935",
+      "source": "wige",
+      "message": "#935 drive trought penalty replaced by 30sec time penalty",
+      "created_at": "2026-09-13T14:16:40+00:00",
+      "event_date": "2026-09-13",
+      "race_class": null
+    }
+  ]
+}

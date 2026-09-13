@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-09-12T15:14:48.757234+00:00",
+  "generated_at": "2026-09-13T09:48:05.098907+00:00",
   "events": [
+    {
+      "slug": "NLS9-quali",
+      "name": "66. ADAC ACAS Cup (4h)",
+      "label": "quali",
+      "date": "2026-09-13",
+      "end": null,
+      "car_count": 112,
+      "archived_at": "2026-09-13T09:48:05.098907+00:00",
+      "file": "events/NLS9-quali.json",
+      "notes": "events/NLS9-quali_notes.json"
+    },
     {
       "slug": "NLS8-quali",
       "name": "65. ADAC Reinoldus-Langstreckenrennen (4h) — Qualifying",
