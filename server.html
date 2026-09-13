@@ -76,10 +76,11 @@
     <div class="sub">Runs entirely on this machine — start/stop capture here. <a href="https://vanderhallen.github.io/stint9-dash/replay.html" target="_blank" rel="noopener">Browse caught clips →</a></div>
   </div>
 
-  <!-- ---- server offline: same pattern as the hoc-tracker kenteken tool ---- -->
-  <div class="card offline" id="offlineCard" style="display:none">
-    <h2><span class="dot" id="statusDot"></span> Server offline</h2>
-    <div class="meta" style="margin:0 0 12px">The local capture process isn't responding — it may have crashed or been stopped. Restart it:</div>
+  <!-- ---- server status + restart steps: kept visible at all times (not just
+       when offline) as a standing reference for restarting the capture process ---- -->
+  <div class="card" id="offlineCard">
+    <h2><span class="dot" id="statusDot"></span> <span id="statusHeading">Server offline</span></h2>
+    <div class="meta" style="margin:0 0 12px" id="statusMeta">The local capture process isn't responding — it may have crashed or been stopped. Restart it:</div>
     <div class="step"><span class="stepnum">1</span><button class="btn ghost" onclick="copyCmd(this,'source ~/Documents/Terminal/venv/bin/activate')">Kopieer</button><code>source ~/Documents/Terminal/venv/bin/activate</code></div>
     <div class="step"><span class="stepnum">2</span><button class="btn ghost" onclick="copyCmd(this,'python3 ~/Documents/Github/stint9-dash/tools/replay_server.py')">Kopieer</button><code>python3 ~/Documents/Github/stint9-dash/tools/replay_server.py</code></div>
     <div class="meta" style="margin-top:12px">This page picks it up automatically within a few seconds — no need to reopen anything.</div>
@@ -187,7 +188,10 @@ async function checkServer(){
 function setServerOnline(){
   if(serverOnline)return;serverOnline=true;
   if(healthTimer){clearInterval(healthTimer);healthTimer=null;}
-  document.getElementById('offlineCard').style.display='none';
+  document.getElementById('offlineCard').classList.remove('offline');
+  document.getElementById('statusDot').classList.add('on');
+  document.getElementById('statusHeading').textContent='Server';
+  document.getElementById('statusMeta').textContent='Running — restart it here any time you need to (e.g. after an update):';
   document.getElementById('sourceCard').classList.remove('inert');
   document.getElementById('monitorCard').classList.remove('inert');
   document.getElementById('startBtn').disabled=false;
@@ -197,7 +201,10 @@ function setServerOnline(){
 }
 function setServerOffline(){
   serverOnline=false;
-  document.getElementById('offlineCard').style.display='';
+  document.getElementById('offlineCard').classList.add('offline');
+  document.getElementById('statusDot').classList.remove('on');
+  document.getElementById('statusHeading').textContent='Server offline';
+  document.getElementById('statusMeta').textContent="The local capture process isn't responding — it may have crashed or been stopped. Restart it:";
   document.getElementById('sourceCard').classList.add('inert');
   document.getElementById('monitorCard').classList.add('inert');
   if(!healthTimer)healthTimer=setInterval(checkServer,4000);
