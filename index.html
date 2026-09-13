@@ -2822,16 +2822,12 @@ function renderGap(T,lp){const box=document.getElementById('gapbox'),svg=documen
   if(!selCar||!p){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const ref=byPos[1];if(!ref){box.style.display='none';return;}
   const col=st=>DB.carcol[st]||'#888';
-  // Zoomed: every other car in the class vs the leader, not just P2/P3 +
-  // selected — same "show the whole field" intent as the podium table's zoom.
+  // Unlike the podium table, this stays top-3(+selected) even zoomed: one
+  // backmarker way off the pace (a long pit, a DNF limping home) blows out the
+  // whole Y-axis and flattens every real gap among the leaders into noise.
   const zoomed=box.classList.contains('zoomed');
-  let plot;
-  if(zoomed){
-    plot=DB.cars.filter(st=>st!==ref);
-  }else{
-    plot=[];[2,3].forEach(pp=>{if(byPos[pp])plot.push(byPos[pp]);});
-    if(p>3&&plot.indexOf(selCar)<0&&selCar!==ref)plot.push(selCar);
-  }
+  const plot=[];[2,3].forEach(pp=>{if(byPos[pp])plot.push(byPos[pp]);});
+  if(p>3&&plot.indexOf(selCar)<0&&selCar!==ref)plot.push(selCar);
   const series=plot.map(st=>{const pts=[];for(let L=1;L<=maxN;L++){const ts=BX[st][L*5],tc=BX[ref][L*5];if(ts==null||tc==null)continue;if(ts>T||tc>T)break;pts.push([L,ts-tc]);}
     const lb=lastCommon(st,ref,T);if(lb!=null){const tsL=BX[st][lb],tcL=BX[ref][lb];if(tsL!=null&&tcL!=null){const gL=tsL-tcL,LL=Math.floor((lb-1)/5)+1,sg=keySec(lb),fx=(LL-1)+sg/5;if(!pts.length||fx>pts[pts.length-1][0]+1e-6)pts.push([fx,gL]);else pts[pts.length-1]=[fx,gL];}}
     return {st,pts};}).filter(sr=>sr.pts.length);
