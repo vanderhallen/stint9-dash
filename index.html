@@ -2455,9 +2455,21 @@ function renderSecTab(T){
   laps.reverse();   // newest/last lap leftmost, first lap rightmost
   const activeD=curDrv(selCar,T);
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
+  // Row heat map: within one row (one sector, or the LAP total), the fastest
+  // value anchors green and the slowest anchors red, everything between
+  // interpolated on the hue wheel — so it's relative to that row's own spread,
+  // not some fixed lap-time scale. The purple "own best" cell is excluded from
+  // display (it keeps its purple) but stays in the min/max calc since it IS
+  // the fastest and should anchor the green end.
+  const heatBg=(v,min,max)=>{
+    if(v==null||min==null||max==null||!isFinite(min)||!isFinite(max)||max<=min)return'';
+    const t=Math.max(0,Math.min(1,(v-min)/(max-min)));
+    return 'background:hsl('+(120*(1-t)).toFixed(0)+',65%,86%)';
+  };
+  const rowRange=vals=>{const f=vals.filter(v=>v!=null&&isFinite(v));return f.length?[Math.min(...f),Math.max(...f)]:[null,null];};
   const th0='position:sticky;left:0;top:0;z-index:4;background:#f2f3f6;padding:4px 10px;text-align:left;border-right:1px solid #d5d9df;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
   const rowLbl='position:sticky;left:0;z-index:1;background:#f7f8fa;padding:3px 10px;text-align:left;font-weight:700;border-right:1px solid #d5d9df;border-bottom:1px solid #f3f4f6;color:#6b7480';
-  const num=(v,bestHit,strong,dv)=>{
+  const num=(v,bestHit,strong,dv,bg)=>{
     if(v==null)return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
     let txt=fmt(v);
     // Delta vs this sector's own personal best (best[k]) — same green-▲/red-▼
@@ -2467,7 +2479,7 @@ function renderSecTab(T){
       const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
       txt+='<br><span style="color:'+col+';font-weight:700;font-size:10px">'+tri+Math.abs(dv).toFixed(1)+'</span>';
     }
-    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;font-size:14px;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')))+'">'+txt+'</td>';
+    return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;font-size:14px;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')+(bg?';'+bg:'')))+'">'+txt+'</td>';
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
   // row 1 — LAP number header
@@ -2481,14 +2493,16 @@ function renderSecTab(T){
   // rows 3..7 — S1..S5
   ['S1','S2','S3','S4','S5'].forEach((lbl,k)=>{
     h+='<tr><td style="'+rowLbl+'">'+lbl+'</td>';
-    laps.forEach(L=>{const v=cells[L].vals[k];h+=num(v,eq(v,best[k]),false,v!=null?v-best[k]:null);});
+    const [rmin,rmax]=rowRange(laps.map(L=>cells[L].vals[k]));
+    laps.forEach(L=>{const v=cells[L].vals[k];h+=num(v,eq(v,best[k]),false,v!=null?v-best[k]:null,heatBg(v,rmin,rmax));});
     h+='</tr>';
   });
   // final row — LAP total
   h+='<tr><td style="'+rowLbl+';color:#16202b;border-top:1px solid #d5d9df">LAP</td>';
+  const [lmin,lmax]=rowRange(laps.map(L=>cells[L].tot));
   laps.forEach(L=>{const t=cells[L].tot;
     if(t==null){h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;color:#c9ced4">&mdash;</td>';}
-    else{const isBest=eq(t,bestLap);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';font-size:14px;background:#f3ecfb':'')+'">'+fmt(t)+'</td>';}
+    else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';font-size:14px;background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
   h+='</tr></tbody></table>';
   wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>'+h;
