@@ -113,7 +113,8 @@
       <div class="row">
         <span class="status" id="statusPill"><span class="sdot"></span><span id="statusTxt">offline</span></span>
         <span id="scanPos"></span>
-        <button class="btn ghost" id="recalibBtn" onclick="showCalibration()" disabled style="margin-left:auto">Recalibrate</button>
+        <span class="meta" id="calibFeedback" style="margin:0 8px 0 auto"></span>
+        <button class="btn ghost" id="recalibBtn" onclick="showCalibration()" disabled>Recalibrate</button>
       </div>
       <div class="row" id="calibRow" style="display:none;margin-top:10px">
         <div class="meta" style="margin:0">Drag the red box over the REPLAY badge, resize with its corner handle, then confirm — scanning is paused until you do.</div>
@@ -300,7 +301,7 @@ function restoreYtUrl(){
 
 /* ---- start/stop monitoring: hands the URL to the local server, which does
    everything else (download, detect, cut, upload) independently of this page ---- */
-var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0,lastHitsSig='',lastClipsLoad=0;
+var ytVideoId=null,statusTimer=null,calibShown=false,lastClipsFound=-1,statusFails=0,lastHitsSig='',lastClipsLoad=0,lastCalib=null;
 function resetMonitorUi(){
   document.getElementById('startBtn').disabled=false;
   document.getElementById('stopBtn').disabled=true;
@@ -372,6 +373,7 @@ async function pollStatus(){
   document.getElementById('startBtn').disabled=true;
   document.getElementById('stopBtn').disabled=false;
   document.getElementById('recalibBtn').disabled=!st.previewReady;
+  if(st.calib)lastCalib=st.calib;
   if(st.videoId && st.videoId!==ytVideoId){
     ytVideoId=st.videoId;
     const inp=document.getElementById('yt-url');
@@ -410,9 +412,18 @@ function showCalibration(){
   document.getElementById('cropOverlay').classList.add('on');
   const box=document.getElementById('cropbox');
   box.style.display='block';
-  const initW=stage.clientWidth*0.16,initH=stage.clientHeight*0.10;
-  box.style.left=(stage.clientWidth*0.78)+'px';box.style.top=(stage.clientHeight*0.10)+'px';
-  box.style.width=initW+'px';box.style.height=initH+'px';
+  // Recalibrate should start from wherever it was last actually confirmed --
+  // not always the same corner guess -- both so re-opening it shows the box
+  // sitting right where you left it (proof the previous confirm took), and so
+  // a small nudge doesn't mean re-finding the badge's rough position from scratch.
+  if(lastCalib){
+    box.style.left=(lastCalib.x*stage.clientWidth)+'px';box.style.top=(lastCalib.y*stage.clientHeight)+'px';
+    box.style.width=(lastCalib.w*stage.clientWidth)+'px';box.style.height=(lastCalib.h*stage.clientHeight)+'px';
+  }else{
+    const initW=stage.clientWidth*0.16,initH=stage.clientHeight*0.10;
+    box.style.left=(stage.clientWidth*0.78)+'px';box.style.top=(stage.clientHeight*0.10)+'px';
+    box.style.width=initW+'px';box.style.height=initH+'px';
+  }
   document.getElementById('calibRow').style.display='flex';
   wireCropBoxDrag();
 }
@@ -450,7 +461,14 @@ async function confirmCalib(){
   document.getElementById('cropbox').style.display='none';
   document.getElementById('calibRow').style.display='none';
   document.getElementById('cropOverlay').classList.remove('on');
-  try{await apiFetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});}catch(e){}
+  const fb=document.getElementById('calibFeedback');
+  try{
+    await apiFetch(BASE+'/api/monitor/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calib)});
+    lastCalib=calib;   // don't wait for the next status poll -- Recalibrate right after this should show exactly what was just confirmed
+    fb.textContent='Saved.';setTimeout(()=>{if(fb.textContent==='Saved.')fb.textContent='';},2500);
+  }catch(e){
+    if(!(e&&e.authRequired)){fb.textContent='could not save — try again';setTimeout(()=>{if(fb.textContent==='could not save — try again')fb.textContent='';},4000);}
+  }
 }
 
 /* ---- clips table: reads straight from Supabase Storage — this server just

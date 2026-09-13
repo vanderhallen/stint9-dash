@@ -74,6 +74,8 @@ BUCKET = 'replay-clips'
 SAMPLE_STEP = 1.0   # video-seconds between OCR samples
 DEBOUNCE_N = 2      # consecutive same-state samples required before flipping badge state
 MIN_VIDEO_BYTES = 400_000
+CATCHUP_MARGIN_S = 30   # scanned_t within this many seconds of true wall-clock race
+                        # time counts as "live", not "catching up" -- see scan_mode below
 MERGE_GAP_S = 8.0   # badge re-appearing within this many video-seconds of going off
                     # extends the same clip instead of starting a new one -- back-to-back
                     # replays (a new angle, a slow-mo replay of the same incident) often
@@ -552,6 +554,22 @@ def cut_and_upload(sess, start_t, end_t, idx):
     clip_path.unlink(missing_ok=True)
 
 
+def set_scan_mode(sess, next_t):
+    """'catching up' vs 'watching' in the UI. Derived from wall-clock lag behind
+    the actual broadcast start, not from whether a read happened to hit EOF --
+    reaching the end of what's downloaded so far only means the *download* is
+    caught up to itself, which can still be well behind real race time if the
+    download itself is lagging (slow network, a stall). Leaves scan_mode
+    untouched (stays at its 'catchup' default) while broadcast_start isn't
+    known yet -- fetched async, briefly None right after starting -- rather
+    than guessing 'live' before there's enough information to say so."""
+    with lock:
+        bstart = sess.get('broadcast_start')
+        if bstart is not None:
+            lag = (time.time() - bstart) - next_t
+            sess['scan_mode'] = 'live' if lag <= CATCHUP_MARGIN_S else 'catchup'
+
+
 def detection_loop(sess):
     next_t = 0.0
     badge_on = False
@@ -623,8 +641,12 @@ def detection_loop(sess):
             ok, frame = cap.read()
             if not ok or frame is None:
                 close_cap()
-                with lock:
-                    sess['scan_mode'] = 'live'
+                # Ran out of file to read -- but that alone doesn't mean we're caught
+                # up to the actual live broadcast, only to whatever's been downloaded
+                # so far (which can lag real time significantly if the download itself
+                # is behind). Derive scan_mode from wall-clock lag instead of latching
+                # to 'live' the first time a read fails; see set_scan_mode below.
+                set_scan_mode(sess, next_t)
                 time.sleep(0.4)
                 continue
 
@@ -634,9 +656,8 @@ def detection_loop(sess):
             next_t = t if t > next_t else next_t
 
             with lock:
-                if sess.get('scan_mode') != 'live':
-                    sess['scan_mode'] = 'catchup'
                 sess['scanned_t'] = next_t
+            set_scan_mode(sess, next_t)
 
             seen = ocr_has_replay(crop_frame(frame, calib))
             if seen == badge_on:
@@ -750,7 +771,7 @@ def monitor_status():
             active=True, videoId=s['video_id'], downloading=s['downloading'],
             scanMode=s['scan_mode'], badgeOn=s['badge_on'], clipsFound=s['clips_found'],
             previewReady=s['preview_ready'], scannedT=s['scanned_t'],
-            calibrated=s['calib'] is not None, lastDlLine=s.get('last_dl_line', ''),
+            calibrated=s['calib'] is not None, calib=s['calib'], lastDlLine=s.get('last_dl_line', ''),
             error=s.get('error'), hits=list(s.get('hits') or []),
         )
 
