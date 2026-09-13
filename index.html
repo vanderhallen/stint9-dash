@@ -1382,9 +1382,32 @@ function currentWindowLabel(){
   }
   return prev?prev.label:null;
 }
+const TIMESHEET_RE=/quali|zeittraining|training|practice|warm/i;
 function sessionKind(){
-  const lbl=(window.dataMode==='LIVE')?currentWindowLabel():(window.__eventLabel||null);
-  return (lbl&&/quali|zeittraining|training|practice|warm/i.test(lbl))?'quali':'race';
+  if(window.dataMode!=='LIVE'){
+    const lbl=window.__eventLabel||null;
+    return (lbl&&TIMESHEET_RE.test(lbl))?'quali':'race';
+  }
+  const lbl=currentWindowLabel();
+  // A positively-scheduled RACE window always wins outright — nothing below
+  // is ever allowed to downgrade it back to quali (the "a race can never be
+  // re-ranked by accident" invariant, 15.4c/15.4c-gap).
+  if(lbl==='race')return 'race';
+  // Second overrun found 2026-09-13: the FIRST gap fix (currentWindowLabel's
+  // carry-forward) only covers the gap BEFORE the next row starts. Here the
+  // schedule had already moved on to "pitwalk" (its own window started, so
+  // carry-forward no longer applies) while WIGE's own heat still read
+  // "Zeittraining" — the on-track session was STILL running, 22+ minutes
+  // past its planned end, and #665's fastest lap on screen again lost P1 to
+  // lap-count tiebreaks. Ceremonial pre-race labels (pitwalk/lineup/
+  // startaufstellung) and schedule gaps have no timing session of their own
+  // on WIGE, so heat can only still be naming the PRECEDING quali/practice
+  // session (or be blank) until the race itself actually goes live — that is
+  // exactly why trusting it HERE is safe, unlike the general case 15.4c
+  // deliberately doesn't trust it for. window.__liveHeat is kept current by
+  // refreshStatus(), called every liveTick() (~5s).
+  if(TIMESHEET_RE.test(window.__liveHeat||''))return 'quali';
+  return (lbl&&TIMESHEET_RE.test(lbl))?'quali':'race';
 }
 /* Time-sheet order: fastest lap first. carStats().fast is reused deliberately —
    it is exactly the number the FASTEST column shows, so POS and the times on
@@ -4359,7 +4382,12 @@ buildStartGrid();
      is being ingested, so you can verify the auto-detect latched the right one. */
   function refreshStatus(){
     fetch(FUEL_SB_URL+'/rest/v1/stint9_live_status?select=*&event_date=eq.'+encodeURIComponent(liveEventDate()),{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
-      .then(r=>r.ok?r.json():[]).then(a=>{const s=a&&a[0];if(!liveEventEl)return;
+      .then(r=>r.ok?r.json():[]).then(a=>{const s=a&&a[0];
+        // sessionKind()'s heat safety net (README 15.4c-gap2) reads this — keep
+        // it current even if the status badge itself has nothing to update
+        // (liveEventEl missing, e.g. before the LIVE bar is shown).
+        window.__liveHeat=s?(s.heat||''):'';
+        if(!liveEventEl)return;
         if(!s){liveEventEl.textContent='event —';liveEventEl.style.color='var(--muted)';return;}
         // Compact badge: just "event N" (track/heat text was too wide). Full
         // track+heat still available on hover via title.

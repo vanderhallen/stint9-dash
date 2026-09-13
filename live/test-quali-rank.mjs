@@ -101,18 +101,43 @@ const order = lp => Object.keys(lp).sort((x, y) => lp[x] - lp[y]);
   check('P1 in that gap is still the fastest lap (#670), not race-tiebroken',
         order(gap.livePos(1e9))[0] === '670', order(gap.livePos(1e9)));
 
-  // once pitwalk's OWN start time arrives, it must pre-empt the carried-forward
-  // quali label immediately — a race window can never be blocked by this.
-  const mkPitwalk = () => new Function('DB', 'SCHEDULE', 'window', 'carStats', 'carProgress', `
+  // once pitwalk's OWN start time arrives, it pre-empts the carried-forward
+  // quali label IF there's no heat signal saying otherwise (e.g. SIM, or the
+  // status fetch hasn't landed yet) — the historical, schedule-only fallback.
+  const pitwalkRows = { rows: [
+    { label: 'quali', start: new Date(now - 90 * min), end: new Date(now - 9 * min) },
+    { label: 'pitwalk', start: new Date(now - 1 * min), end: new Date(now + 30 * min) },
+  ] };
+  const mkPitwalk = (heat) => new Function('DB', 'SCHEDULE', 'window', 'carStats', 'carProgress', `
     ${src}
     return {livePos, sessionKind};`)(
-      DB, { rows: [
-        { label: 'quali', start: new Date(now - 90 * min), end: new Date(now - 9 * min) },
-        { label: 'pitwalk', start: new Date(now - 1 * min), end: new Date(now + 30 * min) },
-      ] }, { dataMode: 'LIVE' },
+      DB, pitwalkRows, { dataMode: 'LIVE', __liveHeat: heat },
       st => ({ fast: CARS[st].fast }), st => ({ p: CARS[st].p, t: CARS[st].t }));
-  check('once pitwalk\'s own window starts it pre-empts the carried-forward quali label',
-        mkPitwalk().sessionKind() === 'race', mkPitwalk().sessionKind());
+  check('with no heat signal, pitwalk\'s own window pre-empts the carried-forward quali label',
+        mkPitwalk(undefined).sessionKind() === 'race', mkPitwalk(undefined).sessionKind());
+
+  /* 2026-09-13, second overrun: the SAME quali session was still running
+   * 22+ minutes past its scheduled end, by which point the schedule had
+   * already moved on to "pitwalk" (a ceremonial window with no timing
+   * session of its own on WIGE) — the FIRST gap fix above only covers the
+   * gap BEFORE pitwalk's own start, not the window itself. WIGE's own heat
+   * still read "Zeittraining" the whole time; #665's fastest lap on screen
+   * again lost P1 to lap-count tiebreaks. */
+  check('heat still reporting "Zeittraining" during pitwalk keeps it a time sheet',
+        mkPitwalk('Zeittraining [T]').sessionKind() === 'quali', mkPitwalk('Zeittraining [T]').sessionKind());
+  check('P1 during that overrun is still the fastest lap (#670)',
+        order(mkPitwalk('Zeittraining [T]').livePos(1e9))[0] === '670');
+
+  // heat must NEVER be able to downgrade a positively-scheduled RACE window
+  // back to quali — the core "never re-ranked by accident" invariant.
+  const raceRows = { rows: [{ label: 'race', start: new Date(now - 5 * min), end: new Date(now + 4 * 3600e3) }] };
+  const mkRace = (heat) => new Function('DB', 'SCHEDULE', 'window', 'carStats', 'carProgress', `
+    ${src}
+    return {livePos, sessionKind};`)(
+      DB, raceRows, { dataMode: 'LIVE', __liveHeat: heat },
+      st => ({ fast: CARS[st].fast }), st => ({ p: CARS[st].p, t: CARS[st].t }));
+  check('heat can never downgrade an active race window back to quali',
+        mkRace('Zeittraining [T]').sessionKind() === 'race', mkRace('Zeittraining [T]').sessionKind());
 }
 
 /* SIM replay uses the archived bundle's label, not the wall clock */

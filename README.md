@@ -1985,6 +1985,30 @@ ranking `sessionKind()` picked — there should never be a second, hand-rolled
 P1 with the best time on screen, check `sessionKind()`/`currentWindowLabel()`
 first, not that panel's own code.
 
+**Second overrun — fixed 2026-09-13.** The SAME NLS9 quali session was still
+running 22+ minutes past its scheduled end. By then the schedule had moved on
+to `pitwalk` (its own window had actually started, `10:20`), so the gap
+carry-forward above no longer applied and `sessionKind()` fell back to race
+ranking again — #665's fastest lap on screen lost P1 to lap-count tiebreaks a
+second time. The gap fix only covers the space *between* scheduled rows; it
+can't help once a real row (pitwalk) has started, because pitwalk itself
+isn't a timing session.
+
+Fix: `sessionKind()` now also reads `window.__liveHeat` (WIGE's own session
+name, kept current by `refreshStatus()` every `liveTick()`, ~5s) as a safety
+net — but ONLY to *upgrade* a non-race schedule state (a ceremonial label,
+a gap, or an unrecognised one) to quali, never the reverse. This is safe
+specifically because pitwalk/lineup/startaufstellung have no timing session
+of their own on WIGE: `heat` can only still be naming the *preceding*
+quali/practice session (or be blank) until the race itself actually goes
+live — which is exactly why trusting it here doesn't reopen the general
+distrust of `heat` from 15.4c (feed labels not flipping promptly at a real
+transition). A positively-scheduled `race` window is checked and returned
+*before* heat is ever consulted, so "a race can never be re-ranked by
+accident" still holds unconditionally — verified in `test-quali-rank.mjs`
+by a case that fabricates a live `race` window with heat still saying
+"Zeittraining" and asserts race ranking wins anyway.
+
 ## 15.5 Feature-parity audit — SIM vs LIVE
 
 Traced every `window.dataMode` branch point in `index.html` (24 occurrences).

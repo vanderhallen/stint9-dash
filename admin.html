@@ -53,6 +53,15 @@
   .ev .evbody{display:none;padding:4px 13px 14px;border-top:1px solid var(--border)}
   .ev.open .evbody{display:block}
   .ev.open .evhead{background:#f7f9fb}
+  /* "session running now" placeholder card — not archived yet, so no caret/body,
+     just a status row confirming the system knows about it (README: a finished
+     event only snapshots ~2h after its last session ends, which otherwise reads
+     as "nothing is happening" while a session is actually live). */
+  .ev.live{border-color:#e0301e}
+  .ev.live .evhead{cursor:default}
+  .ev.live .slug{background:#e0301e;display:flex;align-items:center;gap:6px}
+  .ev.live .livedot{width:7px;height:7px;border-radius:50%;background:#fff;animation:evlivepulse 1.4s ease-in-out infinite}
+  @keyframes evlivepulse{0%,100%{opacity:1}50%{opacity:.25}}
   .evsec{margin-top:12px}
   .evsec h3{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
   .chip{display:inline-block;font-size:11px;background:#eef1f4;border-radius:5px;padding:3px 8px;margin:0 5px 5px 0}
@@ -286,9 +295,27 @@ function loadEvents(){
   // the list — otherwise an open tab keeps showing a pre-cleanup snapshot.
   evDetailCache={};evBundleCache={};
   document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
-  fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
-    .then(function(r){return r.ok?r.json():[];}).then(renderEvents)
-    .catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
+  Promise.all([
+    fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc',{headers:H})
+      .then(function(r){return r.ok?r.json():[];}),
+    // Most recent live status row, regardless of date — used ONLY to show a
+    // "session running now" placeholder (see renderEvents), so a live event
+    // doesn't read as "the system hasn't noticed it" during the ~2h grace
+    // window before it's actually archived into stint9_events.
+    fetch(SB+'/rest/v1/stint9_live_status?select=event_date,live,heat,session,cars,updated_at&order=updated_at.desc&limit=1',{headers:H})
+      .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+  ]).then(function(res){
+    var rows=res[0],ls=res[1]&&res[1][0],liveNow=null;
+    // Live AND fresh — a stale row (feed stopped, no session today) must not
+    // claim one is still running. 300s mirrors index.html's own STALE/
+    // FEED-STOPPED margins (LIVE_STALE_S=120/LIVE_STOPPED_S=180) with headroom
+    // for admin's slower, manually-refreshed polling.
+    if(ls&&ls.live&&ls.updated_at&&(Date.now()-Date.parse(ls.updated_at))<300000)liveNow=ls;
+    if(!liveNow){renderEvents(rows);return;}
+    fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
+      .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+      .then(function(rr){renderEvents(rows,liveNow,rr&&rr[0]);});
+  }).catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
 }
 // "3h ago" / "2d ago" — surfaces how fresh each archive is, so a just-finished
 // event that hasn't been snapshotted yet reads as pending, not missing.
@@ -300,10 +327,27 @@ function relTime(iso){
   if(s<172800)return Math.round(s/3600)+'h ago';
   return Math.round(s/86400)+'d ago';
 }
-function renderEvents(rows){
+// liveNow = the stint9_live_status row for a currently-running session (or
+// undefined); roundInfo = its {slug,name} from stint9_event_rounds, if the
+// schedule scraper has already named this round. Renders a status-only card
+// ABOVE the archived list — no caret/body/SIM links, since there is no
+// snapshot to open yet — just confirmation that the system sees it running.
+function renderEvents(rows,liveNow,roundInfo){
   var box=document.getElementById('events');
-  if(!rows||!rows.length){box.innerHTML='<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent='';return;}
-  box.innerHTML=rows.map(function(e){
+  var liveHtml='';
+  if(liveNow){
+    var name=(roundInfo&&roundInfo.name)||('EVT-'+liveNow.event_date);
+    var sub=[liveNow.event_date,(liveNow.cars!=null?liveNow.cars+' cars':''),(liveNow.heat||''),'updated '+relTime(liveNow.updated_at)].filter(Boolean).join(' · ');
+    liveHtml='<div class="ev live">'+
+      '<div class="evhead">'+
+        '<span class="slug"><span class="livedot"></span>LIVE</span>'+
+        '<span><span class="evname">'+esc(name)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evacts"><a class="prim" href="index.html" target="_blank" rel="noopener">Open LIVE →</a></span>'+
+      '</div>'+
+    '</div>';
+  }
+  if(!rows||!rows.length){box.innerHTML=liveHtml+'<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent=liveNow?'1 session running now':'';return;}
+  box.innerHTML=liveHtml+rows.map(function(e){
     var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
     var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)):'')].filter(Boolean).join(' · ');
     var q='index.html?event='+encodeURIComponent(e.slug);
@@ -321,7 +365,7 @@ function renderEvents(rows){
       '<div class="evbody" id="evbody-'+esc(e.slug)+'"><div class="empty">…</div></div>'+
     '</div>';
   }).join('');
-  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived';
+  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived'+(liveNow?' · 1 running now':'');
 }
 function toggleEvent(slug){
   var el=document.getElementById('ev-'+slug);if(!el)return;
