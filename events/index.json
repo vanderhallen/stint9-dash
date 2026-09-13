@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T09:48:05.098907+00:00",
+  "generated_at": "2026-09-13T16:33:22.972281+00:00",
   "events": [
     {
       "slug": "NLS9-quali",
@@ -11,6 +11,17 @@
       "archived_at": "2026-09-13T09:48:05.098907+00:00",
       "file": "events/NLS9-quali.json",
       "notes": "events/NLS9-quali_notes.json"
+    },
+    {
+      "slug": "NLS9",
+      "name": "66. ADAC ACAS Cup (4h)",
+      "label": "race",
+      "date": "2026-09-13",
+      "end": null,
+      "car_count": 107,
+      "archived_at": "2026-09-13T16:33:22.972281+00:00",
+      "file": "events/NLS9.json",
+      "notes": "events/NLS9_notes.json"
     },
     {
       "slug": "NLS8-quali",
@@ -28,11 +39,22 @@
       "name": "65. ADAC Reinoldus-Langstreckenrennen (4h)",
       "label": "race",
       "date": "2026-09-12",
-      "end": "2026-09-13",
+      "end": null,
       "car_count": 131,
       "archived_at": "2026-09-12T15:14:48.757234+00:00",
       "file": "events/NLS8.json",
       "notes": "events/NLS8_notes.json"
+    },
+    {
+      "slug": "NLS8-practice",
+      "name": "practice NLS8",
+      "label": "race",
+      "date": "2026-09-11",
+      "end": null,
+      "car_count": 137,
+      "archived_at": "2026-09-13T15:07:00.071037+00:00",
+      "file": "events/NLS8-practice.json",
+      "notes": "events/NLS8-practice_notes.json"
     },
     {
       "slug": "EVT-2026-08-02",

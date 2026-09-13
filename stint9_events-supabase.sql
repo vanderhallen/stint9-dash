@@ -50,13 +50,24 @@ create policy "events anon delete" on public.stint9_events for delete using (tru
 --  Function bodies below are the live source of truth (kept in sync with
 --  the applied migrations — CREATE OR REPLACE so this file is safe to re-run).
 --  Cron `stint9_event_archive` runs hourly and calls stint9_maybe_archive_events(),
---  which snapshots any finished (last schedule window in the surrounding
---  +-3 days ended >30min ago) session that doesn't already have a
---  stint9_events row for its (event_date, label) — e.g. quali being archived
---  early/manually no longer blocks the race from auto-archiving later the
---  same day. Before 2026-09-12 the dedup was by event_date alone, and the
---  gate was 2h; both were tightened after NLS8's race sat un-archived for
---  over an hour despite a manual NLS8-quali row already existing for the date.
+--  which snapshots any finished (that date's last schedule window ended
+--  >30min ago) session that doesn't already have a stint9_events row for
+--  its (event_date, label) — e.g. quali being archived early/manually no
+--  longer blocks the race from auto-archiving later the same day. Before
+--  2026-09-12 the dedup was by event_date alone, and the gate was 2h; both
+--  were tightened after NLS8's race sat un-archived for over an hour
+--  despite a manual NLS8-quali row already existing for the date.
+--  Both functions used to scope their schedule-window lookups to a
+--  +-3 day window around the target date (meant to catch multi-day events).
+--  Every NLS round is actually single-day, so that window bled into the
+--  NEXT round's schedule rows instead: archiving NLS8 (2026-09-12) picked
+--  up NLS9's race window (2026-09-13, only one day later) and stamped
+--  event_end=2026-09-13 on the NLS8 row, which then made
+--  stint9_maybe_archive_events() think NLS9's race was already covered
+--  by that range and silently skip it every hourly run (found 2026-09-13,
+--  NLS9's race sat un-archived ~2.5h despite the 30min gate). Fixed by
+--  scoping both lookups to the exact event_date only; event_end is now
+--  only ever set from an explicit p_end argument, never inferred.
 --
 --  SLUG/NAME resolution (the NLS round number, e.g. NLS6, is NOT in any timing
 --  or schedule field — stint9_schedule_windows only holds session labels):
@@ -102,12 +113,11 @@ declare
   v_cars int; v_timing jsonb; v_overlay jsonb; v_bundle jsonb;
 begin
   select min(start_ts), max(end_ts),
-         coalesce(v_label, (array_agg(label order by end_ts desc nulls last))[1]),
-         nullif(max(event_date), p_date)
-    into v_win_lo, v_win_hi, v_label, v_end
+         coalesce(v_label, (array_agg(label order by end_ts desc nulls last))[1])
+    into v_win_lo, v_win_hi, v_label
     from public.stint9_schedule_windows
-   where event_date between p_date - 3 and p_date + 3;
-  if v_end is not null and v_end <= p_date then v_end := coalesce(p_end, null); end if;
+   where event_date = p_date;
+  -- v_end stays p_end (or NULL) -- no longer inferred from neighboring dates.
 
   select slug, name into v_round_slug, v_round_name
     from public.stint9_event_rounds where event_date = p_date;
@@ -196,11 +206,11 @@ begin
   for r in
     select lt.event_date,
            (select sw.label from public.stint9_schedule_windows sw
-             where sw.event_date between lt.event_date - 3 and lt.event_date + 3
+             where sw.event_date = lt.event_date
              order by sw.end_ts desc nulls last limit 1) as v_label
       from (select distinct event_date from public.stint9_live_timing) lt
      where exists (select 1 from public.stint9_schedule_windows sw
-                    where sw.event_date between lt.event_date - 3 and lt.event_date + 3
+                    where sw.event_date = lt.event_date
                     group by 1=1
                    having max(sw.end_ts) < now() - interval '30 minutes')
   loop
@@ -209,8 +219,7 @@ begin
     -- but must each get their own stint9_events row.
     if not exists (
       select 1 from public.stint9_events e
-       where (e.event_date = r.event_date
-              or (e.event_end is not null and r.event_date between e.event_date and e.event_end))
+       where e.event_date = r.event_date
          and coalesce(e.label, '') = coalesce(r.v_label, '')
     ) then
       perform public.stint9_archive_event(r.event_date);

@@ -1,0 +1,867 @@
+{
+  "event": {
+    "slug": "NLS8-practice",
+    "name": "practice NLS8",
+    "date": "2026-09-11",
+    "end": null,
+    "label": "race"
+  },
+  "generated_at": "2026-09-13T15:07:00.071037+00:00",
+  "fuel": [],
+  "fuel_notes": [],
+  "tyres": [
+    {
+      "car": "665",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "130"
+            },
+            "active": [
+              "hl",
+              "dry",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "130"
+            },
+            "active": [
+              "hr",
+              "dry",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "130"
+            },
+            "active": [
+              "vl",
+              "dry",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "130"
+            },
+            "active": [
+              "vr",
+              "dry",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "dry",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "dry",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "dry",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "12",
+              "xxxx": "XXXX",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "dry",
+              "hot"
+            ]
+          }
+        },
+        "stock": {
+          "stock-0-0": {
+            "cond": "dry"
+          },
+          "stock-0-1": {
+            "cond": "dry"
+          },
+          "stock-0-2": {
+            "cond": "dry"
+          },
+          "stock-0-3": {
+            "cond": "dry"
+          },
+          "stock-3-0": {
+            "km": "561"
+          },
+          "stocknew-0": {
+            "km": "0",
+            "cond": "wet",
+            "wear": "new"
+          }
+        },
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-08-04T10:13:38.728Z",
+          "0002": "2026-08-04T10:13:38.728Z",
+          "0003": "2026-08-04T10:13:38.728Z",
+          "0004": "2026-08-04T10:13:38.728Z",
+          "XXXX": "2026-07-31T22:50:07.037Z"
+        },
+        "stockAdds": [
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "0",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": null,
+                "cond": null,
+                "temp": null,
+                "wear": null,
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · XXXX",
+            "tyres": [
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              },
+              {
+                "id": "XXXX",
+                "km": "561",
+                "pos": "hr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "used",
+                "cycle": 12
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "cold",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          },
+          {
+            "label": "Set · 0002",
+            "tyres": [
+              {
+                "id": "0002",
+                "km": "0",
+                "pos": "vl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0003",
+                "km": "0",
+                "pos": "vr",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0004",
+                "km": "0",
+                "pos": "hl",
+                "cond": null,
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              },
+              {
+                "id": "0001",
+                "km": "0",
+                "pos": "hr",
+                "cond": "wet",
+                "temp": "hot",
+                "wear": "new",
+                "cycle": 1
+              }
+            ]
+          }
+        ],
+        "emptyBands": [
+          "v1",
+          "v2",
+          "v3",
+          "v4"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stock-1-0",
+          "stock-1-1",
+          "stock-1-2",
+          "stock-1-3",
+          "stock-2-0",
+          "stock-2-1",
+          "stock-2-2",
+          "stock-2-3",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3",
+          "stocknew-0",
+          "stock-0-0",
+          "stock-0-1",
+          "stock-0-2",
+          "stock-0-3",
+          "stock-4-0",
+          "stock-4-1",
+          "stock-4-2",
+          "stock-4-3"
+        ]
+      }
+    },
+    {
+      "car": "670",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T08:41:45.556Z",
+          "0002": "2026-09-12T08:41:45.556Z",
+          "0003": "2026-09-12T08:41:45.556Z",
+          "0004": "2026-09-12T08:41:45.556Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    },
+    {
+      "car": "680",
+      "state": {
+        "bands": {
+          "bl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "br": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          },
+          "tl": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "tr": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v1": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0001",
+              "n1234": "0"
+            },
+            "active": [
+              "vl",
+              "new",
+              "hot"
+            ]
+          },
+          "v2": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0002",
+              "n1234": "0"
+            },
+            "active": [
+              "vr",
+              "new",
+              "hot"
+            ]
+          },
+          "v3": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0003",
+              "n1234": "0"
+            },
+            "active": [
+              "hl",
+              "new",
+              "hot"
+            ]
+          },
+          "v4": {
+            "texts": {
+              "n12": "0",
+              "xxxx": "0004",
+              "n1234": "0"
+            },
+            "active": [
+              "hr",
+              "new",
+              "hot"
+            ]
+          }
+        },
+        "stock": {},
+        "trash": [],
+        "stockNew": [
+          {
+            "id": "0001",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0002",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0003",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          },
+          {
+            "id": "0004",
+            "km": 0,
+            "pos": null,
+            "cond": null,
+            "temp": "cold",
+            "wear": "new",
+            "cycle": 0
+          }
+        ],
+        "firstUsed": {
+          "0001": "2026-09-12T05:08:12.238Z",
+          "0002": "2026-09-12T05:08:12.238Z",
+          "0003": "2026-09-12T05:08:12.238Z",
+          "0004": "2026-09-12T05:08:12.238Z"
+        },
+        "stockAdds": [],
+        "emptyBands": [
+          "tl",
+          "tr",
+          "bl",
+          "br"
+        ],
+        "stintXfers": [],
+        "stintRemoved": [],
+        "stockRemoved": [
+          "stocknew-0",
+          "stocknew-1",
+          "stocknew-2",
+          "stocknew-3"
+        ]
+      }
+    }
+  ],
+  "tyre_bands": [],
+  "racenotes": [],
+  "messages": [
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST RC3 ZN",
+      "created_at": "2026-09-11T10:23:18+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "good morning from race control - have a nice race day",
+      "created_at": "2026-09-11T10:23:51+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST RC2 ZN",
+      "created_at": "2026-09-11T10:25:19+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "good morning from race control - have a nice race day",
+      "created_at": "2026-09-11T10:25:44+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST RC1 ZN",
+      "created_at": "2026-09-11T10:27:07+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "good morning from race control - have a nice race day",
+      "created_at": "2026-09-11T10:27:11+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST RACECONTROL",
+      "created_at": "2026-09-11T10:46:48+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST BUERO 5",
+      "created_at": "2026-09-11T11:30:11+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    },
+    {
+      "car": null,
+      "source": "wige",
+      "message": "TEST BUERO 3",
+      "created_at": "2026-09-11T11:35:36+00:00",
+      "event_date": "2026-09-11",
+      "race_class": null
+    }
+  ]
+}
