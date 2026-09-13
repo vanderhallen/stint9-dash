@@ -3782,11 +3782,21 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     const lastRadarT=frames.length?frames[frames.length-1].time:nowSec;
     const omT=(om&&om.minutely_15&&om.minutely_15.time)||[];
     const omP=(om&&om.minutely_15&&om.minutely_15.precipitation)||[];
-    for(let i=0;i<omT.length;i++){
-      const ts=new Date(omT[i]).getTime()/1000;
-      if(!(ts>lastRadarT+30)||ts>nowSec+2*3600)continue;
-      frames.push({time:ts,precip:omP[i]||0,forecast:true});
-    }
+    const omOff=(om&&typeof om.utc_offset_seconds==='number')?om.utc_offset_seconds:0;
+    const precipAt=ts=>{
+      let best=0,bd=Infinity;
+      for(let i=0;i<omT.length;i++){
+        const s=omT[i],t=(/Z$|[+-]\d{2}:\d{2}$/.test(s)?new Date(s).getTime():new Date(s+'Z').getTime()-omOff*1000)/1000;
+        const dd=Math.abs(t-ts);if(dd<bd){bd=dd;best=omP[i]||0;}
+      }
+      return best;
+    };
+    // Always add 15-min slots from just after the last radar through +2h so
+    // playback never dies at "now" even if Open-Meteo times don't parse.
+    const step=900,end=nowSec+2*3600;
+    let t0=Math.ceil((lastRadarT+60)/step)*step;
+    if(t0<=lastRadarT)t0+=step;
+    for(let ts=t0;ts<=end;ts+=step)frames.push({time:ts,precip:precipAt(ts),forecast:true});
     if(!frames.length)return;
     if(!map.getPane('wxradar')){map.createPane('wxradar');map.getPane('wxradar').style.zIndex=450;map.getPane('wxradar').style.pointerEvents='none';}
     const layers=frames.map(fr=>fr.path?L.tileLayer(host+fr.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:0,maxNativeZoom:7,maxZoom:19,pane:'wxradar'}).addTo(map):null);
@@ -3808,7 +3818,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       tk(0,relLabel(0),'','translateX(0)');
       if(nowPct>8&&nowPct<92)tk(nowPct,'now','now','translateX(-50%)');
       tk(100,relLabel(frames.length-1),'','translateX(-100%)');}
-    let idx=Math.max(0,lastObs),playing=false,tmr=null;
+    let idx=0,playing=false,tmr=null;
     function precipStyle(mm){
       if(!(mm>0.05))return{fill:false,fillOpacity:0};
       return{fill:true,fillColor:'#2a5cff',fillOpacity:Math.min(0.55,0.12+mm*0.18)};
