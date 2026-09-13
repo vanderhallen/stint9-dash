@@ -262,7 +262,7 @@
   #wxtl{position:relative;flex:1 1 auto;height:6px;border-radius:3px;background:#e2e5ea;overflow:visible}
   #wxtlfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:3px;background:#8a929b}
   #wxtlnow{position:absolute;top:-3px;bottom:-3px;width:2px;background:#2a5cff;left:0}
-  #wxtime{flex:0 0 auto;min-width:52px;text-align:right;font-size:11px;font-weight:700;color:#16202b}
+  #wxtime{flex:0 0 auto;min-width:92px;text-align:right;font-size:11px;font-weight:700;color:#16202b}
   #wxtime.fc{color:#2a5cff}
   #fuelmini .fmhd{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
   #fuelmini .fmhd b{color:var(--ink);font-weight:700}
@@ -3794,8 +3794,11 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     const bar=document.getElementById('wxradar'),playBtn=document.getElementById('wxplay'),tl=document.getElementById('wxtl'),
           fill=document.getElementById('wxtlfill'),nowMk=document.getElementById('wxtlnow'),tLbl=document.getElementById('wxtime');
     if(bar)bar.style.display='flex';
-    const relLabel=i=>{const dt=Math.round((frames[i].time-nowSec)/60);if(Math.abs(dt)<5)return'now';
+    const clockLabel=i=>{const d=new Date(frames[i].time*1000);
+      return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'u';};
+    const relPart=i=>{const dt=Math.round((frames[i].time-nowSec)/60);if(Math.abs(dt)<5)return'now';
       const s=dt<0?'-':'+',a=Math.abs(dt);return a>=60?(s+(a/60).toFixed(a%60?1:0)+'h'):(s+a+'min');};
+    const relLabel=i=>{const rel=relPart(i);return rel==='now'?clockLabel(i)+' (now)':clockLabel(i)+' ('+rel+')';};
     const nowPct=Math.min(Math.max(fcIdx-1,0),frames.length-1)/(Math.max(frames.length-1,1))*100;
     if(nowMk&&frames.length>1)nowMk.style.left=nowPct.toFixed(1)+'%';
     if(tl&&frames.length>1){tl.querySelectorAll('.wxtk').forEach(e=>e.remove());
