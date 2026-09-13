@@ -975,6 +975,14 @@ function syncFuelNoteIfLive(car,L,note){
       body:JSON.stringify({event_date:(DB.event&&DB.event.date)||'',car:String(car),lap:L,note:note,updated_at:new Date().toISOString()})}).catch(()=>{});
   },800);
 }
+/* The strip pages by translating itself by whole multiples of its own height,
+   and each .reelpanel is flex:0 0 100% of that same height — so panel k sits at
+   exactly k x H and -k*100% lands on it. That only holds on a WHOLE-PIXEL H:
+   with a fractional viewport height (291.72px, as reelFitHeight/growMaps used
+   to set) panel edges and the translated strip round to device pixels
+   independently, and at k=16 the drift showed as a thin strip of the previous
+   reel bleeding in along the top edge. Every writer of #reelview/#wxview height
+   therefore rounds — keep it that way. */
 function applyReel(anim){const strip=document.getElementById('reelstrip'),up=document.getElementById('reelup'),dn=document.getElementById('reeldn');if(!strip)return;strip.style.transition=anim?'transform .5s cubic-bezier(.55,.06,.2,1)':'none';strip.style.transform='translateY(-'+(reelIdx*100)+'%)';if(up)up.disabled=reelIdx<=0;if(dn)dn.disabled=reelIdx>=REELN-1;}
 /* Paint one block's reels. `side` selects which copy of the panels the render
    functions resolve to (see withSide); `all` sweeps every reel rather than
@@ -1118,9 +1126,9 @@ function setReel(i){i=Math.max(0,Math.min(REELN-1,i));if(i===reelIdx)return;reel
   // this is what runs on EVERY reel switch — using the flat ratio here while
   // syncReel() (resize/open) used the height-aware one would size the SAME
   // reel differently depending on which path last touched it.
-  if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=reelFitHeight(v.clientWidth).toFixed(1)+'px';}
+  if(rc&&rc.classList.contains('zoomed')){const v=document.getElementById('reelview');if(v&&v.clientWidth>10)v.style.height=Math.round(reelFitHeight(v.clientWidth))+'px';}
   applyReel(true);if(typeof savePrefs==='function')savePrefs();}
-function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=reelFitHeight(w).toFixed(1)+'px';applyReel(false);
+function syncReel(){const v=document.getElementById('reelview');if(!v)return;const w=v.clientWidth;if(w<10)return;v.style.height=Math.round(reelFitHeight(w))+'px';applyReel(false);
   /* right (weather/timetable) reel: inline it follows the left reel's rendered
      height; but when ITS OWN card is zoomed, fill the modal so the reel opens as
      large as possible instead of inheriting the short inline height. */
@@ -1133,7 +1141,7 @@ function syncReel(){const v=document.getElementById('reelview');if(!v)return;con
       // on every fitPage(), which must not fight a user's pan/zoom mid-session.
       if(window.__resizeWx)setTimeout(window.__resizeWx,0);
     }else{
-      const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=hh+'px';
+      const hh=v.getBoundingClientRect().height/__fit;if(hh>10)wv.style.height=Math.round(hh)+'px';
     }
   }
   syncReelPanels();}
@@ -4509,7 +4517,7 @@ function growMaps(){
   const s=__fit||1;
   svg.style.width='64%';svg.style.height='auto';
   syncMapHeights();
-  rv.style.height=reelFitHeight(rv.clientWidth)+'px';   // capped: see reelFitHeight
+  rv.style.height=Math.round(reelFitHeight(rv.clientWidth))+'px';   // capped: see reelFitHeight; whole px, see applyReel
   if(wv)wv.style.height=rv.clientHeight+'px';
   // real content bottom = the agent bar (the wrap's scrollHeight is polluted
   // by the tall grid sidebar, so we measure the visible column's end instead)
@@ -4539,7 +4547,7 @@ function growMaps(){
   const mapH=Math.min(budget/1.8,maxMapH);
   const reelH=mapH*0.8;
   if(Math.abs(mapH-mapH0)>2){svg.style.width='auto';svg.style.height=mapH+'px';syncMapHeights();}
-  if(Math.abs(reelH-reelH0)>2){rv.style.height=reelH+'px';if(wv)wv.style.height=reelH+'px';}
+  if(Math.abs(reelH-reelH0)>2){const rh=Math.round(reelH);rv.style.height=rh+'px';if(wv)wv.style.height=rh+'px';}
   syncReelPanels();   // the grown panel height changes which charts need to scroll
 }
 function fitPage(){const w=document.querySelector('.wrap');if(!w)return;
