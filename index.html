@@ -2495,16 +2495,16 @@ function renderSecTab(T){
     // number also stays the same font-size as every other cell's (no 14px
     // bump) — purple/bold/shaded background carries the "best" signal, not a
     // bigger typeface.
-    // 0.5em, not a fixed px: the zoomed modal scales the table's own
-    // font-size up via calc(23px*var(--zt,1)) (see .card.zoomed #sectabwrap
-    // table CSS), so a hardcoded px here would ignore that and stay a fixed
-    // tiny size next to the now-much-bigger time — em tracks it, staying
-    // exactly half the time's size at any zoom level.
+    // em, not a fixed px: the zoomed modal scales the table's own font-size
+    // up via calc(23px*var(--zt,1)) (see .card.zoomed #sectabwrap table CSS),
+    // so a hardcoded px here would ignore that and stay a fixed tiny size
+    // next to the now-much-bigger time — em tracks it, staying exactly 2/3
+    // the time's size at any zoom level.
     if(bestHit){
-      txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.5em">▲0.0</span>';
+      txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.667em">▲0.0</span>';
     }else if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){
       const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
-      txt+='<br><span style="color:'+col+';font-weight:700;font-size:0.5em">'+tri+Math.abs(dv).toFixed(1)+'</span>';
+      txt+='<br><span style="color:'+col+';font-weight:700;font-size:0.667em">'+tri+Math.abs(dv).toFixed(1)+'</span>';
     }
     return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')+(bg?';'+bg:'')))+'">'+txt+'</td>';
   };
