@@ -122,12 +122,21 @@
   .reelbtn:hover:not(:disabled){background:#6b7480}
   .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
   #reelview .reelpanel,#wxview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  #reelview .reelpanel svg{display:block;width:100%;height:100%}
+  /* Both blocks run the same 22-reel list, so every panel rule has to name
+     #wxview as well — the right block holds the chart reels too now. */
+  #reelview .reelpanel svg,#wxview .reelpanel svg{display:block;width:100%;height:100%}
+  /* …but never Leaflet's OWN svgs. The rule above is a descendant selector, and
+     the weather reel lives in the shared strip now, so it started matching
+     everything Leaflet builds: the attribution's 12x8 Ukraine flag stretched
+     into a panel-sized blue/yellow block, and the overlay pane's vector <svg> —
+     which Leaflet sizes with width/height ATTRIBUTES that a CSS width/height
+     overrides — was stretched with it. Hand both back their own sizing. */
+  #reelview .reelpanel .leaflet-container svg,#wxview .reelpanel .leaflet-container svg{display:inline;width:auto;height:auto}
   /* .tall = a per-car chart whose natural height (44px/car) exceeds the panel;
      syncReelPanels() gives the SVG that natural height and the panel scrolls it
      instead of fit-shrinking 130 rows into a ~230px sliver. */
-  #reelview .reelpanel.tall{align-items:flex-start;overflow-y:auto}
-  #reelview .reelpanel.tall>svg{flex:0 0 auto;height:auto}
+  #reelview .reelpanel.tall,#wxview .reelpanel.tall{align-items:flex-start;overflow-y:auto}
+  #reelview .reelpanel.tall>svg,#wxview .reelpanel.tall>svg{flex:0 0 auto;height:auto}
   .fuelpanel{width:100%;height:100%;overflow-y:auto;padding:4px 9px;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;color:#16202b}
   .fuelhd{font-weight:700;font-size:12px;color:#6b7480;margin-bottom:3px}
   .fuelset{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:10.5px;align-items:center;margin-bottom:4px}
@@ -3884,6 +3893,13 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
 
 /* ---- weather radar (RainViewer) ---- */
 (function initWeather(){RINIT.initWeather=initWeather;if(typeof L==='undefined'){return setTimeout(initWeather,300);}
+  /* This module finishes its work in fetch callbacks, and withSide() only
+     holds the side for the SYNCHRONOUS part of a call — by the time the
+     RainViewer/open-meteo promises resolve, RSIDE is back to ''. Pin the
+     side once, here, and look this instance's own elements up through it,
+     or the right block's radar bar//icons/temp graph never appear and the
+     left block's get written twice. */
+  const MYSIDE=RSIDE,wxEl=id=>withSide(MYSIDE,()=>document.getElementById(id));
   // Carto's basemaps.cartocdn.com free tier now requires an API key we never
   // had — every tile came back as a placeholder PNG with "API KEY REQUIRED"
   // baked into it, reported 2026-09-12. OpenStreetMap's own tile server needs
@@ -3911,8 +3927,8 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
   // height is recalculated; calling the full syncWx() from either used to snap
   // back to the default center/zoom mid-pan, every few seconds, while the radar
   // timelapse played (reported 2026-09-13).
-  function resizeWx(){const wd=document.getElementById('weather');if(wd)map.invalidateSize({pan:false});}
-  function syncWx(){const wd=document.getElementById('weather');if(wd){map.invalidateSize();frame();}}
+  function resizeWx(){const wd=wxEl('weather');if(wd)map.invalidateSize({pan:false});}
+  function syncWx(){const wd=wxEl('weather');if(wd){map.invalidateSize();frame();}}
   window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
   /* animated rain radar: RainViewer past + our own forecast rain field for the
@@ -4067,8 +4083,8 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
         fr.fieldIdx=byStep[k];});
     }
     const fcFrom=frames.findIndex(fr=>fr.time>nowSec+30);const fcIdx=fcFrom<0?frames.length:fcFrom;
-    const bar=document.getElementById('wxradar'),playBtn=document.getElementById('wxplay'),tl=document.getElementById('wxtl'),
-          fill=document.getElementById('wxtlfill'),nowMk=document.getElementById('wxtlnow'),tLbl=document.getElementById('wxtime');
+    const bar=wxEl('wxradar'),playBtn=wxEl('wxplay'),tl=wxEl('wxtl'),
+          fill=wxEl('wxtlfill'),nowMk=wxEl('wxtlnow'),tLbl=wxEl('wxtime');
     if(bar)bar.style.display='flex';
     const clockLabel=i=>{const d=new Date(frames[i].time*1000);
       return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'u';};
@@ -4135,7 +4151,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
     return['☁️',''];
   }
   function renderWxIcons(){
-    const host=document.getElementById('wxicons');if(!host||!condSeries||!condSeries.length)return;
+    const host=wxEl('wxicons');if(!host||!condSeries||!condSeries.length)return;
     const now=new Date();let html='';
     for(let hh=0;hh<=5;hh++){
       const t=new Date(now.getTime()+hh*3600000);
@@ -4173,7 +4189,7 @@ function renderMini(T,lp){const hint=document.getElementById('minihint');
       .catch(()=>{});
   }
   function renderTempOverlay(){
-    const svg=document.getElementById('tempoverlay');if(!svg||!tempSeries)return;
+    const svg=wxEl('tempoverlay');if(!svg||!tempSeries)return;
     const now=new Date();
     const W=400,H=240,padL=40,padR=38,padT=34,padB=30,gx0=padL,gx1=W-padR,gy0=padT,gy1=H-padB;
     const winStart=new Date(now.getTime()-2*3600000),winEnd=new Date(now.getTime()+2*3600000);
