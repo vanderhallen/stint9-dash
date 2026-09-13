@@ -517,6 +517,9 @@
   .loginGo{margin-top:20px;width:100%;cursor:pointer;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:1px;padding:13px}
   .loginGo:hover{filter:brightness(1.06)}
   .loginGo:disabled{opacity:.45;cursor:not-allowed}
+  .loginLogoff{display:none;margin-top:10px;width:100%;cursor:pointer;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;padding:11px}
+  .loginLogoff.on{display:block}
+  .loginLogoff:hover{background:var(--bg);color:var(--ink)}
   /* ---- SIM race picker (choose an archived event to replay) ---- */
   #simEventModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #simEventModal.on{display:flex}
@@ -558,6 +561,7 @@
     </div>
     <div id="loginErr">wrong password</div>
     <button type="button" class="loginGo" id="loginGo">Sign in</button>
+    <button type="button" class="loginLogoff" id="loginLogoff">Log off #<span id="loginLogoffCar"></span></button>
   </div>
 </div>
 <div id="simEventModal" role="dialog" aria-modal="true">
@@ -6112,6 +6116,7 @@ applyWxReel(false);
   const clsSelL=document.getElementById('loginClass'),carSelL=document.getElementById('loginCar');
   const passInp=document.getElementById('loginPass'),errEl=document.getElementById('loginErr');
   const goBtn=document.getElementById('loginGo');
+  const logoffBtn=document.getElementById('loginLogoff'),logoffCarEl=document.getElementById('loginLogoffCar');
 
   function classForCar(car){try{return Object.keys(DB.classes).find(c=>DB.classes[c].map(String).indexOf(String(car))>=0);}catch(e){return null;}}
   function fillLoginClasses(){if(!clsSelL||typeof DB==='undefined')return;clsSelL.innerHTML='<option value="">— select a class —</option>';
@@ -6139,14 +6144,18 @@ applyWxReel(false);
   setPwVisible(false);
   pwToggle.onclick=()=>{setPwVisible(passInp.type==='password');passInp.focus();};
 
+  function logOff(){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();}
+
   function openModal(){errEl.classList.remove('on');passInp.value='';if(typeof setPwVisible==='function')setPwVisible(false);
     fillLoginClasses();
     if(window.AUTH.mode==='team'){const c=classForCar(window.AUTH.car);if(c){clsSelL.value=c;fillLoginCars();}carSelL.value=window.AUTH.car||'';}
     updateGoLabel();
+    if(logoffBtn){logoffBtn.classList.toggle('on',window.AUTH.mode==='team');if(logoffCarEl)logoffCarEl.textContent=window.AUTH.car||'';}
     modal.classList.add('on');
     setTimeout(()=>{try{(carSelL.value?passInp:clsSelL).focus();}catch(e){}},30);}
   function closeModal(){modal.classList.remove('on');}
   window.openLogin=openModal;
+  if(logoffBtn)logoffBtn.onclick=logOff;
 
   // Move the dashboard onto the team's car after a successful sign-in.
   function selectDashboardCar(car){try{
@@ -6157,7 +6166,7 @@ applyWxReel(false);
 
   goBtn.onclick=()=>{
     // already signed in on this car, nothing retyped → log off
-    if(isLogoff()){window.AUTH={mode:'demo',car:null};saveAuth();closeModal();window.applyAuthGate();return;}
+    if(isLogoff()){logOff();return;}
     const car=carSelL.value;
     if(!car){errEl.textContent='select a car';errEl.classList.add('on');return;}
     if(TEAM_PASSWORDS[String(car)]&&passInp.value===TEAM_PASSWORDS[String(car)]){
