@@ -42,18 +42,20 @@
   .visscroll{overflow-x:auto}
   /* events archive */
   .ev{border:1px solid var(--border);border-radius:9px;margin:8px 0;overflow:hidden}
-  .ev .evhead{display:flex;align-items:center;gap:12px;padding:11px 13px;flex-wrap:wrap;cursor:pointer}
+  .ev .evhead{display:flex;align-items:center;gap:8px;padding:9px 11px;flex-wrap:wrap;cursor:pointer}
   .ev .evhead:hover{background:#fafbfc}
-  .ev .slug{font-weight:700;letter-spacing:1px;font-size:14px;background:var(--ink);color:#fff;border-radius:6px;padding:3px 9px}
+  .ev .slug{font-weight:700;letter-spacing:.5px;font-size:12px;background:var(--ink);color:#fff;border-radius:6px;padding:3px 7px;flex:0 0 auto}
   /* name+sub column: shrinks to fit instead of wrapping the sub line onto a
      second row (min-width:0 is what lets a flex child shrink below its
-     content size at all) — the sub line grew a real timestamp alongside the
-     relative one and started wrapping on non-huge screens. */
+     content size at all) — was still overflowing with the archived-at
+     timestamp inline, so that detail moved to a hover title (below) instead
+     of taking up visible width, and everything else in the row got a touch
+     tighter (gaps, padding, font-size) on top of that. */
   .ev .evinfo{flex:1 1 auto;min-width:0;overflow:hidden}
-  .ev .evname{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ev .evsub{color:var(--muted);font-size:11px;letter-spacing:.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ev .evacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-  .ev .evacts a,.ev .evacts button{font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 10px;border-radius:6px;text-decoration:none;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink)}
+  .ev .evname{font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev .evsub{color:var(--muted);font-size:10.5px;letter-spacing:.3px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev .evacts{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap;flex:0 0 auto}
+  .ev .evacts a,.ev .evacts button{font-family:inherit;font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:5px 8px;border-radius:6px;text-decoration:none;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink);white-space:nowrap}
   .ev .evacts a.prim{background:var(--ink);color:#fff;border-color:var(--ink)}
   .ev .evbody{display:none;padding:4px 13px 14px;border-top:1px solid var(--border)}
   .ev.open .evbody{display:block}
@@ -382,7 +384,12 @@ function renderEvents(rows,liveNow,roundInfo){
   if(!rows||!rows.length){box.innerHTML=liveHtml+'<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent=liveNow?'1 session running now':'';return;}
   box.innerHTML=liveHtml+rows.map(function(e){
     var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
-    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)+' ('+absTime(e.archived_at)+')'):'')].filter(Boolean).join(' · ');
+    // Exact archive instant lives in the hover title, not inline — the row
+    // was overflowing/wrapping with it spelled out in the visible text, and
+    // it's needed for context (why does this sort above/below that one?),
+    // not at-a-glance.
+    var sub=[span,(e.car_count!=null?e.car_count+' cars':''),(e.label||''),(e.archived_at?('archived '+relTime(e.archived_at)):'')].filter(Boolean).join(' · ');
+    var subTitle=e.archived_at?('archived '+absTime(e.archived_at)):'';
     var q='index.html?event='+encodeURIComponent(e.slug);
     return '<div class="ev" id="ev-'+esc(e.slug)+'">'+
       '<div class="evhead" onclick="toggleEvent(\''+esc(e.slug)+'\')">'+
@@ -393,7 +400,7 @@ function renderEvents(rows,liveNow,roundInfo){
         // official NLS calendar, so stint9_event_rounds has nothing for it
         // either) — the slug is more informative than repeating "race" with
         // nothing to distinguish it from any other race entry.
-        '<span class="evinfo"><span class="evname">'+esc((e.name&&e.name!==e.label)?e.name:e.slug)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
+        '<span class="evinfo"><span class="evname">'+esc((e.name&&e.name!==e.label)?e.name:e.slug)+'</span><br><span class="evsub"'+(subTitle?(' title="'+esc(subTitle)+'"'):'')+'>'+esc(sub)+'</span></span>'+
         '<span class="evacts" onclick="event.stopPropagation()">'+
           '<a class="prim" href="'+q+'&overlay=1" target="_blank" rel="noopener">SIM + overlay →</a>'+
           '<a href="'+q+'" target="_blank" rel="noopener">SIM →</a>'+
