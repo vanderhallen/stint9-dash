@@ -2221,6 +2221,15 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   axisMax=Math.max(1,Math.ceil(axisMax));
   const colX=L=>xL+(L/axisMax)*(xR-xL);
   const Z=__mobZoom(),fz=n=>Math.round(n*Z);
+  // The row-height fix above (H = max(content, panel aspect)) makes rowH2
+  // genuinely fill a tall phone panel — confirmed on-device: 4 rows became 4
+  // huge solid-colour bars, each with the SAME small "P1 #5" still parked in
+  // one corner, all that new space otherwise empty. fz() alone can't fix
+  // that: it scales the flat NUMBER, not the row it sits in. These two scale
+  // the car-number and driver labels WITH rowH2 (never below the flat fz()
+  // floor, so desktop's much smaller rowH2 leaves them exactly as before).
+  const rowFs=(base,frac,cap)=>Math.min(base*cap,Math.max(base,rowH2*frac));
+  const carFs=rowFs(fz(13),0.34,7),drvFs=rowFs(fz(11.5),0.22,7);
   let s='';
   // lap-axis gridlines/ticks along the bottom, same spacing convention as the POS reel
   const axY=yT2+DB.cars.length*rowH2+2;
@@ -2236,6 +2245,13 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     const rowY=yT2+i*rowH2,barH=rowH2-8,cy=rowY+rowH2/2;
     const posLbl=lp[st]!=null?('P'+lp[st]+' '):'';
     const sel=(st===selCar);
+    // carFs capped to what its OWN gutter can hold: uncapped, a long label
+    // ("P10 #786") at the same size as a short one ("P1 #5") on a tall phone
+    // panel ran clean out of the ~96-unit gutter and painted over the
+    // driver-label text next to it — confirmed on-device. Per-row, not
+    // computed once outside the loop, because label length varies per car.
+    const rowLabel=posLbl+'#'+st;
+    const rowCarFs=Math.min(carFs,Math.max(fz(13),(xL-18)/(rowLabel.length*0.66)));
     // right-anchored in the fixed gutter (ends 8px before xL). Drawn AFTER the
     // stint bars below (not here) so it always paints on top of them — a
     // stint starting at lap 0 (WIGE's laps-completed convention can report a
@@ -2247,8 +2263,8 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     // text keeps the same dark ink for every row — legible against any bar
     // colour — while still reading at a glance which row is "ours" without
     // comparing bar opacity row by row.
-    const posLabelSvg=(sel?'<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="'+fz(13)+'" font-weight="800" font-family="IBM Plex Mono,monospace" stroke="#fff" stroke-width="3" paint-order="stroke" fill="#16202b">'+posLbl+'#'+st+'</text>':'')+
-      '<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="'+fz(13)+'" font-weight="'+(sel?'800':'700')+'" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
+    const posLabelSvg=(sel?'<text x="'+(xL-8)+'" y="'+(cy+rowCarFs*0.32).toFixed(1)+'" text-anchor="end" font-size="'+rowCarFs.toFixed(1)+'" font-weight="800" font-family="IBM Plex Mono,monospace" stroke="#fff" stroke-width="3" paint-order="stroke" fill="#16202b">'+posLbl+'#'+st+'</text>':'')+
+      '<text x="'+(xL-8)+'" y="'+(cy+rowCarFs*0.32).toFixed(1)+'" text-anchor="end" font-size="'+rowCarFs.toFixed(1)+'" font-weight="'+(sel?'800':'700')+'" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
@@ -2280,7 +2296,11 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
         const col=driverColor(st2.driver);
         s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
         const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
-        if(w>label.length*6.2+24)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="'+fz(11.5)+'" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
+        // fit check scales with drvFs too — a fixed per-character estimate
+        // calibrated for the small desktop font would under-count once drvFs
+        // has grown on a tall phone panel, letting the (now much wider) text
+        // spill past the bar it's centred in.
+        if(w>label.length*drvFs*0.54+24)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+drvFs*0.32).toFixed(1)+'" text-anchor="middle" font-size="'+drvFs.toFixed(1)+'" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
       }
       // remaining pit time sits in a chip AFTER the bar so a following stint
       // cannot paint over it — #677 was visible only because its time landed
@@ -3728,7 +3748,7 @@ function setMob(i,force){
     try{paintReel(T,def.reel,false,'');}catch(e){}
   }
   const lb=document.getElementById('m_slidelbl');
-  if(lb)lb.innerHTML='<b>'+def.lbl+'</b> &nbsp;'+(i+1)+' / '+n;
+  if(lb)lb.innerHTML=(i+1)+' / '+n+' &nbsp;<b>'+def.lbl+'</b>';
   const u=document.getElementById('m_up'),d=document.getElementById('m_dn');
   if(u)u.disabled=(i===0);if(d)d.disabled=(i===n-1);
   try{localStorage.setItem('stint9_mob',String(i));}catch(e){}}
@@ -4841,7 +4861,9 @@ function prefCar(){return wantCar||selCar||(PREFS&&PREFS.car)||'';}
 function savePrefs(){try{localStorage.setItem('stint9_prefs',JSON.stringify({pace:String(paceThr),speed:document.getElementById('speed').value,car:prefCar(),cls:document.getElementById('classsel').value,reel:reelIdx,reelR:(typeof wxReelIdx!=='undefined'?wxReelIdx:null)}));}catch(e){}}
 let PREFS={};try{PREFS=JSON.parse(localStorage.getItem('stint9_prefs')||'{}');}catch(e){}
 if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=PREFS.pace;paceThr=Math.max(0,parseFloat(PREFS.pace||'0'));}
-if(PREFS.speed!=null){const _sp=document.getElementById('speed');_sp.value=PREFS.speed;if(_sp.selectedIndex<0)_sp.value='10';}
+// Speed is NOT restored from PREFS any more — always starts at the <select>'s
+// own HTML default (10x), on both desktop and phone, regardless of what a
+// previous session left it on.
 if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
 /* "ALL CLASSES" — a dropdown entry that shows the whole field at once instead
@@ -5143,13 +5165,18 @@ setInterval(function(){var a=document.querySelector('.agentbar');if(!a||typeof s
   if(b>window.innerHeight+3){scheduleFit();__wdB=b;return;} // clipping — always fix
   if(__wdB>=0&&Math.abs(b-__wdB)>3)scheduleFit();           // relayout since last tick
   __wdB=b;},1000);
-// Start showing the very beginning, then auto-play only once the page has fully
-// loaded. Starting the RAF loop during a slow cold load let the clock accumulate
-// the elapsed load-time * speed, so cold loads began mid-race (~lap 2) while a
-// warm refresh (fast boot) started at L0. Resetting T at the deferred start makes
-// both paths identical.
-T=DB.tmin;scrub.value=T;
-(function(){function go(){T=DB.tmin;scrub.value=T;playing=true;last=0;
+// Start at the MIDDLE of the loaded data, not the very beginning: a cold
+// first visit landed on L0 with nothing to show yet on every reel, which is
+// the worst possible first impression. The midpoint guarantees laps/sectors/
+// stints already exist to look at immediately, on both desktop and phone.
+// Auto-play only once the page has fully loaded — starting the RAF loop
+// during a slow cold load let the clock accumulate the elapsed load-time *
+// speed on top of this, so cold loads drifted further into the race than a
+// warm refresh (fast boot) did. Resetting T at the deferred start makes both
+// paths identical.
+function simStartT(){return isFinite(DB.tmin)&&isFinite(DB.tmax)&&DB.tmax>DB.tmin?(DB.tmin+DB.tmax)/2:DB.tmin;}
+T=simStartT();scrub.value=T;
+(function(){function go(){T=simStartT();scrub.value=T;playing=true;last=0;
    const pb=document.getElementById('play');if(pb)pb.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}
  if(document.readyState==='complete')go();else window.addEventListener('load',go,{once:true});})();
 
@@ -6873,7 +6900,10 @@ applyWxReel(false);
     if(pick)buildClass(pick);                       // sets DB.cars/maxN/avgseg/tmin/tmax
     // date only — the full event name wrapped onto a second line under the logo
     var evd=document.getElementById('evdate');if(evd)evd.textContent=DB.event.date+(overlay?' · overlay':'');
-    T=DB.tmin;var sc=document.getElementById('scrub');if(sc){sc.min=DB.tmin;sc.max=DB.tmax;sc.value=T;}
+    // Same reasoning as the initial boot (see simStartT()): land in the middle
+    // of this newly-picked event's own data, not at its L0, so switching to a
+    // different archived race is an immediate look at real laps too.
+    T=simStartT();var sc=document.getElementById('scrub');if(sc){sc.min=DB.tmin;sc.max=DB.tmax;sc.value=T;}
     // The boot auto-play may already have run (and stopped, if the baked dataset
     // was short) before this bundle arrived. SIM has no start button — mobile
     // never had one — so a replay that lands after that would sit frozen at L0.
@@ -7241,7 +7271,7 @@ applyWxReel(false);
     <span class="a2ios">Tap
       <svg class="a2ico" width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden="true"
         ><path d="M6 1v9M6 1L3.2 3.8M6 1l2.8 2.8" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.4 6.4H1.5v7h9v-7h-.9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Send, then
+      then
       <svg class="a2ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
         ><rect x="1" y="1" width="12" height="12" rx="3" stroke="#fff" stroke-width="1.3"/><path d="M7 4v6M4 7h6" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
       for app</span>
