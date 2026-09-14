@@ -836,9 +836,9 @@
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
+          <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805d" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel"><div id="ptimewrap"></div></div>
-          <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel"><div id="ytreel">
             <div class="vrhd">YOUTUBE STREAM</div>
             <div class="vrgrid">
@@ -954,7 +954,7 @@ let keyReelSide='';
    so any reel can be put in either block, including the same reel in both at
    once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 PACE, 4 SECT,
    5 COMP, 6 GRID, 7 DRV, 8 NIEK, 9 BARS, 10 FLOW, 11 WEATHER, 12 TEMP,
-   13 TIMETABLE, 14 PIT, 15 P-TIME, 16 CHAMP, 17 YOUTUBE, 18 VIDEO, 19 FUEL,
+   13 TIMETABLE, 14 CHAMP, 15 PIT, 16 P-TIME, 17 YOUTUBE, 18 VIDEO, 19 FUEL,
    20 TYRE, 21 SERVICE. The panels themselves are the source of truth: they
    sit in #reelstrip in exactly this order, and every index below follows it.
 
@@ -1129,13 +1129,13 @@ function paintReel(T,idx,all,side){
     if(idx===8||all)renderNiekGrid(T);
     if(idx===9||all)renderP1Bar(T);
     if(idx===10||all)renderFlow(T);
-    if(idx===15||all)renderPTime(T);
+    if(idx===16||all)renderPTime(T);
     if(idx===19||all)renderFuel(T);
     // 11 WEATHER / 12 TEMP own their own fetch+draw loop (initWeather), 13
-    // TIMETABLE redraws off the schedule, and 14 PIT is an iframe — they are
+    // TIMETABLE redraws off the schedule, and 15 PIT is an iframe — they are
     // driven by reelShown() and their own timers, not by the frame loop.
     if(idx===13&&typeof renderTimetable==='function')renderTimetable();
-    if(idx===16&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===14&&typeof renderChampionship==='function')renderChampionship();
     if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
   });
 }
@@ -1150,12 +1150,12 @@ function reelShown(i,side){
     if(i===20&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
     if(i===21&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
     if(i===11){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
-    if(i===14&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+    if(i===15&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
       if(typeof pitH==='function')pitH(0);
     }
-    if(i===16&&typeof renderChampionship==='function')renderChampionship();
+    if(i===14&&typeof renderChampionship==='function')renderChampionship();
     if(i===18&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
@@ -3933,7 +3933,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
       else if(cur.id==='reelcard'&&reelIdx===21){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
       // PIT lives in the weather reel, so its Left/Right keys are gated on that
       // reel being focused and on PIT being its current panel
-      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===14){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
+      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===15){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
       return;
     }
     // while a reel is zoomed/focused, Up/Down arrows step through its reels
@@ -4039,7 +4039,7 @@ function pushPit(force){
   // The FIELD page walks every car, so it is only worth building while PIT is the
   // visible right-reel panel, and then no faster than once a second.
   let field=window.__pitField||null;
-  if((wxReelIdx===14||reelIdx===14)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
+  if((wxReelIdx===15||reelIdx===15)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
     window.__pitFieldT=Date.now();
     field=[];
     try{
@@ -6999,7 +6999,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','FLOW','WEATHER','TEMP','TIMETABLE','PIT','P-TIME','CHAMP','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE'];
+  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','P-TIME','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
