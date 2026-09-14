@@ -277,7 +277,9 @@ type CollectOpts = {
 async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promise<{ meta: Meta | null; rows: TimingRow[]; messages: MessageRow[]; frames: FrameRow[]; rejected: string[] }> {
   const ed = eventDate();
   const receipt = todSeconds(Date.now());
-  const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win)
+  const timing = new Map<string, TimingRow>(); // car|lap -> row (later frames win, sectors coalesce)
+  const lastIm = new Map<string, { n: number; ms: number }>();
+  const lastLapN = new Map<string, number>();
   const messages = new Map<string, MessageRow>(); // ext_key -> row (union across frames)
   const rejected = new Set<string>();
   let meta: Meta | null = null;
@@ -389,7 +391,39 @@ async function collect(ids: string[], gated: boolean, opts: CollectOpts): Promis
           pitCount.set(r.car, pc);
         }
         if (pitLaps.has(`${r.car}|${r.lap}`)) r.inpit = true;
-        timing.set(`${r.car}|${r.lap}`, r);
+        const key = `${r.car}|${r.lap}`;
+        const prevRow = timing.get(key);
+        // Never let a later snapshot NULL out a sector we already had. On LAPS=0
+        // WIGE often stops sending S1TIME after S2 lands; later-frame-wins was
+        // wiping S1 and then S5/LAP could not be derived.
+        timing.set(key, prevRow ? {
+          ...r,
+          s1: r.s1 ?? prevRow.s1, s2: r.s2 ?? prevRow.s2, s3: r.s3 ?? prevRow.s3,
+          s4: r.s4 ?? prevRow.s4, s5: r.s5 ?? prevRow.s5,
+          s1_kmh: r.s1_kmh ?? prevRow.s1_kmh, s2_kmh: r.s2_kmh ?? prevRow.s2_kmh,
+          s3_kmh: r.s3_kmh ?? prevRow.s3_kmh, s4_kmh: r.s4_kmh ?? prevRow.s4_kmh,
+          s5_kmh: r.s5_kmh ?? prevRow.s5_kmh,
+          lap_time: r.lap_time ?? prevRow.lap_time,
+        } : r);
+        // S5 = t(S/F) − t(S4) from LASTIMTIME when LAPS ticks. Does not need S1.
+        const imN = Number(c.LASTINTERMEDIATENUMBER);
+        const imMs = Number(c.LASTIMTIME);
+        const prevLapN = lastLapN.get(r.car);
+        const prevIm = lastIm.get(r.car);
+        if (prevLapN != null && r.lap > prevLapN) {
+          const prev = timing.get(`${r.car}|${prevLapN}`);
+          if (prev && prev.s5 == null && prevIm && Number.isFinite(imMs) && imMs > prevIm.ms) {
+            const d5 = (imMs - prevIm.ms) / 1000;
+            if (d5 > 5 && d5 < 900) prev.s5 = d5;
+          }
+          if (prev && prev.lap_time == null && r.lap_time != null) prev.lap_time = r.lap_time;
+          if (prev && prev.s1 == null && prev.s5 != null && prev.s2 != null && prev.s3 != null && prev.s4 != null && prev.lap_time != null) {
+            const s1 = prev.lap_time - prev.s2 - prev.s3 - prev.s4 - prev.s5;
+            if (s1 > 5 && s1 < 900) prev.s1 = s1;
+          }
+        }
+        lastLapN.set(r.car, r.lap);
+        if (Number.isFinite(imN) && Number.isFinite(imMs) && imMs > 1e12) lastIm.set(r.car, { n: imN, ms: imMs });
       }
     };
     ws.onerror = () => { clearTimeout(timer); done(); };
