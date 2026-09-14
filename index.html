@@ -1761,7 +1761,20 @@ const lc=document.getElementById('lapchart');
 // rowH sized so CH (=yT+nC*rowH+4) lands near the reel panel's ~2:1 aspect
 // ratio for a typical field, minimising letterboxing so the content fills the
 // available space instead of scaling to width with empty bands top/bottom.
-const xL=196,xR=1000-235,yT=18,rowH=44;let nC=0,maxN=1,CH=0;
+// `let`, not `const`: buildClass() shrinks it on phones (see __mobZoom below),
+// which every reader of it — the POS chart's own X/Y helpers, rebuildPosAxis(),
+// and CH itself — then sees for free, since they all read the live variable.
+let rowH=44;const xL=196,xR=1000-235,yT=18;let nC=0,maxN=1,CH=0;
+/* Mobile reel zoom. None of the chart-drawing functions below know about
+   body.m — they're the exact same global functions on desktop and on phone
+   (the phone view MOVES the real #reelcard node into its slide; see setMob()).
+   Their geometry is all in fixed viewBox-unit numbers (font-size, stroke-width,
+   row height, …), so shrinking the LOGICAL canvas — the viewBox — for the SAME
+   physical panel is what makes every one of those fixed numbers render bigger:
+   same technique renderMini() already uses for the mini zoom-track (its own
+   __mz, defined locally there). 1.32 keeps typical phone text comfortably
+   larger without the row/lap density outrunning the panel on a big field. */
+function __mobZoom(){return document.body.classList.contains('m')?1.32:1;}
 // Left gutter, left to right: "Pn" (right-anchored at PX), the five sector
 // squares, then "PIT n". Laid out as named constants because they have to
 // clear each other AND end before xL — at the old spacing (squares 50..108,
@@ -1909,17 +1922,26 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
     VW=Math.ceil(H*box.width/box.height);
   }
   svg.setAttribute('viewBox',((1000-VW)/2).toFixed(1)+' 0 '+VW+' '+H);
+  // Mobile zoom: bigger GLYPHS, not a smaller canvas. This chart draws content
+  // out to the very edges (Y-axis labels a few units left of xL, the delta
+  // labels a few units right of xR) — shrinking the viewBox itself, like the
+  // row-height family below does, re-centres it and crops exactly that edge
+  // content off screen (verified: it did, in portrait). fz() instead scales
+  // just the font-size numbers, so nothing moves and nothing can fall outside.
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   renderSelStint(T);   // stint bar lives in THIS reel, not the map — renderSelStint hides itself when !selCar
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(H/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){ph('select a car for the lap-time trace');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
+  // Gathered unconditionally — safe with selCar null (st===selCar is simply
+  // never true, so every car lands in `others`), which is what lets the axes
+  // below use the CLASS's real lap/pace range even before a car is picked.
   const others=[],cf=[],dl=[];let sel=[],best=Infinity,dmx=0;
   DB.cars.forEach(st=>{const pts=[];for(let L=1;L<=maxN;L++){const t=lapT(st,L);if(t!=null){pts.push([L,t]);if(t<best)best=t;}}
     if(pts.length){if(st===selCar)sel=pts;else others.push(pts);}});
   for(let L=1;L<=maxN;L++){let m=Infinity,mc=null;DB.cars.forEach(st=>{const t=lapT(st,L);if(t!=null&&t<m){m=t;mc=st;}});
     if(m<Infinity)cf.push([L,m,mc]);
     const ts=lapT(selCar,L);if(ts!=null&&m<Infinity){const d=ts-m;dl.push([L,d]);if(d>dmx)dmx=d;}}
-  if(!sel.length){ph('lap-time trace — no completed laps yet');return;}
+  const hasData=sel.length>0;
+  if(!isFinite(best))best=90;   // nobody in the class has a lap yet — draw a plausible axis, not a missing one
   // x-axis spans only the laps run so far (not the full race distance maxN)
   let lmax=1;[sel].concat(others,[cf,dl]).forEach(a=>{if(a&&a.length){const L=a[a.length-1][0];if(L>lmax)lmax=L;}});
   const X=fx=>xL+(lmax<=1?0:(fx-1)/(lmax-1))*(xR-xL);
@@ -1934,21 +1956,28 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
-  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="17" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+tf(v)+'</text>';}
-  for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="17" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
-  for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="16" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-  s+='<text x="'+(xR)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="start" font-size="13" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(17)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+tf(v)+'</text>';}
+  for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="'+fz(17)+'" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
+  for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(16)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+  s+='<text x="'+(xR)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="start" font-size="'+fz(13)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
+  // Axis is drawn above either way — this only skips the CAR's own lines, and
+  // says so as an overlay on top of the real (or, absent any lap yet, default)
+  // grid, instead of wiping the whole canvas back to one centered sentence.
+  if(!selCar||!hasData){
+    s+='<text x="500" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="'+fz(26)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'lap-time trace — no completed laps yet':'select a car for the lap-time trace')+'</text>';
+    svg.innerHTML=s;return;
+  }
   others.forEach(pts=>{s+='<path d="'+smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#b6bcc3" stroke-width="1.2" stroke-linejoin="round" opacity="0.5"/>';});
   s+='<path d="'+smoothPath(sel.map(p=>[X(p[0]),YT(p[1])]))+' L'+px(sel[sel.length-1][0])+','+yB2+' L'+px(sel[0][0])+','+yB2+' Z" fill="#1e8f3a" opacity="0.06"/>';
-  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YT(best).toFixed(1)+'" y2="'+YT(best).toFixed(1)+'" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="7 6"/><text x="'+(xL-8)+'" y="'+(YT(best)-6).toFixed(1)+'" text-anchor="end" font-size="15" fill="#c0392b" font-family="IBM Plex Mono,monospace">best '+tf(best)+'</text>';
+  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+YT(best).toFixed(1)+'" y2="'+YT(best).toFixed(1)+'" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="7 6"/><text x="'+(xL-8)+'" y="'+(YT(best)-6).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" fill="#c0392b" font-family="IBM Plex Mono,monospace">best '+tf(best)+'</text>';
   s+='<path d="'+smoothPath(dl.map(p=>[X(p[0]),YD(p[1])]))+'" fill="none" stroke="#e8871e" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>';
   {const outsSet=new Set((DB.pits[selCar]||[]).map(pl=>pl+1));let dsum=0,dn=0;dl.forEach(p=>{if(!outsSet.has(p[0])){dsum+=p[1];dn++;}});
-   if(dn){const avgD=dsum/dn,ay=YD(avgD);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+ay.toFixed(1)+'" y2="'+ay.toFixed(1)+'" stroke="#e8871e" stroke-width="2.5"/><text x="'+(xR-6)+'" y="'+(ay-7).toFixed(1)+'" text-anchor="end" font-size="15" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">avg +'+avgD.toFixed(1)+'s</text>';}}
+   if(dn){const avgD=dsum/dn,ay=YD(avgD);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+ay.toFixed(1)+'" y2="'+ay.toFixed(1)+'" stroke="#e8871e" stroke-width="2.5"/><text x="'+(xR-6)+'" y="'+(ay-7).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" font-weight="700" fill="#e8871e" font-family="IBM Plex Mono,monospace">avg +'+avgD.toFixed(1)+'s</text>';}}
   s+='<path d="'+smoothPath(cf.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round"/>';
-  cf.forEach((p,i)=>{if(i===0||p[2]!==cf[i-1][2])s+='<text x="'+px(p[0])+'" y="'+(YT(p[1])-9).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#6b7480" font-family="IBM Plex Mono,monospace">#'+p[2]+'</text>';});
+  cf.forEach((p,i)=>{if(i===0||p[2]!==cf[i-1][2])s+='<text x="'+px(p[0])+'" y="'+(YT(p[1])-9).toFixed(1)+'" text-anchor="middle" font-size="'+fz(14)+'" fill="#6b7480" font-family="IBM Plex Mono,monospace">#'+p[2]+'</text>';});
   s+='<path d="'+smoothPath(sel.map(p=>[X(p[0]),YT(p[1])]))+'" fill="none" stroke="#1e8f3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>';
   const outs=(DB.pits[selCar]||[]).map(pl=>pl+1);sel.forEach(p=>{if(outs.indexOf(p[0])>=0)s+='<circle cx="'+px(p[0])+'" cy="'+YT(p[1]).toFixed(1)+'" r="6" fill="#fff" stroke="#e08a1e" stroke-width="2.5"/>';});
-  s+='<text x="'+xL+'" y="22" font-size="18" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
+  s+='<text x="'+xL+'" y="22" font-size="'+fz(18)+'" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">LAP-TIME · #'+selCar+' (green) vs class fastest (red) · field (grey)</text>';
   svg.innerHTML=s;}
 let fuelLogCar=null,fuelS5Set=new Map(),fuelPitSet=new Map(),fuelTankNow=0;
 let stintDrvColor={};
@@ -2149,7 +2178,9 @@ function renderSelStint(T){
   el.style.display='flex';
 }
 function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)return;
-  const rowH2=30,xL=104,xR=980,yT2=18;
+  // Mobile zoom (see __mobZoom()): shrinking the row/margin units for the SAME
+  // physical panel makes every fixed font-size number below render bigger.
+  const __z=__mobZoom(),rowH2=30/__z,xL=104,xR=980,yT2=18/__z;
   const CH2=yT2+Math.max(1,DB.cars.length)*rowH2+10;
   svg.setAttribute('viewBox','0 0 1000 '+CH2);
   // laps completed (fractional) for a car at T — active leg draws as a
@@ -2374,7 +2405,6 @@ function smoothPath(pts){
 // would wipe the hover highlight).
 let compHoverCar=null;
 function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
   // via getElementById (not a '#compmetric' querySelector) so the shim resolves
   // it to whichever block this render pass is painting — each block's COMP reel
   // keeps its own metric selection.
@@ -2396,11 +2426,12 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
       const b=bx[bkey];if(b==null||b>T)continue;
       pts.push([L,v]);}
     if(pts.length)series.push({st,pts});});
-  if(!series.length){ph((sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet');return;}
+  const hasData=series.length>0;
   // x-axis spans only the laps run so far (not the full race distance maxN).
   // lmin isn't always 1 any more: a car's earliest plotted point can be lap 0.
   let lmin=Infinity,lmax=1;
   series.forEach(({pts})=>{if(pts.length){if(pts[0][0]<lmin)lmin=pts[0][0];const L=pts[pts.length-1][0];if(L>lmax)lmax=L;}});
+  if(!hasData){lmin=1;lmax=10;}   // no laps anywhere yet — draw a plausible 1..10 axis, not a single tick
   if(!isFinite(lmin))lmin=1;
   const X=fx=>xL+(lmax<=lmin?0:(fx-lmin)/(lmax-lmin))*(xR-xL);
   const yT2=44,yB2=CH-26;
@@ -2416,7 +2447,11 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
     const fc=focusCar==null?null:String(focusCar);
     const scaleSeries=(fc!=null&&series.some(x=>String(x.st)===fc))?series.filter(x=>String(x.st)===fc):series;
     scaleSeries.forEach(({pts})=>pts.forEach(p=>{if(p[1]<lo)lo=p[1];if(p[1]>hi)hi=p[1];}));
-    const pad=Math.max(2,(hi-lo)*0.08);lo-=pad;hi+=pad;
+    // No series to scale against (no completed data anywhere yet) — a plausible
+    // default window (0-40s sector / 0-120s lap) so the axis is still real
+    // numbers, not the Infinity/-Infinity this would otherwise divide by.
+    if(!isFinite(lo)||!isFinite(hi)){lo=0;hi=sIdx==null?120:40;}
+    const pad=Math.max(2,(hi-lo)*0.08);lo=Math.max(0,lo-pad);hi+=pad;   // lap/sector time is never negative
     const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
     let s='';
     for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
@@ -2437,6 +2472,7 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
          '<rect x="2" y="'+(ly-legRowH/2).toFixed(1)+'" width="'+(xL-14)+'" height="'+legRowH.toFixed(1)+'" fill="transparent"/>'+
          '<line x1="6" x2="24" y1="'+ly.toFixed(1)+'" y2="'+ly.toFixed(1)+'" stroke="'+col+'" stroke-width="4" stroke-linecap="round"/>'+
          '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="12" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
+    if(!hasData)s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet</text>';
     svg.innerHTML=s;
     svg.querySelectorAll('.complegrow').forEach(g=>{
       g.addEventListener('mouseenter',()=>{compHoverCar=g.dataset.car;draw(compHoverCar,true);});
@@ -2829,9 +2865,9 @@ function leaderAtLap(L){
    line. */
 function renderP1Bar(T){
   const svg=document.getElementById('p1barsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){ph('select a car');return;}
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
+  // Unconditional — lapT(selCar,…) with selCar null just returns null for every
+  // lap, so pts naturally stays empty rather than needing an early return.
   const pts=[];let cum=0;
   for(let L=1;L<=maxN;L++){
     const leader=leaderAtLap(L);if(!leader)continue;
@@ -2841,9 +2877,9 @@ function renderP1Bar(T){
     const delta=mine-m;cum+=delta;
     pts.push({L,delta,cum});
   }
-  if(!pts.length){ph('vs P1 (race leader) — no completed laps yet');return;}
+  const hasData=pts.length>0;
   // x-axis spans only the laps run so far (not the full race distance maxN)
-  const lmax=Math.max(1,pts[pts.length-1].L);
+  const lmax=hasData?Math.max(1,pts[pts.length-1].L):10;
   const X=fx=>xL+(lmax<=1?0:(fx-1)/(lmax-1))*(xR-xL);
   const yT2=64,yB2=CH-30;
   let lo=0,hi=0;
@@ -2858,13 +2894,19 @@ function renderP1Bar(T){
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   const zeroY=Yv(0);
+  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+zeroY.toFixed(1)+'" y2="'+zeroY.toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">'+(selCar?'#'+selCar+' vs P1 (race leader) — per-lap Δ (bars) + cumulative Δ (line)':'vs P1 (race leader)')+'</text>';
+  // Axis/zero-line are real either way — this only skips the bars/line, which
+  // need an actual car and a shared completed lap with the leader to exist.
+  if(!hasData){
+    s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'no completed laps yet':'select a car')+'</text>';
+    svg.innerHTML=s;return;
+  }
   const barW=Math.max(3,(lmax<=1?40:(xR-xL)/(lmax-1))*0.55);
   pts.forEach(p=>{
     const bx2=X(p.L)-barW/2,y1=Yv(Math.max(0,p.delta)),y2=Yv(Math.min(0,p.delta)),h=Math.max(1,y2-y1);
     s+='<rect x="'+bx2.toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+(p.delta<0?'#1e8f3a':'#c0392b')+'"/>';
   });
-  s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+zeroY.toFixed(1)+'" y2="'+zeroY.toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
-  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">#'+selCar+' vs P1 (race leader) — per-lap Δ (bars) + cumulative Δ (line)</text>';
   const cumPts=pts.map(p=>[X(p.L),Yv(p.cum)]);
   s+='<path d="'+cumPts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#9aa1a9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
   cumPts.forEach(p=>{s+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.5" fill="#9aa1a9"/>';});
@@ -2890,31 +2932,38 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
     panel.classList.remove('tall');svg.style.height=''; // drop any sizing an earlier .tall pass left behind
   }
   svg.setAttribute('viewBox',((1000-VW)/2).toFixed(1)+' 0 '+VW+' '+H);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(H/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){ph('select a car for sector performance');return;}
+  // Mobile zoom: bigger GLYPHS, not a smaller canvas — see the identical note
+  // in renderLapTrace. This chart's row labels sit at x=60, close enough to
+  // the edge that shrinking the viewBox (re-centring it) cropped them clean
+  // off in portrait; fz() leaves every position exactly where it was.
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   const myBest=[Infinity,Infinity,Infinity,Infinity,Infinity],clsBest=[Infinity,Infinity,Infinity,Infinity,Infinity],clsCar=[null,null,null,null,null];
-  DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;for(let k=0;k<5;k++){const tc=bx[(+L-1)*5+(k+1)];if(tc==null||tc>T)continue;const v=s[k];if(v<clsBest[k]){clsBest[k]=v;clsCar[k]=st;}if(st===selCar&&v<myBest[k])myBest[k]=v;}}});
-  if(!isFinite(myBest[0])&&!isFinite(myBest[1])&&!isFinite(myBest[2])){ph('sector performance — no completed sectors yet');return;}
-  let actual=Infinity;{const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{};for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(+L-1)*5+5];if(tc==null||tc>T)continue;const t=s[0]+s[1]+s[2]+s[3]+s[4];if(t<actual)actual=t;}}
+  if(selCar)DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{};for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;for(let k=0;k<5;k++){const tc=bx[(+L-1)*5+(k+1)];if(tc==null||tc>T)continue;const v=s[k];if(v<clsBest[k]){clsBest[k]=v;clsCar[k]=st;}if(st===selCar&&v<myBest[k])myBest[k]=v;}}});
+  const hasData=isFinite(myBest[0])||isFinite(myBest[1])||isFinite(myBest[2]);
+  let actual=Infinity;if(selCar&&hasData){const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{};for(const L in stm){const s=stm[L];if(!(s&&s.length>=5))continue;const tc=bx[(+L-1)*5+5];if(tc==null||tc>T)continue;const t=s[0]+s[1]+s[2]+s[3]+s[4];if(t<actual)actual=t;}}
   const fmt2=v=>{if(!isFinite(v))return '—';const m=Math.floor(v/60);return (m>0?m+':'+(v-60*m).toFixed(1).padStart(4,'0'):v.toFixed(1));};
   const delta=myBest.map((v,k)=>isFinite(v)&&isFinite(clsBest[k])?v-clsBest[k]:0);
   const maxD=Math.max(0.1,delta[0],delta[1],delta[2],delta[3],delta[4]);
   let theo=0,cls=0,ok=true;for(let k=0;k<5;k++){if(isFinite(myBest[k]))theo+=myBest[k];else ok=false;cls+=isFinite(clsBest[k])?clsBest[k]:0;}
   const totLoss=delta.reduce((a,b)=>a+b,0);let worst=0;for(let k=1;k<5;k++)if(delta[k]>delta[worst])worst=k;
   const top=82,rowH=(H-top-108)/5,barX=372,barW=344;let s='';
-  s+='<text x="60" y="34" font-size="20" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">SECTOR PERFORMANCE · #'+selCar+' vs class best</text>';
-  s+='<text x="'+barX+'" y="70" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">time lost to class best per sector →</text>';
-  for(let k=0;k<5;k++){const cy=top+rowH*(k+0.5),held=(clsCar[k]===selCar),col=held?'#1e8f3a':(k===worst?'#c0392b':'#e8871e');
-    s+='<text x="60" y="'+(cy+9).toFixed(1)+'" font-size="30" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">S'+(k+1)+'</text>';
-    s+='<text x="118" y="'+(cy+9).toFixed(1)+'" font-size="26" font-weight="700" fill="'+(held?'#1e8f3a':'#16202b')+'" font-family="IBM Plex Mono,monospace">'+fmt2(myBest[k])+'</text>';
+  s+='<text x="60" y="34" font-size="'+fz(20)+'" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">SECTOR PERFORMANCE'+(selCar?' · #'+selCar+' vs class best':'')+'</text>';
+  s+='<text x="'+barX+'" y="70" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">time lost to class best per sector →</text>';
+  // Rows draw regardless of data — an empty field is 5 rows of dashes and an
+  // empty bar track, not a blank canvas. held/worst only mean anything once
+  // there IS data (clsCar[k] stays null, delta stays 0, otherwise).
+  for(let k=0;k<5;k++){const cy=top+rowH*(k+0.5),held=hasData&&(clsCar[k]===selCar),col=held?'#1e8f3a':(hasData&&k===worst?'#c0392b':'#e8871e');
+    s+='<text x="60" y="'+(cy+9).toFixed(1)+'" font-size="'+fz(30)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">S'+(k+1)+'</text>';
+    s+='<text x="118" y="'+(cy+9).toFixed(1)+'" font-size="'+fz(26)+'" font-weight="700" fill="'+(held?'#1e8f3a':'#16202b')+'" font-family="IBM Plex Mono,monospace">'+fmt2(myBest[k])+'</text>';
     s+='<rect x="'+barX+'" y="'+(cy-14).toFixed(1)+'" width="'+barW+'" height="28" rx="6" fill="#f1f3f5"/>';
-    const bl=Math.max(3,(delta[k]/maxD)*barW);s+='<rect x="'+barX+'" y="'+(cy-14).toFixed(1)+'" width="'+bl.toFixed(1)+'" height="28" rx="6" fill="'+col+'"/>';
-    s+='<text x="'+(barX+barW+14)+'" y="'+(cy+8).toFixed(1)+'" font-size="24" font-weight="700" fill="'+col+'" font-family="IBM Plex Mono,monospace">'+(held?'BEST':'+'+delta[k].toFixed(1)+'s')+'</text>';}
+    const bl=hasData?Math.max(3,(delta[k]/maxD)*barW):0;if(bl>0)s+='<rect x="'+barX+'" y="'+(cy-14).toFixed(1)+'" width="'+bl.toFixed(1)+'" height="28" rx="6" fill="'+col+'"/>';
+    s+='<text x="'+(barX+barW+14)+'" y="'+(cy+8).toFixed(1)+'" font-size="'+fz(24)+'" font-weight="700" fill="'+(hasData?col:'#b5bcc4')+'" font-family="IBM Plex Mono,monospace">'+(hasData?(held?'BEST':'+'+delta[k].toFixed(1)+'s'):'—')+'</text>';}
   const sy=H-64;s+='<line x1="60" x2="940" y1="'+(H-90)+'" y2="'+(H-90)+'" stroke="#e2e5ea" stroke-width="1.5"/>';
-  s+='<text x="60" y="'+sy+'" font-size="21" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">best lap '+fmt2(actual)+'</text>';
-  s+='<text x="330" y="'+sy+'" font-size="21" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">ideal '+(ok?fmt2(theo):'—')+'</text>';
-  s+='<text x="580" y="'+sy+'" font-size="21" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">to find +'+totLoss.toFixed(1)+'s</text>';
-  s+='<text x="60" y="'+(sy+30)+'" font-size="16" fill="#8a929b" font-family="IBM Plex Mono,monospace">focus S'+(worst+1)+' (+'+delta[worst].toFixed(1)+'s)   ·   class ideal lap '+fmt2(cls)+'</text>';
+  s+='<text x="60" y="'+sy+'" font-size="'+fz(21)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">best lap '+fmt2(actual)+'</text>';
+  s+='<text x="330" y="'+sy+'" font-size="'+fz(21)+'" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">ideal '+(ok?fmt2(theo):'—')+'</text>';
+  s+='<text x="580" y="'+sy+'" font-size="'+fz(21)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">to find '+(hasData?'+'+totLoss.toFixed(1)+'s':'—')+'</text>';
+  s+='<text x="60" y="'+(sy+30)+'" font-size="'+fz(16)+'" fill="#8a929b" font-family="IBM Plex Mono,monospace">'+(hasData?'focus S'+(worst+1)+' (+'+delta[worst].toFixed(1)+'s)   ·   class ideal lap '+fmt2(cls):'no completed sectors yet')+'</text>';
+  if(!selCar||!hasData)s+='<rect x="'+(barX-6)+'" y="'+(top-4).toFixed(1)+'" width="'+(barW+150)+'" height="'+(rowH*5+8).toFixed(1)+'" fill="#fff" opacity="0.82"/><text x="'+(barX+barW/2+60).toFixed(0)+'" y="'+(top+rowH*2.5).toFixed(0)+'" text-anchor="middle" font-size="'+fz(22)+'" fill="#8a929b" font-family="IBM Plex Mono,monospace">'+(selCar?'no completed sectors yet':'select a car')+'</text>';
   svg.innerHTML=s;}
 /* The sector chart draws on its panel's aspect, so it has to be re-drawn when
    that panel changes shape — zoom open/close, window resize — and not only on
@@ -2929,20 +2978,19 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
   try{new ResizeObserver(refit).observe(p);}catch(e){window.addEventListener('resize',refit);}})();
 let flowCache={car:null,cols:[]},flowLastLap=null,flowLastN=-1;
 function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
-  const ph=t=>{svg.innerHTML='<text x="500" y="'+(CH/2).toFixed(0)+'" text-anchor="middle" font-size="26" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+t+'</text>';};
-  if(!selCar){flowCache={car:null,cols:[]};flowLastN=-1;ph('select a car for the track-position flow');return;}
-  if(flowCache.car!==selCar){flowCache={car:selCar,cols:[]};flowLastLap=null;flowLastN=-1;}
+  if(!selCar){flowCache={car:null,cols:[]};flowLastN=-1;}
+  else if(flowCache.car!==selCar){flowCache={car:selCar,cols:[]};flowLastLap=null;flowLastN=-1;}
   const bx=BX[selCar]||{},stm=DB.sectimes[selCar]||{},have=new Set(flowCache.cols.map(c=>c.bkey));
-  Object.keys(bx).map(Number).filter(k=>k>=1&&bx[k]<=T&&!have.has(k)).sort((a,b)=>a-b).forEach(bkey=>{
+  if(selCar)Object.keys(bx).map(Number).filter(k=>k>=1&&bx[k]<=T&&!have.has(k)).sort((a,b)=>a-b).forEach(bkey=>{
     const tc=bx[bkey],lap=Math.floor((bkey-1)/5)+1,seg=keySec(bkey),lpc=livePos(tc),pos=lpc[selCar];if(!pos)return;
     const bp={};for(const st in lpc)bp[lpc[st]]=st;const ah=bp[pos-1],be=bp[pos+1];
     const dA=ah?commonGap(selCar,ah,tc):null,dB=be?commonGap(be,selCar,tc):null,sc=(stm[lap]||[])[seg-1];let col='#c9ced4';
     if(sc!=null){let pb=Infinity,ob=Infinity;DB.cars.forEach(st=>{const s2=DB.sectimes[st]||{},b2=BX[st]||{};for(const L in s2){const v=(s2[L]||[])[seg-1],tcx=b2[(+L-1)*5+seg];if(v==null||tcx==null||tcx>tc)continue;if(v<ob)ob=v;if(st===selCar&&v<pb)pb=v;}});
       col=(sc<=ob+1e-6)?'#8B5CF6':(sc<=pb+1e-6)?'#1e8f3a':'#f0c020';}
     flowCache.cols.push({bkey,lap,seg,pos,dA,dB,col,ah,be});});
-  const vis=flowCache.cols.filter(c=>bx[c.bkey]<=T),curLap=(activeLeg(selCar,T)||[])[0]||null;
+  const vis=selCar?flowCache.cols.filter(c=>bx[c.bkey]<=T):[],curLap=selCar?((activeLeg(selCar,T)||[])[0]||null):null;
   if(vis.length===flowLastN&&curLap===flowLastLap&&svg.childNodes.length)return;flowLastN=vis.length;flowLastLap=curLap;
-  if(!vis.length){ph('track-position flow — building as laps complete…');return;}
+  const hasData=vis.length>0;
   // Every position in the class, not just the band #650 has actually occupied --
   // rows it never touches just stay empty (no red pill, no blue rival band),
   // but the full grid is there for context instead of resizing around one car.
@@ -2953,9 +3001,15 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
   // saturating at a fixed cap (which made every pill collapse to the same height).
   let GAP=0.5;vis.forEach(c=>{if(c.dA!=null&&c.dA>GAP)GAP=c.dA;if(c.dB!=null&&c.dB>GAP)GAP=c.dB;});
   const rowH=(CH-top-6)/nR,rowY=pp=>top+(pp-rowMin)*rowH,lblfs=Math.min(15,Math.max(9,rowH*0.42));
-  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower</text>';
+  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW'+(selCar?' · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower':'')+'</text>';
+  // Row grid (the P1..Pn "axis") draws regardless of car/data — only the pills
+  // themselves need a selected car with reported sector crossings.
   for(let pp=rowMin;pp<=rowMax;pp++)s+='<text x="'+(xL-6)+'" y="'+(rowY(pp)+rowH/2+lblfs*0.35).toFixed(1)+'" text-anchor="end" font-size="'+lblfs.toFixed(0)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">P'+pp+'</text>';
   if(curLap){const x0=colX((curLap-1)*5+1),x1=colX(curLap*5)+colW;s+='<rect x="'+x0.toFixed(1)+'" y="'+cap+'" width="'+(x1-x0).toFixed(1)+'" height="'+(CH-cap)+'" fill="#eef4ff"/>';}
+  if(!hasData){
+    s+='<text x="'+(xL+(1000-xL)/2).toFixed(0)+'" y="'+(top+(CH-top)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'building as laps complete…':'select a car for the track-position flow')+'</text>';
+    svg.innerHTML=s;return;
+  }
   vis.forEach(c=>{const x=colX(c.bkey),cw=colW-0.8,xx=x+0.4;
     s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
     if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
@@ -4529,7 +4583,7 @@ function wxFetchShared(url,ttlMs){
     const W=400,H=240,padL=40,padR=38,padT=34,padB=30,gx0=padL,gx1=W-padR,gy0=padT,gy1=H-padB;
     const winStart=new Date(now.getTime()-2*3600000),winEnd=new Date(now.getTime()+2*3600000);
     const pts=tempSeries.filter(p=>p[0]>=new Date(winStart.getTime()-3600000)&&p[0]<=new Date(winEnd.getTime()+3600000));
-    if(pts.length<2){svg.innerHTML='';return;}
+    if(pts.length<2){svg.innerHTML='<rect x="0" y="0" width="400" height="240" fill="#fff" rx="10"/><text x="40" y="18" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="12" letter-spacing="1" fill="#8a929b">TEMPERATURE &#183; &plusmn;2H</text><text x="200" y="130" text-anchor="middle" font-size="13" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">not enough forecast points in this window</text>';return;}
     const temps=pts.map(p=>p[1]),tMin=Math.min.apply(null,temps)-1,tMax=Math.max.apply(null,temps)+1;
     const X=t=>gx0+(t.getTime()-winStart.getTime())/(winEnd.getTime()-winStart.getTime())*(gx1-gx0);
     const Y=v=>gy1-(v-tMin)/((tMax-tMin)||1)*(gy1-gy0);
@@ -4590,7 +4644,9 @@ function buildClass(cls){
   const _all=(cls===ALL_CLS);
   DB.cars=_all?allClassCars():(DB.classes[cls]||[]);
   maxN=DB.maxN=_all?allClassMaxN():(DB.classMaxN[cls]||1);
-  DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
+  DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;
+  rowH=44/__mobZoom();/* shrunk on phones — see __mobZoom()'s comment; POS's own Y()/rebuildPosAxis() below read this SAME variable, so its row spacing/labels stay in lock-step with the viewBox this produces */
+  CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
   stintDrvColor={};
   _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
   window.__pitField=null;window.__pitFieldT=0;   // and the PIT field table built on top of them
@@ -7059,9 +7115,15 @@ applyWxReel(false);
   <div id="a2hs">
     <!-- iOS: name the gesture, nothing more. Apple never shipped
          beforeinstallprompt, so the page cannot do this for the user. -->
+    <!-- Two icons, the two taps in order: the Safari Share glyph (send the page
+         somewhere), then the "+" Add-to-Home-Screen glyph that sits next to that
+         exact menu item in Safari's own share sheet — showing both means the user
+         is matching pictures, not reading a step number. -->
     <span class="a2ios">Tap
       <svg class="a2ico" width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden="true"
         ><path d="M6 1v9M6 1L3.2 3.8M6 1l2.8 2.8" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.4 6.4H1.5v7h9v-7h-.9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="a2ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
+        ><rect x="1" y="1" width="12" height="12" rx="3" stroke="#fff" stroke-width="1.3"/><path d="M7 4v6M4 7h6" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
       for app</span>
     <button type="button" class="a2go">INSTALL</button>
   </div>
