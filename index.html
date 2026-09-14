@@ -526,21 +526,37 @@
     font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;
     color:var(--muted);background:var(--bg);padding:3px 7px;border-radius:7px;pointer-events:none}
   .mslidelbl b{color:var(--ink);font-weight:700}
-  /* Add-to-home-screen hint. iOS Safari gives a page NO way to hide its own tab
-     bar or address bar — there is no element fullscreen on iPhone — so the only
-     route to a genuinely full screen is installing it, which the manifest and
-     apple-mobile-web-app-capable already support. Shown once, then remembered. */
+  /* Install-to-home-screen prompt. Installing is the only way to lose Safari's
+     tab and address bar — there is no element fullscreen on iPhone.
+
+     Where the platform supports it (Android Chrome, desktop Chrome/Edge) the
+     INSTALL button is genuinely one click: beforeinstallprompt is captured and
+     replayed. Apple has never implemented that event, so on iOS one click is
+     impossible and the button instead opens the two steps, naming the menu item
+     in the device's own language ("Zet op beginscherm" on a Dutch phone). */
   #a2hs{display:none;position:fixed;left:50%;transform:translateX(-50%);
     /* clears the slide label, which owns the bottom-left corner */
     bottom:calc(42px + env(safe-area-inset-bottom));z-index:5;
-    max-width:min(430px,calc(100% - 26px));align-items:center;gap:10px;
-    background:var(--ink);color:#fff;border-radius:12px;padding:10px 11px 10px 13px;
+    width:max-content;max-width:calc(100% - 22px);flex-direction:column;gap:9px;
+    background:var(--ink);color:#fff;border-radius:13px;padding:10px 11px 11px 13px;
     box-shadow:0 6px 22px rgba(0,0,0,.3);
     font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.45}
   body.m #a2hs.on{display:flex}
   #a2hs b{font-weight:700}
-  #a2hs .x{margin-left:auto;flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  #a2hs .a2row{display:flex;align-items:center;gap:10px}
+  #a2hs .a2txt{flex:1 1 auto;min-width:0;font-weight:700}
+  #a2hs .a2txt i{font-style:normal;font-weight:400;color:rgba(255,255,255,.62);font-size:10px}
+  #a2hs .a2go{flex:0 0 auto;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:1px;
+    border:none;border-radius:8px;padding:8px 12px;background:#fff;color:var(--ink);cursor:pointer}
+  #a2hs .x{flex:0 0 auto;width:26px;height:26px;border-radius:50%;
     border:none;background:rgba(255,255,255,.18);color:#fff;font-size:15px;line-height:1;cursor:pointer}
+  #a2hs .a2steps{display:none;flex-direction:column;gap:7px;
+    border-top:1px solid rgba(255,255,255,.2);padding-top:9px}
+  #a2hs.open .a2steps{display:flex}
+  #a2hs .a2step{display:flex;align-items:center;gap:8px}
+  #a2hs .a2n{flex:0 0 auto;width:17px;height:17px;border-radius:50%;background:rgba(255,255,255,.2);
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+  #a2hs .a2ico{flex:0 0 auto;vertical-align:-3px}
   /* The reel's own arrows are redundant in the phone view — .mnav drives it, and
      a second pair on the LEFT is exactly what the right-side-only layout avoids.
      !important because #reelnav carries an inline display:flex. */
@@ -3550,12 +3566,35 @@ function setMob(i,force){
 function __mobEnable(on){
   if(on){setMob(mobIdx,true);}
   else{const def=__mobDef(mobIdx);if(def&&def.el)__mMove(def.el(),def.k,null);__placeMini(false);}}
-/* Add-to-home-screen hint — the only honest answer to "hide the browser chrome".
-   iOS Safari does not let a page hide its tab/address bar: there is no element
-   fullscreen on iPhone, and the toolbar only collapses on scroll, which this view
-   never does (html/body are overflow:hidden). Installed, the same page opens with
-   no chrome at all — display:standalone in the manifest plus the apple-mobile-web
-   -app meta. So: if we're on iOS and NOT already standalone, say it once. */
+/* Install to the home screen — the only way to lose Safari's tab and address bar,
+   since there is no element fullscreen on iPhone and the toolbar only collapses on
+   scroll, which this view never does (html/body are overflow:hidden). Installed,
+   the same page opens with no chrome at all (manifest display:standalone plus the
+   apple-mobile-web-app meta).
+
+   ONE CLICK where the platform allows it: Chromium fires beforeinstallprompt, we
+   keep the event and replay it on the button, which installs then and there.
+
+   On iOS one click is NOT possible and no trick gets around it — Apple has never
+   implemented beforeinstallprompt (still true on iOS 26), and navigator.share()
+   opens a share sheet for a payload, which has no Add-to-Home-Screen action. The
+   closest honest thing is one tap to the two exact steps, naming the menu item in
+   the DEVICE's language, because that label is what the user has to spot. */
+const A2HS_LABEL={nl:'Zet op beginscherm',en:'Add to Home Screen',de:'Zum Home-Bildschirm',
+  fr:"Sur l'écran d'accueil",es:'Añadir a inicio',it:'Aggiungi a Home',pt:'Adicionar à Tela de Início',
+  da:'Føj til hjemmeskærm',sv:'Lägg till på hemskärmen',nb:'Legg til på Hjem-skjerm',pl:'Dodaj do ekranu głównego'};
+let __installEvt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();          // keep it; Chromium's own mini-infobar would race the button
+  __installEvt=e;
+  // It can land either side of __initA2HS, so both paths go through the same
+  // sync — otherwise a late event leaves the bar hidden on Android.
+  __a2hsSync();
+});
+window.addEventListener('appinstalled',function(){
+  const g=document.getElementById('a2hs');if(g)g.classList.remove('on');
+  try{localStorage.setItem('stint9_a2hs','1');}catch(e){}
+});
 function __initA2HS(){
   if(__initA2HS.done)return;
   const el=document.getElementById('a2hs');if(!el)return;
@@ -3565,9 +3604,42 @@ function __initA2HS(){
   const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
     (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   let dismissed=false;try{dismissed=localStorage.getItem('stint9_a2hs')==='1';}catch(e){}
+  // Name the Share-sheet item the way THIS phone spells it — that string is the
+  // thing the user is hunting for in a list of a dozen actions.
+  const lang=(navigator.language||'en').slice(0,2).toLowerCase();
+  const lbl=el.querySelector('.a2label');
+  if(lbl)lbl.textContent=A2HS_LABEL[lang]||A2HS_LABEL.en;
+  const go=el.querySelector('.a2go');
+  go.onclick=function(){
+    if(__installEvt){                       // real one-click install (Chromium)
+      const e=__installEvt;__installEvt=null;
+      e.prompt();
+      Promise.resolve(e.userChoice).then(function(c){
+        if(c&&c.outcome==='accepted'){el.classList.remove('on');
+          try{localStorage.setItem('stint9_a2hs','1');}catch(err){}}
+      }).catch(function(){});
+      return;
+    }
+    el.classList.toggle('open');            // iOS: one tap to the exact steps
+    go.textContent=el.classList.contains('open')?'HIDE':'HOW';
+  };
   el.querySelector('.x').onclick=function(){
     el.classList.remove('on');try{localStorage.setItem('stint9_a2hs','1');}catch(e){}};
-  if(iOS&&!standalone&&!dismissed)el.classList.add('on');
+  __a2hsSync();
+}
+/* Decides whether the bar is shown and what its button says. Safe to call before
+   the markup exists and safe to call repeatedly. */
+function __a2hsSync(){
+  const el=document.getElementById('a2hs');if(!el||!__initA2HS.done)return;
+  const standalone=window.navigator.standalone===true||
+    (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+  const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+    (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  let dismissed=false;try{dismissed=localStorage.getItem('stint9_a2hs')==='1';}catch(e){}
+  const go=el.querySelector('.a2go');
+  if(go&&!el.classList.contains('open'))go.textContent=__installEvt?'INSTALL':(iOS?'HOW':'INSTALL');
+  // Nothing to offer on a desktop browser that never fired the event.
+  el.classList.toggle('on',!standalone&&!dismissed&&(iOS||!!__installEvt));
 }
 /* Wired lazily, NOT in an IIFE: this script runs far above #mobileview's markup,
    so at parse time the arrows don't exist yet and the handlers would land on
@@ -7007,8 +7079,20 @@ applyWxReel(false);
   </div>
   <div class="mslidelbl" id="m_slidelbl"></div>
   <div id="a2hs">
-    <span>Full screen, no tabs: <b>Share</b> &rarr; <b>Add to Home Screen</b></span>
-    <button type="button" class="x" title="Dismiss">&times;</button>
+    <div class="a2row">
+      <span class="a2txt">Install for full screen<br><i>no tabs, no address bar</i></span>
+      <button type="button" class="a2go">INSTALL</button>
+      <button type="button" class="x" title="Dismiss">&times;</button>
+    </div>
+    <!-- iOS only: Apple never shipped beforeinstallprompt, so these two steps are
+         as close to one click as the platform allows. -->
+    <div class="a2steps">
+      <div class="a2step"><span class="a2n">1</span><span>Tap
+        <svg class="a2ico" width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden="true"
+          ><path d="M6 1v9M6 1L3.2 3.8M6 1l2.8 2.8" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.4 6.4H1.5v7h9v-7h-.9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        in the Safari toolbar</span></div>
+      <div class="a2step"><span class="a2n">2</span><span>Choose <b class="a2label">Add to Home Screen</b></span></div>
+    </div>
   </div>
 </div>
 <script>
