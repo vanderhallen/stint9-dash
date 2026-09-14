@@ -6430,15 +6430,7 @@ function renderChampionship(){
     h+='</tr>';
   });
   h+='</tbody></table>';
-  // Footnote states what is actually on screen rather than a hardcoded season
-  // summary: which rounds are still to come, and where the results came from.
-  const up=R.filter((rd,i)=>futR[i]).map(rd=>rd.lbl);
-  const auto=R.filter(rd=>!rd.cxl&&CHAMP_ROWS&&CHAMP_ROWS.some(r=>String(r.event_date||'').slice(5)===rd.date)).map(rd=>rd.lbl);
-  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25; running total. '
-    +'DNF/DNC/DSQ = started, not classified (0 pts); – = did not start; ✕ = round not run. '
-    +'NLS1 cancelled (snow); 24hQ1 qualifying only, no race'+(up.length?('; '+up.join(', ')+' upcoming'):'')+'. '
-    +(auto.length?('Results read from the official NLS result PDFs ('+auto.join(', ')+'), scraped automatically.'):'Results hand-entered from the official class-result PDFs.')
-    +'</div>';
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25</div>';
   el.innerHTML=h;
  }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
