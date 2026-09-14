@@ -536,7 +536,7 @@
     /* clears the slide label, which owns the bottom-left corner */
     bottom:calc(14px + env(safe-area-inset-bottom));z-index:5;
     width:max-content;max-width:calc(100% - 22px);align-items:center;gap:9px;
-    background:var(--ink);color:#fff;border-radius:11px;padding:7px 8px 7px 12px;
+    background:var(--ink);color:#fff;border-radius:11px;padding:8px 13px;
     box-shadow:0 5px 18px rgba(0,0,0,.3);
     font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;line-height:1.3}
   body.m #a2hs.on{display:flex}
@@ -544,8 +544,6 @@
   #a2hs .a2go{display:none;flex:0 0 auto;font-family:inherit;font-size:11px;font-weight:700;
     letter-spacing:1px;border:none;border-radius:7px;padding:6px 11px;
     background:#fff;color:var(--ink);cursor:pointer}
-  #a2hs .x{flex:0 0 auto;width:23px;height:23px;border-radius:50%;
-    border:none;background:rgba(255,255,255,.18);color:#fff;font-size:14px;line-height:1;cursor:pointer}
   /* .can = beforeinstallprompt fired, so a real one-click install is available
      and the iOS gesture line is meaningless. */
   #a2hs.can .a2ios{display:none}
@@ -3587,16 +3585,11 @@ window.addEventListener('beforeinstallprompt',function(e){
 });
 window.addEventListener('appinstalled',function(){
   const g=document.getElementById('a2hs');if(g)g.classList.remove('on');
-  try{localStorage.setItem('stint9_a2hs','1');}catch(e){}
 });
 function __initA2HS(){
   if(__initA2HS.done)return;
   const el=document.getElementById('a2hs');if(!el)return;
   __initA2HS.done=true;
-  const standalone=window.navigator.standalone===true||
-    (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
-  const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
-    (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   // The button only exists where a real one-click install does (#a2hs.can);
   // on iOS it stays hidden and the line is pure instruction.
   el.querySelector('.a2go').onclick=function(){
@@ -3604,12 +3597,9 @@ function __initA2HS(){
     const e=__installEvt;__installEvt=null;
     e.prompt();
     Promise.resolve(e.userChoice).then(function(c){
-      if(c&&c.outcome==='accepted'){el.classList.remove('on');
-        try{localStorage.setItem('stint9_a2hs','1');}catch(err){}}
+      if(c&&c.outcome==='accepted')el.classList.remove('on');
     }).catch(function(){});
   };
-  el.querySelector('.x').onclick=function(){
-    el.classList.remove('on');try{localStorage.setItem('stint9_a2hs','1');}catch(e){}};
   __a2hsSync();
 }
 /* Decides whether the bar is offered at all. Safe to call before the markup
@@ -3621,10 +3611,13 @@ function __a2hsSync(){
     (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
   const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||
     (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  let dismissed=false;try{dismissed=localStorage.getItem('stint9_a2hs')==='1';}catch(e){}
   el.classList.toggle('can',!!__installEvt);   // swaps the line for a real INSTALL button
+  // No dismissed flag any more: with the × gone there is no way to clear one, and
+  // the stint9_a2hs key an earlier version wrote on × would have silently muted
+  // this forever for anyone who had tapped it. Standalone is the real end state —
+  // once the app is installed and opened from the icon, the bar is gone on its own.
   // Nothing to offer on a desktop browser that never fired the event.
-  el.classList.toggle('on',!standalone&&!dismissed&&(iOS||!!__installEvt));
+  el.classList.toggle('on',!standalone&&(iOS||!!__installEvt));
 }
 /* Wired lazily, NOT in an IIFE: this script runs far above #mobileview's markup,
    so at parse time the arrows don't exist yet and the handlers would land on
@@ -7071,7 +7064,6 @@ applyWxReel(false);
         ><path d="M6 1v9M6 1L3.2 3.8M6 1l2.8 2.8" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.4 6.4H1.5v7h9v-7h-.9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       for app</span>
     <button type="button" class="a2go">INSTALL</button>
-    <button type="button" class="x" title="Dismiss">&times;</button>
   </div>
 </div>
 <script>
