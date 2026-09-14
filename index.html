@@ -191,6 +191,12 @@
   [data-focus]{position:relative}
   .zoombtn{position:absolute;top:4px;left:4px;z-index:7;width:18px;height:18px;border-radius:5px;border:1px solid #d3d7dc;background:rgba(255,255,255,.92);color:#16202b;font-size:9px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .zoombtn:hover{background:#fff}
+  /* Meaningless on phone — every card already fills the whole screen there is
+     no "zoomed" state to toggle into, and tapping it would try to ALSO move
+     the card into the desktop's #focusHost layer while it's sitting in a
+     mobile slide, fighting __mMove for the same node. Show the content as
+     it normally sits in its slide; nothing to zoom TO. */
+  body.m .zoombtn{display:none}
   #focusLayer{position:fixed;inset:0;background:rgba(18,24,34,.55);z-index:10000;display:none;align-items:center;justify-content:center;padding:2vmin;box-sizing:border-box}
   #focusLayer.on{display:flex}
   #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
@@ -456,6 +462,14 @@
      scroll. body.m covers the background behind the overlay. */
   body.m{touch-action:none}
   body.m #mobileview{display:flex}
+  /* Native form controls opt back OUT of that block. touch-action:none on an
+     ancestor is known to stop iOS Safari opening a <select>'s native picker
+     wheel at all — the dropdown was visible (tapping it did nothing) — even
+     though tapping a <select> is not a pan/zoom gesture in the first place.
+     touch-action:auto scoped to the controls themselves restores that,
+     without reopening the pinch-zoom hole body.m{touch-action:none} exists
+     for: it stays none on everything else, including the reel/stage content. */
+  body.m select,body.m button{touch-action:auto}
   /* --- fixed header: pinned, never repainted by paging ---
      Safe-area insets everywhere: with viewport-fit=cover the page paints edge to
      edge, INCLUDING under the notch and the home indicator. In landscape the
@@ -2178,11 +2192,23 @@ function renderSelStint(T){
   el.style.display='flex';
 }
 function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)return;
-  // Mobile zoom (see __mobZoom()): shrinking the row/margin units for the SAME
-  // physical panel makes every fixed font-size number below render bigger.
-  const __z=__mobZoom(),rowH2=30/__z,xL=104,xR=980,yT2=18/__z;
-  const CH2=yT2+Math.max(1,DB.cars.length)*rowH2+10;
+  const xL=104,xR=980,yT2=18,baseRowH2=30;
+  // This chart's viewBox is a FIXED 1000 wide, height driven purely by car
+  // count — on a wide desktop panel that roughly matches the panel's own
+  // shape, but on a tall phone panel it doesn't come close, and the default
+  // SVG "meet" scaling then fits it to the LIMITING (width) axis and centres
+  // the whole chart in a thin band, leaving huge blank space above/below —
+  // confirmed on-device: rows measured 640px of dead space around a 5px-tall
+  // strip of text. Growing rowH2 so nCars*rowH2 actually fills whatever
+  // height the panel wants fixes that AND is what makes the (still-fixed)
+  // font-size numbers below end up bigger on the phone — not a separate trick.
+  const panel=svg.parentElement,box=panel.getBoundingClientRect();
+  const contentH=yT2+Math.max(1,DB.cars.length)*baseRowH2+10;
+  let CH2=contentH;
+  if(box.width>10&&box.height>10){const aspectH=1000*box.height/box.width;if(aspectH>CH2)CH2=aspectH;}
+  const rowH2=(CH2-yT2-10)/Math.max(1,DB.cars.length);
   svg.setAttribute('viewBox','0 0 1000 '+CH2);
+  panel.classList.remove('tall');svg.style.height='';/* see the same defensive clear in renderComp */
   // laps completed (fractional) for a car at T — active leg draws as a
   // smooth extension of the last known driver, else fall back to the last
   // completed sector boundary that has appeared.
@@ -2194,12 +2220,13 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
   let axisMax=0;DB.cars.forEach(st=>{const ld=lapsDrivenOf(st);if(ld>axisMax)axisMax=ld;});
   axisMax=Math.max(1,Math.ceil(axisMax));
   const colX=L=>xL+(L/axisMax)*(xR-xL);
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   let s='';
   // lap-axis gridlines/ticks along the bottom, same spacing convention as the POS reel
   const axY=yT2+DB.cars.length*rowH2+2;
   for(let L=0;L<=axisMax;L++){if(L!==0&&L!==axisMax&&L%5!==0)continue;const gx=colX(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+(axY-2)+'" stroke="#f3f4f6" stroke-width="1"/>';
-    s+='<text x="'+gx.toFixed(1)+'" y="'+(axY+13)+'" text-anchor="middle" font-size="12" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+    s+='<text x="'+gx.toFixed(1)+'" y="'+(axY+13)+'" text-anchor="middle" font-size="'+fz(12)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   // Rows are ordered by current track position (not car number) and re-sort
   // live as positions change, so the row order always mirrors the running
   // order — a car's "(Px)" label and its row both move together over time.
@@ -2220,8 +2247,8 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
     // text keeps the same dark ink for every row — legible against any bar
     // colour — while still reading at a glance which row is "ours" without
     // comparing bar opacity row by row.
-    const posLabelSvg=(sel?'<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="800" font-family="IBM Plex Mono,monospace" stroke="#fff" stroke-width="3" paint-order="stroke" fill="#16202b">'+posLbl+'#'+st+'</text>':'')+
-      '<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="13" font-weight="'+(sel?'800':'700')+'" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
+    const posLabelSvg=(sel?'<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="'+fz(13)+'" font-weight="800" font-family="IBM Plex Mono,monospace" stroke="#fff" stroke-width="3" paint-order="stroke" fill="#16202b">'+posLbl+'#'+st+'</text>':'')+
+      '<text x="'+(xL-8)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="end" font-size="'+fz(13)+'" font-weight="'+(sel?'800':'700')+'" font-family="IBM Plex Mono,monospace" fill="#16202b">'+posLbl+'#'+st+'</text>';
     const lapsDriven=lapsDrivenOf(st);
     const doneLaps=Math.floor(lapsDriven+1e-6);
     const dl=DB.drvlap[st]||{};
@@ -2253,7 +2280,7 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
         const col=driverColor(st2.driver);
         s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
         const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
-        if(w>label.length*6.2+24)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="11.5" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
+        if(w>label.length*6.2+24)s+='<text x="'+((x0+x1)/2).toFixed(1)+'" y="'+(cy+4.5).toFixed(1)+'" text-anchor="middle" font-size="'+fz(11.5)+'" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#fff">'+label+'</text>';
       }
       // remaining pit time sits in a chip AFTER the bar so a following stint
       // cannot paint over it — #677 was visible only because its time landed
@@ -2404,7 +2431,26 @@ function smoothPath(pts){
 // survives the per-frame re-render during playback (otherwise every frame
 // would wipe the hover highlight).
 let compHoverCar=null;
-function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)return;
+  // Own local H, not the shared module CH directly: on a tall phone panel CH
+  // (car-count driven, ~200-900) is far shorter than the panel wants, and the
+  // default SVG "meet" fit then centres the whole chart in a thin width-bound
+  // band with huge blank space above/below (confirmed on-device on FLOW,
+  // same viewBox family). Using the panel's own aspect when it needs MORE
+  // height than the content does fills the panel and grows the legend rows
+  // (and the fixed font-size numbers within them) with it.
+  const __panel=svg.parentElement,__box=__panel.getBoundingClientRect();
+  let H=CH;
+  if(__box.width>10&&__box.height>10){const __aH=1000*__box.height/__box.width;if(__aH>H)H=__aH;}
+  svg.setAttribute('viewBox','0 0 1000 '+H);
+  // This chart now always fills the panel (H accounts for its aspect), so it
+  // must never be left in the OLD "natural height, panel scrolls" mode a
+  // stale syncReelPanelsIn() pass can set (a transient bad measurement, e.g.
+  // mid-layout during a resize/mobile-view move, pins svg.style.height —
+  // nothing else ever clears it, so a bad one-off value would otherwise
+  // persist forever behind an invisible scrollbar). Same defensive clear
+  // renderSectors/renderLapTrace already do.
+  __panel.classList.remove('tall');svg.style.height='';
   // via getElementById (not a '#compmetric' querySelector) so the shim resolves
   // it to whichever block this render pass is painting — each block's COMP reel
   // keeps its own metric selection.
@@ -2434,8 +2480,9 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
   if(!hasData){lmin=1;lmax=10;}   // no laps anywhere yet — draw a plausible 1..10 axis, not a single tick
   if(!isFinite(lmin))lmin=1;
   const X=fx=>xL+(lmax<=lmin?0:(fx-lmin)/(lmax-lmin))*(xR-xL);
-  const yT2=44,yB2=CH-26;
+  const yT2=44,yB2=H-26;
   const legRowH=(yB2-yT2)/Math.max(1,DB.cars.length);
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   // (Re)draw the whole reel focused on one car: the y-axis is scaled to that
   // car alone so its line fills the chart instead of being flattened by another
   // car's outlier (e.g. a pit/slow lap), and it's drawn bold. `focusCar` is the
@@ -2457,11 +2504,11 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
     for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
       s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
       const tsec=Math.round(v),lbl=Math.floor(tsec/60)+':'+String(tsec%60).padStart(2,'0');
-      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
+      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
     for(let L=lmin;L<=lmax;L++){if(L!==lmin&&L!==lmax&&(L-lmin)%5!==0)continue;const gx=X(L);
       s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
-      s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
-    s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="14" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
+      s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(14)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+    s+='<text x="10" y="'+(yT2-14).toFixed(1)+'" font-size="'+fz(14)+'" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'LAP TIME':'SECTOR '+(sIdx+1))+' · min</text>';
     series.forEach(({st,pts})=>{const d=smoothPath(pts.map(p=>[X(p[0]),YT(p[1])]));
       const isFocus=fc!=null&&String(st)===fc;
       const w=isFocus?6:2,op=isFocus?1:(isHover?0.12:(String(st)===String(selCar)?1:0.85));
@@ -2471,8 +2518,8 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
       s+='<g class="complegrow" data-car="'+st+'" style="cursor:pointer">'+
          '<rect x="2" y="'+(ly-legRowH/2).toFixed(1)+'" width="'+(xL-14)+'" height="'+legRowH.toFixed(1)+'" fill="transparent"/>'+
          '<line x1="6" x2="24" y1="'+ly.toFixed(1)+'" y2="'+ly.toFixed(1)+'" stroke="'+col+'" stroke-width="4" stroke-linecap="round"/>'+
-         '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="12" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
-    if(!hasData)s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet</text>';
+         '<text x="30" y="'+(ly+4).toFixed(1)+'" font-size="'+fz(12)+'" font-family="IBM Plex Mono,monospace" fill="#16202b">#'+st+'</text></g>';});
+    if(!hasData)s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="'+fz(22)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(sIdx==null?'lap time':'sector '+(sIdx+1))+' comparison — no completed data yet</text>';
     svg.innerHTML=s;
     svg.querySelectorAll('.complegrow').forEach(g=>{
       g.addEventListener('mouseenter',()=>{compHoverCar=g.dataset.car;draw(compHoverCar,true);});
@@ -2629,7 +2676,7 @@ function renderNiekGrid(T){
     h+='</tr>';
   });
   h+='</tbody></table>';
-  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:3px 4px 7px;line-height:1.4">NIEK &middot; last 3 laps &mdash; purple/green vs this window only, not the whole session.</div>'+h;
+  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:3px 4px 7px;line-height:1.4">last 3 laps only</div>'+h;
 }
 /* DRV reel: same sector-colour table idea as GRID, but rows are the
    SELECTED car's own drivers (stint order) instead of every car in the
@@ -2848,7 +2895,11 @@ function renderSecTab(T){
     else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
   h+='</tr></tbody></table>';
-  wrap.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>'+h;
+  // The explainer caption is skippable on phone — the table below it takes
+  // the caption's own real estate too, and on a phone that space is a bigger
+  // trade than on desktop. Desktop keeps it exactly as before.
+  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>';
+  wrap.innerHTML=caption+h;
 }
 /* leaderAtLap: the car actually running in P1 (real running order) the
    moment it crosses the line to complete lap L — from DB.lappos, which
@@ -2864,7 +2915,17 @@ function leaderAtLap(L){
    lap's leader, red = slower) sharing one axis with a grey cumulative-delta
    line. */
 function renderP1Bar(T){
-  const svg=document.getElementById('p1barsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+  const svg=document.getElementById('p1barsvg');if(!svg)return;
+  // Own local H — see the identical note in renderComp: the shared module CH
+  // is car-count driven, not panel-shape driven, so a tall phone panel needs
+  // its own aspect-matched height or the chart ends up a thin letterboxed
+  // strip with the fixed font-size numbers below rendering tiny.
+  const __panel=svg.parentElement,__box=__panel.getBoundingClientRect();
+  let H=CH;
+  if(__box.width>10&&__box.height>10){const __aH=1000*__box.height/__box.width;if(__aH>H)H=__aH;}
+  svg.setAttribute('viewBox','0 0 1000 '+H);
+  __panel.classList.remove('tall');svg.style.height='';/* see the same defensive clear in renderComp */
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   const lapT=(st,L)=>{const s=(DB.sectimes[st]||{})[L],b=(BX[st]||{})[L*5];if(s&&s.length>=5&&b!=null&&b<=T)return s[0]+s[1]+s[2]+s[3]+s[4];return null;};
   // Unconditional — lapT(selCar,…) with selCar null just returns null for every
   // lap, so pts naturally stays empty rather than needing an early return.
@@ -2881,7 +2942,7 @@ function renderP1Bar(T){
   // x-axis spans only the laps run so far (not the full race distance maxN)
   const lmax=hasData?Math.max(1,pts[pts.length-1].L):10;
   const X=fx=>xL+(lmax<=1?0:(fx-1)/(lmax-1))*(xR-xL);
-  const yT2=64,yB2=CH-30;
+  const yT2=64,yB2=H-30;
   let lo=0,hi=0;
   pts.forEach(p=>{if(p.delta<lo)lo=p.delta;if(p.delta>hi)hi=p.delta;if(p.cum<lo)lo=p.cum;if(p.cum>hi)hi=p.cum;});
   const pad=Math.max(2,(hi-lo)*0.1);lo-=pad;hi+=pad;
@@ -2889,17 +2950,17 @@ function renderP1Bar(T){
   let s='';
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Yv(v);
     s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="15" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
-    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="14" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+    s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(14)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   const zeroY=Yv(0);
   s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+zeroY.toFixed(1)+'" y2="'+zeroY.toFixed(1)+'" stroke="#d3d7dc" stroke-width="1.5" stroke-dasharray="4 4"/>';
-  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="15" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">'+(selCar?'#'+selCar+' vs P1 (race leader) — per-lap Δ (bars) + cumulative Δ (line)':'vs P1 (race leader)')+'</text>';
+  s+='<text x="10" y="'+(yT2-38).toFixed(1)+'" font-size="'+fz(15)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">'+(selCar?'#'+selCar+' vs P1 (race leader) — per-lap Δ (bars) + cumulative Δ (line)':'vs P1 (race leader)')+'</text>';
   // Axis/zero-line are real either way — this only skips the bars/line, which
   // need an actual car and a shared completed lap with the leader to exist.
   if(!hasData){
-    s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'no completed laps yet':'select a car')+'</text>';
+    s+='<text x="'+((xL+xR)/2).toFixed(0)+'" y="'+((yT2+yB2)/2).toFixed(0)+'" text-anchor="middle" font-size="'+fz(22)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'no completed laps yet':'select a car')+'</text>';
     svg.innerHTML=s;return;
   }
   const barW=Math.max(3,(lmax<=1?40:(xR-xL)/(lmax-1))*0.55);
@@ -2976,8 +3037,19 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
 (function(){const svg=document.getElementById('ltgraph');if(!svg)return;const p=svg.parentElement;
   const refit=()=>{try{renderLapTrace(T);}catch(e){}};
   try{new ResizeObserver(refit).observe(p);}catch(e){window.addEventListener('resize',refit);}})();
-let flowCache={car:null,cols:[]},flowLastLap=null,flowLastN=-1;
-function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)return;svg.setAttribute('viewBox','0 0 1000 '+CH);
+let flowCache={car:null,cols:[]},flowLastLap=null,flowLastN=-1,flowLastH=-1;
+function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)return;
+  // Own local H — see the identical note in renderComp/renderP1Bar. This is
+  // the reel the letterboxing was actually reported on: 4 rows crammed into
+  // a 5px-tall strip with ~640px of blank canvas above and below it on a
+  // portrait phone, because CH (car-count driven) had no idea the panel
+  // wanted far more height than 4 rows' worth.
+  const __panel=svg.parentElement,__box=__panel.getBoundingClientRect();
+  let H=CH;
+  if(__box.width>10&&__box.height>10){const __aH=1000*__box.height/__box.width;if(__aH>H)H=__aH;}
+  svg.setAttribute('viewBox','0 0 1000 '+H);
+  __panel.classList.remove('tall');svg.style.height='';/* see the same defensive clear in renderComp */
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
   if(!selCar){flowCache={car:null,cols:[]};flowLastN=-1;}
   else if(flowCache.car!==selCar){flowCache={car:selCar,cols:[]};flowLastLap=null;flowLastN=-1;}
   const bx=BX[selCar]||{},stm=DB.sectimes[selCar]||{},have=new Set(flowCache.cols.map(c=>c.bkey));
@@ -2989,7 +3061,13 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
       col=(sc<=ob+1e-6)?'#8B5CF6':(sc<=pb+1e-6)?'#1e8f3a':'#f0c020';}
     flowCache.cols.push({bkey,lap,seg,pos,dA,dB,col,ah,be});});
   const vis=selCar?flowCache.cols.filter(c=>bx[c.bkey]<=T):[],curLap=selCar?((activeLeg(selCar,T)||[])[0]||null):null;
-  if(vis.length===flowLastN&&curLap===flowLastLap&&svg.childNodes.length)return;flowLastN=vis.length;flowLastLap=curLap;
+  // Also compare H: this "nothing changed, skip the redraw" guard used to key
+  // ONLY on the data (vis/curLap), so entering mobile view — same data, brand
+  // new panel size — set the viewBox above to the new H and then hit this
+  // return BEFORE the row positions (sized from that same H) ever got
+  // regenerated to match it. viewBox said one thing, every <text y> another.
+  if(vis.length===flowLastN&&curLap===flowLastLap&&H===flowLastH&&svg.childNodes.length)return;
+  flowLastN=vis.length;flowLastLap=curLap;flowLastH=H;
   const hasData=vis.length>0;
   // Every position in the class, not just the band #650 has actually occupied --
   // rows it never touches just stay empty (no red pill, no blue rival band),
@@ -3000,19 +3078,26 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
   // largest gap actually on screen so the margins reflect the real spread instead of
   // saturating at a fixed cap (which made every pill collapse to the same height).
   let GAP=0.5;vis.forEach(c=>{if(c.dA!=null&&c.dA>GAP)GAP=c.dA;if(c.dB!=null&&c.dB>GAP)GAP=c.dB;});
-  const rowH=(CH-top-6)/nR,rowY=pp=>top+(pp-rowMin)*rowH,lblfs=Math.min(15,Math.max(9,rowH*0.42));
-  let s='<text x="'+xL+'" y="11" font-size="12" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW'+(selCar?' · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower':'')+'</text>';
+  const rowH=(H-top-6)/nR,rowY=pp=>top+(pp-rowMin)*rowH,
+    // Clamp scales with Z too: rowH now properly fills a tall panel (no more
+    // letterbox), but the label glyphs themselves are still bounded by the
+    // PANEL WIDTH (viewBox width is fixed at 1000 — row labels sit at x=40,
+    // too close to the edge to shrink the width without cropping them, the
+    // exact SECT failure mode) — this clamp is what raising the ceiling
+    // actually buys, on top of the row/pill spacing genuinely growing.
+    lblfs=Math.min(fz(15),Math.max(fz(9),rowH*0.42));
+  let s='<text x="'+xL+'" y="11" font-size="'+fz(12)+'" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW'+(selCar?' · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower':'')+'</text>';
   // Row grid (the P1..Pn "axis") draws regardless of car/data — only the pills
   // themselves need a selected car with reported sector crossings.
   for(let pp=rowMin;pp<=rowMax;pp++)s+='<text x="'+(xL-6)+'" y="'+(rowY(pp)+rowH/2+lblfs*0.35).toFixed(1)+'" text-anchor="end" font-size="'+lblfs.toFixed(0)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">P'+pp+'</text>';
-  if(curLap){const x0=colX((curLap-1)*5+1),x1=colX(curLap*5)+colW;s+='<rect x="'+x0.toFixed(1)+'" y="'+cap+'" width="'+(x1-x0).toFixed(1)+'" height="'+(CH-cap)+'" fill="#eef4ff"/>';}
+  if(curLap){const x0=colX((curLap-1)*5+1),x1=colX(curLap*5)+colW;s+='<rect x="'+x0.toFixed(1)+'" y="'+cap+'" width="'+(x1-x0).toFixed(1)+'" height="'+(H-cap)+'" fill="#eef4ff"/>';}
   if(!hasData){
-    s+='<text x="'+(xL+(1000-xL)/2).toFixed(0)+'" y="'+(top+(CH-top)/2).toFixed(0)+'" text-anchor="middle" font-size="22" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'building as laps complete…':'select a car for the track-position flow')+'</text>';
+    s+='<text x="'+(xL+(1000-xL)/2).toFixed(0)+'" y="'+(top+(H-top)/2).toFixed(0)+'" text-anchor="middle" font-size="'+fz(22)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">'+(selCar?'building as laps complete…':'select a car for the track-position flow')+'</text>';
     svg.innerHTML=s;return;
   }
   vis.forEach(c=>{const x=colX(c.bkey),cw=colW-0.8,xx=x+0.4;
     s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
-    if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="13" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
+    if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="'+fz(13)+'" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
     [c.pos-1,c.pos+1].forEach(np=>{if(np>=rowMin&&np<=rowMax){const y=rowY(np);s+='<rect x="'+xx.toFixed(1)+'" y="'+(y+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(rowH-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.28"/>';}});
     if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.max(0,Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg))),gB=Math.max(0,Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg))),iy=y+gA,ih=Math.max(rowH*0.14,Math.min(rowH,rowH-gA-gB));
       s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
@@ -3537,18 +3622,25 @@ function __placeMini(mobile){var mini=document.getElementById('mini');if(!mini)r
   else if(__miniHome&&mini.parentNode!==__miniHome){__miniHome.insertBefore(mini,__miniNext);}}
 /* ---------- Mobile slides: every desktop view, one at a time ----------
    The phone view reaches ALL the information the desktop page has, paged by the
-   single pair of arrows on the right edge (thumb side). The flat list is:
+   single pair of arrows on the right edge (thumb side). Requested order,
+   iPhone only — the desktop layout is untouched by any of this:
 
-     0                  ESSENTIALS  the summary card stack (mobile-only)
-     1                  TRACKMAP    the desktop's own map card, moved in
-     2                  DETAIL MAP  the #mini / gap-gauge / fuel card, moved in
-     3                  RANKING     #cmpbox, moved in
-     4                  GAP         #gapbox, moved in
-     5 .. 5+REELN-1     the reels   #reelcard, moved in once and paged by setReel()
-     then               RACENOTES / MESSAGES / FEEDBACK
+     0-2    ESSENTIALS / TRACKMAP / DETAIL MAP
+     3      RACENOTES                            (moved up from the tail)
+     4-5    RANKING / GAP
+     6..    the reels, POS .. CHAMP               (reel-local 0 up to CHAMP)
+     next   MESSAGES / FEEDBACK                   (spliced in right after CHAMP)
+     then   the reels, PIT .. SERVICE             (the rest of the reel band)
 
-   One continuous index: inside the reel band the arrows call setReel() instead of
-   swapping slides, so holding the down arrow flows straight through all of it.
+   The reel band is split at CHAMP, not at a hardcoded position: __reelSplit()
+   finds it by the SAME content-keyed __reelLabel() lookup the whole band
+   already uses, so a future desktop reorder (this one has already happened
+   twice) shifts this split with it instead of leaving MESSAGES/FEEDBACK
+   stranded at the wrong spot.
+
+   One continuous index either side of the split: inside EITHER reel range the
+   arrows call setReel() instead of swapping slides, so holding the down arrow
+   flows straight through both — MESSAGES/FEEDBACK are the only interruption.
 
    Cards are MOVED, never cloned — the ~20 render functions look their elements up
    by id, so the real nodes keep painting with no duplication and no drift. Each
@@ -3569,28 +3661,47 @@ function __reelLabel(i){
   const p=document.querySelectorAll('#reelstrip>.reelpanel')[i];
   if(p)for(const id in REELLBL){if(p.querySelector('#'+id))return REELLBL[id];}
   return 'REEL '+(i+1);}
+/* Where MESSAGES/FEEDBACK splice into the reel band: right after CHAMP, found
+   by content so a future reorder carries this with it. Cached — REELN/DOM
+   order don't change once the page is up. Falls back to "after every reel"
+   (never found) rather than silently dropping the two slides. */
+let __champSplit=null;
+function __reelSplit(){
+  if(__champSplit==null){
+    __champSplit=REELN;
+    for(let i=0;i<REELN;i++)if(__reelLabel(i)==='CHAMP'){__champSplit=i+1;break;}
+  }
+  return __champSplit;
+}
 /* Generalised move-and-restore (the __placeMini pattern, keyed so several cards
    can each remember their own home). */
 var __mHome={};
 function __mMove(el,key,slot){if(!el)return;
   if(slot){if(el.parentNode!==slot){if(!__mHome[key])__mHome[key]={p:el.parentNode,n:el.nextSibling};slot.appendChild(el);}}
   else{const h=__mHome[key];if(h&&el.parentNode!==h.p)h.p.insertBefore(el,h.n);}}
-const MHEAD=[
+const MHEAD_A=[
   {k:'essentials',lbl:'ESSENTIALS'},
   {k:'map',       lbl:'TRACKMAP',     el:()=>{const s=document.getElementById('svg');return s&&s.closest('.card');}},
-  {k:'mini',      lbl:'DETAIL MAP',   el:()=>{const s=document.getElementById('mini');return s&&s.closest('.card');}},
+  {k:'mini',      lbl:'DETAIL MAP',   el:()=>{const s=document.getElementById('mini');return s&&s.closest('.card');}}];
+const RACENOTES_SLIDE={k:'racenotes',lbl:'RACENOTES',el:()=>document.getElementById('racenotebox')};
+const MHEAD_B=[
   {k:'rank',      lbl:'RANKING',      el:()=>document.getElementById('cmpbox')},
   {k:'gap',       lbl:'GAP TO LEADER',el:()=>document.getElementById('gapbox')}];
-const MTAIL=[
-  {k:'racenotes',lbl:'RACENOTES',el:()=>document.getElementById('racenotebox')},
+const MTAIL_MID=[
   {k:'messages', lbl:'MESSAGES', el:()=>document.getElementById('msgcard')},
   {k:'feedback', lbl:'FEEDBACK', el:()=>document.getElementById('fbcard')}];
-const REEL0=MHEAD.length;
-function __mobCount(){return REEL0+REELN+MTAIL.length;}
+const __reelSlide=r=>({k:'reel',lbl:__reelLabel(r),reel:r,el:()=>document.getElementById('reelcard')});
+function __mobCount(){return MHEAD_A.length+1+MHEAD_B.length+REELN+MTAIL_MID.length;}
 function __mobDef(i){
-  if(i<REEL0)return MHEAD[i];
-  if(i<REEL0+REELN)return {k:'reel',lbl:__reelLabel(i-REEL0),reel:i-REEL0,el:()=>document.getElementById('reelcard')};
-  return MTAIL[i-REEL0-REELN];}
+  const split=__reelSplit();
+  const aEnd=MHEAD_A.length,bEnd=aEnd+1,cEnd=bEnd+MHEAD_B.length,
+    reel1End=cEnd+split,midEnd=reel1End+MTAIL_MID.length;
+  if(i<aEnd)return MHEAD_A[i];
+  if(i<bEnd)return RACENOTES_SLIDE;
+  if(i<cEnd)return MHEAD_B[i-bEnd];
+  if(i<reel1End)return __reelSlide(i-cEnd);
+  if(i<midEnd)return MTAIL_MID[i-reel1End];
+  return __reelSlide((i-midEnd)+split);}
 var mobIdx=0;
 try{const s=+localStorage.getItem('stint9_mob');if(s>0)mobIdx=s;}catch(e){}
 function __mobSlot(k){return document.querySelector('#mstage>.mslide[data-slide="'+k+'"]');}
@@ -3606,7 +3717,16 @@ function setMob(i,force){
   __placeMini(i===0);                       // #mini belongs to ESSENTIALS or to its own card
   if(def.el)__mMove(def.el(),def.k,__mobSlot(def.k));
   document.querySelectorAll('#mstage>.mslide').forEach(s=>s.classList.toggle('on',s.dataset.slide===def.k));
-  if(def.reel!=null){keyReelSide='';setReel(def.reel);}   // claim the left block for the keys too
+  if(def.reel!=null){
+    keyReelSide='';setReel(def.reel);   // claim the left block for the keys too
+    // setReel() only pages/wakes the reel — it never repaints it, so the chart
+    // just shown would keep whatever geometry it last measured back in the
+    // DESKTOP layout (the __mMove above just moved it here) until the next
+    // natural render() tick, which on a PAUSED sim/live feed may not come for
+    // a while. paintReel() right after the move re-measures against the panel
+    // it is actually sitting in now.
+    try{paintReel(T,def.reel,false,'');}catch(e){}
+  }
   const lb=document.getElementById('m_slidelbl');
   if(lb)lb.innerHTML='<b>'+def.lbl+'</b> &nbsp;'+(i+1)+' / '+n;
   const u=document.getElementById('m_up'),d=document.getElementById('m_dn');
@@ -4645,7 +4765,14 @@ function buildClass(cls){
   DB.cars=_all?allClassCars():(DB.classes[cls]||[]);
   maxN=DB.maxN=_all?allClassMaxN():(DB.classMaxN[cls]||1);
   DB.avgseg=[0].concat(_all?allClassAvg():(DB.classAvg[cls]||[0,0,0,0,0]));nC=DB.cars.length;
-  rowH=44/__mobZoom();/* shrunk on phones — see __mobZoom()'s comment; POS's own Y()/rebuildPosAxis() below read this SAME variable, so its row spacing/labels stay in lock-step with the viewBox this produces */
+  /* NOT shrunk for mobile — a previous version divided this by __mobZoom() to
+     try to zoom POS/COMP/BARS/FLOW/STINT, but it did nothing useful: on a
+     narrow phone panel these charts are already WIDTH-bound (viewBox width is
+     fixed at 1000, so scale = panelWidthPx/1000 regardless of height), so
+     shrinking CH just shrank the content into a smaller centered band with
+     MORE blank letterbox above/below — the opposite of zoomed in. See each
+     function's own panel-aspect-matched H below for the actual fix. */
+  rowH=44;
   CH=yT+Math.max(nC,4)*rowH+4;/* floor the reel canvas at 4 rows: a tiny class (e.g. 1 car) otherwise collapses CH so low that the comparison/trace reels' plot region inverts (yB2<yT2), producing an invalid negative-height <rect> */
   stintDrvColor={};
   _pitLapCache={};   // DB.legs/DB.pits have just been replaced (LIVE poll, archive load) — re-derive pit laps
@@ -7122,6 +7249,7 @@ applyWxReel(false);
     <span class="a2ios">Tap
       <svg class="a2ico" width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden="true"
         ><path d="M6 1v9M6 1L3.2 3.8M6 1l2.8 2.8" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.4 6.4H1.5v7h9v-7h-.9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Send, then
       <svg class="a2ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
         ><rect x="1" y="1" width="12" height="12" rx="3" stroke="#fff" stroke-width="1.3"/><path d="M7 4v6M4 7h6" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
       for app</span>
