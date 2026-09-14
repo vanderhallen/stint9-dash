@@ -1856,11 +1856,27 @@ function hms(x){const h=Math.floor(x/3600),m=Math.floor((x%3600)/60),s=Math.floo
 // clock to Europe/Berlin (the track's zone), honouring CEST(+2)/CET(+1) DST; in SIM
 // the value is already local -> no shift. Display-only: leg/gap math stays in the
 // feed's own base.
+// Set by initArchiveEvent's buildFromBundle: true only when THIS SIM replay's
+// timing came from an archived event's raw timing[] rows, re-derived through
+// the SAME window.buildLiveDB() the live feed itself uses — meaning its time-
+// of-day values are the feed's own UTC base, not track-local, despite
+// dataMode being 'SIM' throughout the replay. A pre-built `db` bundle (or the
+// hand-authored baked-in dataset) is already track-local and never sets this.
+// Reported 2026-09: an archived race known to run 12:00-16:00 wall-clock
+// showed ~2h behind — the exact LIVE bug from §15.5, just reachable through
+// SIM once an archive replay's underlying rows are UTC.
+window.archiveRawUTC=false;
 function clockOffsetS(){
-  if(window.dataMode!=='LIVE')return 0;
-  try{const d=new Date();
-    const berlin=new Date(d.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
-    const utc=new Date(d.toLocaleString('en-US',{timeZone:'UTC'}));
+  if(window.dataMode!=='LIVE'&&!window.archiveRawUTC)return 0;
+  try{
+    // The REPLAYED event's own date for an archive, so DST resolves against
+    // the RACE's date, not today's — a December race must read CET/+1 even
+    // if "today" (when it happens to be replayed) is in CEST/+2. Genuine
+    // LIVE has no such event date to anchor to and needs none: it always is today.
+    const base=(window.dataMode!=='LIVE'&&DB.event&&DB.event.date)
+      ?new Date(DB.event.date+'T12:00:00Z'):new Date();
+    const berlin=new Date(base.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
+    const utc=new Date(base.toLocaleString('en-US',{timeZone:'UTC'}));
     return Math.round((berlin-utc)/1000);
   }catch(_){return 0;}
 }
@@ -6945,13 +6961,18 @@ applyWxReel(false);
     // forward, so it is no use for a past event).
     window.__eventLabel=meta.label||null;
     var built=null;
-    if(b.db)built=b.db;
+    if(b.db){built=b.db;window.archiveRawUTC=false;}   // pre-built bundle: already track-local
     else if(b.timing&&b.timing.length&&typeof window.buildLiveDB==='function'){
       var geom={W:DB.W,H:DB.H,poly:DB.poly,cx:DB.cx,cy:DB.cy,gps:DB.gps};
       // Same clean-up LIVE runs on these very rows (garage nulling, caps, S5 backfill),
       // or the replay renders different numbers than the race did — see prepLiveRaw.
       var rows=(typeof window.prepLiveRaw==='function')?window.prepLiveRaw(b.timing):b.timing;
       try{built=window.buildLiveDB(rows,geom,{name:meta.name,date:meta.event_date});}catch(e){built=null;}
+      // buildLiveDB is the SAME function LIVE feeds through the WIGE feed's own
+      // UTC time base — this replay's leg/lap times are UTC too, even though
+      // dataMode stays 'SIM' throughout it. clockOffsetS() reads this flag to
+      // apply the CEST/CET shift anyway (see its own comment for the report).
+      if(built)window.archiveRawUTC=true;
     }
     if(!built){var ed=document.getElementById('evdate');if(ed)ed.textContent='archive '+slug+': no timing data';return;}
     applyDB(built,meta);
