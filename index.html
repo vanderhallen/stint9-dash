@@ -566,6 +566,20 @@
      orientation this view is meant to be used in anyway — so that is where the
      offer belongs. Pure CSS, so rotating in and out needs no listener. */
   @media (orientation:portrait){body.m #a2hs.on{display:none}}
+  /* Portrait-only nudge to rotate — the mirror of #a2hs above. This view is
+     built for landscape (see the mfixhdr comment up top), so portrait gets a
+     standing prompt to turn the phone instead of silently rendering worse.
+     Same fixed bottom-center pill; shown/hidden by orientation alone, no
+     listener needed, same as #a2hs's own portrait rule. */
+  #rotatehint{display:none;position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(14px + env(safe-area-inset-bottom));z-index:5;
+    width:max-content;max-width:calc(100% - 22px);align-items:center;gap:9px;
+    background:var(--ink);color:#fff;border-radius:11px;padding:8px 13px;
+    box-shadow:0 5px 18px rgba(0,0,0,.3);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;line-height:1.3}
+  body.m #rotatehint{display:flex}
+  #rotatehint .a2ico{flex:0 0 auto;margin:0 1px}
+  @media (orientation:landscape){body.m #rotatehint{display:none}}
   /* The reel's own arrows are redundant in the phone view — .mnav drives it, and
      a second pair on the LEFT is exactly what the right-side-only layout avoids.
      !important because #reelnav carries an inline display:flex. */
@@ -7331,6 +7345,14 @@ applyWxReel(false);
         ><rect x="1" y="1" width="12" height="12" rx="3" stroke="#fff" stroke-width="1.3"/><path d="M7 4v6M4 7h6" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
       for app</span>
     <button type="button" class="a2go">INSTALL</button>
+  </div>
+  <div id="rotatehint">
+    <!-- Refresh-style double-arrow, same stroke-only icon language as #a2hs
+         above — this app is built for landscape (see the mfixhdr comment),
+         so portrait gets a standing nudge to turn the phone sideways. -->
+    <svg class="a2ico" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+      ><path d="M23 4v6h-6M1 20v-6h6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Rotate your phone — this view is built for landscape</span>
   </div>
 </div>
 <script>
