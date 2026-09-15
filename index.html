@@ -7352,11 +7352,12 @@ applyWxReel(false);
     <button type="button" class="a2go">INSTALL</button>
   </div>
   <div id="rotatehint">
-    <!-- Refresh-style double-arrow, same stroke-only icon language as #a2hs
-         above — this app is built for landscape (see the mfixhdr comment),
-         so portrait gets a standing nudge to turn the phone sideways. -->
-    <svg class="a2ico" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-      ><path d="M23 4v6h-6M1 20v-6h6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <!-- Rounded-rect frame + refresh double-arrow, matching the reference
+         icon: a white-bordered black box around the same rotate glyph — this
+         app is built for landscape (see the mfixhdr comment), so portrait
+         gets a standing nudge to turn the phone sideways. -->
+    <svg class="a2ico rotatehint-ico" width="34" height="22" viewBox="0 0 34 22" fill="none" aria-hidden="true"
+      ><rect x="1.2" y="1.2" width="31.6" height="19.6" rx="5" stroke="#fff" stroke-width="1.7"/><g transform="translate(9,3) scale(0.65)"><path d="M23 4v6h-6M1 20v-6h6" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
     <span>Rotate your phone — this view is built for landscape</span>
   </div>
 </div>
