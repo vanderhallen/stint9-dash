@@ -1986,8 +1986,14 @@ function renderLapTrace(T){const svg=document.getElementById('ltgraph');if(!svg)
   const dhi=20,YD=d=>yB2-(Math.min(d,dhi)/dhi)*(yB2-yT2);
   const tf=s=>{const m=Math.floor(s/60);return m+':'+(s-60*m).toFixed(1).padStart(4,'0');};
   const px=l=>X(l).toFixed(1);let s='';
-  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(17)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+tf(v)+'</text>';}
-  for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="'+fz(17)+'" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
+  // Axis label size scales with the gap BETWEEN gridlines, same lblfs pattern
+  // as FLOW's row labels — a flat fz() left it small on a tall phone panel
+  // even though the gridlines themselves were spaced far apart there. Capped
+  // well under the horizontal room left of xL so it can never run into the
+  // plotted lines.
+  const axfs=Math.min(42,Math.max(fz(17),(yB2-yT2)/4*0.32));
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+axfs.toFixed(1)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+tf(v)+'</text>';}
+  for(let i=0;i<=4;i++){const d=dhi*i/4,y=YD(d);s+='<text x="'+(xR+10)+'" y="'+(y+5).toFixed(1)+'" text-anchor="start" font-size="'+axfs.toFixed(1)+'" fill="#e8871e" font-family="IBM Plex Mono,monospace">+'+d.toFixed(0)+'s</text>';}
   for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(16)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
   s+='<text x="'+(xR)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="start" font-size="'+fz(13)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
   // Axis is drawn above either way — this only skips the CAR's own lines, and
@@ -2537,10 +2543,13 @@ function renderComp(T){const svg=document.getElementById('compsvg');if(!svg)retu
     const pad=Math.max(2,(hi-lo)*0.08);lo=Math.max(0,lo-pad);hi+=pad;   // lap/sector time is never negative
     const YT=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
     let s='';
+    // Same lblfs pattern as FLOW/PACE: scale with the gridline gap, capped
+    // well short of running into the plotted lines.
+    const axfs=Math.min(40,Math.max(fz(15),(yB2-yT2)/4*0.30));
     for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=YT(v);
       s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
       const tsec=Math.round(v),lbl=Math.floor(tsec/60)+':'+String(tsec%60).padStart(2,'0');
-      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
+      s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+axfs.toFixed(1)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+lbl+'</text>';}
     for(let L=lmin;L<=lmax;L++){if(L!==lmin&&L!==lmax&&(L-lmin)%5!==0)continue;const gx=X(L);
       s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
       s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(14)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
@@ -2984,9 +2993,12 @@ function renderP1Bar(T){
   const pad=Math.max(2,(hi-lo)*0.1);lo-=pad;hi+=pad;
   const Yv=v=>yB2-(v-lo)/((hi-lo)||1)*(yB2-yT2);
   let s='';
+  // Same lblfs pattern as FLOW/PACE/COMP: scale with the gridline gap, capped
+  // well short of running into the plotted bars/line.
+  const axfs=Math.min(40,Math.max(fz(15),(yB2-yT2)/4*0.30));
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Yv(v);
     s+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
-    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
+    s+='<text x="'+(xL-8)+'" y="'+(y+5).toFixed(1)+'" text-anchor="end" font-size="'+axfs.toFixed(1)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+v.toFixed(0)+'s</text>';}
   for(let L=1;L<=lmax;L++){if(L!==1&&L!==lmax&&L%5!==0)continue;const gx=X(L);
     s+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
     s+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+19).toFixed(1)+'" text-anchor="middle" font-size="'+fz(14)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
