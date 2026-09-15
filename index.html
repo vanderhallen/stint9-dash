@@ -599,7 +599,12 @@
   .mhdr{display:flex;align-items:center;gap:10px}
   .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
   .mhdrright{margin-left:auto;display:flex;align-items:center;gap:8px}
-  .mspeed{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--ink)}
+  /* height:44px explicitly — .mspeed is more specific than the generic
+     select{…height:44px…} rule above, so without redeclaring it here this
+     control silently shrunk to its ~30px content size, well under the
+     touch-target minimum every other select gets. That's what made it feel
+     like you had to tap one exact pixel. */
+  .mspeed{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--ink);height:44px}
   .mhdr .mclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
   .mhdr .mclock.mstatus{font-size:12px;font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mmode{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
@@ -7358,7 +7363,7 @@ applyWxReel(false);
          gets a standing nudge to turn the phone sideways. -->
     <svg class="a2ico rotatehint-ico" width="34" height="22" viewBox="0 0 34 22" fill="none" aria-hidden="true"
       ><rect x="1.2" y="1.2" width="31.6" height="19.6" rx="5" stroke="#fff" stroke-width="1.7"/><g transform="translate(9,3) scale(0.65)"><path d="M23 4v6h-6M1 20v-6h6" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
-    <span>Rotate your phone — this view is built for landscape</span>
+    <span>Rotate your phone</span>
   </div>
 </div>
 <script>
