@@ -3168,7 +3168,7 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
     // exact SECT failure mode) — this clamp is what raising the ceiling
     // actually buys, on top of the row/pill spacing genuinely growing.
     lblfs=Math.min(fz(15),Math.max(fz(9),rowH*0.42));
-  let s='<text x="'+xL+'" y="11" font-size="'+fz(12)+'" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW'+(selCar?' · #'+selCar+' (red) · rivals (blue) · gap above pill=Δ ahead / below=Δ behind · sector purple=class best/green=PB/yellow=slower':'')+'</text>';
+  let s='<text x="'+xL+'" y="11" font-size="'+fz(12)+'" font-weight="700" fill="#8a929b" font-family="IBM Plex Mono,monospace">TRACK-POSITION FLOW'+(selCar?' · #'+selCar+' (red) · rivals (blue)':'')+'</text>';
   // Row grid (the P1..Pn "axis") draws regardless of car/data — only the pills
   // themselves need a selected car with reported sector crossings.
   for(let pp=rowMin;pp<=rowMax;pp++)s+='<text x="'+(xL-6)+'" y="'+(rowY(pp)+rowH/2+lblfs*0.35).toFixed(1)+'" text-anchor="end" font-size="'+lblfs.toFixed(0)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">P'+pp+'</text>';
