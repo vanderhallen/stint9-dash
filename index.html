@@ -2228,7 +2228,12 @@ function renderSelStint(T){
   el.style.display='flex';
 }
 function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)return;
-  const xL=104,xR=980,yT2=18,baseRowH2=30;
+  // xL (the left gutter the row's "Px #xxx" label lives in, see rowCarFs
+  // below) doubles on mobile so that label's own self-fitting formula comes
+  // out exactly 2x — (xL-18)/(len*0.66) scales linearly with xL, so widening
+  // it this way scales the cap uniformly across every label length instead
+  // of hand-picking a multiplier that could overflow the gutter.
+  const xL=(document.body.classList.contains('m')?190:104),xR=980,yT2=18,baseRowH2=30;
   // This chart's viewBox is a FIXED 1000 wide, height driven purely by car
   // count — on a wide desktop panel that roughly matches the panel's own
   // shape, but on a tall phone panel it doesn't come close, and the default
