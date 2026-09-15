@@ -547,8 +547,7 @@
      Where that event DOES fire (Android Chrome, desktop Chrome/Edge) the bar
      swaps to a one-click INSTALL button instead — see #a2hs.can. */
   #a2hs{display:none;position:fixed;left:50%;transform:translateX(-50%);
-    /* clears the slide label, which owns the bottom-left corner */
-    bottom:calc(14px + env(safe-area-inset-bottom));z-index:5;
+    bottom:env(safe-area-inset-bottom);z-index:5;
     width:max-content;max-width:calc(100% - 22px);align-items:center;gap:9px;
     background:var(--ink);color:#fff;border-radius:11px;padding:8px 13px;
     box-shadow:0 5px 18px rgba(0,0,0,.3);
