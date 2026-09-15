@@ -4102,14 +4102,31 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
   document.querySelectorAll('[data-focus]').forEach(card=>{const b=document.createElement('button');b.className='zoombtn';b.type='button';b.title='Zoom / focus (click again or Esc to close)';b.innerHTML='&#9974;';b.addEventListener('click',e=>{e.stopPropagation();if(cur===card)close();else open(card);});card.appendChild(b);});})();
 /* BOARD reel: scale the embedded tyre.html board (logical ~1340x700) to fit
    its reel panel, re-fitting whenever the panel resizes (incl. on zoom). */
+/* Shared by PIT/TYRE/SERVICE: each embeds a fixed 1340x700 kiosk page,
+   transform:scaled to fit its .reelpanel. The desktop panel is wide enough
+   that "contain" (Math.min of both ratios) already reads full height; the
+   MOBILE reel panel is tall-and-narrow instead, so the same contain-fit is
+   pinned to the much smaller WIDTH ratio and centers a tiny, mostly-blank
+   island (reported 2026-09-15: PIT read as a blank card with a stamp-sized
+   report at 24% scale). In body.m, fit by HEIGHT instead — 3x the text size —
+   and let the panel scroll sideways for whatever runs past the screen edge,
+   the same trade the .reelpanel.tall SVGs already make instead of shrinking
+   an oversized chart down to unreadable. */
+function fitKioskFrame(panel,f,LW,LH){
+  const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
+  const mob=document.body.classList.contains('m');
+  const s=mob?ph/LH:Math.min(pw/LW,ph/LH);
+  f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.top='50%';
+  if(mob){panel.style.overflowX='auto';panel.style.touchAction='pan-x';
+    f.style.left='0';f.style.transformOrigin='left center';f.style.transform='translateY(-50%) scale('+s+')';}
+  else{panel.style.overflowX='hidden';panel.style.touchAction='';
+    f.style.left='50%';f.style.transformOrigin='';f.style.transform='translate(-50%,-50%) scale('+s+')';}
+}
 (function initBoardFrame(){RINIT.initBoardFrame=initBoardFrame;
   const f=document.getElementById('boardframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
-  function fit(){const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
-    const s=Math.min(pw/LW,ph/LH);
-    f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.left='50%';f.style.top='50%';
-    f.style.transform='translate(-50%,-50%) scale('+s+')';}
+  function fit(){fitKioskFrame(panel,f,LW,LH);}
   f.addEventListener('load',fit);
   try{new ResizeObserver(fit).observe(panel);}catch(e){window.addEventListener('resize',fit);}
   fit();
@@ -4127,10 +4144,7 @@ function boardCenter(){const f=document.getElementById('boardframe');if(f&&f.con
   const f=document.getElementById('svcframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
-  function fit(){const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
-    const s=Math.min(pw/LW,ph/LH);
-    f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.left='50%';f.style.top='50%';
-    f.style.transform='translate(-50%,-50%) scale('+s+')';}
+  function fit(){fitKioskFrame(panel,f,LW,LH);}
   f.addEventListener('load',fit);
   try{new ResizeObserver(fit).observe(panel);}catch(e){window.addEventListener('resize',fit);}
   fit();
@@ -4143,10 +4157,7 @@ function svcH(dir){const f=document.getElementById('svcframe');if(f&&f.contentWi
   const f=document.getElementById('pitframe');if(!f)return;
   const panel=f.parentElement;panel.style.position='relative';panel.style.overflow='hidden';
   const LW=1340,LH=700;
-  function fit(){const pw=panel.clientWidth,ph=panel.clientHeight;if(pw<10||ph<10)return;
-    const s=Math.min(pw/LW,ph/LH);
-    f.style.width=LW+'px';f.style.height=LH+'px';f.style.position='absolute';f.style.left='50%';f.style.top='50%';
-    f.style.transform='translate(-50%,-50%) scale('+s+')';}
+  function fit(){fitKioskFrame(panel,f,LW,LH);}
   f.addEventListener('load',()=>{fit();pushPit(true);});
   try{new ResizeObserver(fit).observe(panel);}catch(e){window.addEventListener('resize',fit);}
   window.__fitPit=fit;
