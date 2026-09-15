@@ -347,7 +347,7 @@
   /* ---- racenote panel (replaces the starting grid after formation lap L0) ---- */
   #racenotebox{display:none;flex:1 1 auto;min-height:0;flex-direction:column;font-family:'IBM Plex Mono',monospace}
   #racenotebox .rnhd{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:12px;letter-spacing:2px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin:2px 0 5px}
-  #racenotebox .rnhd .rncar{color:var(--accent)}
+  #racenotebox .rnhd .rncar{color:var(--ink)}
   #rn-summary{font-size:9px;line-height:1.45;color:var(--ink);background:#f7f8fa;border:1px solid #eceef1;border-radius:6px;padding:5px 6px;margin-bottom:5px;white-space:pre-wrap}
   #rn-feed{flex:1 1 auto;min-height:60px;overflow:auto;display:flex;flex-direction:column;gap:3px;padding-right:2px}
   #rn-feed .rn{font-size:9px;line-height:1.35;border-left:4.5px solid #c2c8d0;padding:3px 5px;background:#fbfbfc;border-radius:0 5px 5px 0}
@@ -6353,6 +6353,7 @@ function updateRacenote(T){
  try{
   const box=document.getElementById('racenotebox');if(!box)return;
   rnEnsure();
+  const rc=box.querySelector('.rncar');if(rc)rc.textContent=rnCar?('#'+rnCar):'#—';
   // SIM: racenotes are ephemeral — when the replay is back at the start, wipe them so a
   // fresh play-through regenerates them from scratch (LIVE keeps its persisted notes).
   if(!rnLive()&&T<=DB.tmin+0.5&&(rnNotes.length||rnSeen.size)){rnNotes=[];rnSeen=new Set();rnRenderFeed();}
