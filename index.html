@@ -3562,7 +3562,12 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(selCar&&EL[selCar])gd.appendChild(EL[selCar].g);
   gd.querySelectorAll('text').forEach(t=>{t.style.display=lbls.checked?'':'none';});
   renderMini(T,lp);renderGauge(T);fillCmp(T,lp);renderGap(T,lp);renderCode60();
-  const _tk=Date.now()-_thT>=300;
+  // Speed-aware: at higher SIM playback speed this 300ms base spaces out
+  // further (see __curSpeedFactor below) so the full 13-reel sweep this
+  // gates doesn't cost the same CPU per second at 30x as it does at 1x —
+  // T still advances correctly either way, only the real-world repaint rate
+  // drops. __curSpeedFactor() returns 1 in LIVE, so that path is untouched.
+  const _tk=Date.now()-_thT>=300*__curSpeedFactor();
   // Reel dispatch, once per block — see the reel order note by REELN. The LEFT
   // block keeps the long-standing behaviour of sweeping every reel on the _tk
   // tick; the RIGHT block paints only the one reel it is actually showing, so
@@ -3667,10 +3672,26 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
 const __mobileFit=Math.min(window.innerWidth,window.innerHeight)<600;
 const __renderGapMs=__mobileFit?48:30;
 let __lastRenderTs=0;
+/* Speed-aware throttle multiplier: at 10x/30x SIM replay, sustained repaint
+   at the SAME real-world rate as 1x was the actual heat source reported on
+   iPhone — T advancing faster doesn't cost more CPU by itself, but painting
+   just as often while covering way more simulated distance per frame does
+   nothing useful once the eye can't track individual laps anyway. This scales
+   the render cap above and the all-reel sweep gate in render() (_tk) down in
+   frequency as speed climbs, so real-world CPU/GPU load actually drops at
+   higher speed instead of staying flat. A `function`, not a cached value, so
+   it's always read fresh — switching speed mid-playback or into LIVE (which
+   has no speed concept and must never be throttled by this; liveLoop() calls
+   render() directly, uncapped) takes effect immediately, never stale. */
+function __curSpeedFactor(){
+  if(window.dataMode==='LIVE')return 1;
+  const v=parseFloat((document.getElementById('speed')||{}).value||'1');
+  return Math.min(4,Math.max(1,v/5));
+}
 function loop(ts){if(!playing)return;if(!last)last=ts;let dt=(ts-last)/1000;last=ts;if(dt>0.5)dt=0;T+=dt*parseFloat(document.getElementById('speed').value);
   if(T>=DB.tmax){T=DB.tmax;playing=false;const pb=document.getElementById('play');if(pb)pb.innerHTML='&#9654; Play';scrub.value=T;render();return;}
   scrub.value=T;
-  if(ts-__lastRenderTs>=__renderGapMs){__lastRenderTs=ts;render();}
+  if(ts-__lastRenderTs>=__renderGapMs*__curSpeedFactor()){__lastRenderTs=ts;render();}
   if(playing)requestAnimationFrame(loop);}
 document.getElementById('play').onclick=e=>{playing=!playing;if(playing){if(T>=DB.tmax)T=DB.tmin;last=0;e.target.innerHTML='&#10073;&#10073; Pause';requestAnimationFrame(loop);}else e.target.innerHTML='&#9654; Play';};
 scrub.oninput=e=>{T=parseFloat(e.target.value);render();};lbls.onchange=render;
@@ -3998,7 +4019,17 @@ function renderMobile(){
   var sb=document.getElementById('m_stand');if(sb)sb.innerHTML=rows||'<tr><td>waiting…</td></tr>';
 }
 __applyMobileView();window.addEventListener('resize',__applyMobileView);
-setInterval(function(){if(document.body.classList.contains('m')){try{renderMobile();}catch(e){}}},250);
+// Tick stays 250ms (cheap check); the actual innerHTML-rebuilding work in
+// renderMobile() self-throttles with the same speed-aware factor as the main
+// render() cap above, so this third fixed-rate cost also eases off at 10x/30x.
+let __lastMobileRun=0;
+setInterval(function(){
+  if(!document.body.classList.contains('m'))return;
+  const now=Date.now();
+  if(now-__lastMobileRun<250*__curSpeedFactor())return;
+  __lastMobileRun=now;
+  try{renderMobile();}catch(e){}
+},250);
 
 /* driver stint table */
 function fillStints(st){const tb=document.getElementById('drvbody');const panel=document.getElementById('drvpanel');if(!panel)return;
