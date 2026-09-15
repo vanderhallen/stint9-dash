@@ -537,7 +537,7 @@
   .mnav .reelbtn{width:36px;height:52px;font-size:16px;opacity:.92}
   .mslidelbl{position:fixed;left:calc(12px + env(safe-area-inset-left));
     bottom:calc(9px + env(safe-area-inset-bottom));z-index:3;
-    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    font-family:'IBM Plex Mono',monospace;font-size:30px;letter-spacing:2px;text-transform:uppercase;
     color:var(--muted);background:var(--bg);padding:3px 7px;border-radius:7px;pointer-events:none}
   .mslidelbl b{color:var(--ink);font-weight:700}
   /* Install-to-home-screen prompt — one short line. Installing is the only way
@@ -3044,17 +3044,28 @@ function renderSectors(T){const svg=document.getElementById('sectorsvg');if(!svg
   let theo=0,cls=0,ok=true;for(let k=0;k<5;k++){if(isFinite(myBest[k]))theo+=myBest[k];else ok=false;cls+=isFinite(clsBest[k])?clsBest[k]:0;}
   const totLoss=delta.reduce((a,b)=>a+b,0);let worst=0;for(let k=1;k<5;k++)if(delta[k]>delta[worst])worst=k;
   const top=82,rowH=(H-top-108)/5,barX=372,barW=344;let s='';
+  // Row glyphs/bar height scale with rowH on a tall mobile panel — same fix as
+  // the STINT reel's rowFs (see its comment above): a flat fz() size left rows
+  // with a huge empty band and a small size pinned in one corner, confirmed
+  // on-device. Text caps are collision limits against the FIXED column
+  // x-positions below (60/118/barX/barX+barW+14, unchanged so column math stays
+  // simple) — computed from worst-case string width at each cap so nothing
+  // overlaps the next column. The bar has no such constraint so it gets a
+  // straight 3x cap.
+  const rowFs=(base,frac,cap)=>Math.min(cap,Math.max(base,rowH*frac));
+  const sFs=rowFs(fz(30),0.16,46),vFs=rowFs(fz(26),0.20,58),dFs=rowFs(fz(24),0.20,54);
+  const barHt=Math.min(28*3,Math.max(28,rowH*0.34));
   s+='<text x="60" y="34" font-size="'+fz(20)+'" font-weight="700" fill="#6b7480" font-family="IBM Plex Mono,monospace">SECTOR PERFORMANCE'+(selCar?' · #'+selCar+' vs class best':'')+'</text>';
   s+='<text x="'+barX+'" y="70" font-size="'+fz(15)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">time lost to class best per sector →</text>';
   // Rows draw regardless of data — an empty field is 5 rows of dashes and an
   // empty bar track, not a blank canvas. held/worst only mean anything once
   // there IS data (clsCar[k] stays null, delta stays 0, otherwise).
   for(let k=0;k<5;k++){const cy=top+rowH*(k+0.5),held=hasData&&(clsCar[k]===selCar),col=held?'#1e8f3a':(hasData&&k===worst?'#c0392b':'#e8871e');
-    s+='<text x="60" y="'+(cy+9).toFixed(1)+'" font-size="'+fz(30)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">S'+(k+1)+'</text>';
-    s+='<text x="118" y="'+(cy+9).toFixed(1)+'" font-size="'+fz(26)+'" font-weight="700" fill="'+(held?'#1e8f3a':'#16202b')+'" font-family="IBM Plex Mono,monospace">'+fmt2(myBest[k])+'</text>';
-    s+='<rect x="'+barX+'" y="'+(cy-14).toFixed(1)+'" width="'+barW+'" height="28" rx="6" fill="#f1f3f5"/>';
-    const bl=hasData?Math.max(3,(delta[k]/maxD)*barW):0;if(bl>0)s+='<rect x="'+barX+'" y="'+(cy-14).toFixed(1)+'" width="'+bl.toFixed(1)+'" height="28" rx="6" fill="'+col+'"/>';
-    s+='<text x="'+(barX+barW+14)+'" y="'+(cy+8).toFixed(1)+'" font-size="'+fz(24)+'" font-weight="700" fill="'+(hasData?col:'#b5bcc4')+'" font-family="IBM Plex Mono,monospace">'+(hasData?(held?'BEST':'+'+delta[k].toFixed(1)+'s'):'—')+'</text>';}
+    s+='<text x="60" y="'+(cy+sFs*0.3).toFixed(1)+'" font-size="'+sFs.toFixed(1)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">S'+(k+1)+'</text>';
+    s+='<text x="118" y="'+(cy+vFs*0.3).toFixed(1)+'" font-size="'+vFs.toFixed(1)+'" font-weight="700" fill="'+(held?'#1e8f3a':'#16202b')+'" font-family="IBM Plex Mono,monospace">'+fmt2(myBest[k])+'</text>';
+    s+='<rect x="'+barX+'" y="'+(cy-barHt/2).toFixed(1)+'" width="'+barW+'" height="'+barHt.toFixed(1)+'" rx="6" fill="#f1f3f5"/>';
+    const bl=hasData?Math.max(3,(delta[k]/maxD)*barW):0;if(bl>0)s+='<rect x="'+barX+'" y="'+(cy-barHt/2).toFixed(1)+'" width="'+bl.toFixed(1)+'" height="'+barHt.toFixed(1)+'" rx="6" fill="'+col+'"/>';
+    s+='<text x="'+(barX+barW+14)+'" y="'+(cy+dFs*0.28).toFixed(1)+'" font-size="'+dFs.toFixed(1)+'" font-weight="700" fill="'+(hasData?col:'#b5bcc4')+'" font-family="IBM Plex Mono,monospace">'+(hasData?(held?'BEST':'+'+delta[k].toFixed(1)+'s'):'—')+'</text>';}
   const sy=H-64;s+='<line x1="60" x2="940" y1="'+(H-90)+'" y2="'+(H-90)+'" stroke="#e2e5ea" stroke-width="1.5"/>';
   s+='<text x="60" y="'+sy+'" font-size="'+fz(21)+'" font-weight="700" fill="#16202b" font-family="IBM Plex Mono,monospace">best lap '+fmt2(actual)+'</text>';
   s+='<text x="330" y="'+sy+'" font-size="'+fz(21)+'" font-weight="700" fill="#2f5fd0" font-family="IBM Plex Mono,monospace">ideal '+(ok?fmt2(theo):'—')+'</text>';
