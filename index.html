@@ -65,7 +65,10 @@
   .dropdn div:hover{background:var(--bg)}
   .dropdn div.on{color:var(--accent);font-weight:600}
   .split{display:flex;gap:22px;align-items:flex-start;margin-top:9px}
-  .left{flex:0 0 46%;max-width:46%}.right{flex:1 1 auto;min-width:0}
+  /* Track map and detail map split the row equally — same flex:1 1 0 pattern
+     as the reel row below, filling the full row width edge-to-edge with no
+     dead space instead of a fixed 46%/remaining split. */
+  .left{flex:1 1 0;min-width:0}.right{flex:1 1 0;min-width:0}
   .colhead{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);height:22px;margin-bottom:8px;white-space:nowrap;overflow:hidden}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
   .stage{position:relative;overflow:hidden}#svg{display:block;width:64%;height:auto;margin:0 auto}
