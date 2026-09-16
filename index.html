@@ -613,7 +613,7 @@
     body.m .mslide{padding-top:6px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   }
   .mhdr{display:flex;align-items:center;gap:10px}
-  .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px}.mbrand b{color:var(--accent)}
+  .mbrand{font-weight:700;font-size:24px;letter-spacing:-.5px;cursor:pointer}.mbrand b{color:var(--accent)}
   .mhdrright{margin-left:auto;display:flex;align-items:center;gap:8px}
   /* height:44px explicitly — .mspeed is more specific than the generic
      select{…height:44px…} rule above, so without redeclaring it here this
@@ -3999,6 +3999,10 @@ function __wireMobNav(){
   __wireMobNav.done=true;
   u.onclick=()=>setMob(mobIdx-1);
   d.onclick=()=>setMob(mobIdx+1);
+  // Tapping the "stint9" logo jumps back to ESSENTIALS (slide 0 / "1 / N") —
+  // a quick way home from wherever the reel/standings/messages paging left you.
+  const brand=document.querySelector('.mbrand');
+  if(brand)brand.onclick=()=>setMob(0);
   // Vertical swipe as a second input. Ignored when the gesture starts inside a
   // scroller (ESSENTIALS, the standings/message lists) so it can't hijack them.
   let y0=null;
