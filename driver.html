@@ -92,16 +92,33 @@
   .brow .bnat{color:var(--muted);font-size:11px;width:26px}
   .brow .bnm{font-weight:700}
   .brow .bmeta{margin-left:auto;color:var(--muted);font-size:11px}
+  /* tabs */
+  .tabs{display:flex;gap:6px}
+  .tabbtn{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:#fff;border:1px solid var(--border);padding:8px 16px;border-radius:8px;cursor:pointer}
+  .tabbtn.active{color:#fff;background:var(--ink);border-color:var(--ink)}
+  /* car table links */
+  .lnk{color:var(--ink);text-decoration:none;margin-left:5px;font-size:11px;opacity:.7}
+  .lnk:hover{opacity:1}
+  .drv{display:inline-flex;align-items:center;gap:2px}
+  .drvrow{display:block}
+  td.car{cursor:pointer}
+  td.car:hover{text-decoration:underline}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
     <a class="back" href="admin.html">← admin</a>
-    <h1 style="margin-top:6px">STINT9 · Driver Database</h1>
-    <div class="sub">Every driver who competed in the 2026 NLS season · built from the official race-result PDFs</div>
+    <h1 style="margin-top:6px">STINT9 · Driver &amp; Car Database</h1>
+    <div class="sub">Every driver and car number in the 2026 NLS season · built from the official entry-list and race-result PDFs</div>
   </div>
 
+  <div class="tabs">
+    <button class="tabbtn active" id="tabBtnDrivers" data-tab="drivers">Drivers</button>
+    <button class="tabbtn" id="tabBtnCars" data-tab="cars">Cars</button>
+  </div>
+
+  <div id="viewDrivers">
   <div class="card">
     <h2>Heatmap · races × points-in-class</h2>
     <div class="note" style="margin-bottom:12px">Rows = number of races, columns = total points in class. Each square shows <b>races × points</b>; colour runs <span style="color:hsl(120,60%,38%)">green (lowest)</span> → <span style="color:hsl(0,70%,45%)">red (highest)</span>. Small number = drivers currently in that bucket (respects the current class filter).</div>
@@ -146,6 +163,31 @@
     </div>
     <div class="note" style="margin-top:10px">* <b>Best lap</b> is each driver's <b>own</b> fastest lap, recovered from the official Lap-by-Lap chart (which tags every lap with the on-track driver). Rounds with no lap chart fall back to the car's fastest lap, shared by co-drivers. Open a driver to see ⚡ = the race(s) where they set their car's fastest lap. (Finish position is still per car.)</div>
   </div>
+  </div>
+
+  <div id="viewCars" style="display:none">
+  <div class="card">
+    <div class="controls">
+      <div class="fld">
+        <label for="season">Season</label>
+        <select id="season"></select>
+      </div>
+      <div class="fld">
+        <label for="carQ">Search</label>
+        <input type="search" id="carQ" placeholder="car # / team / brand / driver…" style="width:220px">
+      </div>
+      <div style="margin-left:auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        <button class="btn" id="updateEntries">↻ Update entry list</button>
+        <div class="stat" id="entriesMeta"></div>
+      </div>
+    </div>
+    <div class="stat" id="carCount" style="margin-top:12px"></div>
+    <div class="tscroll" style="margin-top:6px">
+      <table class="vis" id="carTbl"><thead></thead><tbody><tr><td class="empty">Loading…</td></tr></tbody></table>
+    </div>
+    <div class="note" style="margin-top:10px">Car number, brand/type and team come from the official entry list (published ahead of each round) and are backfilled from race results once a round has run. Team and driver links (🌐 website · IG Instagram) are added by hand as they're found — most cars won't have any yet.</div>
+  </div>
+  </div>
 
   </div>
 <div class="toast" id="toast"></div>
@@ -181,6 +223,23 @@
   </div>
 </div></div>
 
+<div id="carModal" class="ovl"><div class="box">
+  <div class="mhead">
+    <div>
+      <div class="dnm" id="cmTitle"></div>
+      <div class="dsub" id="cmSub"></div>
+    </div>
+    <button class="x" id="cmClose" title="close (Esc)">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="chips" id="cmChips"></div>
+    <h3>Drivers</h3>
+    <div class="tscroll"><table class="rr" id="cmDrivers"></table></div>
+    <h3 style="margin-top:16px">Round by round</h3>
+    <div class="tscroll"><table class="rr" id="cmRounds"></table></div>
+  </div>
+</div></div>
+
 <script>
 var SB='https://esvvzgxqnfszhttdkuzc.supabase.co';
 var KEY='sb_publishable_svmP7ATfuf9eK-jJGXjlYQ_qC8nONLU';
@@ -192,7 +251,19 @@ function pts(posClass){ if(!posClass) return 0; return posClass<POINTS.length?PO
 
 var RESULTS=[];              // raw rows from stint9_nls_results
 var RACES={};                // event_date -> {title, round_no, series}
+var ENTRIES=[];              // raw rows from stint9_nls_entries (includes future rounds)
+var TEAMS={};                // team_key -> {team_name, website}
+var DLINKS={};                // driver_key -> {website, instagram}
 var state={scope:'__all__',sort:'races',dir:'desc',q:''};
+var carState={season:null,q:''};
+var CURTAB='drivers';
+
+// normalize a team name into the same key convention stint9_teams.team_key
+// uses, so hand-entered links join onto whatever the scrapers wrote.
+function teamKey(s){
+  if(!s) return '';
+  return s.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu,'').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
 
 function flag(cc){ if(!cc||cc.length!==2) return ''; try{return String.fromCodePoint.apply(null,[].map.call(cc.toUpperCase(),function(c){return 0x1F1E6+c.charCodeAt(0)-65;}));}catch(e){return '';} }
 function lap(ms){ if(!ms) return '—'; var t=ms/1000,m=Math.floor(t/60),s=(t-m*60); return m+':' + (s<10?'0':'') + s.toFixed(3); }
@@ -453,18 +524,178 @@ document.getElementById('bList').addEventListener('click',function(e){
 document.getElementById('bClose').onclick=closeBucket;
 document.getElementById('bucket').addEventListener('click',function(e){ if(e.target===this) closeBucket(); });
 
-document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeModal(); closeBucket(); } });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeModal(); closeBucket(); closeCarModal(); } });
+
+// ---- Cars tab ----
+function seasonOf(dt){ return dt?dt.slice(0,4):null; }
+
+function buildSeasons(){
+  var years={};
+  ENTRIES.forEach(function(r){ var y=seasonOf(r.event_date); if(y) years[y]=1; });
+  RESULTS.forEach(function(r){ var y=seasonOf(r.event_date); if(y) years[y]=1; });
+  var list=Object.keys(years).sort().reverse();
+  if(!list.length) list=[String(new Date().getFullYear())];
+  if(!carState.season||list.indexOf(carState.season)<0) carState.season=list[0];
+  document.getElementById('season').innerHTML=list.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join('');
+  document.getElementById('season').value=carState.season;
+}
+
+// aggregate stint9_nls_entries (full season, incl. future rounds) + stint9_nls_results
+// (backfill/confirm once a round has actually run) into one row per car number.
+function aggregateCars(){
+  var yr=carState.season;
+  var by={};
+  function ensure(carNo){ return by[carNo]||(by[carNo]={car_no:carNo,team:null,car_model:null,class:null,drivers:{},rounds:{}}); }
+  function ensureRound(c,dt){ return c.rounds[dt]||(c.rounds[dt]={event_date:dt,class:null,team:null,car_model:null,drivers:{},result:null}); }
+  ENTRIES.filter(function(r){return seasonOf(r.event_date)===yr;}).forEach(function(r){
+    var c=ensure(r.car_no);
+    if(r.team) c.team=r.team;
+    if(r.car_model) c.car_model=r.car_model;
+    if(r.class) c.class=r.class;
+    (r.drivers||[]).forEach(function(d){ c.drivers[d.driver_key]=d.driver_name; });
+    var rd=ensureRound(c,r.event_date);
+    rd.class=r.class; rd.team=r.team; rd.car_model=r.car_model;
+    (r.drivers||[]).forEach(function(d){ rd.drivers[d.driver_key]=d.driver_name; });
+  });
+  RESULTS.filter(function(r){return seasonOf(r.event_date)===yr;}).forEach(function(r){
+    var c=ensure(r.car_no);
+    if(!c.team&&r.team) c.team=r.team;
+    if(!c.car_model&&r.car_model) c.car_model=r.car_model;
+    if(!c.class&&r.class) c.class=r.class;
+    if(r.driver_key) c.drivers[r.driver_key]=r.driver_name;
+    var rd=ensureRound(c,r.event_date);
+    if(!rd.class) rd.class=r.class;
+    if(!rd.team) rd.team=r.team;
+    if(!rd.car_model) rd.car_model=r.car_model;
+    if(r.driver_key) rd.drivers[r.driver_key]=r.driver_name;
+    if(!rd.result) rd.result={pos_overall:r.pos_overall,status:r.status};
+  });
+  return Object.keys(by).map(function(k){
+    var c=by[k];
+    var drivers=Object.keys(c.drivers).map(function(dk){return {key:dk,name:c.drivers[dk]};}).sort(function(a,b){return a.name.localeCompare(b.name);});
+    var rounds=Object.keys(c.rounds).map(function(dt){return c.rounds[dt];}).sort(function(a,b){return a.event_date<b.event_date?-1:1;});
+    return {car_no:c.car_no,team:c.team,car_model:c.car_model,class:c.class,drivers:drivers,rounds:rounds};
+  }).sort(function(a,b){return a.car_no-b.car_no;});
+}
+
+var CARDATA=[];
+function renderCars(){
+  CARDATA=aggregateCars();
+  var data=CARDATA;
+  var q=carState.q.trim().toLowerCase();
+  if(q) data=data.filter(function(c){
+    return String(c.car_no).indexOf(q)>=0||(c.team||'').toLowerCase().indexOf(q)>=0||
+      (c.car_model||'').toLowerCase().indexOf(q)>=0||
+      c.drivers.some(function(d){return d.name.toLowerCase().indexOf(q)>=0;});
+  });
+  document.getElementById('carCount').textContent=data.length+' cars · season '+carState.season;
+  document.querySelector('#carTbl thead').innerHTML='<tr><th class="l">Car #</th><th class="l">Class</th><th class="l">Brand / type</th><th class="l">Team</th><th class="l">Drivers</th></tr>';
+  var tbody=document.querySelector('#carTbl tbody');
+  if(!data.length){ tbody.innerHTML='<tr><td class="empty" colspan="5">No cars for this season yet.</td></tr>'; return; }
+  tbody.innerHTML=data.map(function(c){
+    var tm=TEAMS[teamKey(c.team)];
+    var teamHtml=c.team?(esc(c.team)+(tm&&tm.website?' <a class="lnk" href="'+esc(tm.website)+'" target="_blank" rel="noopener" title="team website">🌐</a>':'')):'<span class="dim">—</span>';
+    var driversHtml=c.drivers.length?c.drivers.map(function(d){
+      var lk=DLINKS[d.key], links='';
+      if(lk&&lk.website) links+=' <a class="lnk" href="'+esc(lk.website)+'" target="_blank" rel="noopener" title="website">🌐</a>';
+      if(lk&&lk.instagram) links+=' <a class="lnk" href="'+esc(lk.instagram)+'" target="_blank" rel="noopener" title="Instagram">IG</a>';
+      return '<span class="drvrow">'+esc(d.name)+links+'</span>';
+    }).join(''):'<span class="dim">—</span>';
+    return '<tr>'+
+      '<td class="l car" data-car="'+c.car_no+'">#'+c.car_no+'</td>'+
+      '<td class="l dim">'+esc(c.class||'')+'</td>'+
+      '<td class="l">'+esc(c.car_model||'—')+'</td>'+
+      '<td class="l">'+teamHtml+'</td>'+
+      '<td class="l">'+driversHtml+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function openCar(carNo){
+  var c=CARDATA.filter(function(x){return x.car_no===carNo;})[0];
+  if(!c) return;
+  document.getElementById('cmTitle').textContent='Car #'+c.car_no;
+  document.getElementById('cmSub').textContent=(c.car_model||'—')+' · '+c.rounds.length+' round'+(c.rounds.length!==1?'s':'')+' · season '+carState.season;
+  var tm=TEAMS[teamKey(c.team)];
+  var chips=[['Team',c.team||'—'],['Class',c.class||'—'],['Rounds',c.rounds.length],['Drivers',c.drivers.length]];
+  document.getElementById('cmChips').innerHTML=chips.map(function(ch){return '<div class="chip"><div class="cv">'+esc(ch[1])+'</div><div class="cl">'+esc(ch[0])+'</div></div>';}).join('')+
+    (tm&&tm.website?'<div class="chip"><div class="cv"><a class="lnk" style="font-size:15px" href="'+esc(tm.website)+'" target="_blank" rel="noopener">🌐 site</a></div><div class="cl">Team</div></div>':'');
+  document.getElementById('cmDrivers').innerHTML='<thead><tr><th class="l">Driver</th><th class="l">Links</th></tr></thead><tbody>'+
+    c.drivers.map(function(d){
+      var lk=DLINKS[d.key], links=[];
+      if(lk&&lk.website) links.push('<a class="lnk" href="'+esc(lk.website)+'" target="_blank" rel="noopener">🌐 website</a>');
+      if(lk&&lk.instagram) links.push('<a class="lnk" href="'+esc(lk.instagram)+'" target="_blank" rel="noopener">IG</a>');
+      return '<tr><td class="l strong">'+esc(d.name)+'</td><td class="l">'+(links.length?links.join(' '):'<span class="dim">—</span>')+'</td></tr>';
+    }).join('')+'</tbody>';
+  document.getElementById('cmRounds').innerHTML='<thead><tr><th class="l">Race</th><th class="l">Class</th><th class="l">Team</th><th class="l">Drivers</th><th>Result</th></tr></thead><tbody>'+
+    c.rounds.map(function(rd){
+      var names=Object.keys(rd.drivers).map(function(k){return rd.drivers[k];}).sort().join(', ');
+      var res=rd.result?(rd.result.pos_overall!=null?'P'+rd.result.pos_overall:esc((rd.result.status||'dnf').toUpperCase())):'<span class="dim">not raced yet</span>';
+      return '<tr>'+
+        '<td class="l">'+esc(raceLabel(rd.event_date))+'</td>'+
+        '<td class="l dim">'+esc(rd.class||'')+'</td>'+
+        '<td class="l ell" title="'+esc(rd.team||'')+'">'+esc(rd.team||'—')+'</td>'+
+        '<td class="l ell" title="'+esc(names)+'">'+esc(names||'—')+'</td>'+
+        '<td class="strong">'+res+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody>';
+  document.getElementById('carModal').classList.add('show');
+}
+function closeCarModal(){ document.getElementById('carModal').classList.remove('show'); }
+document.querySelector('#carTbl tbody').addEventListener('click',function(e){
+  var td=e.target.closest('td.car'); if(td&&td.dataset.car) openCar(+td.dataset.car);
+});
+document.getElementById('cmClose').onclick=closeCarModal;
+document.getElementById('carModal').addEventListener('click',function(e){ if(e.target===this) closeCarModal(); });
+
+function loadEntriesMeta(){
+  fetch(SB+"/rest/v1/stint9_nls_scrape_log?select=created_at&detail->>kind=eq.entries&order=created_at.desc&limit=1",{headers:H})
+    .then(function(r){return r.json();}).then(function(j){
+      if(j&&j[0]){ var d=new Date(j[0].created_at); document.getElementById('entriesMeta').textContent='last update '+d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+    }).catch(function(){});
+}
+
+function switchTab(tab){
+  CURTAB=tab;
+  document.getElementById('viewDrivers').style.display=tab==='drivers'?'':'none';
+  document.getElementById('viewCars').style.display=tab==='cars'?'':'none';
+  document.getElementById('tabBtnDrivers').classList.toggle('active',tab==='drivers');
+  document.getElementById('tabBtnCars').classList.toggle('active',tab==='cars');
+}
+document.getElementById('tabBtnDrivers').onclick=function(){ switchTab('drivers'); };
+document.getElementById('tabBtnCars').onclick=function(){ switchTab('cars'); };
+document.getElementById('season').onchange=function(){ carState.season=this.value; renderCars(); };
+document.getElementById('carQ').oninput=function(){ carState.q=this.value; renderCars(); };
+document.getElementById('updateEntries').onclick=function(){
+  var b=this; b.disabled=true; b.textContent='↻ Updating…'; toast('Scraping NLS entry-list PDFs…');
+  fetch(SB+'/functions/v1/nls-entrylist-scrape',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H)})
+    .then(function(r){return r.json();}).then(function(j){
+      var ok=(j&&j.results||[]).filter(function(x){return x.status==='ok';}).length;
+      toast('Updated · '+ok+' round'+(ok!==1?'s':'')+' refreshed');
+      return load();
+    }).catch(function(e){ toast('Update failed'); })
+    .finally(function(){ b.disabled=false; b.textContent='↻ Update entry list'; });
+};
 
 function load(){
   fetch(SB+'/rest/v1/stint9_nls_races?select=event_date,round_no,title,series',{headers:H})
     .then(function(r){return r.json();}).then(function(j){ (Array.isArray(j)?j:[]).forEach(function(r){RACES[r.event_date]=r;}); }).catch(function(){});
-  return fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,set_fastest,status&limit=20000',{headers:H})
+  fetch(SB+'/rest/v1/stint9_teams?select=team_key,team_name,website',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){ TEAMS={}; (Array.isArray(j)?j:[]).forEach(function(t){TEAMS[t.team_key]=t;}); }).catch(function(){});
+  fetch(SB+'/rest/v1/stint9_driver_links?select=driver_key,website,instagram',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){ DLINKS={}; (Array.isArray(j)?j:[]).forEach(function(l){DLINKS[l.driver_key]=l;}); }).catch(function(){});
+  var entriesP=fetch(SB+'/rest/v1/stint9_nls_entries?select=event_date,car_no,class,team,car_model,drivers&limit=20000',{headers:H})
+    .then(function(r){return r.json();}).then(function(j){ ENTRIES=Array.isArray(j)?j:[]; }).catch(function(){ ENTRIES=[]; });
+  var resultsP=fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,set_fastest,status&limit=20000',{headers:H})
     .then(function(r){return r.json();}).then(function(j){
       RESULTS=Array.isArray(j)?j:[];
       buildScope(); render(); loadMeta();
     }).catch(function(e){
       document.querySelector('#tbl tbody').innerHTML='<tr><td class="empty">Failed to load: '+esc(e)+'</td></tr>';
     });
+  return Promise.all([entriesP,resultsP]).then(function(){
+    buildSeasons(); renderCars(); loadEntriesMeta();
+  });
 }
 
 // wire controls

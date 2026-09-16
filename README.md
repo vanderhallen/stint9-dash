@@ -3080,3 +3080,71 @@ round's actual start time automatically instead of guessing a weekday. See
 manual same-day fast path (`POST nls-driver-scrape {"grid":true,"date":...}`)
 still works for a manual re-trigger if a quali PDF is published/corrected
 late.
+
+# 25. Car-number database — brand/team/driver roster, incl. unraced rounds (2026-09-16)
+
+(Note: the `## Contents` TOC near the top of this file only lists §1–20 and
+was already stale before this section — worth fixing at some point, not done
+here.)
+
+**What it is.** `driver.html` gained a second tab, "Cars", alongside the
+existing driver-centric "Drivers" tab. For a chosen season it lists every car
+number entered that year with its class, brand/type, team, and full driver
+roster; clicking a car opens a round-by-round breakdown. Unlike the Drivers
+tab (which only ever reflects rounds `nls-driver-scrape` has already ingested
+results for), Cars also shows **rounds that haven't raced yet** — the whole
+point being to see next round's entries before it happens.
+
+**New source: the entry-list PDF, finally parsed.** `stint9_nls_races.entrylist_url`
+has pointed at `<date>s.pdf` ("Vorläufige Teilnehmerliste") since the driver
+database shipped, but `nls-driver-scrape` never parsed it ("different layout,
+no results" — see its header). A new edge function, `nls-entrylist-scrape`,
+parses it into `public.stint9_nls_entries` (one row per event+car: class,
+team, car_model, and a `drivers` jsonb array). It runs on its own daily cron
+(`stint9_nls_entries_autoscan`, 05:00 UTC) against **every** round in the
+season — past and future — since entry lists get published/revised in the
+days before each round, not just once like results.
+
+**Why this needed positional PDF parsing, not regex.** The Teilnehmerliste is
+a fixed-column FPDF table (Nr./rating | B/F/S role marker | Name | Wohnort |
+Liz.-Nr. | Fahrzeug), but its content stream draws each *column* as its own
+multi-line run — so `unpdf`'s plain `extractText` (what `nls-driver-scrape`
+uses) comes out column-major within a car block (all names, then all towns,
+then all licenses...), with the last two columns even interleaved depending
+on which rows wrap. That's unparseable by regex. `nls-entrylist-scrape` uses
+`extractTextItems` instead — real x/y per text run — reconstructs visual ROWS
+by y-coordinate, and classifies each cell by fixed x-thresholds (verified
+against several real PDFs: Nr./rating≈59.5, marker≈102, Name≈116,
+Wohnort≈294.8, Liz.-Nr.≈394, Fahrzeug≈470.5, all in PDF points — the template
+is identical across rounds). A car's `B` (Bewerber/team) row opens its block;
+`S` (Sponsor) opens it instead when there's no separate `B` row and can also
+carry a wrapped Fahrzeug fragment mid-block (e.g. "...GT4" + "CS" split
+across rows); a "private" entry with neither has its first `F` (driver) row
+both open the block and be driver #1. Verified byte-for-byte against
+`stint9_nls_results` for 2026-09-12: 116/117 comparable cars matched exactly
+on team/car_model (the one miss — car 480 — was genuinely absent from that
+round's entry-list snapshot, not a parser bug), and the entry list actually
+recovers `team` for several cars the *results* parser's regex leaves null.
+
+**What this PDF does *not* guarantee.** It's a snapshot (`Stand:` timestamp,
+typically a few days before the round), so a late entry can appear in the
+results PDF without ever having been in this one — 3 of 108 raced cars at
+2026-09-12, for example. That gap is a real data-source limit: such a car
+just won't show up in `stint9_nls_entries` for that round until
+`nls-driver-scrape`'s results pass adds it to `stint9_nls_results` instead.
+The Cars tab aggregates from **both** tables per season (entries first,
+results backfilling/confirming), so it still shows up — just without
+pre-race notice.
+
+**Team websites and driver socials are not scraped from anywhere** — no
+official NLS source carries them. `public.stint9_teams` (keyed by a
+normalized `team_key` slug) and `public.stint9_driver_links` (keyed by the
+same `driver_key` `nls-driver-scrape` already produces) are hand-maintained
+overlay tables, anon-read like everything else but written only via the
+Supabase MCP as links are found — no write-enabled UI, same posture as the
+hand-seeded `stint9_event_rounds`. `driver.html` joins them client-side (a
+`teamKey()` helper mirrors the same normalization) and renders a 🌐/IG icon
+next to any team or driver that has one; most don't yet.
+
+See `car-database-supabase.sql` for the schema mirror and
+`live/nls-entrylist-scrape/index.ts` for the full parser design notes.
