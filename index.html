@@ -499,10 +499,16 @@
   /* A moved-in desktop card fills its slide instead of keeping its desktop flex
      basis. !important because those bases (46%/56%/44%) are INLINE styles on
      #reelcard/#cmpbox/#gapbox, which a plain rule would lose to. */
-  /* Content-sized cards HUG their content and centre in the slide — a four-row
+  /* Content-sized cards HUG their content and centre in the slide — a short
      standings table or a wide/short chart stretched to full height is mostly
-     white space. The reel and the scrolling streams override this below. */
-  .mslide{justify-content:center}
+     white space. The reel and the scrolling streams override this below.
+     `safe` matters now that STANDINGS shows the whole class instead of a
+     fixed 5 rows: plain `center` on an overflowing flex container shoves the
+     excess off BOTH ends equally, so a big class's card stack starts scrolled
+     past its own top with the car header/gap cards unreachable above scrollTop
+     0. `safe center` keeps the short-content centering but falls back to
+     top-aligned (reachable, scrollable) once content no longer fits. */
+  .mslide{justify-content:safe center}
   .mslide>.card,.mslide>#racenotebox{flex:0 1 auto!important;min-height:0;min-width:0;
     max-height:100%;max-width:none!important;width:auto!important;margin:0}
   /* These four are built to fill their box, so they take the whole slide. */
@@ -831,7 +837,7 @@
     </div>
   </div>
   <div id="reelrow" style="display:flex;flex-wrap:nowrap;gap:22px;align-items:flex-start;margin-top:13px">
-    <div class="card chartbox" id="reelcard" data-focus style="flex:0 0 46%;max-width:46%;min-width:0;display:flex;align-items:stretch;gap:6px">
+    <div class="card chartbox" id="reelcard" data-focus style="flex:1 1 0;min-width:0;display:flex;align-items:stretch;gap:6px">
       <div id="reelnav" style="flex:0 0 32px;display:flex;flex-direction:column;justify-content:center;gap:10px">
         <button class="reelbtn" id="reelup" title="Previous view">&#9650;</button>
         <button class="reelbtn" id="reeldn" title="Next view">&#9660;</button>
@@ -909,7 +915,7 @@
         </div>
       </div>
     </div>
-    <div class="card" data-focus style="flex:0 0 46%;max-width:46%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
+    <div class="card" data-focus style="flex:1 1 0;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
       <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
         </div>
@@ -2970,12 +2976,12 @@ function renderSecTab(T){
   wrap.innerHTML=caption+h;
 }
 /* Mobile ESSENTIALS "sector times" card — same laps-in-columns/sectors-in-rows
-   grid as the desktop TIMES reel above (renderSecTab): per-sector heatmap,
-   Δ-vs-own-best arrow line under each time, purple for a personal best. Two
-   differences from the desktop version, both mobile-specific: no DRIVER row
-   (there's no room, and it's a single-car card so it never changes), and laps
-   run oldest-to-newest LEFT to right so the newest lap rests at the scroll's
-   natural right edge instead of desktop's newest-leftmost order. */
+   grid as the desktop TIMES reel above (renderSecTab), including its exact
+   column order: newest/highest lap number leftmost, oldest rightmost — so the
+   most relevant lap is the one already on screen at the horizontal scroll's
+   natural resting (left) edge, no forced scrollLeft needed. Only real
+   difference from the desktop version: no DRIVER row (no room, and it's a
+   single-car card so it never changes). */
 function renderMobSect(T){
   const wrap=document.getElementById('m_sectwrap');if(!wrap)return;
   const ph=t=>{wrap.innerHTML='<div style="padding:16px 4px;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:12px">'+t+'</div>';};
@@ -2996,7 +3002,8 @@ function renderMobSect(T){
     else{const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];if(rt!=null){cells[L].tot=rt;if(rt<bestLap)bestLap=rt;}}
   }
   if(!laps.length){ph('no completed sectors yet');return;}
-  const MAXCOLS=12,shown=laps.slice(-MAXCOLS);   // cap columns so old races don't build an endless scroll
+  // newest leftmost — same order as the desktop TIMES reel (see comment above)
+  const MAXCOLS=12,shown=laps.slice(-MAXCOLS).reverse();
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
   const heatBg=(v,min,max)=>{
     if(v==null||min==null||max==null||!isFinite(min)||!isFinite(max)||max<=min)return'';
@@ -3031,8 +3038,14 @@ function renderMobSect(T){
     else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
   h+='</tr></tbody></table>';
-  wrap.innerHTML=h;
-  wrap.scrollLeft=wrap.scrollWidth;   // rest scrolled to the newest (rightmost) lap
+  // renderMobile() calls this on every tick, but the grid only actually
+  // changes when a lap completes or a personal best moves — writing an
+  // identical innerHTML on every other tick was destroying and recreating
+  // the table's DOM nodes underneath an in-progress touch scroll, which is
+  // what made the ESSENTIALS slide's vertical scroll snap back on release.
+  // Skip the write (and the layout it forces) when nothing actually changed.
+  if(wrap.__sig===h)return;
+  wrap.__sig=h;wrap.innerHTML=h;
 }
 /* leaderAtLap: the car actually running in P1 (real running order) the
    moment it crosses the line to complete lap L — from DB.lappos, which
@@ -3655,7 +3668,7 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   // sectorKm = the NLS 5-sector lengths (very unequal: S4 ≈ 9.4 km); the board
   // maps prog->km with them. Also send lap/sector + most-recent pit lap for the
   // "update tyres" reminder. Throttled.
-  try{const _bf=document.getElementById('boardframe');if(_bf&&_bf.contentWindow){const _now=Date.now();if(_now-(window.__tlT||0)>200){window.__tlT=_now;
+  try{const _now=Date.now();if(_now-(window.__tlT||0)>200){window.__tlT=_now;
     let _prg=null,_lap=null,_sec=null,_pit=null;
     if(selCar){const _cp=carProgress(selCar,T);_prg=_cp?_cp.p:null;const _lg=activeLeg(selCar,T);
       if(_lg){_lap=_lg[0];const _bx=BX[selCar]||{};_sec=5;for(let s=1;s<=5;s++){const tc=_bx[(_lap-1)*5+s];if(tc==null||tc>T){_sec=s;break;}}
@@ -3663,10 +3676,14 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
     const _spd=parseFloat((document.getElementById('speed')||{}).value||'1');
     // don't stream a car's live tyre progress while it's locked (not our team)
     if(typeof canAccess==='function'&&canAccess(selCar)){
-      _bf.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:false},'*');
-      // feed the SERVICE iframe the same live progress so component ACTUAL km ticks up
-      const _sf=document.getElementById('svcframe');if(_sf&&_sf.contentWindow)_sf.contentWindow.postMessage({type:'svcLive',prog:_prg,sectorKm:SECTOR_KM,car:String(selCar||''),live:(window.dataMode==='LIVE'),ro:false},'*');
-    }}}}catch(e){}
+      // Both boardframe/svcframe (left) AND their _r clones (right) need this
+      // tick — each is its own iframe instance, so only messaging the left one
+      // meant the right board's tyre progress (and the SERVICE ACTUAL km it
+      // drives below) silently froze instead of ticking up with the car.
+      ['boardframe','boardframe_r'].forEach(id=>{const f=_gebi(id);if(f&&f.contentWindow)f.contentWindow.postMessage({type:'tyreLive',prog:_prg,sectorKm:SECTOR_KM,lap:_lap,sec:_sec,pit:_pit,car:String(selCar||''),speed:_spd,live:(window.dataMode==='LIVE'),ro:false},'*');});
+      // feed the SERVICE iframe(s) the same live progress so component ACTUAL km ticks up
+      ['svcframe','svcframe_r'].forEach(id=>{const f=_gebi(id);if(f&&f.contentWindow)f.contentWindow.postMessage({type:'svcLive',prog:_prg,sectorKm:SECTOR_KM,car:String(selCar||''),live:(window.dataMode==='LIVE'),ro:false},'*');});
+    }}}catch(e){}
   // PIT is public timing data, so it pushes outside the canAccess gate above.
   if(typeof pushPit==='function')pushPit(false);
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
@@ -4039,10 +4056,20 @@ function renderMobile(){
   set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
   var box=rd('fmini_box')||'—',mb=document.getElementById('m_box');
   if(mb){mb.textContent=box;mb.className='mbox'+(/BOX BOX/.test(box)?' now':/BOX IN [12] /.test(box)?' soon':'');}
-  var order=Object.keys(lp).sort(function(a,b){return lp[a]-lp[b];}).slice(0,5),leader=order[0],rows='';
+  // Show the WHOLE class, not a fixed top-5 — a 4-car class used to leave the
+  // card mostly empty while a 21-car one hid 16 cars outright. The card has
+  // no max-height (see .mstand below) and the ESSENTIALS slide already
+  // scrolls, so its length now tracks the class size instead of a constant.
+  var order=Object.keys(lp).sort(function(a,b){return lp[a]-lp[b];}),leader=order[0],rows='';
   order.forEach(function(st){var gt='—';if(st!==leader){var d=commonGap(st,leader,T);gt=(d==null)?'—':('+'+Math.abs(d).toFixed(1)+'s');}
     rows+='<tr class="'+(st===selCar?'sel':'')+'"><td class="p">P'+lp[st]+'</td><td>#'+st+' '+curDrv(st,T)+'</td><td class="g">'+gt+'</td></tr>';});
-  var sb=document.getElementById('m_stand');if(sb)sb.innerHTML=rows||'<tr><td>waiting…</td></tr>';
+  // Guard, not just cosmetics: an unconditional innerHTML write on every tick
+  // (this runs every renderMobile() call) replaces the table's DOM nodes even
+  // when the standings haven't actually changed, which can snap the whole
+  // ESSENTIALS slide's vertical scroll back to the top mid-gesture on iOS —
+  // see the same guard on renderMobSect() above.
+  var sb=document.getElementById('m_stand'),srows=rows||'<tr><td>waiting…</td></tr>';
+  if(sb&&sb.__sig!==srows){sb.__sig=srows;sb.innerHTML=srows;}
 }
 __applyMobileView();window.addEventListener('resize',__applyMobileView);
 // Tick stays 250ms (cheap check); the actual innerHTML-rebuilding work in
