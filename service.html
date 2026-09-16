@@ -220,7 +220,14 @@ function defState(){const c={};COMPONENTS.forEach(d=>{c[d.key]={interval:d.inter
 function normState(s){s=s||{};const base=defState();if(s.comp)COMPONENTS.forEach(d=>{const o=s.comp[d.key];if(o){base.comp[d.key].interval=(o.interval!=null?o.interval:d.interval);base.comp[d.key].actual=(o.actual!=null?o.actual:0);base.comp[d.key].start=(o.start!=null?o.start:null);base.comp[d.key].odo=(o.odo!=null?o.odo:0);}});return base;}
 
 const _saveT={};
-function scheduleSave(){if(ARCHIVE_RO||RO||!CUR_CAR)return;clearTimeout(_saveT.t);_saveT.t=setTimeout(flushSave,500);}
+// Same fix as tyre.html's broadcastTyreState()/'tyreSync' — two dashboard reel
+// blocks can each show SERVICE at once in two separate iframes (index.html
+// clones #svcframe into #svcframe_r) with no link between their JS, so a swap
+// made on one side sat invisible on the other. Broadcast the fresh state to
+// the parent on every local edit; index.html relays it to the sibling iframe,
+// which applies it in memory (see 'svcSync' below) with no DB round-trip.
+function broadcastSvcState(){try{window.parent.postMessage({type:'svcSync',car:CUR_CAR,state:STATE},'*');}catch(e){}}
+function scheduleSave(){if(ARCHIVE_RO||RO||!CUR_CAR)return;broadcastSvcState();clearTimeout(_saveT.t);_saveT.t=setTimeout(flushSave,500);}
 function flushSave(){clearTimeout(_saveT.t);_saveT.t=0;if(ARCHIVE_RO||RO||!CUR_CAR)return;
   fetch(SB_URL+'/rest/v1/stint9_service_state?on_conflict=car',{method:'POST',keepalive:true,
     headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
@@ -377,6 +384,11 @@ function doSwap(d,odoReading){
 window.addEventListener('message',e=>{const m=e.data;if(!m)return;
   if(m.type==='svcArchive'){ARCHIVE_RO=true;RO=true;document.body.classList.add('ro');CUR_CAR=String(m.car||'');STATE=normState(m.state);_liveProg=null;render();return;}
   if(m.type==='svcCar'){ARCHIVE_RO=!!m.ro;RO=!!m.ro;LIVE_MODE=!!m.live;document.body.classList.toggle('ro',!!m.ro);setCurCar(m.car);return;}
+  // Relayed from our sibling iframe via index.html (see broadcastSvcState()
+  // above) — apply straight to memory, no DB round-trip: the sibling already
+  // owns its own debounced save. Guarded to the currently-shown car and
+  // skipped read-only so a live edit never bleeds into an archived replay.
+  if(m.type==='svcSync'){if(ARCHIVE_RO||RO||!m.state||String(m.car||'')!==CUR_CAR)return;STATE=normState(m.state);render();return;}
   if(m.type==='svcLive'){if(m.ro!=null){RO=!!m.ro;ARCHIVE_RO=!!m.ro;document.body.classList.toggle('ro',!!m.ro);}LIVE_MODE=!!m.live;if(m.car!=null)setCurCar(m.car);onLive(m.prog,m.sectorKm);return;}
   // Left/Right nav forwarded from the dashboard: right → ARCHIVE, left → grid
   if(m.type==='svcH'){if(m.dir>0)openArchive();else closeArchive();return;}

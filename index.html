@@ -652,20 +652,14 @@
      wrapped second line overlaps the row below. Give the label column a
      small explicit width instead (fixed layout then splits the REST equally
      among the other 5), drop the value font further, and force one line. */
-  /* The lap-by-lap history (m_sect_prev) can run to well over a hundred rows
-     over a race — scroll it inside the card instead of pushing the rest of
-     the page down, with the header pinned so the sector columns stay legible
-     while scrolling. */
-  .msecscroll{max-height:240px;overflow-y:auto}
-  .msectbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;table-layout:fixed}
-  .msectbl th:first-child,.msectbl td:first-child{width:42px}
-  .msectbl th{position:sticky;top:0;background:var(--card);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 5px;text-align:right;white-space:nowrap}
-  .msectbl th:first-child{text-align:left}
-  .msectbl td{padding:4px 2px;text-align:right;font-weight:700;white-space:nowrap;overflow:hidden}
-  .msectbl td.lbl{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700}
-  /* Same purple the desktop TIMES reel uses for a car's own per-sector best
-     (renderSecTab, index.html) — one shared convention across both views. */
-  .msectbl td.best{color:#7b2fbe}
+  /* Laps run in COLUMNS here (same shape as the desktop TIMES reel), which on
+     a phone-width card runs past the right edge well before a race is over —
+     scroll horizontally instead of the old vertical lap list, with the LAP
+     column pinned left and the header pinned top so both stay legible while
+     scrolling either way. Cell colours (heatmap/purple/Δ arrows) are all
+     inline, written by renderMobSect() — see its comment above renderSecTab. */
+  .msecscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .msectbl{border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap}
   /* ---- LOGIN (auth gate) ---- */
   #authbox{display:flex;align-items:center;gap:8px;margin-left:8px}
   #authbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;font-weight:600}
@@ -2975,6 +2969,71 @@ function renderSecTab(T){
   const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>';
   wrap.innerHTML=caption+h;
 }
+/* Mobile ESSENTIALS "sector times" card — same laps-in-columns/sectors-in-rows
+   grid as the desktop TIMES reel above (renderSecTab): per-sector heatmap,
+   Δ-vs-own-best arrow line under each time, purple for a personal best. Two
+   differences from the desktop version, both mobile-specific: no DRIVER row
+   (there's no room, and it's a single-car card so it never changes), and laps
+   run oldest-to-newest LEFT to right so the newest lap rests at the scroll's
+   natural right edge instead of desktop's newest-leftmost order. */
+function renderMobSect(T){
+  const wrap=document.getElementById('m_sectwrap');if(!wrap)return;
+  const ph=t=>{wrap.innerHTML='<div style="padding:16px 4px;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:12px">'+t+'</div>';};
+  if(!selCar){ph('select a car');return;}
+  const stm=DB.sectimes[selCar]||{},bx=BX[selCar]||{};
+  const laps=[],cells={},best=[Infinity,Infinity,Infinity,Infinity,Infinity];let bestLap=Infinity;
+  for(let L=0;L<=maxN;L++){
+    const s=stm[L];if(!s||s.length<5)continue;
+    const vals=[null,null,null,null,null];let any=false,full=true;
+    for(let k=0;k<5;k++){
+      const b=bx[(L-1)*5+(k+1)];
+      if(b==null||b>T||s[k]==null){full=false;continue;}
+      vals[k]=s[k];any=true;if(s[k]<best[k])best[k]=s[k];
+    }
+    if(!any)continue;
+    laps.push(L);cells[L]={vals};
+    if(full){const tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];cells[L].tot=tot;if(tot<bestLap)bestLap=tot;}
+    else{const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];if(rt!=null){cells[L].tot=rt;if(rt<bestLap)bestLap=rt;}}
+  }
+  if(!laps.length){ph('no completed sectors yet');return;}
+  const MAXCOLS=12,shown=laps.slice(-MAXCOLS);   // cap columns so old races don't build an endless scroll
+  const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
+  const heatBg=(v,min,max)=>{
+    if(v==null||min==null||max==null||!isFinite(min)||!isFinite(max)||max<=min)return'';
+    const t=Math.max(0,Math.min(1,(v-min)/(max-min)));
+    return 'background:hsl('+(120*(1-t)).toFixed(0)+',65%,86%)';
+  };
+  const rowRange=vals=>{const f=vals.filter(v=>v!=null&&isFinite(v));return f.length?[Math.min(...f),Math.max(...f)]:[null,null];};
+  const rowLbl='position:sticky;left:0;z-index:1;background:var(--card);padding:3px 6px;text-align:left;font-weight:700;border-right:1px solid #d5d9df;border-bottom:1px solid #f3f4f6;color:#6b7480;font-size:9px;letter-spacing:1px;text-transform:uppercase';
+  const num=(v,bestHit,dv,bg)=>{
+    if(v==null)return '<td style="padding:3px 6px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
+    let txt=fmt(v);
+    if(bestHit){txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.667em">▲0.0</span>';}
+    else if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){
+      const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
+      txt+='<br><span style="color:'+col+';font-weight:700;font-size:0.667em">'+tri+Math.abs(dv).toFixed(1)+'</span>';
+    }
+    return '<td style="padding:3px 6px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;background:#f3ecfb':('color:#16202b'+(bg?';'+bg:'')))+'">'+txt+'</td>';
+  };
+  let h='<table class="msectbl"><thead><tr><th style="position:sticky;left:0;top:0;z-index:2;background:var(--card);padding:3px 6px;text-align:left;border-right:1px solid #d5d9df;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700;font-size:9px;letter-spacing:1px;text-transform:uppercase">LAP</th>';
+  shown.forEach(L=>h+='<th style="position:sticky;top:0;z-index:1;background:var(--card);padding:3px 6px;text-align:right;border-bottom:1px solid #e6e8ec;color:#16202b;font-weight:700">'+L+'</th>');
+  h+='</tr></thead><tbody>';
+  ['S1','S2','S3','S4','S5'].forEach((lbl,k)=>{
+    h+='<tr><td style="'+rowLbl+'">'+lbl+'</td>';
+    const [rmin,rmax]=rowRange(shown.map(L=>cells[L].vals[k]));
+    shown.forEach(L=>{const v=cells[L].vals[k];h+=num(v,eq(v,best[k]),v!=null?v-best[k]:null,heatBg(v,rmin,rmax));});
+    h+='</tr>';
+  });
+  h+='<tr><td style="'+rowLbl+';border-top:1px solid #d5d9df">LAP</td>';
+  const [lmin,lmax]=rowRange(shown.map(L=>cells[L].tot));
+  shown.forEach(L=>{const t=cells[L].tot;
+    if(t==null){h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;color:#c9ced4">&mdash;</td>';}
+    else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
+  });
+  h+='</tr></tbody></table>';
+  wrap.innerHTML=h;
+  wrap.scrollLeft=wrap.scrollWidth;   // rest scrolled to the newest (rightmost) lap
+}
 /* leaderAtLap: the car actually running in P1 (real running order) the
    moment it crosses the line to complete lap L — from DB.lappos, which
    records each car's own position at each of its own lap completions.
@@ -3962,59 +4021,20 @@ function renderMobile(){
       mcl.classList.add('mstatus');
     }else{mcl.textContent=hmsClock(T);mcl.style.color='';mcl.classList.remove('mstatus');}
   }
-  // Fill one sector-times row (5 cells) and mark each cell purple when it
-  // equals bestSec[k] — same #7b2fbe "car's own per-sector best" convention
-  // as the desktop TIMES reel (renderSecTab), so the colour means the same
-  // thing in both views.
-  var setSectRow=function(ids,secs,bestSec){ids.forEach(function(id,k){var el=document.getElementById(id);if(!el)return;
-    var v=secs?secs[k]:null;el.textContent=(v!=null)?fmt(v):'—';
-    el.classList.toggle('best',v!=null&&bestSec[k]<Infinity&&Math.abs(v-bestSec[k])<0.01);});};
   var lp=livePos(T);
   if(!selCar||!lp[selCar]){
     ['m_pos','m_ahead','m_behind','m_last','m_fast','m_lap'].forEach(function(id){set(id,'—');});
     set('m_num','select a car');set('m_drv','');set('m_sect_car','select a car');
-    var none=[null,null,null,null,null],inf=[Infinity,Infinity,Infinity,Infinity,Infinity];
-    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],none,inf);
-    var pb0=document.getElementById('m_sect_prev');if(pb0)pb0.innerHTML='';
   }
   else{
     set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));set('m_sect_car','#'+selCar);
     var g=gaps(T,lp);set('m_ahead',g.ahead!=null?('-'+g.ahead+'s'):'—');set('m_behind',g.behind!=null?('+'+g.behind+'s'):'—');
     var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');
     set('m_lap','L'+Math.max(0,cs.L));   // cs.L is "the last FULLY completed lap" (see carStats), can be -1 while still on lap 0 — clamp, don't show "L-1"
-    var stmSel=DB.sectimes[selCar]||{},bxSel=BX[selCar]||{};
-    // this car's own personal best per sector, gated the same way renderSecTab
-    // gates its "best[k]" — only a sector actually crossed by T can set it.
-    var bestSec=[Infinity,Infinity,Infinity,Infinity,Infinity];
-    Object.keys(stmSel).forEach(function(Lk){var sArr=stmSel[Lk];if(!sArr)return;
-      for(var kk=0;kk<5;kk++){var tbb=bxSel[(Number(Lk)-1)*5+(kk+1)];if(tbb!=null&&tbb<=T&&sArr[kk]!=null&&sArr[kk]<bestSec[kk])bestSec[kk]=sArr[kk];}});
-    // "latest" = the lap actually in progress right now, each sector gated by
-    // its own boundary so an unreached sector reads — rather than a stale
-    // value carried from further back (unlike liveSecs, which deliberately
-    // does carry the previous lap's value forward — the right choice for a
-    // single "current status" row, but wrong once "previous lap" is its own
-    // row: showing the same number in both would look like a bug).
-    var alg=activeLeg(selCar,T),curSecs=[null,null,null,null,null];
-    if(alg){var CL=alg[0],csRaw=stmSel[CL];
-      if(csRaw)for(var k2=0;k2<5;k2++){var tb2=bxSel[(CL-1)*5+(k2+1)];if(tb2!=null&&tb2<=T&&csRaw[k2]!=null)curSecs[k2]=csRaw[k2];}}
-    setSectRow(['m_s1','m_s2','m_s3','m_s4','m_s5'],curSecs,bestSec);
-    // every completed lap gets its own row — not just cs.L, the single most
-    // recent one — newest on top, scrollable (see .msecscroll), same
-    // per-sector "purple = car's own best" convention as the desktop TIMES
-    // reel (renderSecTab).
-    var prevRows='';
-    for(var L=cs.L;L>=1;L--){
-      var sArr=stmSel[L];if(!sArr)continue;
-      var any=false,rowHtml='<tr><td class="lbl">L'+L+'</td>';
-      for(var k3=0;k3<5;k3++){
-        var tb3=bxSel[(L-1)*5+(k3+1)],v3=(tb3!=null&&tb3<=T&&sArr[k3]!=null)?sArr[k3]:null;
-        if(v3!=null)any=true;
-        rowHtml+='<td'+(v3!=null&&bestSec[k3]<Infinity&&Math.abs(v3-bestSec[k3])<0.01?' class="best"':'')+'>'+(v3!=null?fmt(v3):'—')+'</td>';
-      }
-      if(any)prevRows+=rowHtml+'</tr>';
-    }
-    var pb=document.getElementById('m_sect_prev');if(pb)pb.innerHTML=prevRows;
   }
+  // Same laps-in-columns/sectors-in-rows grid as the desktop TIMES reel — see
+  // renderMobSect() above for why it's a separate function from renderSecTab.
+  if(typeof renderMobSect==='function')renderMobSect(T);
   var rd=function(id){var e=document.getElementById(id);return e?e.textContent:'';};
   set('m_tank',rd('fmini_tank')||'— L');set('m_laps',rd('fmini_laps')||'— laps');
   var box=rd('fmini_box')||'—',mb=document.getElementById('m_box');
@@ -4340,6 +4360,19 @@ window.addEventListener('message',e=>{const d=e.data;if(!d||d.type!=='reelV')ret
   // both blocks carry TYRE/SERVICE now, so page the block the sender sits in
   const fromRight=[...document.querySelectorAll('#wxstrip iframe')].some(f=>f.contentWindow===e.source);
   if(fromRight)setWxReel(wxReelIdx+st);else setReel(reelIdx+st);});
+// Live-edit relay for TYRE/SERVICE: tyre.html/service.html each broadcast their
+// fresh state on every local edit (see broadcastTyreState()/broadcastSvcState()
+// in those files) instead of only writing to the DB — #boardframe/#svcframe
+// (left) and their _r clones (right) are separate iframe instances with no
+// link of their own, so without this relay an edit on one side never showed
+// up on the other until something forced a reload. Forward untouched to
+// whichever of the pair did NOT send it; the receiver applies it in memory.
+window.addEventListener('message',e=>{const d=e.data;if(!d||(d.type!=='tyreSync'&&d.type!=='svcSync'))return;
+  const id=d.type==='tyreSync'?'boardframe':'svcframe';
+  const left=_gebi(id),right=_gebi(id+RSUF);
+  const target=(left&&left.contentWindow===e.source)?right:((right&&right.contentWindow===e.source)?left:null);
+  if(target&&target.contentWindow)target.contentWindow.postMessage(d,'*');
+});
 /* global reel nav: Up/Down arrows step the main reel even when nothing is
    zoomed (the zoom/focus handler already covers the zoomed case); Left/Right
    flip the TYRE board's horizontal sub-reel; ignored while typing in a field. */
@@ -7242,7 +7275,25 @@ applyWxReel(false);
   var H={apikey:KEY,Authorization:'Bearer '+KEY};
 
   /* OFFLINE gate — same countdown clock as the starting grid (fmtCountdown/SCHEDULE) */
-  function pitlaneTarget(){try{var r=SCHEDULE&&SCHEDULE.rows&&SCHEDULE.rows.find(function(x){return x.label==='pitlane';});return r?r.start:null;}catch(e){return null;}}
+  // The scraper feeding stint9_schedule_windows has only ever written a literal
+  // 'pitlane' label once (a one-off row from 2026-08-01, long since filtered
+  // out by the >=today query) — every real event uses practice/pitwalk/quali/
+  // race etc. instead, so a bare label==='pitlane' lookup was permanently null
+  // and the OFFLINE clock never counted down. Fall through a priority list of
+  // the labels that actually exist, in order of "closest to pitlane opening":
+  // pitwalk (fans/crew allowed into the pitlane) if the day has one, else the
+  // day's first on-track session, else the race itself as a last resort — the
+  // rows are pre-sorted event_date,start_ts ascending so .find() on each label
+  // naturally returns its next upcoming occurrence.
+  function pitlaneTarget(){try{
+    if(!SCHEDULE||!SCHEDULE.rows)return null;
+    var PRI=['pitlane','pitwalk','practice','warmup','race'];
+    for(var i=0;i<PRI.length;i++){
+      var r=SCHEDULE.rows.find(function(lbl){return function(x){return x.label===lbl;};}(PRI[i]));
+      if(r)return r.start;
+    }
+    return null;
+  }catch(e){return null;}}
   function showOffline(){
     if(document.getElementById('offlineveil'))return;
     var v=document.createElement('div');v.id='offlineveil';
@@ -7350,15 +7401,7 @@ applyWxReel(false);
   </div>
   <div class="mcard">
     <div class="mlbl">sector times — <span id="m_sect_car">select a car</span></div>
-    <div class="msecscroll">
-      <table class="msectbl">
-        <thead><tr><th></th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead>
-        <tbody>
-          <tr><td class="lbl" id="m_sect_curlbl">latest</td><td id="m_s1">&mdash;</td><td id="m_s2">&mdash;</td><td id="m_s3">&mdash;</td><td id="m_s4">&mdash;</td><td id="m_s5">&mdash;</td></tr>
-        </tbody>
-        <tbody id="m_sect_prev"></tbody>
-      </table>
-    </div>
+    <div class="msecscroll" id="m_sectwrap"></div>
   </div>
   </div>
     <div class="mslide" data-slide="map"></div>

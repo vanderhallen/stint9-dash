@@ -471,7 +471,16 @@ let ARCHIVE_RO=false;
 // persist per car, in SIM and LIVE, so a setup survives the zoom reload. The
 // dashboard sends the mode via the tyreCar / tyreLive messages.
 let LIVE_MODE=false;
-function scheduleTyreSave(){if(ARCHIVE_RO||!CUR_CAR)return;clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
+// Two dashboard reel blocks can each show this board at once, in two entirely
+// separate iframes (index.html clones #boardframe into #boardframe_r) with no
+// link between their JS — each one only ever loaded its own snapshot from the
+// DB once, on car select. So an edit made on one side sat invisible on the
+// other until something forced a reload. Fix: broadcast the fresh state to the
+// parent on every local edit — instantly, not on the DB save's debounce — and
+// index.html relays it straight to the sibling iframe (see 'tyreSync' below),
+// which applies it in memory with no DB round-trip of its own.
+function broadcastTyreState(){try{window.parent.postMessage({type:'tyreSync',car:CUR_CAR,state:collectTyreState()},'*');}catch(e){}}
+function scheduleTyreSave(){if(ARCHIVE_RO||!CUR_CAR)return;broadcastTyreState();clearTimeout(_tyreSaveT.t);_tyreSaveT.t=setTimeout(flushTyreSave,500);}
 function flushTyreSave(){
   clearTimeout(_tyreSaveT.t);_tyreSaveT.t=0;if(ARCHIVE_RO||!CUR_CAR)return;
   // keepalive so a flush fired from pagehide (the zoom view reparents & reloads
@@ -1108,7 +1117,14 @@ window.addEventListener('keydown',e=>{
 // forwards a Left/Right press to us
 window.addEventListener('message',e=>{const d=e.data;if(!d)return;
   if(d.type==='tyreArchive'){ARCHIVE_RO=true;CUR_CAR=String(d.car||'');applyTyreState(d.state||TYRE_DEFAULTS);return;}
-  if(d.type==='tyreCar'){ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;setCurCar(d.car);return;}if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.ro!=null)ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
+  if(d.type==='tyreCar'){ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;setCurCar(d.car);return;}
+  // Relayed from our sibling iframe via index.html (see broadcastTyreState()
+  // above) — apply straight to memory, no DB round-trip: the sibling already
+  // owns its own debounced save, so writing here too would just double the
+  // traffic. Guarded to the currently-shown car and skipped in ARCHIVE_RO so a
+  // live edit from the other side never bleeds into an archived replay.
+  if(d.type==='tyreSync'){if(ARCHIVE_RO||!d.state||String(d.car||'')!==CUR_CAR)return;applyTyreState(d.state);return;}
+  if(d.type==='tyreH')goH(hIdx+(d.dir>0?1:-1));else if(d.type==='tyreHcenter')goH(1);else if(d.type==='tyreLive'){if(d.ro!=null)ARCHIVE_RO=!!d.ro;LIVE_MODE=!!d.live;if(d.car!=null)setCurCar(d.car);onTyreLive(d.prog,d.sectorKm,d.lap,d.sec,d.pit,d.speed);}});
 // board STINT/STOCK labels become the buttons into the side panels
 stintEl.dataset.nav='1';stintEl.title='show used sets (STINT)';stintEl.addEventListener('click',()=>goH(0));
 stockEl.dataset.nav='1';stockEl.title='show available sets (STOCK)';stockEl.addEventListener('click',()=>goH(2));
