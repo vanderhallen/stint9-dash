@@ -915,7 +915,7 @@
         </div>
       </div>
     </div>
-    <div class="card" data-focus style="flex:1 1 auto;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
+    <div class="card" data-focus style="flex:0 0 46%;max-width:46%;min-width:0;overflow:hidden;border-radius:14px;display:flex;align-items:stretch;gap:6px;padding:2px 6px">
       <div id="wxview" style="flex:1 1 auto;min-width:0;overflow:hidden;position:relative">
         <div id="wxstrip" style="display:flex;flex-direction:column;height:100%;will-change:transform;transition:transform .5s cubic-bezier(.55,.06,.2,1)">
         </div>
@@ -1114,13 +1114,19 @@ function postTyreCar(car){
   // When locked, send an empty car so the board never even loads another
   // team's tyre data (defence beyond just hiding the iframe visually).
   const _ok=(typeof canAccess==='function'&&canAccess(car));
-  try{const bf=document.getElementById('boardframe');if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'),ro:!_ok},'*');}catch(e){}}
+  // Both reel blocks can show TYRE at once (#boardframe left, #boardframe_r
+  // the cloned right one) — each is its own iframe/tyre.html instance with no
+  // link between them, so both need the message or the right one is stuck on
+  // whatever it booted with.
+  ['boardframe','boardframe_r'].forEach(id=>{try{const bf=_gebi(id);if(bf&&bf.contentWindow)bf.contentWindow.postMessage({type:'tyreCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'),ro:!_ok},'*');}catch(e){}});}
 // Tell the SERVICE iframe (component km) which car is selected — per-car state,
 // same team-private + read-only rules as the tyre board. Archived replays are
 // pushed read-only (component wear isn't part of the event snapshot).
 function postSvcCar(car){
   const _ok=(typeof canAccess==='function'&&canAccess(car))&&!window.archiveOverlay;
-  try{const sf=document.getElementById('svcframe');if(sf&&sf.contentWindow)sf.contentWindow.postMessage({type:'svcCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'&&!window.archiveOverlay),ro:!_ok},'*');}catch(e){}}
+  // See postTyreCar() above: #svcframe_r is a separate iframe instance and
+  // needs the same message as #svcframe or it never learns the selected car.
+  ['svcframe','svcframe_r'].forEach(id=>{try{const sf=_gebi(id);if(sf&&sf.contentWindow)sf.contentWindow.postMessage({type:'svcCar',car:String(_ok?car:''),live:(window.dataMode==='LIVE'&&!window.archiveOverlay),ro:!_ok},'*');}catch(e){}});}
 // Per-lap fuel notes only leave the browser while LIVE is on (SIM is just a
 // local CSV replay, nothing worth syncing) — debounced so a full sentence
 // isn't one write per keystroke.
@@ -4085,8 +4091,10 @@ sel.onchange=e=>{selCar=e.target.value;if(selCar)wantCar=String(selCar);   // ex
   inp.addEventListener('input',()=>{inp.style.borderColor='';});
 })();
 // keep the tyre board's car in sync once the iframe has loaded / on first paint
-(function(){const bf=document.getElementById('boardframe');if(bf)bf.addEventListener('load',()=>postTyreCar(selCar));})();
-(function(){const sf=document.getElementById('svcframe');if(sf)sf.addEventListener('load',()=>postSvcCar(selCar));})();
+// — #boardframe_r/#svcframe_r are separate iframe instances (the cloned right
+// reel block) with their own load event, so each needs its own listener.
+['boardframe','boardframe_r'].forEach(id=>{const bf=_gebi(id);if(bf)bf.addEventListener('load',()=>postTyreCar(selCar));});
+['svcframe','svcframe_r'].forEach(id=>{const sf=_gebi(id);if(sf)sf.addEventListener('load',()=>postSvcCar(selCar));});
 document.getElementById('reelup').onclick=()=>{keyReelSide='';setReel(reelIdx-1);};
 document.getElementById('reeldn').onclick=()=>{keyReelSide='';setReel(reelIdx+1);};
 document.querySelectorAll('.reelthumb').forEach(t=>t.onclick=()=>setReel(+t.dataset.i));

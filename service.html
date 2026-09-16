@@ -110,7 +110,13 @@
      unsupported in Safari on iPhone and the manifest's orientation member is
      ignored there, so asking is the only honest option. -->
 <div id="rotnudge" hidden>
-  <div class="rn-ico">&#10227;</div>
+  <svg class="rn-ico" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <rect x="1" y="1" width="30" height="30" rx="8" fill="#000"/>
+    <g transform="translate(5,5) scale(0.9167)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="17 5 17 9 13 9"/>
+      <path d="M14.86 16a6 6 0 1 1-1.41-8.24L17 9"/>
+    </g>
+  </svg>
   <div class="rn-t">Rotate your phone</div>
   <div class="rn-s">SERVICE is laid out for a landscape screen.</div>
   <button type="button" class="rn-b">show anyway</button>
@@ -121,7 +127,7 @@
     gap:12px;text-align:center;padding:30px;box-sizing:border-box;
     font-family:'IBM Plex Mono',ui-monospace,monospace}
   #rotnudge[hidden]{display:none}
-  #rotnudge .rn-ico{font-size:54px;line-height:1;color:#6b7480}
+  #rotnudge .rn-ico{width:40px;height:40px}
   #rotnudge .rn-t{font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
   #rotnudge .rn-s{font-size:12px;color:#6b7480;max-width:22em;line-height:1.5}
   #rotnudge .rn-b{margin-top:8px;font-family:inherit;font-size:12px;font-weight:700;
