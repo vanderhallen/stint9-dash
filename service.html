@@ -246,7 +246,7 @@ function loadStateDB(car){
 }
 function setCurCar(car){car=String(car||'');if(car===CUR_CAR)return;
   if(CUR_CAR&&_saveT.t)flushSave();
-  CUR_CAR=car;_liveProg=null;_simBaseProg=null;_simKmOverlay=0;
+  CUR_CAR=car;_liveProg=null;_simKmOverlay=0;
   if(car)loadStateDB(car);else{STATE=defState();render();}
 }
 
@@ -258,23 +258,28 @@ function _kmAt(p,sk){const total=sk.reduce((a,b)=>a+b,0);const lap=Math.floor(p/
   const si=Math.max(0,Math.min(4,Math.floor(pos))),frac=pos-si;let cum=0;for(let i=0;i<si;i++)cum+=sk[i];
   return lap*total+cum+frac*sk[si];}
 let _liveProg=null,_persistT=0;
-// SIM display overlay: how far the selected car has driven, in SIM, since it
-// was selected — shown on top of the real persisted ACTUAL so the reels
-// visibly track the SIM timeline, WITHOUT ever touching STATE.comp[*].actual
-// or calling scheduleSave(). It's recomputed from the absolute SIM position
-// every tick (current km minus the km at the moment the baseline was
-// captured), not accumulated tick-to-tick, so scrubbing/rewinding/replaying
-// the SIM can never drift or double-count km onto the real per-car record —
-// the exact corruption the LIVE_MODE gate below was already written to
-// prevent. dispKm() is what every on-screen ACTUAL/LEFT/bar reads instead of
-// c.actual directly.
-let _simBaseProg=null,_simKmOverlay=0;
+// SIM display overlay: km driven by the selected car since the start of the
+// loaded SIM data (prog 0), shown on top of the real persisted ACTUAL so the
+// reels visibly track the SIM timeline, WITHOUT ever touching
+// STATE.comp[*].actual or calling scheduleSave(). Deliberately a STATELESS
+// function of the current `prog` alone (_kmAt(prog,sk), same helper LIVE
+// uses) — not "km since I captured a baseline on my first tick". That
+// statefulness was the bug: (1) zooming reparents/reloads this iframe (see
+// initSvcFrame's comment), which wiped the captured baseline and any
+// unsent overlay, snapping the display back down to the bare persisted
+// ACTUAL; (2) the left iframe and its _r clone each captured their OWN
+// baseline on whichever tick happened to arrive first, so the two sides
+// drifted apart by a constant offset and never matched. A pure function of
+// `prog` recomputes identically on both sides and survives a reload with no
+// state to lose. dispKm() is what every on-screen ACTUAL/LEFT/bar reads
+// instead of c.actual directly.
+let _simKmOverlay=0;
 function dispKm(c){return (c.actual||0)+(LIVE_MODE?0:_simKmOverlay);}
 function onLive(prog,sectorKm){
   const sk=(sectorKm&&sectorKm.length===5)?sectorKm:_SEC_KM;
-  if(prog==null){_liveProg=null;_simBaseProg=null;_simKmOverlay=0;return;}
+  if(prog==null){_liveProg=null;_simKmOverlay=0;return;}
   if(LIVE_MODE){
-    _simBaseProg=null;_simKmOverlay=0;   // ready to recapture a fresh baseline next time SIM runs
+    _simKmOverlay=0;
     if(!RO&&_liveProg!=null&&prog>_liveProg){
       const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
       if(dKm>0){COMPONENTS.forEach(d=>{const c=STATE.comp[d.key];if(!c)return;c.actual=(c.actual||0)+dKm;});
@@ -282,8 +287,7 @@ function onLive(prog,sectorKm){
         const now=Date.now();if(now-_persistT>5000){_persistT=now;scheduleSave();}}
     }
   }else{
-    if(_simBaseProg==null)_simBaseProg=prog;   // baseline = wherever the SIM was when this car got selected
-    const overlay=Math.max(0,_kmAt(prog,sk)-_kmAt(_simBaseProg,sk));
+    const overlay=Math.max(0,_kmAt(prog,sk));
     if(overlay!==_simKmOverlay){_simKmOverlay=overlay;updateReadouts();}
   }
   _liveProg=prog;
