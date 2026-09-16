@@ -246,7 +246,7 @@ function loadStateDB(car){
 }
 function setCurCar(car){car=String(car||'');if(car===CUR_CAR)return;
   if(CUR_CAR&&_saveT.t)flushSave();
-  CUR_CAR=car;_liveProg=null;
+  CUR_CAR=car;_liveProg=null;_simBaseProg=null;_simKmOverlay=0;
   if(car)loadStateDB(car);else{STATE=defState();render();}
 }
 
@@ -258,14 +258,33 @@ function _kmAt(p,sk){const total=sk.reduce((a,b)=>a+b,0);const lap=Math.floor(p/
   const si=Math.max(0,Math.min(4,Math.floor(pos))),frac=pos-si;let cum=0;for(let i=0;i<si;i++)cum+=sk[i];
   return lap*total+cum+frac*sk[si];}
 let _liveProg=null,_persistT=0;
+// SIM display overlay: how far the selected car has driven, in SIM, since it
+// was selected — shown on top of the real persisted ACTUAL so the reels
+// visibly track the SIM timeline, WITHOUT ever touching STATE.comp[*].actual
+// or calling scheduleSave(). It's recomputed from the absolute SIM position
+// every tick (current km minus the km at the moment the baseline was
+// captured), not accumulated tick-to-tick, so scrubbing/rewinding/replaying
+// the SIM can never drift or double-count km onto the real per-car record —
+// the exact corruption the LIVE_MODE gate below was already written to
+// prevent. dispKm() is what every on-screen ACTUAL/LEFT/bar reads instead of
+// c.actual directly.
+let _simBaseProg=null,_simKmOverlay=0;
+function dispKm(c){return (c.actual||0)+(LIVE_MODE?0:_simKmOverlay);}
 function onLive(prog,sectorKm){
   const sk=(sectorKm&&sectorKm.length===5)?sectorKm:_SEC_KM;
-  if(prog==null){_liveProg=null;return;}
-  if(LIVE_MODE&&!RO&&_liveProg!=null&&prog>_liveProg){
-    const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
-    if(dKm>0){COMPONENTS.forEach(d=>{const c=STATE.comp[d.key];if(!c)return;c.actual=(c.actual||0)+dKm;});
-      updateReadouts();
-      const now=Date.now();if(now-_persistT>5000){_persistT=now;scheduleSave();}}
+  if(prog==null){_liveProg=null;_simBaseProg=null;_simKmOverlay=0;return;}
+  if(LIVE_MODE){
+    _simBaseProg=null;_simKmOverlay=0;   // ready to recapture a fresh baseline next time SIM runs
+    if(!RO&&_liveProg!=null&&prog>_liveProg){
+      const dKm=_kmAt(prog,sk)-_kmAt(_liveProg,sk);
+      if(dKm>0){COMPONENTS.forEach(d=>{const c=STATE.comp[d.key];if(!c)return;c.actual=(c.actual||0)+dKm;});
+        updateReadouts();
+        const now=Date.now();if(now-_persistT>5000){_persistT=now;scheduleSave();}}
+    }
+  }else{
+    if(_simBaseProg==null)_simBaseProg=prog;   // baseline = wherever the SIM was when this car got selected
+    const overlay=Math.max(0,_kmAt(prog,sk)-_kmAt(_simBaseProg,sk));
+    if(overlay!==_simKmOverlay){_simKmOverlay=overlay;updateReadouts();}
   }
   _liveProg=prog;
 }
@@ -289,7 +308,7 @@ function render(){
       '<div class="cicon">'+ICONS[d.key]+'</div>'+
       '<div class="rows">'+
         '<div class="row"><span class="rlbl">SERVICE</span><span class="svcedit"><input class="svcinp" type="text" inputmode="numeric" autocomplete="off" data-k="interval" title="service interval — type km, or blank for on-condition" placeholder="on cond." '+(RO?'readonly ':'')+'value="'+(c.interval>0?fmtKm(c.interval):'')+'"><span class="kmsfx">km</span></span></div>'+
-        '<div class="row"><span class="rlbl">ACTUAL</span><span class="svcedit"><span class="vnum" data-k="actual">'+fmtKm(c.actual)+'</span><span class="kmsfx">km</span></span></div>'+
+        '<div class="row"><span class="rlbl">ACTUAL</span><span class="svcedit"><span class="vnum" data-k="actual">'+fmtKm(dispKm(c))+'</span><span class="kmsfx">km</span></span></div>'+
         '<div class="row"><span class="rlbl">LEFT</span><span class="svcedit"><span class="vnum" data-k="left">—</span><span class="kmsfx">km</span></span></div>'+
       '</div>'+
       '<div class="bar"><i></i></div>'+
@@ -324,13 +343,14 @@ function updateReadouts(){
     const cond=!(c.interval>0);   // on-condition: no fixed interval
     if(inp&&document.activeElement!==inp)inp.value=(c.interval>0?fmtKm(c.interval):'');
     if(edit)edit.classList.toggle('cond',cond);
-    if(act)act.textContent=fmtKm(c.actual);
+    const dk=dispKm(c);
+    if(act)act.textContent=fmtKm(dk);
     const leftv=card.querySelector('[data-k="left"]');
     if(leftv){const lwrap=leftv.parentElement;
       if(cond){leftv.textContent='—';leftv.classList.remove('over');if(lwrap)lwrap.classList.add('cond');}
-      else{const rem=Math.round(c.interval-c.actual);leftv.textContent=fmtKm(rem);leftv.classList.toggle('over',rem<0);if(lwrap)lwrap.classList.remove('cond');}
+      else{const rem=Math.round(c.interval-dk);leftv.textContent=fmtKm(rem);leftv.classList.toggle('over',rem<0);if(lwrap)lwrap.classList.remove('cond');}
     }
-    const pct=cond?0:(c.actual/c.interval);
+    const pct=cond?0:(dk/c.interval);
     const over=!cond&&pct>=1,warn=!cond&&pct>=0.85;
     if(bar){bar.style.width=(cond?0:Math.min(100,pct*100))+'%';bar.classList.toggle('warn',warn&&!over);bar.classList.toggle('over',over);
       if(bar.parentElement)bar.parentElement.style.visibility=cond?'hidden':'';}
