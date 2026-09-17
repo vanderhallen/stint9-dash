@@ -101,6 +101,8 @@
   .lnk:hover{opacity:1}
   .drv{display:inline-flex;align-items:center;gap:2px}
   .drvrow{display:block}
+  .dnmlink{cursor:pointer}
+  .dnmlink:hover{text-decoration:underline}
   td.car{cursor:pointer}
   td.car:hover{text-decoration:underline}
 </style>
@@ -599,7 +601,7 @@ function renderCars(){
       var lk=DLINKS[d.key], links='';
       if(lk&&lk.website) links+=' <a class="lnk" href="'+esc(lk.website)+'" target="_blank" rel="noopener" title="website">🌐</a>';
       if(lk&&lk.instagram) links+=' <a class="lnk" href="'+esc(lk.instagram)+'" target="_blank" rel="noopener" title="Instagram">IG</a>';
-      return '<span class="drvrow">'+esc(d.name)+links+'</span>';
+      return '<span class="drvrow"><span class="dnmlink" data-driver-key="'+esc(d.key)+'">'+esc(d.name)+'</span>'+links+'</span>';
     }).join(''):'<span class="dim">—</span>';
     return '<tr>'+
       '<td class="l car" data-car="'+c.car_no+'">#'+c.car_no+'</td>'+
@@ -625,7 +627,7 @@ function openCar(carNo){
       var lk=DLINKS[d.key], links=[];
       if(lk&&lk.website) links.push('<a class="lnk" href="'+esc(lk.website)+'" target="_blank" rel="noopener">🌐 website</a>');
       if(lk&&lk.instagram) links.push('<a class="lnk" href="'+esc(lk.instagram)+'" target="_blank" rel="noopener">IG</a>');
-      return '<tr><td class="l strong">'+esc(d.name)+'</td><td class="l">'+(links.length?links.join(' '):'<span class="dim">—</span>')+'</td></tr>';
+      return '<tr><td class="l strong"><span class="dnmlink" data-driver-key="'+esc(d.key)+'">'+esc(d.name)+'</span></td><td class="l">'+(links.length?links.join(' '):'<span class="dim">—</span>')+'</td></tr>';
     }).join('')+'</tbody>';
   document.getElementById('cmRounds').innerHTML='<thead><tr><th class="l">Race</th><th class="l">Class</th><th class="l">Team</th><th class="l">Drivers</th><th>Result</th></tr></thead><tbody>'+
     c.rounds.map(function(rd){
@@ -642,8 +644,23 @@ function openCar(carNo){
   document.getElementById('carModal').classList.add('show');
 }
 function closeCarModal(){ document.getElementById('carModal').classList.remove('show'); }
+
+// jump from a driver's name (car table or car detail modal) to the same
+// driver on the Drivers tab, reusing openDriver() — the driver may not have
+// raced yet this season (entry-list-only), in which case there's nothing to show.
+function goToDriver(key){
+  var hasData=RESULTS.some(function(r){return r.driver_key===key;});
+  if(!hasData){ toast('No race results yet for this driver'); return; }
+  closeCarModal();
+  switchTab('drivers');
+  openDriver(key);
+}
 document.querySelector('#carTbl tbody').addEventListener('click',function(e){
+  var dn=e.target.closest('.dnmlink'); if(dn&&dn.dataset.driverKey){ goToDriver(dn.dataset.driverKey); return; }
   var td=e.target.closest('td.car'); if(td&&td.dataset.car) openCar(+td.dataset.car);
+});
+document.getElementById('cmDrivers').addEventListener('click',function(e){
+  var dn=e.target.closest('.dnmlink'); if(dn&&dn.dataset.driverKey) goToDriver(dn.dataset.driverKey);
 });
 document.getElementById('cmClose').onclick=closeCarModal;
 document.getElementById('carModal').addEventListener('click',function(e){ if(e.target===this) closeCarModal(); });
