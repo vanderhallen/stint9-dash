@@ -200,6 +200,7 @@
     <div>
       <div class="dnm" id="mName"></div>
       <div class="dsub" id="mSub"></div>
+      <div class="dsub" id="mLinks" style="margin-top:4px"></div>
     </div>
     <button class="x" id="mClose" title="close (Esc)">✕</button>
   </div>
@@ -449,6 +450,10 @@ function openDriver(key){
   document.getElementById('mFlag').textContent=flag(nat);
   document.getElementById('mName').textContent=name;
   document.getElementById('mSub').textContent=(nat?nat+' · ':'')+Object.keys(events).length+' race'+(Object.keys(events).length!==1?'s':'')+' in 2026';
+  var dlk=DLINKS[key], mlinks=[];
+  if(dlk&&dlk.website) mlinks.push('<a class="lnk" style="font-size:11px" href="'+esc(dlk.website)+'" target="_blank" rel="noopener">🌐 website</a>');
+  if(dlk&&dlk.instagram) mlinks.push('<a class="lnk" style="font-size:11px" href="'+esc(dlk.instagram)+'" target="_blank" rel="noopener">IG Instagram</a>');
+  document.getElementById('mLinks').innerHTML=mlinks.join(' · ');
   var chips=[
     ['Races',Object.keys(events).length],
     ['Last car',lastCar!=null?'#'+lastCar:'—'],
