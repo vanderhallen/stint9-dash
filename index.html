@@ -2957,9 +2957,11 @@ function renderSecTab(T){
     return '<td style="padding:3px 10px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;background:#f3ecfb':('color:#16202b'+(strong?';font-weight:700':'')+(bg?';'+bg:'')))+'">'+txt+'</td>';
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
-  // row 1 — LAP number header
+  // row 1 — LAP number header. L itself is WIGE's own laps-COMPLETED key (0 = the
+  // first flying lap) — kept as-is everywhere else in this function for indexing,
+  // but shown here as L+1 so the human lap count starts at 1, not 0.
   h+='<thead><tr><th style="'+th0+'">#'+selCar+'</th>';
-  laps.forEach(L=>h+='<th style="position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 10px;text-align:right;border-bottom:1px solid #e6e8ec;color:#16202b;font-weight:700">'+L+'</th>');
+  laps.forEach(L=>h+='<th style="position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 10px;text-align:right;border-bottom:1px solid #e6e8ec;color:#16202b;font-weight:700">'+(L+1)+'</th>');
   h+='</tr></thead><tbody>';
   // row 2 — DRIVER
   h+='<tr><td style="'+rowLbl+'">DRIVER</td>';
@@ -3034,7 +3036,7 @@ function renderMobSect(T){
     return '<td style="padding:3px 6px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;background:#f3ecfb':('color:#16202b'+(bg?';'+bg:'')))+'">'+txt+'</td>';
   };
   let h='<table class="msectbl"><thead><tr><th style="position:sticky;left:0;top:0;z-index:2;background:var(--card);padding:3px 6px;text-align:left;border-right:1px solid #d5d9df;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700;font-size:9px;letter-spacing:1px;text-transform:uppercase">LAP</th>';
-  shown.forEach(L=>h+='<th style="position:sticky;top:0;z-index:1;background:var(--card);padding:3px 6px;text-align:right;border-bottom:1px solid #e6e8ec;color:#16202b;font-weight:700">'+L+'</th>');
+  shown.forEach(L=>h+='<th style="position:sticky;top:0;z-index:1;background:var(--card);padding:3px 6px;text-align:right;border-bottom:1px solid #e6e8ec;color:#16202b;font-weight:700">'+(L+1)+'</th>');
   h+='</tr></thead><tbody>';
   ['S1','S2','S3','S4','S5'].forEach((lbl,k)=>{
     h+='<tr><td style="'+rowLbl+'">'+lbl+'</td>';
@@ -3268,7 +3270,7 @@ function renderFlow(T){const svg=document.getElementById('flowsvg');if(!svg)retu
   }
   vis.forEach(c=>{const x=colX(c.bkey),cw=colW-0.8,xx=x+0.4;
     s+='<rect x="'+xx.toFixed(1)+'" y="'+(cap+hLap)+'" width="'+cw.toFixed(1)+'" height="'+hSec+'" fill="'+c.col+'"/>';
-    if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="'+fz(13)+'" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+c.lap+'</text>';
+    if(c.seg===1)s+='<text x="'+(x+colW/2).toFixed(1)+'" y="'+(cap+hLap-5)+'" text-anchor="middle" font-size="'+fz(13)+'" fill="#6b7480" font-family="IBM Plex Mono,monospace">'+(c.lap+1)+'</text>';
     [c.pos-1,c.pos+1].forEach(np=>{if(np>=rowMin&&np<=rowMax){const y=rowY(np);s+='<rect x="'+xx.toFixed(1)+'" y="'+(y+1).toFixed(1)+'" width="'+cw.toFixed(1)+'" height="'+(rowH-2).toFixed(1)+'" fill="#2f5fd0" opacity="0.28"/>';}});
     if(c.pos>=rowMin&&c.pos<=rowMax){const y=rowY(c.pos),mg=rowH*0.42,gA=Math.max(0,Math.min(mg,(c.dA==null?mg:Math.min(GAP,c.dA)/GAP*mg))),gB=Math.max(0,Math.min(mg,(c.dB==null?mg:Math.min(GAP,c.dB)/GAP*mg))),iy=y+gA,ih=Math.max(rowH*0.14,Math.min(rowH,rowH-gA-gB));
       s+='<rect x="'+(x+colW*0.14).toFixed(1)+'" y="'+iy.toFixed(1)+'" width="'+(colW*0.72).toFixed(1)+'" height="'+ih.toFixed(1)+'" rx="'+Math.min(4,colW*0.3).toFixed(1)+'" fill="#e0301e"/>';}});
@@ -3700,8 +3702,10 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   if(selCar){const p=lp[selCar];const g=gaps(T,lp);let gh='';
     if(g.ahead!=null||g.behind!=null)gh='<span class="gaps"><span class="ga">'+(g.ahead!=null?('-'+g.ahead):'&nbsp;')+'</span><span class="gb">'+(g.behind!=null?('+'+g.behind):'&nbsp;')+'</span></span>';
     const slg=activeLeg(selCar,T);const selPit=slg?null:pitInfo(selCar,T);
-    // during a pit stop (or any leg gap) hold the last known lap instead of dropping to L0
-    const _lkl=slg||lastStartedLeg(selCar,T);const ld=_lkl?Math.max(0,_lkl[0]-1):0;
+    // during a pit stop (or any leg gap) hold the last known lap instead of dropping to L0.
+    // _lkl[0] is WIGE's own laps-COMPLETED count (0 on a car's first flying lap), so
+    // +1 turns it into the human lap number the car is actually driving (lap 1, not lap 0).
+    const _lkl=slg||lastStartedLeg(selCar,T);const ld=_lkl?(_lkl[0]+1):1;
     let etaTime=null,etaLbl='';if(slg){const fk=slg[0]*5,tc=BX[selCar]?BX[selCar][fk]:null;if(tc!=null&&tc>=T){etaTime=fmt(tc-T);etaLbl='ETA '+(slg[0]>=maxN?'FINISH':'S/F');}}
     // LIVE has no future crossing to look up (see liveEtaSF above), so give the
     // pit crew a "~" prefixed estimate instead of leaving this blank all race —
@@ -4062,7 +4066,11 @@ function renderMobile(){
     set('m_pos','P'+lp[selCar]);set('m_num','#'+selCar);set('m_drv',curDrv(selCar,T));set('m_sect_car','#'+selCar);
     var g=gaps(T,lp);set('m_ahead',g.ahead!=null?('-'+g.ahead+'s'):'—');set('m_behind',g.behind!=null?('+'+g.behind+'s'):'—');
     var cs=carStats(selCar,T);set('m_last',cs.last!=null?fmt(cs.last):'—');set('m_fast',cs.fast!=null?fmt(cs.fast):'—');
-    set('m_lap','L'+Math.max(0,cs.L));   // cs.L is "the last FULLY completed lap" (see carStats), can be -1 while still on lap 0 — clamp, don't show "L-1"
+    // cs.L is "the last FULLY completed lap" in WIGE's own 0-based laps-completed
+    // count (see carStats), can be -1 while still on the first lap. +2 converts that
+    // into the human number of the lap the car is CURRENTLY driving (never below 1),
+    // matching the carbadge's lap label.
+    set('m_lap','L'+Math.max(1,cs.L+2));
   }
   // Same laps-in-columns/sectors-in-rows grid as the desktop TIMES reel — see
   // renderMobSect() above for why it's a separate function from renderSecTab.
