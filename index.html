@@ -685,6 +685,14 @@
   #loginBtn:hover{filter:brightness(1.06)}
   #loginModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #loginModal.on{display:flex}
+  /* Team sign-in needs a real keyboard/mouse; on a phone the button just says so
+     instead of opening a modal it can't usefully drive. Sits above #mobileview
+     (z-index 9999) so it's visible from inside the phone layout too. */
+  #loginMobileNote{position:fixed;left:50%;bottom:28px;transform:translate(-50%,12px);z-index:10001;
+    background:var(--ink);color:var(--bg);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    letter-spacing:.5px;padding:12px 18px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);
+    opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;text-align:center;max-width:80vw}
+  #loginMobileNote.on{opacity:1;transform:translate(-50%,0)}
   .loginCard{position:relative;width:min(420px,92vw);background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:34px 30px 28px;font-family:'Space Grotesk',system-ui,sans-serif}
   #loginClose{position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
   #loginClose:hover{background:var(--bg);color:var(--ink)}
@@ -740,7 +748,8 @@
      mid-transition) */
   body.locked-private #boardframe,body.locked-private #svcframe,body.locked-private #fuelpanel{visibility:hidden}
 </style></head>
-<body><div id="loginModal" role="dialog" aria-modal="true">
+<body><div id="loginMobileNote" role="status" aria-live="polite">Laptop only — sign in from a laptop or desktop.</div>
+<div id="loginModal" role="dialog" aria-modal="true">
   <div class="loginCard">
     <button type="button" id="loginClose" aria-label="Close">&times;</button>
     <div class="loginLogo"><div class="mark">stint<b>9</b></div><div class="tag">Race Add-on</div></div>
@@ -7604,8 +7613,20 @@ applyWxReel(false);
   };
   passInp.addEventListener('keydown',e=>{if(e.key==='Enter')goBtn.click();});
 
-  document.getElementById('loginBtn').onclick=()=>openModal();
-  document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openModal()));
+  // The sign-in modal needs a real keyboard/mouse; on a phone (body.m — same
+  // <600px check the mobile layout itself uses) it can't be driven usefully, so
+  // the button shows a note instead of opening it.
+  const mobileNote=document.getElementById('loginMobileNote');
+  let mobileNoteT=null;
+  function showMobileNote(){if(!mobileNote)return;
+    mobileNote.classList.add('on');
+    clearTimeout(mobileNoteT);
+    mobileNoteT=setTimeout(()=>mobileNote.classList.remove('on'),2200);}
+  function openLoginOrNote(){
+    if(document.body.classList.contains('m')){showMobileNote();return;}
+    openModal();}
+  document.getElementById('loginBtn').onclick=()=>openLoginOrNote();
+  document.querySelectorAll('[data-login]').forEach(b=>b.addEventListener('click',()=>openLoginOrNote()));
   // close without changing anything (keeps the current mode — DEMO by default)
   document.getElementById('loginClose').onclick=closeModal;
   modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
