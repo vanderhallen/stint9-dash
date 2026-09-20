@@ -188,6 +188,20 @@
   .ptime-in::placeholder{color:#c3c8ce;font-weight:500}
   .ptime-in:focus{outline:none;border-color:#16202b;background:#eef4ef}
   .card.zoomed .ptime-in{width:calc(56px*var(--zt,1));height:calc(28px*var(--zt,1));font-size:calc(16px*var(--zt,1));padding:calc(2px*var(--zt,1)) calc(6px*var(--zt,1))}
+  /* P-TIME "Active" arm button: off (watch) -> armed (red, waiting for this
+     car's next pit lap) -> counting (a countdown is live, see #ptimeArmPopup). */
+  .ptime-arm{width:82px;height:24px;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.5px;border-radius:5px;border:1px solid #cfd4da;background:#fff;color:#6b7480;cursor:pointer}
+  .ptime-arm:hover{border-color:#16202b}
+  .ptime-arm:disabled{cursor:default;opacity:.5}
+  button.ptime-arm.ptime-arm-armed{background:#c0392b!important;border-color:#c0392b!important;color:#fff!important}
+  button.ptime-arm.ptime-arm-counting{background:#e08a1e!important;border-color:#e08a1e!important;color:#fff!important;cursor:pointer}
+  #ptimeArmPopup{position:fixed;right:14px;bottom:14px;z-index:8000;display:none;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace}
+  .ptime-armcard{display:flex;align-items:center;gap:10px;background:#16202b;color:#fff;border-radius:10px;padding:8px 10px 8px 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:150px}
+  .ptime-armcard .pac-car{font-weight:700;font-size:12px;flex:1 1 auto}
+  .ptime-armcard .pac-t{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+  .ptime-armcard.done .pac-t{color:#e08a1e}
+  .ptime-armcard .pac-x{background:transparent;border:0;color:#9aa1a9;font-size:16px;line-height:1;cursor:pointer;padding:0 2px}
+  .ptime-armcard .pac-x:hover{color:#fff}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   .agentbar .agicon{font-size:18px;line-height:1}
@@ -220,6 +234,19 @@
   #compmetric .seg:last-child{border-right:none}
   #compmetric .seg:hover{background:#f1f3f5}
   #compmetric .seg.on{background:#16202b;color:#fff}
+  /* H2H reel: metric segmented buttons (same look as #compmetric, but generated
+     dynamically per render so it's a class, not an id — an id string-built into
+     innerHTML on both the left panel and its cloned right-block twin would be a
+     literal DOM id collision). */
+  .h2hmetricbar{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .h2hmetricbar .seg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:none;border-right:1px solid var(--border);padding:5px 11px;cursor:pointer;line-height:1}
+  .h2hmetricbar .seg:last-child{border-right:none}
+  .h2hmetricbar .seg:hover{background:#f1f3f5}
+  .h2hmetricbar .seg.on{background:#16202b;color:#fff}
+  /* H2H reel: comparison-driver toggle chips, left-border tinted per car (DB.carcol, inline style) */
+  .h2hchip{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 10px 4px 8px;cursor:pointer;line-height:1;margin:2px 4px 2px 0}
+  .h2hchip:hover{background:#f1f3f5}
+  .h2hchip.on{background:#16202b;color:#fff}
   /* zoomed reel tables (GRID/DRV/TIMES): scale up so the big modal fills and reads better */
   /* Every length in the zoomed-table rules below is multiplied through --zt, the
      fit factor fitZoomTable() writes onto the wrap after each render. It is 1 —
@@ -744,12 +771,18 @@
   .privlock .lb:hover{border-color:var(--accent);color:var(--accent)}
   body.locked-private .privlock{display:flex}
   body.locked-private #fuelmini{display:none!important}
+  /* P-TIME's own lock, driven by "is any team signed in" (body.ptime-locked)
+     rather than the car-scoped body.locked-private used above — see
+     applyAuthGate(). #ptimePrivlock still starts hidden via the shared
+     .privlock{display:none} base rule. */
+  body.ptime-locked #ptimePrivlock{display:flex}
   /* hide the underlying content outright so nothing flashes through the lock
      overlay while the reel scrolls (iframes can paint over absolute siblings
      mid-transition) */
   body.locked-private #boardframe,body.locked-private #svcframe,body.locked-private #fuelpanel{visibility:hidden}
 </style></head>
 <body><div id="loginMobileNote" role="status" aria-live="polite">Laptop only — sign in from a laptop or desktop.</div>
+<div id="ptimeArmPopup"></div>
 <div id="loginModal" role="dialog" aria-modal="true">
   <div class="loginCard">
     <button type="button" id="loginClose" aria-label="Close">&times;</button>
@@ -891,7 +924,7 @@
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
           <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805d" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel"><div id="ptimewrap"></div></div>
+          <div class="reelpanel" style="position:relative"><div id="ptimePrivlock" class="privlock"><span class="lk">&#128274;</span><span class="lt">P-TIME (pit-stop arming) is private to the team.<br>Sign in on any team car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="ptimewrap"></div></div>
           <div class="reelpanel"><div id="ytreel">
             <div class="vrhd">YOUTUBE STREAM</div>
             <div class="vrgrid">
@@ -933,6 +966,7 @@
           </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
+          <div class="reelpanel"><div id="h2hwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column"></div></div>
         </div>
       </div>
     </div>
@@ -995,7 +1029,7 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=0;const REELN=22;
+let reelIdx=0;const REELN=23;
 /* Which block the keyboard's Up/Down drives. Claimed by clicking a block's own
    on-screen arrows, so the hardware keys carry on where you last pointed:
    nudge the right block's arrows and Up/Down keep stepping the right block,
@@ -1003,12 +1037,12 @@ let reelIdx=0;const REELN=22;
 let keyReelSide='';
 /* ---- TWO INDEPENDENT REEL BLOCKS -----------------------------------------
    The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
-   both carry the SAME full list of all 22 reels, each with its own selection —
+   both carry the SAME full list of all 23 reels, each with its own selection —
    so any reel can be put in either block, including the same reel in both at
    once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 PACE, 4 SECT,
    5 COMP, 6 GRID, 7 DRV, 8 NIEK, 9 BARS, 10 FLOW, 11 WEATHER, 12 TEMP,
    13 TIMETABLE, 14 CHAMP, 15 PIT, 16 P-TIME, 17 YOUTUBE, 18 VIDEO, 19 FUEL,
-   20 TYRE, 21 SERVICE. The panels themselves are the source of truth: they
+   20 TYRE, 21 SERVICE, 22 H2H. The panels themselves are the source of truth: they
    sit in #reelstrip in exactly this order, and every index below follows it.
 
    #reelstrip holds the ONE canonical copy of the panel markup, keeping the
@@ -1081,6 +1115,12 @@ let RCLONED=[];
 })();
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 let PTIME={};try{PTIME=JSON.parse(localStorage.getItem('stint9_ptime')||'{}')||{};}catch(e){PTIME={};}
+// Per-car "Active" arm state for the P-TIME auto-countdown (see checkPTimeArm()):
+// off -> armed (watching for this car's next pit lap) -> counting (a countdown
+// is live, started from whatever STINT time was already typed for that stop).
+// Persisted so a page reload mid-stop doesn't lose a running countdown.
+let PTIME_ARM={};try{PTIME_ARM=JSON.parse(localStorage.getItem('stint9_ptime_arm')||'{}')||{};}catch(e){PTIME_ARM={};}
+function savePTimeArm(){try{localStorage.setItem('stint9_ptime_arm',JSON.stringify(PTIME_ARM));}catch(e){}}
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
 // ENTRIES (cars) are mode-scoped: ephemeral in SIM (reset every session) and
 // persisted per event-day in LIVE. So we do NOT load saved cars here — SIM
@@ -1196,6 +1236,7 @@ function paintReel(T,idx,all,side){
     if(idx===13&&typeof renderTimetable==='function')renderTimetable();
     if(idx===14&&typeof renderChampionship==='function')renderChampionship();
     if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
+    if(idx===22||all)renderH2H(T);
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -2253,7 +2294,7 @@ function renderSelStint(T){
   const total=(stints[stints.length-1].endLap-stints[0].startLap)||1;
   el.innerHTML=stints.map(s=>{
     const w=Math.max(0,(s.endLap-s.startLap)/total*100);
-    const label=(s.driver||'—')+' · '+s.count+' lap'+(s.count===1?'':'s');
+    const label=(s.driver||'—')+' ('+s.count+'L)';
     return '<div class="seg" style="flex:'+w.toFixed(3)+' 0 0%;background:'+driverColor(s.driver)+'" title="'+label+'">'+label+'</div>';
   }).join('');
   el.style.display='flex';
@@ -2367,7 +2408,7 @@ function renderStints(T){const svg=document.getElementById('stintsvg');if(!svg)r
       if(w>=0.5){
         const col=driverColor(st2.driver);
         s+='<rect x="'+x0.toFixed(1)+'" y="'+(cy-barH/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+barH+'" rx="3" fill="'+col+'" opacity="'+(st===selCar?1:0.25)+'"/>';
-        const label=st2.driver+'  '+st2.count+' lap'+(st2.count===1?'':'s');
+        const label=st2.driver+' ('+st2.count+'L)';
         // fit check scales with drvFs too — a fixed per-character estimate
         // calibrated for the small desktop font would under-count once drvFs
         // has grown on a tall phone panel, letting the (now much wider) text
@@ -2441,6 +2482,93 @@ function pTimeNCols(){
   Object.keys(day).forEach(car=>{Object.keys(day[car]||{}).forEach(k=>{const v=+k;if(v>n)n=v;});});
   return n;
 }
+// Active-arm helpers for the P-TIME auto-countdown. off -> armed (watching
+// for this car's next pit lap, via checkPTimeArm() below) -> counting (a
+// countdown is live in #ptimeArmPopup). Works in both LIVE and SIM/replay:
+// - LIVE: DB.pits[car] itself grows as new stops are confirmed live, so the
+//   count of "stops so far" is just its length.
+// - SIM/replay: DB.pits[car] already holds every stop for the WHOLE archived
+//   session up front, so "stops so far" instead means stops whose lap has
+//   already been passed by the current scrub position T (same curLapOf(st,T)
+//   idea askAgent() already uses for its own pit call-outs).
+function pTimeCarPitsSoFar(car,T){
+  const pits=(DB.pits&&DB.pits[car])||[];
+  if(window.dataMode==='LIVE')return pits.length;
+  const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=-Infinity;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return isFinite(mx)?Math.floor(mx/5)+1:0;};
+  const cur=curLapOf(car);
+  return pits.filter(L=>cur>L).length;
+}
+function pTimeArmState(car){return PTIME_ARM[String(car)]||{state:'off'};}
+function pTimeArmSet(car,patch){
+  car=String(car);
+  PTIME_ARM[car]=Object.assign({state:'off'},PTIME_ARM[car],patch);
+  savePTimeArm();
+}
+function pTimeArmClear(car){car=String(car);delete PTIME_ARM[car];savePTimeArm();}
+function pTimeArmToggle(car){
+  car=String(car);
+  const st=pTimeArmState(car).state;
+  if(st==='off')pTimeArmSet(car,{state:'armed',seenPits:pTimeCarPitsSoFar(car,T)});
+  else pTimeArmClear(car);   // armed or counting -> cancel back to off
+  _ptimeSig=null;   // force renderPTime to pick up the new button state
+  if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+  renderPTimeArmPopup();
+}
+// Runs every render() frame (both LIVE and SIM — see the call site in
+// render()) so a countdown can trigger even while the crew is looking at a
+// different reel. For each armed car, a grown "stops so far" count means it
+// just pitted; the STINT column matching that new stop number (pTimeNCols()
+// already reserves it as the "next" blank column) is whatever duration the
+// crew already typed in — use it to start counting. If that column is still
+// blank, stay armed rather than silently give up (but, deliberately, don't
+// keep re-checking THIS same stop once seenPits moves on).
+function checkPTimeArm(T){
+  let changed=false;
+  const numv=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.').trim());return isFinite(x)?x:null;};
+  Object.keys(PTIME_ARM).forEach(car=>{
+    const a=PTIME_ARM[car];
+    if(!a||a.state!=='armed')return;
+    const n=pTimeCarPitsSoFar(car,T);
+    if(n<=(a.seenPits||0))return;
+    a.seenPits=n;changed=true;
+    const row=pTimeRow(car),slot=row[n]||row[String(n)];
+    const m=slot?numv(slot.min):null,s=slot?numv(slot.sec):null;
+    if(m==null&&s==null)return;   // no time typed for this stop yet — stay armed
+    const durationSec=(m||0)*60+(s||0);
+    if(durationSec<=0)return;
+    PTIME_ARM[car]={state:'counting',seenPits:n,startTs:Date.now(),durationSec};
+  });
+  if(changed){
+    savePTimeArm();
+    _ptimeSig=null;
+    if(typeof renderPTime==='function')renderPTime(T);
+    renderPTimeArmPopup();
+  }
+}
+// Floating countdown popup — a top-level fixed element (see index.html body,
+// #ptimeArmPopup), independent of whichever reel is currently on screen.
+function renderPTimeArmPopup(){
+  const pop=document.getElementById('ptimeArmPopup');if(!pop)return;
+  const cars=Object.keys(PTIME_ARM).filter(c=>PTIME_ARM[c].state==='counting');
+  if(!cars.length){pop.style.display='none';pop.innerHTML='';return;}
+  pop.style.display='flex';
+  pop.innerHTML=cars.map(car=>{
+    const a=PTIME_ARM[car];
+    const remain=a.durationSec-(Date.now()-a.startTs)/1000;
+    const done=remain<=0;
+    const mm=Math.floor(Math.max(0,remain)/60),ss=Math.floor(Math.max(0,remain)%60);
+    const txt=String(mm)+':'+String(ss).padStart(2,'0');
+    return '<div class="ptime-armcard'+(done?' done':'')+'"><span class="pac-car">#'+car+' pit timer</span><span class="pac-t">'+txt+'</span><button type="button" class="pac-x" data-dismiss-car="'+car+'" title="Dismiss">&times;</button></div>';
+  }).join('');
+}
+setInterval(function(){try{renderPTimeArmPopup();}catch(e){}},250);
+document.addEventListener('click',function(e){
+  const x=e.target.closest('[data-dismiss-car]');if(!x)return;
+  pTimeArmClear(x.getAttribute('data-dismiss-car'));
+  _ptimeSig=null;
+  if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+  renderPTimeArmPopup();
+});
 let _ptimeSig=null;
 function renderPTime(T){
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
@@ -2458,13 +2586,20 @@ function renderPTime(T){
     if(pa==null)return 1;if(pb==null)return -1;return pa-pb;
   });
   const nCols=pTimeNCols();
-  const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'');
+  const armSig=Object.keys(PTIME_ARM).map(c=>c+':'+PTIME_ARM[c].state).sort().join(',');
+  // Team-wide, not canAccess(selCar): P-TIME lists the whole class, so any
+  // signed-in team should be able to use it regardless of which car happens
+  // to be the currently-browsed reference (see applyAuthGate()).
+  const authOkSig=!!(window.AUTH&&window.AUTH.mode==='team');
+  const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'')+'|'+armSig+'|'+authOkSig;
   if(sig===_ptimeSig&&wrap.querySelector('table'))return;
   _ptimeSig=sig;
   const av=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds.</div>';
+  const dis=authOkSig?'':' disabled';
+  let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds. Active arms a car &mdash; its next pit stop auto-starts a countdown from that stint&rsquo;s time.</div>';
   h+='<table><thead><tr><th class="l">Car</th>';
   for(let i=1;i<=nCols;i++)h+='<th>STINT '+i+'</th>';
+  h+='<th>Active</th>';
   h+='</tr></thead><tbody>';
   ordered.forEach(st=>{
     const pos=lp[st]!=null?('P'+lp[st]):'—';
@@ -2474,9 +2609,14 @@ function renderPTime(T){
     for(let i=1;i<=nCols;i++){
       const slot=row[i]||row[String(i)]||{min:'',sec:''};
       h+='<td><span class="ptime-pair">'+
-        '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-stint="'+i+'" data-k="min" value="'+av(slot.min)+'">'+
-        '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-stint="'+i+'" data-k="sec" value="'+av(slot.sec)+'">'+
+        '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-stint="'+i+'" data-k="min" value="'+av(slot.min)+'"'+dis+'>'+
+        '<input class="ptime-in" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-stint="'+i+'" data-k="sec" value="'+av(slot.sec)+'"'+dis+'>'+
         '</span></td>';
+    }
+    {
+      const as=pTimeArmState(st).state;
+      const label=as==='counting'?'Counting':(as==='armed'?'Active':'Inactive');
+      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+'" data-car="'+st+'"'+dis+'>'+label+'</button></td>';
     }
     h+='</tr>';
   });
@@ -2485,6 +2625,13 @@ function renderPTime(T){
 }
 (function initPTime(){RINIT.initPTime=initPTime;
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
+  // RINIT.initPTime can be re-invoked later (e.g. enabling a split/right-block
+  // layout re-runs every registered init) — re-adding these listeners on the
+  // same #ptimewrap would double-fire on every click, which is harmless for
+  // the plain input-change handler below but silently cancels itself out for
+  // pTimeArmToggle (armed -> off -> armed again on the same click). Guard so
+  // the listeners are only ever attached once per element.
+  if(wrap.__ptimeInited)return;wrap.__ptimeInited=true;
   wrap.addEventListener('input',function(e){
     const el=e.target;if(!el||!el.classList.contains('ptime-in'))return;
     const car=el.dataset.car,n=+el.dataset.stint,k=el.dataset.k;
@@ -2492,6 +2639,10 @@ function renderPTime(T){
     pTimeSlot(String(car),n)[k]=el.value;
     savePTime();
     if(typeof renderStints==='function'&&typeof T==='number')renderStints(T);
+  });
+  wrap.addEventListener('click',function(e){
+    const b=e.target.closest('.ptime-arm');if(!b||b.disabled)return;
+    pTimeArmToggle(b.dataset.car);
   });
   wrap.addEventListener('keydown',function(e){e.stopPropagation();});
 })();
@@ -2998,6 +3149,378 @@ function renderSecTab(T){
   const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>';
   wrap.innerHTML=caption+h;
 }
+/* H2H reel: pick 1+ other drivers in the SAME class as the reference (the
+   globally-selected #carsel/selCar) and compare lap/sector times directly.
+   Reuses the global class/car selectors rather than adding independent ones —
+   BX/LEG/etc. are only kept warm for DB.cars (the current global class), so a
+   second independent class picker would need its own cache-rebuild plumbing;
+   piggybacking on the existing selection avoids that entirely. */
+let h2hSel=new Set(),h2hMetric='lap',h2hHover=null,h2hLastKey=null;
+// classForCar() exists but is private to the login-modal IIFE further down —
+// same one-liner the car-search jump (~4162) already duplicates rather than
+// exporting it.
+function h2hClassOf(car){if(car==null||car==='')return null;
+  return Object.keys(DB.classes||{}).find(c=>(DB.classes[c]||[]).map(String).indexOf(String(car))>=0)||null;}
+// Position within just this class (not the whole field/livePos()'s DB.cars,
+// which is only the CURRENTLY selected class elsewhere in the dashboard and
+// may not match cls) — same progress-based ranking livePos() itself uses.
+function h2hClassPos(T,cls){
+  const cars=(DB.classes[cls]||[]).map(String);
+  const a=[];cars.forEach(st=>{const r=carProgress(st,T);if(r!=null)a.push([r.p,r.t,st]);});
+  a.sort((x,y)=>y[0]-x[0]||x[1]-y[1]);
+  const m={};a.forEach((e,i)=>m[e[2]]=i+1);
+  return m;
+}
+function h2hMetricIdx(){return h2hMetric.charAt(0)==='s'?(+h2hMetric.charAt(1)-1):null;}
+// Same T-gating convention as every other reel: a value only counts once its
+// boundary crossing has actually happened by T (so SIM rewind/scrub-back
+// never shows a lap that "hasn't happened yet").
+function h2hValAt(car,L,T,sIdx){
+  const s=(DB.sectimes[car]||{})[L];if(!s||s.length<5)return null;
+  const bx=BX[car]||{};
+  if(sIdx==null){
+    for(let k=0;k<5;k++)if(s[k]==null)return null;
+    const b=bx[(L-1)*5+5];if(b==null||b>T)return null;
+    return s[0]+s[1]+s[2]+s[3]+s[4];
+  }
+  if(s[sIdx]==null)return null;
+  const b=bx[(L-1)*5+(sIdx+1)];if(b==null||b>T)return null;
+  return s[sIdx];
+}
+function h2hPersonalBest(car,T,sIdx){
+  const stm=DB.sectimes[car]||{};let best=Infinity;
+  for(const Lk in stm){const v=h2hValAt(car,+Lk,T,sIdx);if(v!=null&&v<best)best=v;}
+  return isFinite(best)?best:null;
+}
+// Same sum-of-personal-best-sectors calc as renderSectors' "ideal" (myBest→theo,
+// ~line 3161), generalised to any car, not just selCar.
+function h2hTheoBest(car,T){
+  const stm=DB.sectimes[car]||{},bx=BX[car]||{};
+  const best=[Infinity,Infinity,Infinity,Infinity,Infinity];
+  for(const Lk in stm){const L=+Lk,s=stm[L];if(!s)continue;
+    for(let k=0;k<5;k++){const b=bx[(L-1)*5+(k+1)];if(b==null||b>T||s[k]==null)continue;if(s[k]<best[k])best[k]=s[k];}}
+  const ok=best.every(isFinite);
+  return {best,theo:ok?best.reduce((a,b)=>a+b,0):null};
+}
+// Plain ordinary-least-squares fit — no regression code exists elsewhere in
+// the file to reuse.
+function linFit(pts){
+  if(pts.length<2)return null;
+  const n=pts.length;let sx=0,sy=0,sxx=0,sxy=0;
+  pts.forEach(([x,y])=>{sx+=x;sy+=y;sxx+=x*x;sxy+=x*y;});
+  const denom=n*sxx-sx*sx;if(Math.abs(denom)<1e-9)return null;
+  return {m:(n*sxy-sx*sy)/denom,b:(sy-((n*sxy-sx*sy)/denom)*sx)/n};
+}
+// The controls (reference line, driver chips, metric buttons) live in their
+// own persistent node, rebuilt only when the class/car-list identity changes
+// — NOT on every renderH2H tick. Earlier this was a single wrap.innerHTML=...
+// string covering controls+data together, rebuilt on every call; SIM/LIVE's
+// render() loop calls renderH2H up to ~20-30x/second while playing (see
+// __renderGapMs), so that tore the chip/metric <button> elements down and
+// recreated them at that same rate — visible on screen as the chip flickering
+// grey under the mouse (CSS :hover re-settling every frame), and worse, a real
+// click could be silently dropped if the button under the pointer got replaced
+// between its mousedown and mouseup. Splitting the controls into a shell that
+// only rebuilds when the underlying car list actually changes fixes both.
+function h2hEnsureShell(wrap,cls,others){
+  const shellKey=cls+'|'+others.join(',');
+  let shell=wrap.querySelector('.h2hshell');
+  if(shell&&shell.dataset.key===shellKey)return shell;
+  wrap.innerHTML='';
+  // .h2hscale wraps the shell+data so the zoomed modal can measure this whole
+  // panel at its natural (unclipped) size and transform:scale() it down to
+  // fit without ever needing to scroll — see fitH2HZoom().
+  const scaleBox=document.createElement('div');scaleBox.className='h2hscale';
+  scaleBox.style.cssText='display:flex;flex-direction:column;flex:1 1 auto;min-height:0;width:100%';
+  shell=document.createElement('div');shell.className='h2hshell';shell.dataset.key=shellKey;
+  shell.style.cssText='padding:8px 10px 4px;font-family:\'IBM Plex Mono\',monospace;flex:0 0 auto';
+  const refLine=document.createElement('div');refLine.className='h2href';refLine.style.cssText='font-size:13px;color:#6b7480;margin-bottom:6px';
+  shell.appendChild(refLine);
+  const chipRow=document.createElement('div');chipRow.className='h2hchiprow';chipRow.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;margin-bottom:6px';
+  if(others.length){
+    others.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='h2hchip';b.dataset.car=c;b.style.borderLeft='4px solid '+(DB.carcol[c]||'#999');chipRow.appendChild(b);});
+  }else{
+    const sp=document.createElement('span');sp.style.cssText='color:#b5bcc4;font-size:12px';sp.textContent='no other cars in this class';chipRow.appendChild(sp);
+  }
+  shell.appendChild(chipRow);
+  const metricBar=document.createElement('div');metricBar.className='h2hmetricbar';
+  ['lap','s1','s2','s3','s4','s5'].forEach(m=>{const b=document.createElement('button');b.type='button';b.className='seg';b.dataset.v=m;b.textContent=m==='lap'?'Lap':m.toUpperCase();metricBar.appendChild(b);});
+  shell.appendChild(metricBar);
+  scaleBox.appendChild(shell);
+  const dataHost=document.createElement('div');dataHost.className='h2hdata';dataHost.style.cssText='flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:auto';
+  scaleBox.appendChild(dataHost);
+  wrap.appendChild(scaleBox);
+  return shell;
+}
+// Zoomed reels get up to 95vh, but H2H's content (chips, tabs, two tables, a
+// dual-axis chart) can still exceed that with enough laps/drivers selected —
+// #h2hdata's own overflow:auto used to just scroll, which is fine for a
+// glanced-at small reel but not for a fullscreen board. While zoomed, measure
+// .h2hscale at its natural (unconstrained) size and transform:scale() the
+// whole thing down to fit #h2hwrap exactly instead — same "measure once,
+// scale down" idea as fitZoomTable(), applied with a single transform instead
+// of a per-element --zt factor since H2H's markup isn't one uniform table.
+function fitH2HZoom(wrap){
+  const scaleBox=wrap.querySelector(':scope>.h2hscale');if(!scaleBox)return;
+  const dataHost=scaleBox.querySelector(':scope>.h2hdata');
+  const lapWrap=dataHost&&dataHost.querySelector('.h2hlaptable');
+  const zoomed=!!wrap.closest('.card.zoomed');
+  if(!zoomed){
+    scaleBox.style.transform='';scaleBox.style.width='';scaleBox.style.height='';scaleBox.style.margin='';scaleBox.style.flex='1 1 auto';
+    if(dataHost)dataHost.style.overflow='auto';
+    if(lapWrap){lapWrap.style.maxHeight='38vh';lapWrap.style.overflow='auto';}
+    wrap.style.overflow='auto';
+    return;
+  }
+  wrap.style.overflow='hidden';
+  // relax every internal scroll/clip so the whole panel renders at its real,
+  // unclipped content size — that size is what gets scaled down as a whole.
+  scaleBox.style.transform='none';scaleBox.style.flex='0 0 auto';scaleBox.style.width='auto';scaleBox.style.height='auto';
+  if(dataHost)dataHost.style.overflow='visible';
+  if(lapWrap){lapWrap.style.maxHeight='none';lapWrap.style.overflow='visible';}
+  const availW=wrap.clientWidth,availH=wrap.clientHeight;
+  const natW=scaleBox.scrollWidth,natH=scaleBox.scrollHeight;
+  if(availW<10||availH<10||natW<10||natH<10)return;
+  const s=Math.min(1,availW/natW,availH/natH);
+  scaleBox.style.width=natW+'px';scaleBox.style.height=natH+'px';
+  scaleBox.style.margin='0 auto';scaleBox.style.transformOrigin='top center';
+  scaleBox.style.transform=s<0.999?('scale('+s.toFixed(4)+')'):'none';
+}
+function fitH2HZoomAll(){document.querySelectorAll('#h2hwrap,#h2hwrap'+RSUF).forEach(fitH2HZoom);}
+// Rebuilding the (potentially large) per-lap table + chart string on every
+// ~30-40ms render() tick is wasted work once nothing about the selection has
+// actually changed — same "skip a redundant redraw" instinct as flowCache
+// elsewhere. Any real interaction (pick/drop a driver, switch metric, hover
+// the legend) still repaints instantly; only a plain T-tick with an otherwise
+// unchanged selection gets capped.
+let h2hLastInteractSig={'':null,[RSUF]:null},h2hLastPaintTs={'':0,[RSUF]:0};
+const H2H_REPAINT_MS=250;
+function renderH2H(T){
+  const wrap=document.getElementById('h2hwrap');if(!wrap)return;
+  const side=RSIDE||'';
+  const cls=h2hClassOf(selCar);
+  const key=selCar+'|'+cls;
+  if(h2hLastKey!==key){
+    h2hSel=new Set();h2hHover=null;h2hLastKey=key;
+    // Open with a useful comparison instead of an empty picker: pre-select
+    // whoever currently leads this class — or P2 if the reference car IS the
+    // leader, since comparing #665 against #665 would be pointless.
+    if(cls){
+      const posMap=h2hClassPos(T,cls);
+      let pick=null;
+      for(const c in posMap)if(posMap[c]===1){pick=c;break;}
+      if(pick===String(selCar)){pick=null;for(const c in posMap)if(posMap[c]===2){pick=c;break;}}
+      if(pick&&pick!==String(selCar))h2hSel.add(pick);
+    }
+  }
+  if(!selCar||!cls){
+    wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">select a car to compare drivers</div>';
+    return;
+  }
+  const others=(DB.classes[cls]||[]).map(String).filter(c=>c!==String(selCar));
+  for(const c of Array.from(h2hSel))if(others.indexOf(c)<0)h2hSel.delete(c);   // class changed under us — drop stale picks
+
+  const shell=h2hEnsureShell(wrap,cls,others);
+  // Cheap per-tick sync of the persistent controls (never innerHTML-replaced).
+  const chipPosMap=h2hClassPos(T,cls);
+  const chipPos=c=>{const p=chipPosMap[String(c)];return p!=null?('P'+p+' '):'';};
+  shell.querySelector('.h2href').textContent='REFERENCE · '+chipPos(selCar)+'#'+selCar+'  '+curDrv(selCar,T)+' · class '+cls;
+  shell.querySelectorAll('.h2hchip').forEach(b=>{
+    const c=b.dataset.car;b.classList.toggle('on',h2hSel.has(c));
+    const label=chipPos(c)+'#'+c+'  '+curDrv(c,T);if(b.textContent!==label)b.textContent=label;
+  });
+  shell.querySelectorAll('.h2hmetricbar .seg').forEach(b=>b.classList.toggle('on',b.dataset.v===h2hMetric));
+
+  const dataHost=wrap.querySelector('.h2hdata');if(!dataHost)return;
+  const sel=Array.from(h2hSel);
+  const interactSig=sel.slice().sort().join(',')+'|'+h2hMetric+'|'+h2hHover;
+  const now=Date.now();
+  if(interactSig===h2hLastInteractSig[side]&&(now-h2hLastPaintTs[side])<H2H_REPAINT_MS)return;
+  h2hLastInteractSig[side]=interactSig;h2hLastPaintTs[side]=now;
+
+  const Z=__mobZoom(),fz=n=>Math.round(n*Z);
+  const sIdx=h2hMetricIdx();
+  const fmtLap=v=>{if(v==null||!isFinite(v))return '—';const m=Math.floor(v/60);return m+':'+(v-60*m).toFixed(2).padStart(5,'0');};
+  const fmtSec=v=>{if(v==null||!isFinite(v))return '—';return v.toFixed(2);};
+  const fmt=v=>sIdx==null?fmtLap(v):fmtSec(v);
+  const fmtDelta=v=>{if(v==null||!isFinite(v))return '—';return (v>=0?'+':'')+v.toFixed(2)+'s';};
+
+  if(!sel.length){
+    dataHost.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:16px;padding:20px">pick one or more drivers above to compare against #'+selCar+'</div>';
+    return;
+  }
+
+  let h='';
+  let maxL=0;
+  const refStm=DB.sectimes[selCar]||{};for(const Lk in refStm)if(+Lk>maxL)maxL=+Lk;
+  sel.forEach(c=>{const stm=DB.sectimes[c]||{};for(const Lk in stm)if(+Lk>maxL)maxL=+Lk;});
+  const refPB=h2hPersonalBest(selCar,T,sIdx);
+  // Left-to-right / z-order for all non-reference drivers: fastest personal-best
+  // (on the currently selected metric tab) first, ref stays forced-first wherever
+  // it's shown separately.
+  const selPace=sel.slice().sort((a,b)=>{
+    const pa=h2hPersonalBest(a,T,sIdx),pb=h2hPersonalBest(b,T,sIdx);
+    if(pa==null&&pb==null)return 0;if(pa==null)return 1;if(pb==null)return -1;
+    return pa-pb;
+  });
+  const rows=[],series={};sel.forEach(c=>series[c]=[]);
+  for(let L=0;L<=maxL;L++){
+    const refV=h2hValAt(selCar,L,T,sIdx);const rowCars={};let any=refV!=null;
+    sel.forEach(c=>{
+      const v=h2hValAt(c,L,T,sIdx);if(v==null)return;any=true;
+      let delta=null,direct=false;
+      if(refV!=null){delta=v-refV;direct=true;}
+      else if(refPB!=null){delta=v-refPB;direct=false;}
+      rowCars[c]={v,direct,delta};
+      if(delta!=null)series[c].push([L,delta,direct]);
+    });
+    if(any)rows.push({L,refV,cars:rowCars});
+  }
+  rows.reverse();   // newest lap on top, same convention as renderSecTab
+
+  // Driver actually behind the wheel for a given car+lap (endurance cars swap
+  // drivers mid-race) — shown on every lap cell, not just stint boundaries.
+  const drvAt=(st,L)=>{const dl=DB.drvlap&&DB.drvlap[st];return (dl&&dl[L])||DB.name[st]||'';};
+  const drvTag=(st,L)=>{const dn=drvAt(st,L);return dn?('<br><span style="font-size:11px;font-weight:400;color:#9aa1a9">'+dn+'</span>'):'';};
+  const h2hPosMap=h2hClassPos(T,cls);
+  const h2hPos=st=>{const p=h2hPosMap[String(st)];return p!=null?('P'+p+' '):'';};
+  h+='<div class="h2hlaptable" style="overflow:auto;flex:0 0 auto;max-height:38vh">';
+  h+='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px;white-space:nowrap;width:100%">';
+  h+='<thead><tr><th style="position:sticky;left:0;top:0;z-index:3;background:#fff;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec">Driver</th>';
+  rows.forEach(({L})=>{h+='<th style="position:sticky;top:0;z-index:2;background:#fff;padding:4px 8px;text-align:right;border-bottom:1px solid #e6e8ec">'+L+'</th>';});
+  h+='</tr></thead><tbody>';
+  h+='<tr><td style="position:sticky;left:0;background:#fff;padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6">'+h2hPos(selCar)+'#'+selCar+'</td>';
+  rows.forEach(({L,refV})=>{h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6">'+fmt(refV)+drvTag(selCar,L)+'</td>';});
+  h+='</tr>';
+  selPace.forEach(c=>{
+    h+='<tr><td style="position:sticky;left:0;background:#fff;padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6;color:'+(DB.carcol[c]||'#16202b')+'">'+h2hPos(c)+'#'+c+' &Delta;</td>';
+    rows.forEach(({L,cars})=>{
+      const cd=cars[c],tag=drvTag(c,L);
+      if(!cd){h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#d5d9de">&mdash;'+tag+'</td>';return;}
+      const col=cd.delta==null?'#b5bcc4':(cd.delta<0?'#1e8f3a':'#c0392b');
+      const style=cd.direct?('font-weight:700;color:'+col):('font-style:italic;color:'+col+';opacity:0.75');
+      const label=cd.delta==null?'&mdash;':(fmtDelta(cd.delta)+(cd.direct?'':' <span style="font-size:9px">vs PB</span>'));
+      h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;'+style+'">'+label+tag+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+
+  // Theoretical best (own fastest sectors, summed) + sector strength/weakness
+  // relative to the SELECTED group only — not the whole class.
+  const group=[String(selCar)].concat(sel);
+  const theoData={};group.forEach(c=>theoData[c]=h2hTheoBest(c,T));
+  const grpBest=[Infinity,Infinity,Infinity,Infinity,Infinity],grpWorst=[-Infinity,-Infinity,-Infinity,-Infinity,-Infinity];
+  group.forEach(c=>{const b=theoData[c].best;for(let k=0;k<5;k++){if(isFinite(b[k])){if(b[k]<grpBest[k])grpBest[k]=b[k];if(b[k]>grpWorst[k])grpWorst[k]=b[k];}}});
+  const groupSorted=group.slice().sort((a,b)=>{
+    const ta=theoData[a].theo,tb=theoData[b].theo;
+    if(ta==null&&tb==null)return 0;
+    if(ta==null)return 1;
+    if(tb==null)return -1;
+    return ta-tb;
+  });
+  h+='<div style="padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:11px">';
+  h+='<div style="color:#6b7480;margin-bottom:4px">THEORETICAL BEST (sum of own fastest sectors) &middot; colour = fastest/slowest sector within the selected group</div>';
+  h+='<table style="border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:2px 8px">Driver</th><th style="padding:2px 8px">S1</th><th style="padding:2px 8px">S2</th><th style="padding:2px 8px">S3</th><th style="padding:2px 8px">S4</th><th style="padding:2px 8px">S5</th><th style="padding:2px 8px">Ideal lap</th><th style="padding:2px 8px">Best lap</th></tr></thead><tbody>';
+  groupSorted.forEach(c=>{
+    const isRef=c===String(selCar),{best,theo}=theoData[c];
+    const bestLap=h2hPersonalBest(c,T,null);
+    h+='<tr'+(isRef?' style="background:#f3f4f6"':'')+'><td style="padding:2px 8px;font-weight:700;color:'+(isRef?'#16202b':(DB.carcol[c]||'#16202b'))+'">'+(isRef?'#'+c+' (ref)':'#'+c)+'  '+curDrv(c,T)+'</td>';
+    for(let k=0;k<5;k++){
+      const v=best[k];let col='#16202b';
+      if(isFinite(v)&&group.length>1){
+        if(Math.abs(v-grpBest[k])<0.005)col='#1e8f3a';else if(Math.abs(v-grpWorst[k])<0.005)col='#c0392b';else col='#c9820a';
+      }
+      h+='<td style="padding:2px 8px;text-align:right;color:'+col+';font-weight:700">'+fmtSec(isFinite(v)?v:null)+'</td>';
+    }
+    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(theo!=null?fmtLap(theo):'—')+'</td>';
+    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(bestLap!=null?fmtLap(bestLap):'—')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  // Combined pace chart: X = lap number. Left/primary axis = absolute laptime
+  // (mm:ss, solid smooth line + dot per lap, one per driver incl. reference).
+  // Right/secondary axis = delta-to-reference on the active metric tab
+  // (+/-s, dashed trend line per selected driver) — this is the old separate
+  // scatter chart's data, now sharing this chart's right-hand axis instead of
+  // living in its own full-height panel below it.
+  let allDeltas=[];sel.forEach(c=>series[c].forEach(p=>allDeltas.push(p[1])));
+  let dmin=allDeltas.length?Math.min(0,...allDeltas):-1,dmax=allDeltas.length?Math.max(0,...allDeltas):1;
+  const dpad=Math.max(0.2,(dmax-dmin)*0.12);dmin-=dpad;dmax+=dpad;
+  const lmin=0,lmax=Math.max(1,maxL);
+  const paceGroup=[String(selCar)].concat(selPace);
+  const pacePts={};
+  paceGroup.forEach(c=>{
+    const pts=[];
+    for(let L=0;L<=maxL;L++){const v=h2hValAt(c,L,T,null);if(v!=null)pts.push([L,v]);}
+    pacePts[c]=pts;
+  });
+  let allLapTimes=[];paceGroup.forEach(c=>pacePts[c].forEach(p=>allLapTimes.push(p[1])));
+  if(allLapTimes.length){
+    let tmin=Math.min(...allLapTimes),tmax=Math.max(...allLapTimes);
+    const tpad=Math.max(0.5,(tmax-tmin)*0.12);tmin-=tpad;tmax+=tpad;
+    const H2=460,yT2=30,yB2=H2-40;
+    const X2=L=>xL+(lmax<=lmin?0:(L-lmin)/(lmax-lmin))*(xR-xL);
+    const Yt=v=>yB2-(v-tmin)/((tmax-tmin)||1)*(yB2-yT2);
+    const Yd=v=>yB2-(v-dmin)/((dmax-dmin)||1)*(yB2-yT2);
+    let sv='<svg viewBox="0 0 1000 '+H2+'" style="width:100%;height:'+H2+'px;display:block" preserveAspectRatio="xMidYMid meet">';
+    for(let i=0;i<=4;i++){const v=tmin+(tmax-tmin)*i/4,y=Yt(v);
+      sv+='<line x1="'+xL+'" x2="'+xR+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#eceef1" stroke-width="1"/>';
+      sv+='<text x="'+(xL-8)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" font-size="'+fz(13)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+fmtLap(v)+'</text>';}
+    for(let i=0;i<=4;i++){const v=dmin+(dmax-dmin)*i/4,y=Yd(v);
+      sv+='<text x="'+(xR+8)+'" y="'+(y+4).toFixed(1)+'" text-anchor="start" font-size="'+fz(13)+'" fill="#c9a06b" font-family="IBM Plex Mono,monospace">'+(v>=0?'+':'')+v.toFixed(1)+'s</text>';}
+    sv+='<line x1="'+xL+'" x2="'+xR+'" y1="'+Yd(0).toFixed(1)+'" y2="'+Yd(0).toFixed(1)+'" stroke="#e2c99a" stroke-width="1.5" stroke-dasharray="4 3"/>';
+    for(let L=lmin;L<=lmax;L++){if(L!==lmin&&L!==lmax&&L%5!==0)continue;const gx=X2(L);
+      sv+='<line x1="'+gx.toFixed(1)+'" x2="'+gx.toFixed(1)+'" y1="'+yT2+'" y2="'+yB2+'" stroke="#f3f4f6" stroke-width="1"/>';
+      sv+='<text x="'+gx.toFixed(1)+'" y="'+(yB2+18).toFixed(1)+'" text-anchor="middle" font-size="'+fz(12)+'" fill="#9aa1a9" font-family="IBM Plex Mono,monospace">'+L+'</text>';}
+    sv+='<text x="'+xR+'" y="'+(yB2+18).toFixed(1)+'" text-anchor="start" font-size="'+fz(11)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace"> LAP</text>';
+    sv+='<text x="'+(xL-8)+'" y="'+(yT2-12).toFixed(1)+'" text-anchor="end" font-size="'+fz(11)+'" fill="#b5bcc4" font-family="IBM Plex Mono,monospace">LAPTIME</text>';
+    sv+='<text x="'+(xR+8)+'" y="'+(yT2-12).toFixed(1)+'" text-anchor="start" font-size="'+fz(11)+'" fill="#c9a06b" font-family="IBM Plex Mono,monospace">&Delta; vs ref</text>';
+    paceGroup.forEach(c=>{
+      const pts=pacePts[c];if(!pts.length)return;
+      const col=DB.carcol[c]||'#16202b',dim=(h2hHover!=null&&h2hHover!==c),op=dim?0.18:1;
+      const px=pts.map(([L,v])=>[X2(L),Yt(v)]);
+      sv+='<path d="'+smoothPath(px)+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" opacity="'+op+'"/>';
+      pts.forEach(([L,v])=>{sv+='<circle cx="'+X2(L).toFixed(1)+'" cy="'+Yt(v).toFixed(1)+'" r="3.6" fill="'+col+'" opacity="'+op+'"/>';});
+    });
+    selPace.forEach(c=>{
+      const pts=series[c];if(!pts.length)return;
+      const col=DB.carcol[c]||'#999',dim=(h2hHover!=null&&h2hHover!==c),op=dim?0.18:1;
+      const fit=linFit(pts.map(p=>[p[0],p[1]]));
+      if(fit){const y1=fit.m*lmin+fit.b,y2=fit.m*lmax+fit.b;
+        sv+='<line x1="'+X2(lmin).toFixed(1)+'" x2="'+X2(lmax).toFixed(1)+'" y1="'+Yd(y1).toFixed(1)+'" y2="'+Yd(y2).toFixed(1)+'" stroke="'+col+'" stroke-width="2" stroke-dasharray="5 4" opacity="'+(op*0.85).toFixed(2)+'"/>';}
+    });
+    sv+='</svg>';
+    let leg='<div style="display:flex;flex-wrap:wrap;gap:4px 14px;padding:2px 10px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;align-items:center">';
+    leg+='<span style="color:#6b7480">solid = laptime (left) &nbsp; dashed = &Delta; vs ref trend (right)</span>';
+    paceGroup.forEach(c=>{leg+='<span class="h2hleg" data-car="'+c+'" style="cursor:pointer;color:'+(DB.carcol[c]||'#16202b')+';font-weight:700">&#9632; #'+c+' '+curDrv(c,T)+(String(c)===String(selCar)?' (ref)':'')+'</span>';});
+    leg+='</div>';
+    h+='<div style="color:#6b7480;margin:10px 10px 2px;font-family:\'IBM Plex Mono\',monospace;font-size:11px">LAP TIMES</div>';
+    h+='<div style="flex:1 1 auto;min-height:0">'+sv+'</div>'+leg;
+  }
+
+  dataHost.innerHTML=h;
+  fitH2HZoom(wrap);
+}
+(function(){
+  document.querySelectorAll('#h2hwrap,#h2hwrap'+RSUF).forEach(wrap=>{
+    wrap.addEventListener('click',e=>{
+      const chip=e.target.closest('.h2hchip'),seg=e.target.closest('.h2hmetricbar .seg');
+      if(!chip&&!seg)return;
+      withSide(reelSideOf(wrap),()=>{
+        if(chip){const c=chip.dataset.car;if(h2hSel.has(c))h2hSel.delete(c);else h2hSel.add(c);}
+        if(seg)h2hMetric=seg.dataset.v;
+        renderH2H(T);
+      });
+    });
+    wrap.addEventListener('mouseover',e=>{
+      const leg=e.target.closest('.h2hleg');if(!leg)return;
+      const c=leg.dataset.car;if(h2hHover===c)return;
+      h2hHover=c;withSide(reelSideOf(wrap),()=>renderH2H(T));
+    });
+    wrap.addEventListener('mouseleave',()=>{if(h2hHover==null)return;h2hHover=null;withSide(reelSideOf(wrap),()=>renderH2H(T));});
+  });
+})();
 /* Mobile ESSENTIALS "sector times" card — same laps-in-columns/sectors-in-rows
    grid as the desktop TIMES reel above (renderSecTab), including its exact
    column order: newest/highest lap number leftmost, oldest rightmost — so the
@@ -3612,6 +4135,10 @@ function liveEtaSF(st,T){
   return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
 }
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
+  // P-TIME arm-watch runs every frame regardless of which reel is on screen —
+  // renderPTime() itself only runs while P-TIME is the active reel, but the
+  // countdown popup must trigger even when the crew is looking elsewhere.
+  if(typeof checkPTimeArm==='function')checkPTimeArm(T);
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
   _c60=(typeof code60Sectors==='function')?code60Sectors():[];
@@ -3679,6 +4206,7 @@ function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);ref
   paintReel(T,reelIdx,_tk,'');
   paintReel(T,wxReelIdx,false,RSUF);
   fitZoomTable();   // after the reel that owns the zoomed table has redrawn — new laps change its height
+  fitH2HZoomAll();
   if(_tk)renderVideoReel();
   if(_tk&&typeof renderChampionship==='function')renderChampionship();
   if(_tk)updateThumbs();
@@ -3866,7 +4394,7 @@ const REELLBL={lapchart:'POS',stintsvg:'STINT',sectabwrap:'TIMES',ltgraph:'PACE'
   compmetric:'COMP',gridtablewrap:'GRID',drvtablewrap:'DRV',niektablewrap:'NIEK',p1barsvg:'BARS',
   flowsvg:'FLOW',weather:'WEATHER',tempoverlay:'TEMP',timetable:'TIMETABLE',pitframe:'PIT',
   ptimewrap:'P-TIME',champreel:'CHAMP',ytreel:'YOUTUBE',videoreel:'VIDEO',fuelpanel:'FUEL',
-  boardframe:'TYRE',svcframe:'SERVICE'};
+  boardframe:'TYRE',svcframe:'SERVICE',h2hwrap:'H2H'};
 function __reelLabel(i){
   const p=document.querySelectorAll('#reelstrip>.reelpanel')[i];
   if(p)for(const id in REELLBL){if(p.querySelector('#'+id))return REELLBL[id];}
@@ -4237,12 +4765,13 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
       // fitted immediately — without this it stays clipped until the next
       // render(), which in a paused SIM never comes.
       if(typeof fitZoomTable==='function')fitZoomTable();
+      if(typeof fitH2HZoomAll==='function')fitH2HZoomAll();
     },40);
   }
   layer.addEventListener('click',e=>{if(e.target===layer||e.target===host)close();});
   // the modal is sized off the viewport, so a resize (or a tablet rotating)
   // changes how much table fits — re-measure rather than stay clipped
-  window.addEventListener('resize',()=>{if(cur&&typeof fitZoomTable==='function')fitZoomTable();});
+  window.addEventListener('resize',()=>{if(cur&&typeof fitZoomTable==='function')fitZoomTable();if(cur&&typeof fitH2HZoomAll==='function')fitH2HZoomAll();});
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){close();return;}
     if(!cur)return;
@@ -7377,7 +7906,7 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','P-TIME','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE'];
+  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','P-TIME','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','H2H'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
@@ -7538,6 +8067,20 @@ applyWxReel(false);
     const ok=window.canAccess(typeof selCar!=='undefined'?selCar:null);
     document.body.classList.toggle('locked-private',!ok);
     ['fcap','fstart','fcons','fform'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!ok;});
+    // P-TIME lists the WHOLE class, not just the currently-browsed reference
+    // car, so it's gated on "is ANY team signed in" rather than canAccess(selCar)
+    // — otherwise a team logged in on their own car would find P-TIME locked
+    // the moment they browse a different car's reference view. Its .privlock
+    // overlay (#ptimePrivlock) is toggled directly here rather than through the
+    // shared body.locked-private class, which stays selCar-scoped for FUEL/
+    // TYRE/SERVICE.
+    const teamOk=!!(window.AUTH&&window.AUTH.mode==='team');
+    document.body.classList.toggle('ptime-locked',!teamOk);
+    document.querySelectorAll('#ptimewrap .ptime-in,#ptimewrap .ptime-arm').forEach(el=>{el.disabled=!teamOk;});
+    try{
+      if(typeof _ptimeSig!=='undefined')_ptimeSig=null;   // force a rebuild so baked-in `disabled` attrs match
+      if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+    }catch(e){}
     updateBadge();
     // refresh the tyre iframe's read-only flag for the current car
     try{if(typeof postTyreCar==='function')postTyreCar(typeof selCar!=='undefined'?selCar:'');}catch(e){}
