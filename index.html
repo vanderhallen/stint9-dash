@@ -90,9 +90,13 @@
   .carbadge .gaps{display:inline-flex;flex-direction:column;justify-content:center;height:29px;line-height:1;font-family:'IBM Plex Mono',monospace;font-weight:600}
   .carbadge .ga{font-size:14px;color:#c0392b}.carbadge .gb{font-size:14px;color:#1e8f3a}
   .carbadge .drv{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-top:4px}
-  .code60poly{fill:none;stroke:#ff3b30;stroke-width:22px;stroke-linecap:round;stroke-linejoin:round;opacity:0;pointer-events:none}
+  .code60poly{fill:none;stroke:#ff3b30;stroke-width:30px;stroke-linecap:round;stroke-linejoin:round;opacity:0;pointer-events:none}
   .code60poly.on{animation:code60pulse 1.1s ease-in-out infinite}
-  @keyframes code60pulse{0%,100%{opacity:.15}50%{opacity:.55}}
+  /* Thicker base (was 22px) plus a stroke-width swing on top of the opacity
+     pulse, so the flagged sector visibly swells at the peak instead of just
+     fading in and out at a fixed width — reported as too subtle to notice
+     on the track map at a glance. */
+  @keyframes code60pulse{0%,100%{opacity:.3;stroke-width:24px}50%{opacity:.9;stroke-width:36px}}
   .code60banner{position:absolute;top:12px;left:12px;padding:5px 11px;border-radius:8px;background:#ff3b30;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;letter-spacing:1px;display:none;animation:code60pulsebanner 1.1s ease-in-out infinite}
   .code60banner.on{display:block}
   /* Shown over the map when the LIVE source has stopped advancing (session end /
