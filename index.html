@@ -942,13 +942,13 @@
           <div class="reelpanel"><div id="drvtablewrap" style="width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start"></div></div>
           <div class="reelpanel"><div id="niektablewrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
           <div class="reelpanel"><svg id="p1barsvg"></svg></div>
+          <div class="reelpanel"><div id="h2hwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column"></div></div>
           <div class="reelpanel"><svg id="flowsvg"></svg></div>
           <div class="reelpanel" style="position:relative"><div id="weather" style="height:100%;width:100%"></div><div id="wxradar" style="display:none"><button id="wxplay" title="Play / pause rain animation">&#9658;</button><div id="wxtl"><div id="wxtlfill"></div><div id="wxtlnow"></div></div><div id="wxtime">—</div></div><div id="wxicons"></div></div>
           <div class="reelpanel"><svg id="tempoverlay" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%"></svg></div>
           <div class="reelpanel"><div id="timetable" style="height:100%;width:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;align-items:center"></div></div>
           <div class="reelpanel"><div id="champreel"></div></div>
           <div class="reelpanel" style="position:relative"><iframe id="pitframe" src="pit.html?v=20260805d" title="Pit — stopped time vs minimum" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel" style="position:relative"><div id="ptimePrivlock" class="privlock"><span class="lk">&#128274;</span><span class="lt">P-TIME (pit-stop arming) is private to the team.<br>Sign in on any team car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="ptimewrap"></div></div>
           <div class="reelpanel"><div id="ytreel">
             <div class="vrhd">YOUTUBE STREAM</div>
             <div class="vrgrid">
@@ -990,7 +990,7 @@
           </div></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
-          <div class="reelpanel"><div id="h2hwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column"></div></div>
+          <div class="reelpanel" style="position:relative"><div id="ptimePrivlock" class="privlock"><span class="lk">&#128274;</span><span class="lt">P-TIME (pit-stop arming) is private to the team.<br>Sign in on any team car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="ptimewrap"></div></div>
         </div>
       </div>
     </div>
@@ -1054,6 +1054,12 @@ let selCar='',wantCar='',paceThr=0.2;
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
 let reelIdx=0;const REELN=23;
+// 2026-09-20: H2H moved before FLOW and P-TIME moved to the end (index=old,
+// value=new below). Without this, a returning visitor's saved reelIdx/reelR
+// (localStorage stint9_prefs) would silently land them on whatever OTHER reel
+// now sits at that number instead of the one they actually had open.
+const REEL_REMAP_20260920=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,22,17,18,19,20,21,10];
+const remapReelIdx=i=>{const r=REEL_REMAP_20260920[i];return r!=null?r:i;};
 /* Which block the keyboard's Up/Down drives. Claimed by clicking a block's own
    on-screen arrows, so the hardware keys carry on where you last pointed:
    nudge the right block's arrows and Up/Down keep stepping the right block,
@@ -1256,16 +1262,16 @@ function paintReel(T,idx,all,side){
     if(idx===7||all)renderDrvGrid(T);
     if(idx===8||all)renderNiekGrid(T);
     if(idx===9||all)renderP1Bar(T);
-    if(idx===10||all)renderFlow(T);
-    if(idx===16||all)renderPTime(T);
+    if(idx===11||all)renderFlow(T);
+    if(idx===22||all)renderPTime(T);
     if(idx===19||all)renderFuel(T);
-    // 11 WEATHER / 12 TEMP own their own fetch+draw loop (initWeather), 13
-    // TIMETABLE redraws off the schedule, and 15 PIT is an iframe — they are
+    // 12 WEATHER / 13 TEMP own their own fetch+draw loop (initWeather), 14
+    // TIMETABLE redraws off the schedule, and 16 PIT is an iframe — they are
     // driven by reelShown() and their own timers, not by the frame loop.
-    if(idx===13&&typeof renderTimetable==='function')renderTimetable();
-    if(idx===14&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===14&&typeof renderTimetable==='function')renderTimetable();
+    if(idx===15&&typeof renderChampionship==='function')renderChampionship();
     if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
-    if(idx===22||all)renderH2H(T);
+    if(idx===10||all)renderH2H(T);
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -1278,13 +1284,13 @@ function reelShown(i,side){
   withSide(side,()=>{
     if(i===20&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
     if(i===21&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
-    if(i===11){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
-    if(i===15&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+    if(i===12){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
+    if(i===16&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
       if(typeof pitH==='function')pitH(0);
     }
-    if(i===14&&typeof renderChampionship==='function')renderChampionship();
+    if(i===15&&typeof renderChampionship==='function')renderChampionship();
     if(i===18&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
@@ -2693,7 +2699,16 @@ function renderPTime(T){
     h+='</tr>';
   });
   h+='</tbody></table>';
+  // A STINT/CALIBRATION edit on one block now pushes into the other block's
+  // table right away (see the input handler below) rather than waiting for
+  // some unrelated signature change — e.g. a lap completing and shuffling
+  // running order — to happen to invalidate it, which is where the 30-60s lag
+  // came from. That means this rebuild can now land while the crew has that
+  // OTHER block scrolled down watching a specific car, so preserve scrollTop
+  // across the innerHTML replace instead of snapping it back to the top.
+  const scrollBefore=wrap.scrollTop;
   wrap.innerHTML=h;
+  wrap.scrollTop=scrollBefore;
 }
 (function initPTime(){RINIT.initPTime=initPTime;
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
@@ -2710,7 +2725,12 @@ function renderPTime(T){
     if(ck==='min'||ck==='sec'){
       if(!el.dataset.car)return;
       pTimeCal(el.dataset.car)[ck]=el.value;savePTimeCal();
-      pTimeSyncArm(wrap);   // a 0 -> non-0 calibration enables this row's button
+      // Both blocks: push to the sibling immediately (see the STINT handler
+      // below for why), and locally a 0 -> non-0 calibration must still enable
+      // this row's button without rebuilding out from under the typing —
+      // renderPTimeBoth() covers both, since its focus-guard reduces the
+      // block being typed into to exactly that local button patch.
+      if(typeof renderPTimeBoth==='function')renderPTimeBoth();else pTimeSyncArm(wrap);
       return;
     }
     const car=el.dataset.car,n=+el.dataset.stint,k=el.dataset.k;
@@ -2718,6 +2738,15 @@ function renderPTime(T){
     pTimeSlot(String(car),n)[k]=el.value;
     savePTime();
     if(typeof renderStints==='function'&&typeof T==='number')renderStints(T);
+    // Push to the OTHER block immediately. renderPTime()'s own signature never
+    // carries the actual STINT values (only car order/arm state/auth), so
+    // without this the sibling block only picked up an edit once something
+    // else happened to change its signature too — usually the running order
+    // reshuffling on the next lap, i.e. the 30-60s lag this replaces. The
+    // block being typed into is unaffected: its own focus-guard in
+    // renderPTime() (the input is still focused) turns this into a no-op
+    // rebuild there.
+    if(typeof renderPTimeBoth==='function')renderPTimeBoth();
   });
   wrap.addEventListener('click',function(e){
     const b=e.target.closest('.ptime-arm');if(!b||b.disabled)return;
@@ -3403,7 +3432,7 @@ function renderH2H(T){
   // Cheap per-tick sync of the persistent controls (never innerHTML-replaced).
   const chipPosMap=h2hClassPos(T,cls);
   const chipPos=c=>{const p=chipPosMap[String(c)];return p!=null?('P'+p+' '):'';};
-  shell.querySelector('.h2href').textContent='REFERENCE · '+chipPos(selCar)+'#'+selCar+'  '+curDrv(selCar,T)+' · class '+cls;
+  shell.querySelector('.h2href').textContent='COMPARE · '+chipPos(selCar)+'#'+selCar+'  '+curDrv(selCar,T)+' · class '+cls;
   shell.querySelectorAll('.h2hchip').forEach(b=>{
     const c=b.dataset.car;b.classList.toggle('on',h2hSel.has(c));
     const label=chipPos(c)+'#'+c+'  '+curDrv(c,T);if(b.textContent!==label)b.textContent=label;
@@ -4861,7 +4890,7 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
       else if(cur.id==='reelcard'&&reelIdx===21){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
       // PIT lives in the weather reel, so its Left/Right keys are gated on that
       // reel being focused and on PIT being its current panel
-      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===15){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
+      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===16){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
       return;
     }
     // while a reel is zoomed/focused, Up/Down arrows step through its reels
@@ -4978,7 +5007,7 @@ function pushPit(force){
   // The FIELD page walks every car, so it is only worth building while PIT is the
   // visible right-reel panel, and then no faster than once a second.
   let field=window.__pitField||null;
-  if((wxReelIdx===15||reelIdx===15)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
+  if((wxReelIdx===16||reelIdx===16)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
     window.__pitFieldT=Date.now();
     field=[];
     try{
@@ -5682,7 +5711,7 @@ if(PREFS.pace!=null){const _p=document.getElementById('pacethr');if(_p)_p.value=
 // Speed is NOT restored from PREFS any more — always starts at the <select>'s
 // own HTML default (10x), on both desktop and phone, regardless of what a
 // previous session left it on.
-if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,+PREFS.reel));
+if(PREFS.reel!=null)reelIdx=Math.max(0,Math.min(REELN-1,remapReelIdx(+PREFS.reel)));
 (function(){const el=document.getElementById('evdate');if(el&&DB.event)el.textContent=DB.event.date;})();
 /* "ALL CLASSES" — a dropdown entry that shows the whole field at once instead
    of one class at a time.
@@ -7422,7 +7451,7 @@ setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule ta
    order note by REELN), so its bounds are REELN too. It opens on WEATHER,
    which is index 15 now that the seven former weather-side reels sit at the
    end of the shared list. */
-var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,+PREFS.reelR)):11;const WXN=REELN;
+var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,remapReelIdx(+PREFS.reelR))):12;const WXN=REELN;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -7990,7 +8019,9 @@ applyWxReel(false);
 
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
-  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','P-TIME','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','H2H'];
+  // Order here MUST match the physical order of .reelpanel divs in #reelstrip
+  // (see buildRightStrip's comment) — H2H sits before FLOW and P-TIME is last.
+  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','H2H','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','P-TIME'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
