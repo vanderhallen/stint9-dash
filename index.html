@@ -2531,8 +2531,7 @@ function pTimeArmToggle(car){
   const st=pTimeArmState(car).state;
   if(st==='off')pTimeArmSet(car,{state:'armed',seenPits:pTimeCarPitsSoFar(car,T)});
   else pTimeArmClear(car);   // armed or counting -> cancel back to off
-  _ptimeSig=null;   // force renderPTime to pick up the new button state
-  if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+  renderPTimeBoth();   // both blocks: the click carries no side of its own
   renderPTimeArmPopup();
 }
 // Runs every render() frame (both LIVE and SIM — see the call site in
@@ -2561,8 +2560,7 @@ function checkPTimeArm(T){
   });
   if(changed){
     savePTimeArm();
-    _ptimeSig=null;
-    if(typeof renderPTime==='function')renderPTime(T);
+    renderPTimeBoth();
     renderPTimeArmPopup();
   }
 }
@@ -2586,19 +2584,51 @@ setInterval(function(){try{renderPTimeArmPopup();}catch(e){}},250);
 document.addEventListener('click',function(e){
   const x=e.target.closest('[data-dismiss-car]');if(!x)return;
   pTimeArmClear(x.getAttribute('data-dismiss-car'));
-  _ptimeSig=null;
-  if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+  renderPTimeBoth();
   renderPTimeArmPopup();
 });
-let _ptimeSig=null;
+/* Per reel block, like POSC: both blocks can show P-TIME at once, each into
+   its own #ptimewrap / #ptimewrap_r. One shared signature let whichever block
+   painted first claim a state and the other early-return on the next frame —
+   freezing the right block completely (its Active buttons never updated and
+   its row order never followed the running order). */
+const _ptimeSig={'':null,[RSUF]:null};
+const ptimeInvalidate=()=>{_ptimeSig['']=null;_ptimeSig[RSUF]=null;};
+// Repaint BOTH blocks. An arm/disarm is triggered by a click handler, which
+// runs with no side selected, so a bare renderPTime() would only ever refresh
+// the left block — including when the button that was clicked is the right
+// block's own.
+function renderPTimeBoth(){
+  if(typeof T!=='number')return;
+  ptimeInvalidate();
+  ['',RSUF].forEach(s=>withSide(s,()=>{try{renderPTime(T);}catch(e){}}));
+}
+function pTimeArmLabel(as){return as==='counting'?'Counting':(as==='armed'?'Active':'Inactive');}
+/* Update just the Active buttons in place. Used when a full rebuild is unsafe
+   because someone is typing in this block (see the focus guard below): the
+   buttons are not inputs, so refreshing them cannot clobber a half-typed time,
+   and without this the button never visibly responds to its own click while a
+   time is being entered — which is exactly when the crew arms a car. */
+function pTimeSyncArm(wrap){
+  wrap.querySelectorAll('.ptime-arm').forEach(b=>{
+    const as=pTimeArmState(b.dataset.car).state,label=pTimeArmLabel(as),cls='ptime-arm ptime-arm-'+as;
+    if(b.textContent!==label)b.textContent=label;
+    if(b.className!==cls)b.className=cls;
+  });
+}
 function renderPTime(T){
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
+  const side=RSIDE||'';
   prunePTimeForNewEvent();   // before pTimeNCols()/pTimeRow() below touch PTIME
   const ae=document.activeElement;
-  if(ae&&wrap.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return;
+  // Typing in this block: rebuilding the table would drop the keystroke, so
+  // leave the inputs alone — but still refresh the Active buttons, which a
+  // click can have just toggled without moving focus off the input (Safari and
+  // Firefox on macOS do not focus a button on click).
+  if(ae&&wrap.contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')){pTimeSyncArm(wrap);return;}
   if(!DB.cars||!DB.cars.length){
     wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">select a class</div>';
-    _ptimeSig=null;return;
+    _ptimeSig[side]=null;return;
   }
   const lp=livePos(T);
   const ordered=DB.cars.slice().sort((a,b)=>{
@@ -2613,8 +2643,8 @@ function renderPTime(T){
   // to be the currently-browsed reference (see applyAuthGate()).
   const authOkSig=!!(window.AUTH&&window.AUTH.mode==='team');
   const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'')+'|'+armSig+'|'+authOkSig;
-  if(sig===_ptimeSig&&wrap.querySelector('table'))return;
-  _ptimeSig=sig;
+  if(sig===_ptimeSig[side]&&wrap.querySelector('table'))return;
+  _ptimeSig[side]=sig;
   const av=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const dis=authOkSig?'':' disabled';
   let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds. Active arms a car &mdash; its next pit stop auto-starts a countdown from that stint&rsquo;s time.</div>';
@@ -2636,8 +2666,7 @@ function renderPTime(T){
     }
     {
       const as=pTimeArmState(st).state;
-      const label=as==='counting'?'Counting':(as==='armed'?'Active':'Inactive');
-      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+'" data-car="'+st+'"'+dis+'>'+label+'</button></td>';
+      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+'" data-car="'+st+'"'+dis+'>'+pTimeArmLabel(as)+'</button></td>';
     }
     h+='</tr>';
   });
@@ -8103,10 +8132,14 @@ applyWxReel(false);
     // TYRE/SERVICE.
     const teamOk=!!(window.AUTH&&window.AUTH.mode==='team');
     document.body.classList.toggle('ptime-locked',!teamOk);
-    document.querySelectorAll('#ptimewrap .ptime-in,#ptimewrap .ptime-arm').forEach(el=>{el.disabled=!teamOk;});
+    // Both blocks: #ptimewrap_r is a second live copy of this table, and a
+    // querySelectorAll is not routed through withSide()'s getElementById shim,
+    // so it has to be named explicitly or the right block's controls stay
+    // disabled after signing in.
+    document.querySelectorAll('#ptimewrap .ptime-in,#ptimewrap .ptime-arm,#ptimewrap_r .ptime-in,#ptimewrap_r .ptime-arm').forEach(el=>{el.disabled=!teamOk;});
     try{
-      if(typeof _ptimeSig!=='undefined')_ptimeSig=null;   // force a rebuild so baked-in `disabled` attrs match
-      if(typeof renderPTime==='function'&&typeof T==='number')renderPTime(T);
+      // force a rebuild in both blocks so baked-in `disabled` attrs match
+      if(typeof renderPTimeBoth==='function')renderPTimeBoth();
     }catch(e){}
     updateBadge();
     // refresh the tyre iframe's read-only flag for the current car
