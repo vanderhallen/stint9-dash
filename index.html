@@ -3263,7 +3263,7 @@ function renderSecTab(T){
    BX/LEG/etc. are only kept warm for DB.cars (the current global class), so a
    second independent class picker would need its own cache-rebuild plumbing;
    piggybacking on the existing selection avoids that entirely. */
-let h2hSel=new Set(),h2hMetric='lap',h2hHover=null,h2hLastKey=null;
+let h2hSel=new Set(),h2hMetric='lap',h2hHover=null,h2hLastKey=null,h2hAutoPicked=false;
 // classForCar() exists but is private to the login-modal IIFE further down —
 // same one-liner the car-search jump (~4162) already duplicates rather than
 // exporting it.
@@ -3409,24 +3409,43 @@ function renderH2H(T){
   const cls=h2hClassOf(selCar);
   const key=selCar+'|'+cls;
   if(h2hLastKey!==key){
-    h2hSel=new Set();h2hHover=null;h2hLastKey=key;
-    // Open with a useful comparison instead of an empty picker: pre-select
-    // whoever currently leads this class — or P2 if the reference car IS the
-    // leader, since comparing #665 against #665 would be pointless.
-    if(cls){
-      const posMap=h2hClassPos(T,cls);
-      let pick=null;
-      for(const c in posMap)if(posMap[c]===1){pick=c;break;}
-      if(pick===String(selCar)){pick=null;for(const c in posMap)if(posMap[c]===2){pick=c;break;}}
-      if(pick&&pick!==String(selCar))h2hSel.add(pick);
-    }
+    h2hSel=new Set();h2hHover=null;h2hLastKey=key;h2hAutoPicked=false;
+  }
+  // Open with a useful comparison instead of an empty picker: pre-select
+  // whoever currently leads this class — or P2 if the reference car IS the
+  // leader, since comparing #665 against #665 would be pointless. Retried on
+  // every tick (not just the one where the key changed) until it actually
+  // lands one: right after a car/class switch h2hClassPos(T,cls) can still be
+  // sparse — T has only just reached that car's own earliest data point, so
+  // most of the class has no ranked position yet — and committing to "no
+  // pick" on that first, incomplete tick left the picker silently empty for
+  // the rest of the session (reported via the iPhone view, but reproduced on
+  // desktop too: reported 2026-09-20). h2hAutoPicked is also set the moment
+  // the crew touches a chip themselves, so this never fights a deliberate
+  // "clear the comparison" click.
+  if(!h2hAutoPicked&&cls){
+    const posMap=h2hClassPos(T,cls);
+    let pick=null;
+    for(const c in posMap)if(posMap[c]===1){pick=c;break;}
+    if(pick===String(selCar)){pick=null;for(const c in posMap)if(posMap[c]===2){pick=c;break;}}
+    if(pick&&pick!==String(selCar)){h2hSel.add(pick);h2hAutoPicked=true;}
   }
   if(!selCar||!cls){
     wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">select a car to compare drivers</div>';
     return;
   }
   const others=(DB.classes[cls]||[]).map(String).filter(c=>c!==String(selCar));
-  for(const c of Array.from(h2hSel))if(others.indexOf(c)<0)h2hSel.delete(c);   // class changed under us — drop stale picks
+  // class changed under us — drop stale picks. This also catches the auto-pick
+  // above having fired against DB.classes before buildClass() finished settling
+  // on boot (its own posMap comes from a separate lookup, so it can briefly
+  // disagree with `others` here): if that's what got pruned, h2hAutoPicked was
+  // already set from that now-invalid pick and would otherwise block every
+  // future retry, leaving the picker silently empty for the rest of the
+  // session — reported via the iPhone view, but reproduced on desktop too,
+  // live (2026-09-20). Re-arm it so the very next tick gets a clean shot.
+  let pruned=false;
+  for(const c of Array.from(h2hSel))if(others.indexOf(c)<0){h2hSel.delete(c);pruned=true;}
+  if(pruned)h2hAutoPicked=false;
 
   const shell=h2hEnsureShell(wrap,cls,others);
   // Cheap per-tick sync of the persistent controls (never innerHTML-replaced).
@@ -3616,7 +3635,7 @@ function renderH2H(T){
       const chip=e.target.closest('.h2hchip'),seg=e.target.closest('.h2hmetricbar .seg');
       if(!chip&&!seg)return;
       withSide(reelSideOf(wrap),()=>{
-        if(chip){const c=chip.dataset.car;if(h2hSel.has(c))h2hSel.delete(c);else h2hSel.add(c);}
+        if(chip){const c=chip.dataset.car;if(h2hSel.has(c))h2hSel.delete(c);else h2hSel.add(c);h2hAutoPicked=true;}
         if(seg)h2hMetric=seg.dataset.v;
         renderH2H(T);
       });
