@@ -198,15 +198,19 @@
   .ptime-arm:disabled{cursor:default;opacity:.5}
   button.ptime-arm.nocal{opacity:.45}
   button.ptime-arm.ptime-arm-counting{background:#e08a1e!important;border-color:#e08a1e!important;color:#fff!important;cursor:pointer}
-  #ptimeArmPopup{position:fixed;right:14px;bottom:14px;z-index:8000;display:none;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace}
+  /* Half the screen, dead centre: this is read off the pit wall at a glance,
+     not a corner toast. z-index sits above the zoom modal, which pTimeCalStart
+     closes anyway before opening this. */
+  #ptimeArmPopup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:50vw;height:50vh;z-index:9000;display:none;flex-direction:column;gap:10px;font-family:'IBM Plex Mono',monospace}
   /* Red while the stop still owes time, green the moment the minimum is served
      — at which point the clock keeps running the other way (-0:01, -0:02, …)
      so the crew can see how far over it went. */
-  .ptime-armcard{position:relative;display:flex;align-items:center;gap:10px;background:#c0392b;color:#fff;border-radius:10px;padding:8px 26px 8px 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:150px}
+  /* Cards share the panel's height, so two live timers each get half of it. */
+  .ptime-armcard{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;background:#c0392b;color:#fff;border-radius:14px;padding:10px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
   .ptime-armcard.done{background:#1e8f3a}
-  .ptime-armcard .pac-car{font-weight:700;font-size:12px;flex:1 1 auto}
-  .ptime-armcard .pac-t{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
-  .ptime-armcard .pac-x{position:absolute;top:2px;right:4px;background:transparent;border:0;color:rgba(255,255,255,.7);font-size:15px;line-height:1;cursor:pointer;padding:1px 3px}
+  .ptime-armcard .pac-car{font-weight:700;font-size:min(3.2vh,3.6vw);letter-spacing:1px;text-transform:uppercase;opacity:.85}
+  .ptime-armcard .pac-t{font-weight:700;font-size:min(20vh,22vw);line-height:1;font-variant-numeric:tabular-nums}
+  .ptime-armcard .pac-x{position:absolute;top:6px;right:10px;background:transparent;border:0;color:rgba(255,255,255,.75);font-size:min(4vh,5vw);line-height:1;cursor:pointer;padding:2px 6px}
   .ptime-armcard .pac-x:hover{color:#fff}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
@@ -2544,6 +2548,9 @@ function pTimeCalStart(car){
   if(durationSec<=0)return false;
   PTIME_ARM[car]={state:'counting',startTs:Date.now(),durationSec};
   savePTimeArm();
+  // Leave the zoom modal first: the timer is a centred, half-screen panel and
+  // a zoomed reel would otherwise be sitting on top of it.
+  try{if(window.__focusClose)window.__focusClose();}catch(e){}
   renderPTimeBoth();   // both blocks: the click carries no side of its own
   renderPTimeArmPopup();
   return true;
@@ -4794,6 +4801,9 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     const gg=card.querySelector('#gapgauge');if(gg){gg.style.height=w+'px';gg.style.width='auto';}
   }
   function close(){if(!cur)return;ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed','fexact');cur=null;ph=null;resync();try{fitPage();}catch(e){}layer.classList.remove('on');}
+  // Starting a pit countdown drops the zoom modal, so the centred timer isn't
+  // opening behind a zoomed reel (pTimeCalStart).
+  window.__focusClose=close;
   function open(card){if(cur)close();
     // Pin the zoomed size to exactly 2x whatever the map/zoom-view animation
     // was rendering at right before opening — not an arbitrary percentage of
