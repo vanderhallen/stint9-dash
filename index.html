@@ -1864,7 +1864,17 @@ const gd=document.getElementById('dots'),EL={};
 
 
 /* lap chart (per section, building over time) */
-const lc=document.getElementById('lapchart');
+/* Both reel blocks can show POS at once, so this chart needs a per-block SVG,
+   node cache and axis watermark. lcEl() resolves the block's own <svg> at CALL
+   time: withSide()'s id shim only redirects document.getElementById while it is
+   running, so a handle hoisted to parse time binds to the LEFT block's node
+   forever — which is exactly why the right block's POS panel stayed blank while
+   every other reel (all of which look their element up per call) painted fine.
+   renderChart() is the one renderer that writes cached nodes instead of looking
+   anything up, so the shim alone cannot retarget it; POSC[side] is what does. */
+const lcEl=()=>document.getElementById('lapchart');
+const POSC={};[ '',RSUF ].forEach(s=>POSC[s]={CLINE:{},CTIP:{},CRT:{},CSEC:{},CPIT:{},lastAxMax:0,lastAxMin:1});
+const posc=()=>POSC[RSIDE]||POSC[''];
 // rowH sized so CH (=yT+nC*rowH+4) lands near the reel panel's ~2:1 aspect
 // ratio for a typical field, minimising letterboxing so the content fills the
 // available space instead of scaling to width with empty bands top/bottom.
@@ -1896,38 +1906,42 @@ const PX=42,SECX=56,SECW=10,SECGAP=3,PITX=SECX+5*(SECW+SECGAP)+10;   // squares 
 // and sector squares — and the further left the earlier in the race, since the
 // overhang is one lap's width ((xR-xL)/(axMax-1), ~120px at axMax=5). Scaling
 // from axMin instead keeps every line inside the plot area at any axMax.
-let axMax=1,axMin=1,lastAxMax=0,lastAxMin=1;
+// axMax/axMin are derived from DB alone — identical for both blocks, so they
+// stay global. The "have I already drawn this axis" watermark is NOT: it lives
+// per block in POSC, or the first block to paint a new lap would claim the
+// rebuild and the second would skip it and never get its gridlines.
+let axMax=1,axMin=1;
 const X=fx=>xL+(axMax<=axMin?0:(fx-axMin)/(axMax-axMin))*(xR-xL),Y=p=>yT+(p-1)*rowH+rowH/2;
 // (Re)draw the POS reel's vertical lap gridlines/labels for the current axMax,
 // inserted behind the position polylines. Called from renderChart only when
 // axMax changes (a new lap completed) or the class/height changed.
 function rebuildPosAxis(){
+  const lc=lcEl();if(!lc)return;
   lc.querySelectorAll('.axlap').forEach(e=>e.remove());
-  const before=CLINE[DB.cars[0]]||null;
+  const before=posc().CLINE[DB.cars[0]]||null;
   for(let L=1;L<=axMax;L++){if(L!==1&&L!==axMax&&L%5!==0)continue;
     const ln=document.createElementNS(SVGNS,'line');ln.setAttribute('x1',X(L));ln.setAttribute('x2',X(L));ln.setAttribute('y1',yT-5);ln.setAttribute('y2',yT+nC*rowH);ln.setAttribute('class','glin axlap');lc.insertBefore(ln,before);
     const tx=document.createElementNS(SVGNS,'text');tx.setAttribute('x',X(L));tx.setAttribute('y',yT-9);tx.setAttribute('text-anchor','middle');tx.setAttribute('class','axis axlap');tx.textContent=L;lc.insertBefore(tx,before);}
 }
-const CLINE={},CTIP={},CRT={},CSEC={},CPIT={};
 
 function tri(dt){if(dt>0)return '<tspan fill="#1e8f3a"> ▲'+dt+'</tspan>';if(dt<0)return '<tspan fill="#c0392b"> ▼'+(-dt)+'</tspan>';return '';}
 function pitsUpTo(st,lap){const a=DB.pits&&DB.pits[st]||[];let n=0;for(const l of a)if(l<=lap)n++;return n>0?('<tspan fill="#6b7480" font-weight="600">  PIT '+n+'</tspan>'):'';}
 function posAt(done,fx){for(let i=done.length-1;i>=0;i--)if(Math.abs(done[i][0]-fx)<0.02)return done[i][1];return null;}
-function renderChart(T){const shown=[];
+function renderChart(T){const shown=[],C=posc();
   // x-axis spans only the laps run so far; rebuild gridlines when that changes
   let ml=1,mn=1;DB.cars.forEach(st=>{(DB.chart[st]||[]).forEach(pt=>{if(pt[2]<=T){if(pt[0]>ml)ml=pt[0];if(pt[0]<mn)mn=pt[0];}});});
   axMax=Math.max(1,Math.ceil(ml));axMin=mn;
-  if(axMax!==lastAxMax||axMin!==lastAxMin){lastAxMax=axMax;lastAxMin=axMin;rebuildPosAxis();}
-  const oBest=[Infinity,Infinity,Infinity,Infinity,Infinity],secLatest={},secPB={};DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{},lat=[null,null,null,null,null],pb=[Infinity,Infinity,Infinity,Infinity,Infinity];Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(L=>{const s=stm[L];if(!s)return;for(let k=0;k<5;k++){const tc=bx[(L-1)*5+(k+1)];if(tc!=null&&tc<=T){const v=s[k];lat[k]=v;if(v<pb[k])pb[k]=v;}}});secLatest[st]=lat;secPB[st]=pb;for(let k=0;k<5;k++)if(pb[k]<oBest[k])oBest[k]=pb[k];});DB.cars.forEach(st=>{const arr=DB.chart[st]||[];const done=arr.filter(pt=>pt[2]<=T);const pl=CLINE[st],tp=CTIP[st],rt=CRT[st];
+  if(axMax!==C.lastAxMax||axMin!==C.lastAxMin){C.lastAxMax=axMax;C.lastAxMin=axMin;rebuildPosAxis();}
+  const oBest=[Infinity,Infinity,Infinity,Infinity,Infinity],secLatest={},secPB={};DB.cars.forEach(st=>{const stm=DB.sectimes[st]||{},bx=BX[st]||{},lat=[null,null,null,null,null],pb=[Infinity,Infinity,Infinity,Infinity,Infinity];Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(L=>{const s=stm[L];if(!s)return;for(let k=0;k<5;k++){const tc=bx[(L-1)*5+(k+1)];if(tc!=null&&tc<=T){const v=s[k];lat[k]=v;if(v<pb[k])pb[k]=v;}}});secLatest[st]=lat;secPB[st]=pb;for(let k=0;k<5;k++)if(pb[k]<oBest[k])oBest[k]=pb[k];});DB.cars.forEach(st=>{const arr=DB.chart[st]||[];const done=arr.filter(pt=>pt[2]<=T);const pl=C.CLINE[st],tp=C.CTIP[st],rt=C.CRT[st];if(!pl)return;
   pl.setAttribute('stroke-width',st===selCar?'3.4':'1.7');pl.setAttribute('opacity',(selCar&&st!==selCar)?'0.22':'1');
-  if(!done.length){pl.setAttribute('points','');tp.style.display='none';rt.style.display='none';CSEC[st].forEach(r=>r.style.display='none');return;}
+  if(!done.length){pl.setAttribute('points','');tp.style.display='none';rt.style.display='none';C.CSEC[st].forEach(r=>r.style.display='none');return;}
   pl.setAttribute('points',done.map(pt=>X(pt[0])+','+Y(pt[1])).join(' '));
   const last=done[done.length-1];const finished=last[0]>=maxN-0.001;
   if(finished){const fp=last[1];const prev=(DB.lappos[st][maxN-1]!=null?DB.lappos[st][maxN-1]:fp);
     rt.setAttribute('x',X(maxN)+14);rt.innerHTML='<tspan font-weight="700">P'+fp+'</tspan>  #'+st+' '+curDrv(st,T)+tri(prev-fp);
     rt.style.display='';tp.style.display='none';shown.push({el:rt,y:Y(fp)});
   }else{const pv=posAt(done,last[0]-1);tp.setAttribute('x',X(last[0])+10);tp.innerHTML='#'+st+(pv!=null?tri(pv-last[1]):'');tp.style.display=document.getElementById('lbls').checked?'':'none';rt.style.display='none';shown.push({el:tp,y:Y(last[1])});}
-  {const secs=CSEC[st],lat=secLatest[st],pb=secPB[st],yb=(Y(last[1])-8);for(let k=0;k<5;k++){const r=secs[k],v=lat[k];if(v==null){r.style.display='none';continue;}r.setAttribute('x',SECX+k*(SECW+SECGAP));r.setAttribute('y',yb.toFixed(1));r.setAttribute('fill',Math.abs(pb[k]-oBest[k])<0.01?'#A020F0':Math.abs(v-pb[k])<0.01?'#22B14C':'#F5C500');r.style.display='';}// pitLapsOf(st), not raw DB.pits[st]: WIGE's inpit flag is sparse (the
+  {const secs=C.CSEC[st],lat=secLatest[st],pb=secPB[st],yb=(Y(last[1])-8);for(let k=0;k<5;k++){const r=secs[k],v=lat[k];if(v==null){r.style.display='none';continue;}r.setAttribute('x',SECX+k*(SECW+SECGAP));r.setAttribute('y',yb.toFixed(1));r.setAttribute('fill',Math.abs(pb[k]-oBest[k])<0.01?'#A020F0':Math.abs(v-pb[k])<0.01?'#22B14C':'#F5C500');r.style.display='';}// pitLapsOf(st), not raw DB.pits[st]: WIGE's inpit flag is sparse (the
 // PITSTOPCOUNT diff wige-scrape relies on rarely fires — see README §18), so
 // DB.pits alone silently under-reports. pitLapsOf adds the out-lap-S1
 // heuristic already trusted everywhere else this session (liveRefDuration,
@@ -1935,7 +1949,7 @@ function renderChart(T){const shown=[];
 // genuinely pitted (an out-lap S1 several times a normal one, e.g. #650's
 // 198.8s against a steady ~76s) yet showed no PIT label at all, because
 // DB.pits[650] was empty while pitLapsOf('650') correctly found [6].
-const ptx=CPIT[st];if(ptx){const curL=(last[0]>=maxN-0.001)?maxN:Math.floor(last[0]);let np=0;const pa=pitLapsOf(st);for(const l of pa)if(l<=curL)np++;ptx.textContent=np>0?('PIT '+np):'';ptx.setAttribute('y',(Y(last[1])+5).toFixed(1));}}
+const ptx=C.CPIT[st];if(ptx){const curL=(last[0]>=maxN-0.001)?maxN:Math.floor(last[0]);let np=0;const pa=pitLapsOf(st);for(const l of pa)if(l<=curL)np++;ptx.textContent=np>0?('PIT '+np):'';ptx.setAttribute('y',(Y(last[1])+5).toFixed(1));}}
 });
   shown.sort((a,b)=>a.y-b.y);for(let i=1;i<shown.length;i++){if(shown[i].y-shown[i-1].y<19)shown[i].y=shown[i-1].y+19;}
   shown.forEach(s=>s.el.setAttribute('y',(s.y+5).toFixed(1)));}
@@ -5560,17 +5574,23 @@ function buildClass(cls){
     const t=document.createElementNS(SVGNS,'text');t.setAttribute('font-family','Space Grotesk,sans-serif');t.setAttribute('font-weight','700');t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','5');t.setAttribute('paint-order','stroke');t.textContent='#'+st;
     const p=document.createElementNS(SVGNS,'text');p.setAttribute('text-anchor','middle');p.setAttribute('x','0');p.setAttribute('fill','#fff');p.setAttribute('font-family','Space Grotesk,sans-serif');p.setAttribute('font-weight','700');
     g.appendChild(c);g.appendChild(t);g.appendChild(p);gd.appendChild(g);EL[st]={g,c,t,p};});
+  // Once per reel block: each has its own <svg> and its own node cache, so both
+  // can show POS at the same time (see lcEl/POSC). withSide() makes lcEl()
+  // resolve to that block's own #lapchart / #lapchart_r.
+  ['',RSUF].forEach(_s=>withSide(_s,()=>{
+  const lc=lcEl();if(!lc)return;const C=POSC[_s];
   lc.setAttribute('viewBox','0 0 1000 '+CH);lc.innerHTML='';
-  for(const k in CLINE)delete CLINE[k];for(const k in CTIP)delete CTIP[k];for(const k in CRT)delete CRT[k];for(const k in CSEC)delete CSEC[k];for(const k in CPIT)delete CPIT[k];
+  for(const k in C.CLINE)delete C.CLINE[k];for(const k in C.CTIP)delete C.CTIP[k];for(const k in C.CRT)delete C.CRT[k];for(const k in C.CSEC)delete C.CSEC[k];for(const k in C.CPIT)delete C.CPIT[k];
   // lap gridlines are (re)built per-frame by rebuildPosAxis() from renderChart,
   // scaled to laps completed; force a rebuild for this class's new height.
-  lastAxMax=0;lastAxMin=1;
+  C.lastAxMax=0;C.lastAxMin=1;
   const lapLbl=document.createElementNS(SVGNS,'text');lapLbl.setAttribute('x',xL-56);lapLbl.setAttribute('y',yT-9);lapLbl.setAttribute('class','axis');lapLbl.textContent='LAP';lc.appendChild(lapLbl);
   for(let pp=1;pp<=nC;pp++){const t=document.createElementNS(SVGNS,'text');t.setAttribute('x',PX);t.setAttribute('y',Y(pp)+5);t.setAttribute('text-anchor','end');t.setAttribute('class','paxis');t.textContent='P'+pp;lc.appendChild(t);}
-  DB.cars.forEach(st=>{const pl=document.createElementNS(SVGNS,'polyline');pl.setAttribute('class','cl');pl.setAttribute('stroke',DB.carcol[st]);lc.appendChild(pl);CLINE[st]=pl;
-    const tp=document.createElementNS(SVGNS,'text');tp.setAttribute('class','tip');tp.setAttribute('fill',DB.carcol[st]);tp.style.display='none';lc.appendChild(tp);CTIP[st]=tp;
-    const rt=document.createElementNS(SVGNS,'text');rt.setAttribute('class','rlbl');rt.style.display='none';lc.appendChild(rt);CRT[st]=rt;
-    const sc=[];for(let k=0;k<5;k++){const r=document.createElementNS(SVGNS,'rect');r.setAttribute('width',SECW);r.setAttribute('height','16');r.setAttribute('rx','2');r.setAttribute('stroke','#fff');r.setAttribute('stroke-width','1');r.style.display='none';lc.appendChild(r);sc.push(r);}CSEC[st]=sc;const ptx=document.createElementNS(SVGNS,'text');ptx.setAttribute('x',PITX);ptx.setAttribute('text-anchor','start');ptx.setAttribute('font-family','IBM Plex Mono,monospace');ptx.setAttribute('font-weight','600');ptx.setAttribute('font-size','15');ptx.setAttribute('fill','#6b7480');lc.appendChild(ptx);CPIT[st]=ptx;});
+  DB.cars.forEach(st=>{const pl=document.createElementNS(SVGNS,'polyline');pl.setAttribute('class','cl');pl.setAttribute('stroke',DB.carcol[st]);lc.appendChild(pl);C.CLINE[st]=pl;
+    const tp=document.createElementNS(SVGNS,'text');tp.setAttribute('class','tip');tp.setAttribute('fill',DB.carcol[st]);tp.style.display='none';lc.appendChild(tp);C.CTIP[st]=tp;
+    const rt=document.createElementNS(SVGNS,'text');rt.setAttribute('class','rlbl');rt.style.display='none';lc.appendChild(rt);C.CRT[st]=rt;
+    const sc=[];for(let k=0;k<5;k++){const r=document.createElementNS(SVGNS,'rect');r.setAttribute('width',SECW);r.setAttribute('height','16');r.setAttribute('rx','2');r.setAttribute('stroke','#fff');r.setAttribute('stroke-width','1');r.style.display='none';lc.appendChild(r);sc.push(r);}C.CSEC[st]=sc;const ptx=document.createElementNS(SVGNS,'text');ptx.setAttribute('x',PITX);ptx.setAttribute('text-anchor','start');ptx.setAttribute('font-family','IBM Plex Mono,monospace');ptx.setAttribute('font-weight','600');ptx.setAttribute('font-size','15');ptx.setAttribute('fill','#6b7480');lc.appendChild(ptx);C.CPIT[st]=ptx;});
+  }));
   for(const k in MEL){if(MEL[k]&&MEL[k].g)MEL[k].g.remove();delete MEL[k];}
   DB.cars.forEach(st=>{const g=document.createElementNS(SVGNS,'g');g.style.visibility='hidden';
     const c=document.createElementNS(SVGNS,'circle');c.setAttribute('fill',DB.carcol[st]);c.setAttribute('stroke','#111');c.setAttribute('stroke-width','1');
