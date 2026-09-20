@@ -188,19 +188,25 @@
   .ptime-in::placeholder{color:#c3c8ce;font-weight:500}
   .ptime-in:focus{outline:none;border-color:#16202b;background:#eef4ef}
   .card.zoomed .ptime-in{width:calc(56px*var(--zt,1));height:calc(28px*var(--zt,1));font-size:calc(16px*var(--zt,1));padding:calc(2px*var(--zt,1)) calc(6px*var(--zt,1))}
-  /* P-TIME "Active" arm button: off (watch) -> armed (red, waiting for this
-     car's next pit lap) -> counting (a countdown is live, see #ptimeArmPopup). */
+  /* P-TIME CALIBRATION column + its Calibrate button, which starts that car's
+     countdown in #ptimeArmPopup straight away. `nocal` = no time typed yet, so
+     pressing would do nothing; `counting` = a timer is already running. */
+  #ptimewrap th.calh{color:#16202b}
+  #ptimewrap td.calc{border-left:2px solid #e6e8ec}
   .ptime-arm{width:82px;height:24px;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.5px;border-radius:5px;border:1px solid #cfd4da;background:#fff;color:#6b7480;cursor:pointer}
   .ptime-arm:hover{border-color:#16202b}
   .ptime-arm:disabled{cursor:default;opacity:.5}
-  button.ptime-arm.ptime-arm-armed{background:#c0392b!important;border-color:#c0392b!important;color:#fff!important}
+  button.ptime-arm.nocal{opacity:.45}
   button.ptime-arm.ptime-arm-counting{background:#e08a1e!important;border-color:#e08a1e!important;color:#fff!important;cursor:pointer}
   #ptimeArmPopup{position:fixed;right:14px;bottom:14px;z-index:8000;display:none;flex-direction:column;gap:6px;font-family:'IBM Plex Mono',monospace}
-  .ptime-armcard{display:flex;align-items:center;gap:10px;background:#16202b;color:#fff;border-radius:10px;padding:8px 10px 8px 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:150px}
+  /* Red while the stop still owes time, green the moment the minimum is served
+     — at which point the clock keeps running the other way (-0:01, -0:02, …)
+     so the crew can see how far over it went. */
+  .ptime-armcard{position:relative;display:flex;align-items:center;gap:10px;background:#c0392b;color:#fff;border-radius:10px;padding:8px 26px 8px 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:150px}
+  .ptime-armcard.done{background:#1e8f3a}
   .ptime-armcard .pac-car{font-weight:700;font-size:12px;flex:1 1 auto}
   .ptime-armcard .pac-t{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
-  .ptime-armcard.done .pac-t{color:#e08a1e}
-  .ptime-armcard .pac-x{background:transparent;border:0;color:#9aa1a9;font-size:16px;line-height:1;cursor:pointer;padding:0 2px}
+  .ptime-armcard .pac-x{position:absolute;top:2px;right:4px;background:transparent;border:0;color:rgba(255,255,255,.7);font-size:15px;line-height:1;cursor:pointer;padding:1px 3px}
   .ptime-armcard .pac-x:hover{color:#fff}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
@@ -1122,11 +1128,16 @@ let RCLONED=[];
 })();
 let FUEL={cap:85,cons:10.5,start:85,form:1.2,cars:{}};
 let PTIME={};try{PTIME=JSON.parse(localStorage.getItem('stint9_ptime')||'{}')||{};}catch(e){PTIME={};}
-// Per-car "Active" arm state for the P-TIME auto-countdown (see checkPTimeArm()):
-// off -> armed (watching for this car's next pit lap) -> counting (a countdown
-// is live, started from whatever STINT time was already typed for that stop).
-// Persisted so a page reload mid-stop doesn't lose a running countdown.
+// Per-car P-TIME countdown state: a car either has one running ('counting') or
+// it does not. Started by hand from the CALIBRATION column (pTimeCalStart), and
+// persisted so a page reload mid-stop doesn't lose a running countdown.
 let PTIME_ARM={};try{PTIME_ARM=JSON.parse(localStorage.getItem('stint9_ptime_arm')||'{}')||{};}catch(e){PTIME_ARM={};}
+// Drop anything left over from the removed auto-arm ('armed' entries waiting on
+// a pit detection that no longer happens) — they would sit in storage for ever
+// and never reach the popup, which only shows 'counting'.
+Object.keys(PTIME_ARM).forEach(c=>{if(!PTIME_ARM[c]||PTIME_ARM[c].state!=='counting')delete PTIME_ARM[c];});
+// Per-car calibration value (min/sec) the countdown is started from.
+let PTIME_CAL={};try{PTIME_CAL=JSON.parse(localStorage.getItem('stint9_ptime_cal')||'{}')||{};}catch(e){PTIME_CAL={};}
 function savePTimeArm(){try{localStorage.setItem('stint9_ptime_arm',JSON.stringify(PTIME_ARM));}catch(e){}}
 // Only the calculator SETTINGS (cap/cons/start/form) are global. The per-car
 // ENTRIES (cars) are mode-scoped: ephemeral in SIM (reset every session) and
@@ -2503,22 +2514,14 @@ function pTimeNCols(){
   Object.keys(day).forEach(car=>{Object.keys(day[car]||{}).forEach(k=>{const v=+k;if(v>n)n=v;});});
   return n;
 }
-// Active-arm helpers for the P-TIME auto-countdown. off -> armed (watching
-// for this car's next pit lap, via checkPTimeArm() below) -> counting (a
-// countdown is live in #ptimeArmPopup). Works in both LIVE and SIM/replay:
-// - LIVE: DB.pits[car] itself grows as new stops are confirmed live, so the
-//   count of "stops so far" is just its length.
-// - SIM/replay: DB.pits[car] already holds every stop for the WHOLE archived
-//   session up front, so "stops so far" instead means stops whose lap has
-//   already been passed by the current scrub position T (same curLapOf(st,T)
-//   idea askAgent() already uses for its own pit call-outs).
-function pTimeCarPitsSoFar(car,T){
-  const pits=(DB.pits&&DB.pits[car])||[];
-  if(window.dataMode==='LIVE')return pits.length;
-  const curLapOf=st=>{const l=activeLeg(st,T);if(l)return l[0];const bx=BX[st]||{};let mx=-Infinity;for(const k in bx)if(bx[k]<=T&&+k>mx)mx=+k;return isFinite(mx)?Math.floor(mx/5)+1:0;};
-  const cur=curLapOf(car);
-  return pits.filter(L=>cur>L).length;
-}
+/* P-TIME countdown. The countdown used to auto-start off a detected pit stop,
+   but nothing in the feed says "this car just came in" early or reliably
+   enough to hang a live clock on: WIGE never sets inpit (0 of 4251 rows on the
+   2026-08-01 archive), so DB.pits only ever gained the garage-grade laps that
+   prepLiveRaw's >20min guard catches, and the out-lap-S1 heuristic behind
+   pitLapsOf() only resolves once the car is already back out. The crew starts
+   it by hand instead: type a time in the CALIBRATION column and press the
+   button, which begins the countdown immediately in #ptimeArmPopup. */
 function pTimeArmState(car){return PTIME_ARM[String(car)]||{state:'off'};}
 function pTimeArmSet(car,patch){
   car=String(car);
@@ -2526,43 +2529,24 @@ function pTimeArmSet(car,patch){
   savePTimeArm();
 }
 function pTimeArmClear(car){car=String(car);delete PTIME_ARM[car];savePTimeArm();}
-function pTimeArmToggle(car){
+const _ptimeNum=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.').trim());return isFinite(x)?x:null;};
+// Calibration value per car (the countdown's length), kept apart from the
+// per-stint PTIME grid: it is the one field the button actually fires from.
+function pTimeCal(car){car=String(car);return PTIME_CAL[car]||(PTIME_CAL[car]={min:'',sec:''});}
+function savePTimeCal(){try{localStorage.setItem('stint9_ptime_cal',JSON.stringify(PTIME_CAL));}catch(e){}}
+function pTimeCalSeconds(car){const c=pTimeCal(car);return (_ptimeNum(c.min)||0)*60+(_ptimeNum(c.sec)||0);}
+// Press = start now. Pressing again while one is running restarts it from the
+// calibration value, so a miscalled stop can be re-zeroed without dismissing
+// the card first.
+function pTimeCalStart(car){
   car=String(car);
-  const st=pTimeArmState(car).state;
-  if(st==='off')pTimeArmSet(car,{state:'armed',seenPits:pTimeCarPitsSoFar(car,T)});
-  else pTimeArmClear(car);   // armed or counting -> cancel back to off
+  const durationSec=pTimeCalSeconds(car);
+  if(durationSec<=0)return false;
+  PTIME_ARM[car]={state:'counting',startTs:Date.now(),durationSec};
+  savePTimeArm();
   renderPTimeBoth();   // both blocks: the click carries no side of its own
   renderPTimeArmPopup();
-}
-// Runs every render() frame (both LIVE and SIM — see the call site in
-// render()) so a countdown can trigger even while the crew is looking at a
-// different reel. For each armed car, a grown "stops so far" count means it
-// just pitted; the STINT column matching that new stop number (pTimeNCols()
-// already reserves it as the "next" blank column) is whatever duration the
-// crew already typed in — use it to start counting. If that column is still
-// blank, stay armed rather than silently give up (but, deliberately, don't
-// keep re-checking THIS same stop once seenPits moves on).
-function checkPTimeArm(T){
-  let changed=false;
-  const numv=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.').trim());return isFinite(x)?x:null;};
-  Object.keys(PTIME_ARM).forEach(car=>{
-    const a=PTIME_ARM[car];
-    if(!a||a.state!=='armed')return;
-    const n=pTimeCarPitsSoFar(car,T);
-    if(n<=(a.seenPits||0))return;
-    a.seenPits=n;changed=true;
-    const row=pTimeRow(car),slot=row[n]||row[String(n)];
-    const m=slot?numv(slot.min):null,s=slot?numv(slot.sec):null;
-    if(m==null&&s==null)return;   // no time typed for this stop yet — stay armed
-    const durationSec=(m||0)*60+(s||0);
-    if(durationSec<=0)return;
-    PTIME_ARM[car]={state:'counting',seenPits:n,startTs:Date.now(),durationSec};
-  });
-  if(changed){
-    savePTimeArm();
-    renderPTimeBoth();
-    renderPTimeArmPopup();
-  }
+  return true;
 }
 // Floating countdown popup — a top-level fixed element (see index.html body,
 // #ptimeArmPopup), independent of whichever reel is currently on screen.
@@ -2574,10 +2558,14 @@ function renderPTimeArmPopup(){
   pop.innerHTML=cars.map(car=>{
     const a=PTIME_ARM[car];
     const remain=a.durationSec-(Date.now()-a.startTs)/1000;
+    // Past zero the clock keeps running the other way — the crew wants to see
+    // how far OVER the stop went, not a frozen 0:00. Red while there is time
+    // left, green once the minimum is served.
     const done=remain<=0;
-    const mm=Math.floor(Math.max(0,remain)/60),ss=Math.floor(Math.max(0,remain)%60);
-    const txt=String(mm)+':'+String(ss).padStart(2,'0');
-    return '<div class="ptime-armcard'+(done?' done':'')+'"><span class="pac-car">#'+car+' pit timer</span><span class="pac-t">'+txt+'</span><button type="button" class="pac-x" data-dismiss-car="'+car+'" title="Dismiss">&times;</button></div>';
+    const show=done?Math.floor(-remain):Math.ceil(remain);
+    const mm=Math.floor(show/60),ss=show%60;
+    const txt=(done?'-':'')+String(mm)+':'+String(ss).padStart(2,'0');
+    return '<div class="ptime-armcard'+(done?' done':'')+'"><button type="button" class="pac-x" data-dismiss-car="'+car+'" title="Close">&times;</button><span class="pac-car">#'+car+' pit timer</span><span class="pac-t">'+txt+'</span></div>';
   }).join('');
 }
 setInterval(function(){try{renderPTimeArmPopup();}catch(e){}},250);
@@ -2603,7 +2591,7 @@ function renderPTimeBoth(){
   ptimeInvalidate();
   ['',RSUF].forEach(s=>withSide(s,()=>{try{renderPTime(T);}catch(e){}}));
 }
-function pTimeArmLabel(as){return as==='counting'?'Counting':(as==='armed'?'Active':'Inactive');}
+function pTimeArmLabel(as){return as==='counting'?'Counting':'Calibrate';}
 /* Update just the Active buttons in place. Used when a full rebuild is unsafe
    because someone is typing in this block (see the focus guard below): the
    buttons are not inputs, so refreshing them cannot clobber a half-typed time,
@@ -2611,7 +2599,9 @@ function pTimeArmLabel(as){return as==='counting'?'Counting':(as==='armed'?'Acti
    time is being entered — which is exactly when the crew arms a car. */
 function pTimeSyncArm(wrap){
   wrap.querySelectorAll('.ptime-arm').forEach(b=>{
-    const as=pTimeArmState(b.dataset.car).state,label=pTimeArmLabel(as),cls='ptime-arm ptime-arm-'+as;
+    const car=b.dataset.car,as=pTimeArmState(car).state,label=pTimeArmLabel(as);
+    // muted while the row has no calibration value: pressing it would be a no-op
+    const cls='ptime-arm ptime-arm-'+as+(pTimeCalSeconds(car)>0?'':' nocal');
     if(b.textContent!==label)b.textContent=label;
     if(b.className!==cls)b.className=cls;
   });
@@ -2647,10 +2637,10 @@ function renderPTime(T){
   _ptimeSig[side]=sig;
   const av=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const dis=authOkSig?'':' disabled';
-  let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds. Active arms a car &mdash; its next pit stop auto-starts a countdown from that stint&rsquo;s time.</div>';
+  let h='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">P-TIME &middot; remaining pit time per stint, class order. Type minutes and seconds. CALIBRATION sets the countdown length &mdash; press Calibrate to start it right away in the floating timer.</div>';
   h+='<table><thead><tr><th class="l">Car</th>';
   for(let i=1;i<=nCols;i++)h+='<th>STINT '+i+'</th>';
-  h+='<th>Active</th>';
+  h+='<th class="calh">CALIBRATION</th><th></th>';
   h+='</tr></thead><tbody>';
   ordered.forEach(st=>{
     const pos=lp[st]!=null?('P'+lp[st]):'—';
@@ -2665,8 +2655,12 @@ function renderPTime(T){
         '</span></td>';
     }
     {
-      const as=pTimeArmState(st).state;
-      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+'" data-car="'+st+'"'+dis+'>'+pTimeArmLabel(as)+'</button></td>';
+      const cal=pTimeCal(st),as=pTimeArmState(st).state;
+      h+='<td class="calc"><span class="ptime-pair">'+
+        '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-cal="min" value="'+av(cal.min)+'"'+dis+'>'+
+        '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-cal="sec" value="'+av(cal.sec)+'"'+dis+'>'+
+        '</span></td>';
+      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+(pTimeCalSeconds(st)>0?'':' nocal')+'" data-car="'+st+'"'+dis+'>'+pTimeArmLabel(as)+'</button></td>';
     }
     h+='</tr>';
   });
@@ -2677,13 +2671,20 @@ function renderPTime(T){
   const wrap=document.getElementById('ptimewrap');if(!wrap)return;
   // RINIT.initPTime can be re-invoked later (e.g. enabling a split/right-block
   // layout re-runs every registered init) — re-adding these listeners on the
-  // same #ptimewrap would double-fire on every click, which is harmless for
-  // the plain input-change handler below but silently cancels itself out for
-  // pTimeArmToggle (armed -> off -> armed again on the same click). Guard so
-  // the listeners are only ever attached once per element.
+  // same #ptimewrap would double-fire on every click, which is harmless here
+  // but was not when the button was a toggle (armed -> off -> armed again on
+  // one click). Guard so the listeners are only ever attached once per element.
   if(wrap.__ptimeInited)return;wrap.__ptimeInited=true;
   wrap.addEventListener('input',function(e){
     const el=e.target;if(!el||!el.classList.contains('ptime-in'))return;
+    // CALIBRATION column: its own per-car store, no stint number.
+    const ck=el.dataset.cal;
+    if(ck==='min'||ck==='sec'){
+      if(!el.dataset.car)return;
+      pTimeCal(el.dataset.car)[ck]=el.value;savePTimeCal();
+      pTimeSyncArm(wrap);   // a 0 -> non-0 calibration enables this row's button
+      return;
+    }
     const car=el.dataset.car,n=+el.dataset.stint,k=el.dataset.k;
     if(!car||!n||(k!=='min'&&k!=='sec'))return;
     pTimeSlot(String(car),n)[k]=el.value;
@@ -2692,7 +2693,7 @@ function renderPTime(T){
   });
   wrap.addEventListener('click',function(e){
     const b=e.target.closest('.ptime-arm');if(!b||b.disabled)return;
-    pTimeArmToggle(b.dataset.car);
+    pTimeCalStart(b.dataset.car);
   });
   wrap.addEventListener('keydown',function(e){e.stopPropagation();});
 })();
@@ -4185,10 +4186,6 @@ function liveEtaSF(st,T){
   return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
 }
 function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
-  // P-TIME arm-watch runs every frame regardless of which reel is on screen —
-  // renderPTime() itself only runs while P-TIME is the active reel, but the
-  // countdown popup must trigger even when the crew is looking elsewhere.
-  if(typeof checkPTimeArm==='function')checkPTimeArm(T);
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
   _c60=(typeof code60Sectors==='function')?code60Sectors():[];
