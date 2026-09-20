@@ -210,8 +210,15 @@
   .ptime-armcard.done{background:#1e8f3a}
   .ptime-armcard .pac-car{font-weight:700;font-size:min(3.2vh,3.6vw);letter-spacing:1px;text-transform:uppercase;opacity:.85}
   .ptime-armcard .pac-t{font-weight:700;font-size:min(20vh,22vw);line-height:1;font-variant-numeric:tabular-nums}
-  .ptime-armcard .pac-x{position:absolute;top:6px;right:10px;background:transparent;border:0;color:rgba(255,255,255,.75);font-size:min(4vh,5vw);line-height:1;cursor:pointer;padding:2px 6px}
-  .ptime-armcard .pac-x:hover{color:#fff}
+  /* A fixed-size circle, not a bare glyph: the old button's clickable area was
+     just its tight text box (font-size min(4vh,5vw) plus 2px/6px padding —
+     under the 44px touch-target minimum, and invisible until hovered, so it
+     read as "hard to hit" even when the tap technically landed). Explicit
+     width/height plus flex-centring makes the WHOLE circle clickable, not
+     just the glyph inside it, and the faint always-on fill gives it a visible
+     boundary to aim for instead of only showing up on hover. */
+  .ptime-armcard .pac-x{position:absolute;top:10px;right:10px;width:clamp(34px,5vh,52px);height:clamp(34px,5vh,52px);display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.16);border:0;color:#fff;font-size:clamp(18px,2.6vh,28px);line-height:1;cursor:pointer;padding:0}
+  .ptime-armcard .pac-x:hover{background:rgba(255,255,255,.32)}
   .floglbl{color:#6b7480;min-width:92px}
   .agentbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
   .agentbar .agicon{font-size:18px;line-height:1}
