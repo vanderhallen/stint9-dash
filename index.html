@@ -773,8 +773,15 @@
   body.locked-private #fuelmini{display:none!important}
   /* P-TIME's own lock, driven by "is any team signed in" (body.ptime-locked)
      rather than the car-scoped body.locked-private used above — see
-     applyAuthGate(). #ptimePrivlock still starts hidden via the shared
-     .privlock{display:none} base rule. */
+     applyAuthGate(). #ptimePrivlock keeps the shared .privlock class for its
+     icon/text/button styling, but the plain class rule above (`body.locked-
+     private .privlock{display:flex}`) would ALSO still match it by class,
+     re-showing the lock whenever the currently-browsed reference car isn't
+     the one you're signed in as — even while correctly team-unlocked. The
+     unconditional #ptimePrivlock{display:none} below outranks that class
+     rule (an ID beats two classes on specificity) so only the ptime-locked
+     rule underneath, which is scoped to THIS id, can reopen it. */
+  #ptimePrivlock{display:none}
   body.ptime-locked #ptimePrivlock{display:flex}
   /* hide the underlying content outright so nothing flashes through the lock
      overlay while the reel scrolls (iframes can paint over absolute siblings
