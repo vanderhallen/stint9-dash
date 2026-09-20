@@ -2642,11 +2642,15 @@ function renderPTime(T){
   });
   const nCols=pTimeNCols();
   const armSig=Object.keys(PTIME_ARM).map(c=>c+':'+PTIME_ARM[c].state).sort().join(',');
-  // Team-wide, not canAccess(selCar): P-TIME lists the whole class, so any
-  // signed-in team should be able to use it regardless of which car happens
-  // to be the currently-browsed reference (see applyAuthGate()).
+  // Team-wide, not canAccess(selCar): P-TIME's STINT time columns list the
+  // whole class, so any signed-in team should be able to read/edit them
+  // regardless of which car happens to be the currently-browsed reference
+  // (see applyAuthGate()). The CALIBRATION column is different — it starts a
+  // live countdown, so it is scoped to canAccess() per row below: only the
+  // browsed car's own row, and only when that car is the one signed in.
   const authOkSig=!!(window.AUTH&&window.AUTH.mode==='team');
-  const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'')+'|'+armSig+'|'+authOkSig;
+  const calSig=(window.AUTH&&window.AUTH.mode==='team'&&window.AUTH.car)||'';
+  const sig=nCols+'|'+ordered.map(st=>(lp[st]||'')+':'+st).join(',')+'|'+(selCar||'')+'|'+armSig+'|'+authOkSig+'|'+calSig;
   if(sig===_ptimeSig[side]&&wrap.querySelector('table'))return;
   _ptimeSig[side]=sig;
   const av=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -2669,12 +2673,22 @@ function renderPTime(T){
         '</span></td>';
     }
     {
-      const cal=pTimeCal(st),as=pTimeArmState(st).state;
-      h+='<td class="calc"><span class="ptime-pair">'+
-        '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-cal="min" value="'+av(cal.min)+'"'+dis+'>'+
-        '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-cal="sec" value="'+av(cal.sec)+'"'+dis+'>'+
-        '</span></td>';
-      h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+(pTimeCalSeconds(st)>0?'':' nocal')+'" data-car="'+st+'"'+dis+'>'+pTimeArmLabel(as)+'</button></td>';
+      // CALIBRATION starts a live countdown, so unlike the STINT columns above
+      // it is not team-wide: only the car currently browsed via SELECT CAR,
+      // and only while that car is the one actually signed in. Any other row
+      // — or this same row browsed while signed in as a different car, or not
+      // signed in at all — gets blank cells, not just disabled ones.
+      const calOk=sel&&typeof canAccess==='function'&&canAccess(st);
+      if(calOk){
+        const cal=pTimeCal(st),as=pTimeArmState(st).state;
+        h+='<td class="calc"><span class="ptime-pair">'+
+          '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="min" data-car="'+st+'" data-cal="min" value="'+av(cal.min)+'"'+dis+'>'+
+          '<input class="ptime-in ptime-cal" type="text" inputmode="decimal" autocomplete="off" placeholder="sec" data-car="'+st+'" data-cal="sec" value="'+av(cal.sec)+'"'+dis+'>'+
+          '</span></td>';
+        h+='<td><button type="button" class="ptime-arm ptime-arm-'+as+(pTimeCalSeconds(st)>0?'':' nocal')+'" data-car="'+st+'"'+dis+'>'+pTimeArmLabel(as)+'</button></td>';
+      }else{
+        h+='<td class="calc"></td><td></td>';
+      }
     }
     h+='</tr>';
   });
