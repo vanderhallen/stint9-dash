@@ -252,7 +252,12 @@
      mobile slide, fighting __mMove for the same node. Show the content as
      it normally sits in its slide; nothing to zoom TO. */
   body.m .zoombtn{display:none}
-  #focusLayer{position:fixed;inset:0;background:rgba(18,24,34,.55);z-index:10000;display:none;align-items:center;justify-content:center;padding:2vmin;box-sizing:border-box}
+  /* justify-content:flex-start, not center: #cmpbox/#gapbox/TIMES zoom to the
+     full min(96vw,1400px) card width, but a "stage" card (trackmap/mini-map,
+     .fexact) intentionally zooms to its own intrinsic SVG width instead of
+     stretching a small map huge — centering each independently gave every
+     zoomed card a different left edge depending on which one was open. */
+  #focusLayer{position:fixed;inset:0;background:rgba(18,24,34,.55);z-index:10000;display:none;align-items:center;justify-content:flex-start;padding:2vmin;box-sizing:border-box}
   #focusLayer.on{display:flex}
   #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
   .card.zoomed{width:min(96vw,1400px)!important;max-width:none!important;flex:none!important;margin:0!important}
