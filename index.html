@@ -260,8 +260,15 @@
   /* Zoomed leaderboard (#cmpbox): lock the S1-S5 columns' own horizontal
      drag-scroll — the zoomed modal is wide enough (min(96vw,1400px)) that
      it never needed it, and it was making the table shift sideways instead
-     of staying put. */
-  #cmpbox.zoomed{overflow-x:hidden}
+     of staying put. !important: #cmpbox's inline style sets overflow-x:auto
+     for the (much narrower) unzoomed layout, which otherwise wins. */
+  #cmpbox.zoomed{overflow-x:hidden!important}
+  /* #cmpbox's 26px left padding clears the zoombtn (18px, at 4px/4px) for the
+     compact unzoomed table, whose rows start right under it. Zoomed, the
+     first column has no header text and rows sit well below the button, so
+     that clearance is now just dead space — tighten it to match the other
+     columns' own cell padding (12px, see the .card.zoomed th/td rule below). */
+  #cmpbox.zoomed{padding-left:12px!important}
   /* COMP reel metric selector: segmented push buttons (replaces the old dropdown) */
   #compmetric{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
   #compmetric .seg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:none;border-right:1px solid var(--border);padding:5px 11px;cursor:pointer;line-height:1}
