@@ -2077,7 +2077,7 @@ function carStats(st,T){const lg=activeLeg(st,T),stm=DB.sectimes[st]||{},bx=BX[s
   for(let l=0;l<=L;l++){const s=stm[l];if(full(s)){const t=s.reduce((a,b)=>a+b,0);if(fast==null||t<fast)fast=t;}}
   const liveSecs=[null,null,null,null,null];Object.keys(stm).map(Number).sort((a,b)=>a-b).forEach(l=>{const s=stm[l];if(!s)return;for(let k=0;k<5;k++){const tc=bx[(l-1)*5+(k+1)];if(tc!=null&&tc<=T&&s[k]!=null)liveSecs[k]=s[k];}});
   return {L,last,fast,liveSecs};}
-function cmpCell(v,dv){let s=(v==null?'—':fmt(v));if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';s+=' <span style="color:'+col+';font-weight:700">'+tri+Math.abs(dv).toFixed(1)+'</span>';}return s;}
+function cmpCell(v,dv){let s=(v==null?'—':fmt(v));if(dv!=null&&isFinite(dv)&&Math.abs(dv)>=0.05){const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';s+=' <span style="color:'+col+';font-weight:700;font-size:0.8em">'+tri+Math.abs(dv).toFixed(1)+'</span>';}return s;}
 function fillCmp(T,lp){const box=document.getElementById('cmpbox'),tb=document.getElementById('cmpbody');
   if(!selCar||!lp[selCar]){box.style.display='none';return;}
   const byPos={};for(const st in lp)byPos[lp[st]]=st;const leader=byPos[1];if(!leader){box.style.display='none';return;}
