@@ -916,15 +916,22 @@
       </div>
     </div>
   </div>
-  <!-- Same split (flex:1 1 0, gap:22px) as .split below: the leaderboard
-       needs to sit at the same width as the track map underneath it, and
-       an independent 56/44 vs .split's 50/50 (plus a 16px vs 22px gap) was
-       exactly what threw the two rows' columns out of alignment. -->
+  <!-- Same split (50/50, gap:22px) as .split below: the leaderboard needs to
+       sit at the same width as the track map underneath it, and an independent
+       56/44 vs .split's 50/50 (plus a 16px vs 22px gap) was exactly what threw
+       the two rows' columns out of alignment.
+       flex-basis 50%, not 0: .split splits padding-free .left/.right wrappers,
+       but these two cards ARE the flex items and carry different padding
+       (6px vs 12px a side). A 0 basis distributes only the free space, leaving
+       each card's own padding on top of an equal share — so #gapbox came out
+       12px wider than #cmpbox and hung past the DETAIL MAP card below it. A
+       50% basis sizes the border-box itself, so both land on the same width
+       whatever their padding. -->
   <div style="display:flex;flex-wrap:nowrap;gap:22px;align-items:stretch;margin-top:6px">
-    <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 0;min-width:0;padding:4px 6px;display:none;overflow-x:auto">
+    <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 50%;min-width:0;padding:4px 6px;display:none;overflow-x:auto">
       <table class="stints cmp"><thead><tr><th></th><th>Driver</th><th>Gap</th><th>Fastest</th><th>Last lap</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead><tbody id="cmpbody"></tbody></table>
     </div>
-    <div class="card" id="gapbox" data-focus style="flex:1 1 0;min-width:0;padding:6px 12px;display:none">
+    <div class="card" id="gapbox" data-focus style="flex:1 1 50%;min-width:0;padding:6px 12px;display:none">
       <div class="colhead" style="margin:0 0 2px;padding-left:24px">Cumulative gap to <span id="gaphd"></span></div>
       <svg id="gapchart" viewBox="0 0 1000 140" style="display:block;width:100%;height:auto"></svg>
     </div>
