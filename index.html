@@ -263,11 +263,9 @@
      of staying put. !important: #cmpbox's inline style sets overflow-x:auto
      for the (much narrower) unzoomed layout, which otherwise wins. */
   #cmpbox.zoomed{overflow-x:hidden!important}
-  /* #cmpbox's 26px left padding clears the zoombtn (18px, at 4px/4px) for the
-     compact unzoomed table, whose rows start right under it. Zoomed, the
-     first column has no header text and rows sit well below the button, so
-     that clearance is now just dead space — tighten it to match the other
-     columns' own cell padding (12px, see the .card.zoomed th/td rule below). */
+  /* Zoomed left padding matches the other columns' own cell padding (12px,
+     see the .card.zoomed th/td rule below) rather than #cmpbox's base 6px,
+     since the zoomed table's cells are bigger too. */
   #cmpbox.zoomed{padding-left:12px!important}
   /* COMP reel metric selector: segmented push buttons (replaces the old dropdown) */
   #compmetric{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -916,7 +914,7 @@
        an independent 56/44 vs .split's 50/50 (plus a 16px vs 22px gap) was
        exactly what threw the two rows' columns out of alignment. -->
   <div style="display:flex;flex-wrap:nowrap;gap:22px;align-items:stretch;margin-top:6px">
-    <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 0;min-width:0;padding:4px 6px 4px 26px;display:none;overflow-x:auto">
+    <div class="card cmpwrap" id="cmpbox" data-focus style="flex:1 1 0;min-width:0;padding:4px 6px;display:none;overflow-x:auto">
       <table class="stints cmp"><thead><tr><th></th><th>Driver</th><th>Gap</th><th>Fastest</th><th>Last lap</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th></tr></thead><tbody id="cmpbody"></tbody></table>
     </div>
     <div class="card" id="gapbox" data-focus style="flex:1 1 0;min-width:0;padding:6px 12px;display:none">
