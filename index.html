@@ -4905,7 +4905,13 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     miniEl.style.height=w+'px';
     const gg=card.querySelector('#gapgauge');if(gg){gg.style.height=w+'px';gg.style.width='auto';}
   }
-  function close(){if(!cur)return;ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed','fexact');cur=null;ph=null;resync();try{fitPage();}catch(e){}layer.classList.remove('on');}
+  function close(){if(!cur)return;
+    // #svg/#mini's own per-frame resizer (syncMapHeights/growMaps) puts their
+    // pinned zoom width back to 'auto' once they're no longer .zoomed, but
+    // #gapchart has no such watcher — its pinned px width would otherwise
+    // stick around forever and overflow its unzoomed card.
+    const gapEl=cur.querySelector('#gapchart');if(gapEl){gapEl.style.width='100%';gapEl.style.height='auto';}
+    ph.parentNode.replaceChild(cur,ph);cur.classList.remove('zoomed','fexact');cur=null;ph=null;resync();try{fitPage();}catch(e){}layer.classList.remove('on');}
   // Starting a pit countdown drops the zoom modal, so the centred timer isn't
   // opening behind a zoomed reel (pTimeCalStart).
   window.__focusClose=close;
@@ -4913,14 +4919,28 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     // Pin the zoomed size to exactly 2x whatever the map/zoom-view animation
     // was rendering at right before opening — not an arbitrary percentage of
     // the modal — by capturing its pre-zoom width while it's still in place.
-    const svgEl=card.querySelector('#svg'),miniEl=card.querySelector('#mini');
+    const svgEl=card.querySelector('#svg'),miniEl=card.querySelector('#mini'),gapEl=card.querySelector('#gapchart');
     const origSvgW=svgEl?svgEl.getBoundingClientRect().width:0;
     const origMiniW=miniEl?miniEl.getBoundingClientRect().width:0;
-    if(svgEl||miniEl)card.classList.add('fexact');
+    // Not gapEl's OWN pre-zoom width: cmpbox+gapbox split their row ~50/50,
+    // a much wider share than DETAIL MAP gets out of the trackmap row, so
+    // doubling gapEl's own width landed way past #mini's zoomed size. Reading
+    // #mini's width here instead — it's untouched live in the page whenever
+    // gapEl (not #mini itself) is the one being opened — pins both to the
+    // same target so a zoomed CUMULATIVE GAP matches a zoomed DETAIL MAP.
+    const refMiniEl=miniEl||document.getElementById('mini');
+    const origGapRefW=(gapEl&&refMiniEl)?refMiniEl.getBoundingClientRect().width:0;
+    // #mini's own card has zero padding (svg width == card width), but
+    // #gapbox has its own 12px/side padding around gapEl — subtract that
+    // (at final zoomed scale, not pre-zoom scale) or the outer .card.zoomed
+    // boxes would end up ~24px apart even with matching svg widths.
+    const gapCardPadX=gapEl?(()=>{const cs=getComputedStyle(card);return(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);})():0;
+    if(svgEl||miniEl||gapEl)card.classList.add('fexact');
     cur=card;ph=document.createComment('fph');card.parentNode.replaceChild(ph,card);card.classList.add('zoomed');host.appendChild(card);layer.classList.add('on');
     setTimeout(()=>{
       resync();
       if(svgEl&&origSvgW>10){svgEl.style.width=(origSvgW*2)+'px';svgEl.style.height='auto';}
+      if(gapEl&&origGapRefW>10){gapEl.style.width=Math.max(100,origGapRefW*2-gapCardPadX)+'px';gapEl.style.height='auto';}
       if(miniEl&&origMiniW>10)miniEl.style.width=(origMiniW*2)+'px';
       sizeZoomedMini(card);
       // the modal has its final size now, so a table reel can be measured and
