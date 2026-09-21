@@ -257,6 +257,12 @@
   #focusHost{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.4);max-width:97vw;max-height:95vh;overflow:auto;padding:10px;box-sizing:border-box}
   .card.zoomed{width:min(96vw,1400px)!important;max-width:none!important;flex:none!important;margin:0!important}
   .card.zoomed.fexact{width:auto!important;overflow:visible!important}
+  /* #cmpbox has no own height, so it never scrolls itself — a full-class
+     zoomed leaderboard instead makes #focusHost (which wraps it) grow past
+     95vh and scroll vertically. #cmpbox still needs #focusHost's overflow-x
+     for the S1-S5 columns, so only the vertical scroll is locked, and only
+     while cmpbox is the zoomed card — other zoomed reels still scroll. */
+  #focusHost:has(#cmpbox.zoomed){overflow-y:hidden}
   /* COMP reel metric selector: segmented push buttons (replaces the old dropdown) */
   #compmetric{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
   #compmetric .seg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:none;border-right:1px solid var(--border);padding:5px 11px;cursor:pointer;line-height:1}
