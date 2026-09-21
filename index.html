@@ -263,10 +263,12 @@
      of staying put. !important: #cmpbox's inline style sets overflow-x:auto
      for the (much narrower) unzoomed layout, which otherwise wins. */
   #cmpbox.zoomed{overflow-x:hidden!important}
-  /* Zoomed left padding matches the other columns' own cell padding (12px,
-     see the .card.zoomed th/td rule below) rather than #cmpbox's base 6px,
-     since the zoomed table's cells are bigger too. */
-  #cmpbox.zoomed{padding-left:12px!important}
+  /* The first column's own 12px cell padding (.card.zoomed th/td rule below)
+     already clears the zoombtn — it only ever overlaps that column's empty
+     header cell, never a data row — so #cmpbox needs no left inset of its
+     own on top of it; drop it to flush the table against the box edge like
+     every other zoomed card. */
+  #cmpbox.zoomed{padding-left:0!important}
   /* COMP reel metric selector: segmented push buttons (replaces the old dropdown) */
   #compmetric{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
   #compmetric .seg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:none;border-right:1px solid var(--border);padding:5px 11px;cursor:pointer;line-height:1}
