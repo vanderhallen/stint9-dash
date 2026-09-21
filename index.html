@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>STINT9 Add-on</title>
+<title>STINT9 Dash</title>
 <meta name="description" content="STINT9 — NLS live timing dashboard and pit wall add-on for the Nürburgring Langstrecken-Serie (NLS/VLN, ADAC, ACAS Cup, 24h Nürburgring) on the Nordschleife/Eifel circuit at Adenau. Real-time position, gap, S1–S5 sector splits, lap time, fastest lap, delta and class-best standings for SP9/SP9 AM/SP9 PRO/GT3 and endurance-racing classes, built for the race engineer, driver, spotter and pit crew. Pit stop, pit window, fuel, tyres, stint plan, racenotes, Code 60/yellow and race control alerts, plus LIVE and SIM replay of archived races. A companion for up2race timing.">
 <!-- installable to the home screen: opens without browser chrome, which is worth
      a row of cars on a phone at the pit wall -->
@@ -121,8 +121,16 @@
     .controls{display:flex;flex-direction:row;align-items:center;gap:5px;padding:8px 8px;margin-left:auto;min-width:0;flex:0 1 auto}
   .controls select{font-size:12px;height:32px;padding:4px 8px}
   .controls input[type=range]{flex:0 1 120px;min-width:40px;max-width:120px}.controls .btn{width:auto;padding:6px 8px}.controls select{width:auto;min-width:0}.controls .clock{margin-right:2px}
-  .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:50px}
-  .modebtn{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer}
+  /* #statusbox (viewerBadge/modetoggle/authbox) is now one .card box, same
+     treatment as #controls to its left — align-items:center on the box does
+     the vertical centering these margin-top offsets used to fake. */
+  /* Explicit height, matching #controls' own rendered height (50px raw —
+     driven by its select{height:32px} + 8px/8px padding + border), rather
+     than letting the buttons themselves grow to fill it: the box should
+     match its neighbour, the SIM/LIVE toggle and LOGIN button should not. */
+  .statusbox{display:flex;align-items:center;gap:10px;height:50px;padding:0 8px;margin-left:6px;box-sizing:border-box}
+  .modetoggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:26px}
+  .modebtn{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:0 5px;cursor:pointer}
   .modebtn.active{background:var(--ink);color:#fff}
   .modebtn:not(.active):hover{background:#f1f3f5}
   .controls button:disabled,.controls select:disabled,.controls input:disabled{opacity:.4;cursor:not-allowed}
@@ -727,10 +735,10 @@
   .msecscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .msectbl{border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap}
   /* ---- LOGIN (auth gate) ---- */
-  #authbox{display:flex;align-items:center;gap:8px;margin-left:8px}
+  #authbox{display:flex;align-items:center;gap:8px}
   #authbadge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;font-weight:600}
   #authbadge.team{color:#fff;background:var(--accent);border-color:var(--accent)}
-  #loginBtn{display:flex;align-items:center;justify-content:center;height:50px;padding:0 18px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;font-weight:700;cursor:pointer;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff}
+  #loginBtn{-webkit-appearance:none;appearance:none;box-sizing:border-box;display:flex;align-items:center;justify-content:center;height:26px;min-height:0;max-height:26px;padding:0 5px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;font-weight:700;cursor:pointer;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff}
   #loginBtn:hover{filter:brightness(1.06)}
   #loginModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #loginModal.on{display:flex}
@@ -814,7 +822,7 @@
 <div id="loginModal" role="dialog" aria-modal="true">
   <div class="loginCard">
     <button type="button" id="loginClose" aria-label="Close">&times;</button>
-    <div class="loginLogo"><div class="mark">stint<b>9</b></div><div class="tag">Race Add-on</div></div>
+    <div class="loginLogo"><div class="mark">stint<b>9</b></div><div class="tag">Race Dash</div></div>
     <div class="loginSub">Sign in on your car for tyres &amp; fuel</div>
     <div id="teamFields" class="on">
       <label>Race class<select id="loginClass"></select></label>
@@ -880,12 +888,15 @@
         <span id="liveMsg">live feed not connected</span>
       </div>
     </div>
-    <div class="modetoggle" id="modetoggle">
-      <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
-      <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
-    </div>
-    <div id="authbox">
-      <button type="button" id="loginBtn">LOGIN</button>
+    <div class="card statusbox" id="statusbox">
+      <span id="viewerBadge" style="box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;height:26px;padding:0 6px;border-radius:8px;background:rgba(127,127,127,.12);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1;color:var(--muted);white-space:nowrap" title="People with this page open right now"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg><span id="viewerCount">&mdash;</span></span>
+      <div class="modetoggle" id="modetoggle">
+        <button type="button" class="modebtn active" data-mode="SIM">SIM</button>
+        <button type="button" class="modebtn" data-mode="LIVE">LIVE</button>
+      </div>
+      <div id="authbox">
+        <button type="button" id="loginBtn">LOGIN</button>
+      </div>
     </div>
   </div>
   <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:stretch;margin-top:6px">
@@ -6195,6 +6206,28 @@ buildStartGrid();
         liveEventEl.style.color=s.live?'#16a34a':'var(--muted)';
       }).catch(()=>{});
   }
+  /* Viewer badge — one heartbeat every 20s to the stint9_presence_heartbeat
+     RPC (stint9-presence-supabase.sql), which upserts this tab's client id
+     and returns the current count of tabs seen in the last 45s. Runs in both
+     SIM and LIVE, independent of mode, so it always reflects "page open" —
+     not just during a live event. */
+  (function initViewerBadge(){
+    const badge=document.getElementById('viewerCount');
+    if(!badge)return;
+    let clientId;
+    try{
+      clientId=sessionStorage.getItem('s9_viewer_id');
+      if(!clientId){clientId=crypto.randomUUID();sessionStorage.setItem('s9_viewer_id',clientId);}
+    }catch(e){clientId=crypto.randomUUID();}
+    function heartbeat(){
+      fetch(FUEL_SB_URL+'/rest/v1/rpc/stint9_presence_heartbeat',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_client_id:clientId})})
+        .then(r=>r.ok?r.json():null)
+        .then(n=>{if(typeof n==='number')badge.textContent=n;})
+        .catch(()=>{});
+    }
+    heartbeat();
+    setInterval(heartbeat,20000);
+  })();
   /* Update button — invoke the serverless wige-scrape (pulls one WIGE snapshot ->
      Supabase), then refresh the view + badge. Works with no relay/laptop running. */
   if(updateBtn)updateBtn.onclick=()=>{
