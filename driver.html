@@ -700,6 +700,27 @@ document.getElementById('updateEntries').onclick=function(){
     .finally(function(){ b.disabled=false; b.textContent='↻ Update entry list'; });
 };
 
+// PostgREST caps a single request's rows (Supabase project default 1000,
+// regardless of a bigger ?limit=), and the historical backfill (2010-now)
+// pushed stint9_nls_results past 49k rows — a single fetch silently
+// truncates instead of erroring, so page through with Range until a page
+// comes back short.
+function fetchAllRows(path){
+  var PAGE=1000, out=[], offset=0;
+  function next(){
+    return fetch(SB+'/rest/v1/'+path,{headers:Object.assign({Range:offset+'-'+(offset+PAGE-1)},H)})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        var rows=Array.isArray(j)?j:[];
+        out=out.concat(rows);
+        if(rows.length<PAGE) return out;
+        offset+=PAGE;
+        return next();
+      });
+  }
+  return next();
+}
+
 function load(){
   fetch(SB+'/rest/v1/stint9_nls_races?select=event_date,round_no,title,series',{headers:H})
     .then(function(r){return r.json();}).then(function(j){ (Array.isArray(j)?j:[]).forEach(function(r){RACES[r.event_date]=r;}); }).catch(function(){});
@@ -707,11 +728,11 @@ function load(){
     .then(function(r){return r.json();}).then(function(j){ TEAMS={}; (Array.isArray(j)?j:[]).forEach(function(t){TEAMS[t.team_key]=t;}); }).catch(function(){});
   fetch(SB+'/rest/v1/stint9_driver_links?select=driver_key,website,instagram',{headers:H})
     .then(function(r){return r.json();}).then(function(j){ DLINKS={}; (Array.isArray(j)?j:[]).forEach(function(l){DLINKS[l.driver_key]=l;}); }).catch(function(){});
-  var entriesP=fetch(SB+'/rest/v1/stint9_nls_entries?select=event_date,car_no,class,team,car_model,drivers&limit=20000',{headers:H})
-    .then(function(r){return r.json();}).then(function(j){ ENTRIES=Array.isArray(j)?j:[]; }).catch(function(){ ENTRIES=[]; });
-  var resultsP=fetch(SB+'/rest/v1/stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,set_fastest,status&limit=20000',{headers:H})
-    .then(function(r){return r.json();}).then(function(j){
-      RESULTS=Array.isArray(j)?j:[];
+  var entriesP=fetchAllRows('stint9_nls_entries?select=event_date,car_no,class,team,car_model,drivers')
+    .then(function(rows){ ENTRIES=rows; }).catch(function(){ ENTRIES=[]; });
+  var resultsP=fetchAllRows('stint9_nls_results?select=event_date,car_no,class,class_full,team,car_model,driver_key,driver_name,nationality,pos_overall,pos_class,laps,best_lap_ms,set_fastest,status')
+    .then(function(rows){
+      RESULTS=rows;
       buildScope(); render(); loadMeta();
     }).catch(function(e){
       document.querySelector('#tbl tbody').innerHTML='<tr><td class="empty">Failed to load: '+esc(e)+'</td></tr>';

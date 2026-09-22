@@ -1,5 +1,33 @@
-/* nls-driver-scrape — builds/refreshes the per-driver 2026 NLS database that
+/* nls-driver-scrape — builds/refreshes the per-driver NLS/VLN database that
  * driver.html reads, straight from the official result PDFs.
+ *
+ * HISTORICAL BACKFILL (2026-09-22): the result-archive page
+ * (result-archives/?jahr=<year>) goes back to 2010 (VLN era; renamed NLS in
+ * 2020) with the SAME <date>r.pdf URL pattern as the current season, but the
+ * PDF's own internal field order changed between the 2021 and 2022 seasons:
+ *   - 2022+ ("modern"): Pl Nr Kl  Fahrzeug/Bewerber/Sponsor  Lizenznummer ...
+ *     — vehicle model sits right after the class. parseResults() below.
+ *   - 2010-2021 ("legacy"): Pl Nr Kl [rating] [B|S] Team, then "F Name, Ort"
+ *     per driver, THEN the vehicle model, THEN one license token per driver.
+ *     parseResultsLegacy() below — same output shape, ported+verified locally
+ *     against real 2010/2011/2013/2016/2019/2021 result PDFs (unpdf, node)
+ *     before deploy; ~2-4% of cars per race fail to parse cleanly (typos in
+ *     the source PDF itself, e.g. "Ranault"/"Hyndai", or a driver whose
+ *     foreign license simply isn't printed) and are skipped/left with a null
+ *     field rather than guessed — consistent with this scraper's existing
+ *     best-effort philosophy (never block a whole race on one bad row).
+ *   ingestRace() tries the modern parser first and falls back to the legacy
+ *   one only when the modern parse yields implausibly few rows, so no
+ *   hardcoded year cutoff is needed and a future format change degrades
+ *   gracefully instead of breaking.
+ *   Backfill is triggered per-year (POST {backfillYear:2015}), NOT by
+ *   widening the normal calendar scan: discoverHistoricalRounds() reads the
+ *   archive page for that one year and reuses the same incremental
+ *   skip-already-ingested + newest-first logic, so a CPU-budget cutoff mid-year
+ *   just means re-POSTing the same year again.
+ *   series is 'VLN' for event_date < 2020-01-01 and 'NLS' from 2020 on —
+ *   driver.html already renders any non-'NLS' series as a suffix, so no
+ *   frontend change was needed for that part (see seriesFor()).
  * ===========================================================================
  * WHAT IT DOES
  *   1. Discovers every 2026 round from the NLS season calendar page (same page
@@ -65,6 +93,12 @@ const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CALENDAR_URL = 'https://www.nuerburgring-langstrecken-serie.de/language/de/termine-adac-ravenol-nuerburgring-langstrecken-serie-2026/';
 const PDF_BASE = 'https://www.nuerburgring-langstrecken-serie.de/wp-content/uploads/ergebnisse';
+const ARCHIVE_URL = 'https://www.nuerburgring-langstrecken-serie.de/language/en/result-archives/';
+const EARLIEST_ARCHIVE_YEAR = 2010; // the archive page's own year selector starts here
+
+function seriesFor(eventDate: string): string {
+  return eventDate < '2020-01-01' ? 'VLN' : 'NLS';
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -114,6 +148,8 @@ const COUNTRIES: Record<string, string> = {
   'Deutschland': 'DE', 'Andorra': 'AD', 'Malta': 'MT', 'Zypern': 'CY', 'Island': 'IS',
   'Hongkong': 'HK', 'Singapur': 'SG', 'Indonesien': 'ID', 'Philippinen': 'PH', 'Venezuela': 'VE',
   'Uruguay': 'UY', 'Kolumbien': 'CO', 'Norwegia': 'NO',
+  // legacy (pre-2022) PDFs use these German exonyms instead:
+  'Großbritannien': 'GB', 'USA': 'US',
 };
 // license prefix (2 letters before the first '-') -> ISO-2, fallback nationality source.
 const LIC_PREFIX: Record<string, string> = {
@@ -134,9 +170,15 @@ const MANU_BASE = [
   'Opel', 'MINI', 'Mini', 'Alpine', 'Nissan', 'Lexus', 'Bentley', 'Chevrolet', 'Corvette',
   'Ginetta', 'Seat', 'Volkswagen', 'VW', 'Subaru', 'Dacia', 'Ligier', 'Donkervoort', 'Peugeot',
   'Skoda', 'Lada', 'MARC', 'Glickenhaus', 'Wolf',
+  // additional marques seen in pre-2022 (VLN-era) result PDFs:
+  'Fiat', 'Lotus', 'Radical', 'Praga', 'Dodge', 'Viper', 'Marcos', 'Saab', 'Cadillac',
+  'Wiesmann', 'Artega', 'Chrysler', 'Mazda', 'Citroen', 'Citroën',
 ];
 const MANU_ALL = [...new Set(MANU_BASE.flatMap((x) => [x, x.toUpperCase(), x.toLowerCase()]))];
 const MANU_ALT = MANU_ALL.map((m) => m.replace(/-/g, '\\-')).join('|');
+// legacy parser variant: old PDFs sometimes wrap "Mercedes-AMG" as "Mercedes- AMG"
+// across a line break, so hyphens/spaces in a marque name are interchangeable.
+const MANU_ALT_LEGACY = MANU_ALL.map((m) => m.replace(/[-\s]/g, '[-\\s]?')).join('|');
 // header: [pos] carNo CLASS(no comma/colon/period) MANUFACTURER model... laps totaltime
 const HDR = new RegExp(
   '(?<![A-Za-z0-9&/\\-])(?:(\\d{1,3}) )?(\\d{1,3}) ([A-Z][^,:.]{0,18}?) (' + MANU_ALT +
@@ -326,7 +368,13 @@ export function parseResults(rawText: string, eventDate: string, lapMap?: Record
       });
     });
   }
-  // pos_class: rank classified cars within their base class by pos_overall.
+  rankPosClass(rows);
+  return rows;
+}
+
+// pos_class: rank classified cars within their base class by pos_overall.
+// Shared by parseResults and parseResultsLegacy — mutates rows in place.
+function rankPosClass(rows: ResultRow[]): void {
   const byClass: Record<string, { car_no: number; pos: number }[]> = {};
   const seen = new Set<string>();
   for (const r of rows) {
@@ -345,7 +393,118 @@ export function parseResults(rawText: string, eventDate: string, lapMap?: Record
   for (const r of rows) {
     if (r.pos_overall != null) r.pos_class = classRank[r.class]?.[r.car_no] ?? null;
   }
+}
+
+/* ---------- legacy (2010-2021 VLN/NLS) result-PDF layout ----------
+ * Field order: <pos> <car> <class>[ rating] <B|S marker> <team>, then one
+ * "F Lastname Firstname, City" line per driver, THEN the vehicle model, THEN
+ * one license token per driver (same order as the drivers), THEN
+ * "<laps> <h:mm:ss.mmm total>", then avg speed / gap / interval / fastest lap
+ * / fastest-lap avg / fastest lap number (we only need the one m:ss.mmm token
+ * among those, which is unambiguous by colon count against the total time).
+ * See this file's header comment for how ingestRace() picks this parser. */
+function cleanTextLegacy(raw: string): string {
+  return raw
+    .replace(/(?:Ergebnis Rennen\s*(?:\(NEU\))?\s*)?\d+\.\s+[A-ZÄÖÜ][^(]*?\(\d{2}\.\d{2}\.\d{4}\)/g, ' ')
+    .replace(/Gestartet:\s*\d+\s*Gewertet:\s*\d+\s*Nicht gewertet:\s*\d+(?:\s*Nicht gestartet:\s*\d+)?/g, ' ')
+    .replace(/Pl\. Nr\. Kl\. Sponsor[\s\S]*?in\s*Rd\.®?/g, ' ')
+    .replace(/LANGSTRECKEN SERIE/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+const RATING_WORDS_LEGACY = ['Pro-Am', 'Pro\\/Am', 'Silver', 'Gold', 'Platinum', 'Bronze', 'Pro', 'Am'];
+const HDR_OLD = new RegExp(
+  '(?<![\\w.])(\\d{1,3}) (\\d{1,3}) ([A-Z][A-Za-z0-9]{0,9})(?: (' + RATING_WORDS_LEGACY.join('|') + '))? ([A-Z]) (?=[A-ZÀ-Ü0-9])',
+  'g',
+);
+export function parseResultsLegacy(rawText: string, eventDate: string): ResultRow[] {
+  const text = cleanTextLegacy(rawText);
+  type HeadOld = { idx: number; tsEnd: number; pos: number; carNo: number; cls: string; rating: string | null };
+  const heads: HeadOld[] = [];
+  let m: RegExpExecArray | null;
+  HDR_OLD.lastIndex = 0;
+  while ((m = HDR_OLD.exec(text))) {
+    heads.push({ idx: m.index, tsEnd: m.index + m[0].length, pos: +m[1], carNo: +m[2], cls: m[3], rating: m[4] || null });
+  }
+  const rows: ResultRow[] = [];
+  const manuRe = new RegExp('\\b(' + MANU_ALT_LEGACY + ')\\b');
+  for (let k = 0; k < heads.length; k++) {
+    const h = heads[k];
+    const blockEnd = k + 1 < heads.length ? heads[k + 1].idx : text.length;
+    const after = text.slice(h.tsEnd, blockEnd);
+    // split on standalone "F " driver markers (a lone "F" token before a
+    // capitalized surname — always present, one per driver, in this era).
+    const parts = after.split(/(?:^|\s)F(?= [A-ZÀ-Þ])/);
+    const team = (parts[0] || '').trim();
+    const driverChunks = parts.slice(1).map((s) => s.trim()).filter(Boolean);
+    if (!driverChunks.length) continue;
+    // last chunk = "Lastname Firstname, City <vehicle model junk...>" — cut
+    // the city off where the vehicle manufacturer starts.
+    const lastChunk = driverChunks[driverChunks.length - 1];
+    const manuM = lastChunk.match(manuRe);
+    let lastDriverPart = lastChunk, tail = '';
+    if (manuM) { lastDriverPart = lastChunk.slice(0, manuM.index).trim(); tail = lastChunk.slice(manuM.index); }
+    driverChunks[driverChunks.length - 1] = lastDriverPart;
+    const parsed = driverChunks.map((c) => {
+      const dsq = /\*+DSQ/i.test(c);
+      c = c.replace(/\*+DSQ/gi, '').trim();
+      const cm = c.match(/^(.*?),\s*(.*)$/);
+      return { name: (cm ? cm[1] : c).trim(), ort: (cm ? cm[2] : '').trim(), dsq };
+    }).filter((d) => d.name);
+    if (!parsed.length) continue;
+    // tail: <vehicle model...> <license1..N> <laps> <h:mm:ss.mmm> ...
+    const totalTimeM = tail.match(/(\d{1,3})\s+(\d{1,2}:\d{2}:\d{2}\.\d{3})/);
+    const laps = totalTimeM ? +totalTimeM[1] : null;
+    const preTotal = totalTimeM ? tail.slice(0, totalTimeM.index) : tail;
+    const postTotal = totalTimeM ? tail.slice((totalTimeM.index ?? 0) + totalTimeM[0].length) : '';
+    const licTokens = preTotal.match(/\b[A-Z][A-Z0-9]{0,3}[\dA-Z][\w-]{2,}\b/g) || [];
+    const licenses = licTokens.slice(Math.max(0, licTokens.length - parsed.length));
+    let model = preTotal;
+    if (licenses.length) {
+      const firstLicIdx = preTotal.indexOf(licenses[0]);
+      if (firstLicIdx > 0) model = preTotal.slice(0, firstLicIdx);
+    }
+    model = model.replace(/[\s-]+$/, '').trim();
+    const flM = postTotal.match(/(\d{1,2}:\d{2}\.\d{3})/);
+    const best = flM ? timeToMs(flM[1]) : null;
+    const dsqAny = parsed.some((d) => d.dsq) || /\*+DSQ/.test(after);
+    const status = dsqAny ? 'dsq' : (h.pos ? 'classified' : 'dnf');
+    const { base, rating } = splitClass(h.cls + (h.rating ? ' ' + h.rating : ''));
+    parsed.forEach((d, i) => {
+      const license = licenses[i] || null;
+      const licPrefix = license ? (license.match(/^([A-Z]{2})/)?.[1] ?? '') : '';
+      const nationality: string | null =
+        COUNTRIES[d.ort] || (licPrefix && LIC_PREFIX[licPrefix]) || (d.ort ? 'DE' : null);
+      rows.push({
+        event_date: eventDate, car_no: h.carNo, class: base, rating: rating,
+        class_full: h.cls + (h.rating ? ' ' + h.rating : ''),
+        team: team || null, car_model: model, driver_key: foldKey(d.name), driver_name: d.name,
+        nationality, license_no: license,
+        pos_overall: h.pos || null, pos_class: null, laps, best_lap_ms: best, set_fastest: null, status,
+      });
+    });
+  }
+  rankPosClass(rows);
   return rows;
+}
+
+/* ---------- historical result-archive page (?jahr=<year>) ----------
+ * Row shape (verified 2010-2025): <tr><td>DD.MM.YYYY<br>Title</td><td>links…
+ * incl. a ".../ergebnisse/<date>r.pdf" Race link when results are published
+ * </td></tr>. No round number is printed here (unlike the live calendar
+ * page's "NLSn:" prefix), so roundNo is left blank for backfilled rounds. */
+function parseArchiveYear(html: string): RoundRef[] {
+  const out: RoundRef[] = [];
+  const trRe = /<tr>([\s\S]*?)<\/tr>/g;
+  let m: RegExpExecArray | null;
+  while ((m = trRe.exec(html))) {
+    const block = m[1];
+    const dm = block.match(/<td>\s*(\d{2})\.(\d{2})\.(\d{4})\s*<br\s*\/?>([^<]*)<\/td>/i);
+    if (!dm) continue;
+    const [, d, mo, y, title] = dm;
+    if (!block.includes(`${y}-${mo}-${d}r.pdf`)) continue; // no race PDF published for this round
+    out.push({ eventDate: `${y}-${mo}-${d}`, roundNo: '', title: title.trim() });
+  }
+  return out;
 }
 
 /* ---------- qualifying (Zeittraining) -> starting grid ---------- */
@@ -471,14 +630,35 @@ async function ingestRace(eventDate: string, roundNo: string, title: string, ser
   if (!text) return { eventDate, series, status: 'no_results_pdf' };
   // Best-effort lap-by-lap chart for per-driver best laps (NLS only; the 24h
   // explicit-URL path has no known rl.pdf). A missing/bad chart just falls back
-  // to the car's fastest lap for every co-driver.
+  // to the car's fastest lap for every co-driver. Pre-2022 (legacy layout)
+  // rounds never published this chart, so skip the extra fetch there.
   let lapMap: Record<string, Record<string, number>> | undefined;
-  if (!explicitUrl) {
+  if (!explicitUrl && eventDate >= '2022-01-01') {
     try { const lt = await fetchPdfText(`${PDF_BASE}/${eventDate}rl.pdf`); if (lt) lapMap = parseLapChart(lt); }
     catch (_) { /* ignore, fall back */ }
   }
-  const rows = parseResults(text, eventDate, lapMap);
+  let rows = parseResults(text, eventDate, lapMap);
+  let format = 'modern';
+  // The 2010-2021 PDFs order their fields differently and the modern regex
+  // barely matches them (near-zero rows); fall back to the legacy parser
+  // rather than hardcoding a year cutoff, so a future format change degrades
+  // the same way instead of silently losing a season.
+  if (rows.length < 20) {
+    const legacyRows = parseResultsLegacy(text, eventDate);
+    if (legacyRows.length > rows.length) { rows = legacyRows; format = 'legacy'; }
+  }
   if (!rows.length) return { eventDate, series, status: 'parsed_zero' };
+  // Same (car_no, driver_key) can appear twice in one PDF (e.g. a driver swap
+  // sheet re-listing a name, or two identically-folded names on one car) and
+  // the table's unique constraint rejects the whole insert batch on that —
+  // dedupe defensively rather than lose an otherwise-good race over one row.
+  const seenKey = new Set<string>();
+  rows = rows.filter((r) => {
+    const k = r.car_no + '|' + r.driver_key;
+    if (seenKey.has(k)) return false;
+    seenKey.add(k);
+    return true;
+  });
   // Sanity gate: a well-formed NLS result parses to ~2-4 drivers per car and a
   // healthy set of classified cars. A divergent layout (e.g. the 24h-Qualifiers
   // template) parses to a few "cars" swallowing hundreds of "drivers" — skip it
@@ -490,12 +670,12 @@ async function ingestRace(eventDate: string, roundNo: string, title: string, ser
   }
   const written = await replaceResults(eventDate, rows);
   await upsertRace({
-    event_date: eventDate, round_no: roundNo || null, title: title || null, series,
+    event_date: eventDate, round_no: roundNo || null, title: title || null, series: series || seriesFor(eventDate),
     results_url: resultsUrl, entrylist_url: entryUrl,
     has_results: true, driver_rows: written, scraped_at: new Date().toISOString(),
   });
   const drivers = new Set(rows.map((r) => r.driver_key)).size;
-  return { eventDate, series, status: 'ok', driverRows: written, drivers, cars: carCount };
+  return { eventDate, series, status: 'ok', driverRows: written, drivers, cars: carCount, format };
 }
 
 // Ingest one round's qualifying grid from <date>t.pdf into stint9_grid. Runs
@@ -527,12 +707,21 @@ if (import.meta.main) Deno.serve(async (req) => {
   //   date=YYYY-MM-DD        -> restrict to that one event.
   //   force=1 / {force:true} -> re-parse rounds that are already ingested
   //                             (default skips them — see the loop below).
+  //   backfillYear=YYYY      -> ingest one historical season (2010..2025) from
+  //                             the result-archive page instead of the live
+  //                             calendar. One year per call by design — walk
+  //                             the archive's own years from the caller so a
+  //                             CPU-budget cutoff mid-season just means
+  //                             re-POSTing the same backfillYear again (same
+  //                             newest-first incremental skip as the normal run).
   const url = new URL(req.url);
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no/invalid body */ }
   const wantGrid = url.searchParams.get('grid') === '1' || body.grid === true;
   const onlyDate = url.searchParams.get('date') || (typeof body.date === 'string' ? body.date : null);
   const force = url.searchParams.get('force') === '1' || body.force === true;
+  const backfillYearRaw = url.searchParams.get('backfillYear') ?? body.backfillYear;
+  const backfillYear = backfillYearRaw != null ? +backfillYearRaw : null;
 
   const results: unknown[] = [];
   try {
@@ -543,6 +732,31 @@ if (import.meta.main) Deno.serve(async (req) => {
       try { results.push(await ingestGrid(onlyDate)); }
       catch (e) { results.push({ eventDate: onlyDate, kind: 'grid', status: 'error', error: String(e) }); }
       await logRun(true, results.length, { mode: 'grid', results });
+      return Response.json({ ok: true, racesChecked: results.length, results }, { headers: CORS });
+    }
+
+    // Fast path: one historical season, sourced from the archive page.
+    if (backfillYear) {
+      if (backfillYear < EARLIEST_ARCHIVE_YEAR || backfillYear > +today.slice(0, 4)) {
+        return Response.json({ ok: false, error: `backfillYear must be ${EARLIEST_ARCHIVE_YEAR}-${today.slice(0, 4)}` }, { status: 400, headers: CORS });
+      }
+      const done = new Set<string>();
+      if (!force) {
+        const have = await sbFetch('stint9_nls_races?select=event_date&has_results=is.true&driver_rows=gt.0', { method: 'GET' });
+        if (have.ok) ((await have.json()) as { event_date: string }[]).forEach((r) => done.add(r.event_date));
+      }
+      const archRes = await fetch(`${ARCHIVE_URL}?jahr=${backfillYear}`);
+      if (!archRes.ok) throw new Error(`archive fetch ${backfillYear}: ${archRes.status}`);
+      const rounds = parseArchiveYear(await archRes.text()).sort((a, b) => (a.eventDate < b.eventDate ? 1 : -1));
+      for (const r of rounds) {
+        if (r.eventDate > today) continue;
+        if (onlyDate && r.eventDate !== onlyDate) continue;
+        const series = seriesFor(r.eventDate);
+        if (done.has(r.eventDate)) { results.push({ eventDate: r.eventDate, series, status: 'already_ingested' }); continue; }
+        try { results.push(await ingestRace(r.eventDate, r.roundNo, r.title, series)); }
+        catch (e) { results.push({ eventDate: r.eventDate, series, status: 'error', error: String(e) }); }
+      }
+      await logRun(true, results.length, { mode: 'backfill', year: backfillYear, results });
       return Response.json({ ok: true, racesChecked: results.length, results }, { headers: CORS });
     }
 

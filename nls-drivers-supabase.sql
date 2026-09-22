@@ -1,10 +1,28 @@
 -- ============================================================================
--- 2026 NLS driver database — schema mirror (applied to Supabase project
--- esvvzgxqnfszhttdkuzc via MCP migrations stint9_nls_driver_db +
+-- NLS/VLN driver database (2010-now) — schema mirror (applied to Supabase
+-- project esvvzgxqnfszhttdkuzc via MCP migrations stint9_nls_driver_db +
 -- stint9_nls_driver_autoscan_cron). Kept in-repo for reference/reproducibility.
 --
 -- Written by the `nls-driver-scrape` edge function (live/nls-driver-scrape/),
 -- read by driver.html. See that function's header for the data-source details.
+--
+-- HISTORICAL BACKFILL (2026-09-22): series is 'VLN' for event_date <
+-- 2020-01-01 and 'NLS' from 2020 on (no schema change — series was already
+-- free text). Backfilled 2010-2025 one year at a time:
+--   for y in 2010..2025: POST nls-driver-scrape {"backfillYear": y}, repeated
+--   until every round in that year's result comes back "already_ingested"
+--   (each call risks WORKER_RESOURCE_LIMIT partway through a season — see the
+--   edge function header — so it's retried rather than treated as failure).
+-- 49,435 rows across 151 rounds landed this way (vs. ~1,750 rows/5 rounds for
+-- 2026 alone). driver.html's stint9_nls_results fetch was switched from a
+-- single ?limit=20000 request (silently truncated once the table grew past
+-- Supabase's per-request row cap) to Range-header pagination (fetchAllRows()).
+-- Known, expected gaps (sanity-gated by design, not a bug):
+--   - 2020-04-04 / 2020-04-18: COVID-era virtual/esports rounds, a completely
+--     different report layout ("Teamname/Fahrzeugklasse/Fahrer 1/2/3" table).
+--   - Any "ADAC 24h Nürburgring Qualifiers" round sharing an NLS weekend
+--     (e.g. 2024-04-13/14, 2025-05-24/25): same 24h template already excluded
+--     by the sanity gate for the 24hQ2 case (§22 below).
 -- ============================================================================
 
 -- one row per ingested race

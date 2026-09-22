@@ -3148,3 +3148,65 @@ next to any team or driver that has one; most don't yet.
 
 See `car-database-supabase.sql` for the schema mirror and
 `live/nls-entrylist-scrape/index.ts` for the full parser design notes.
+
+# 26. Driver database backfill — 2010 to now (2026-09-22)
+
+**What changed.** The driver database (§25's neighbor, `driver.html` +
+`nls-driver-scrape`) only ever held the 2026 season. Extended it back to
+2010 — the earliest year the official result-archive page
+(`result-archives/?jahr=<year>`) actually has, confirmed by reading the raw
+page: the year selector itself starts at 2010, and `?jahr=2000` quietly
+renders nothing rather than an error. Before 2010 the series raced as VLN
+(renamed NLS in 2020) but isn't in this archive's PDF pattern at all, so
+"2010 to now" is the real ceiling on this data source, not an arbitrary
+choice. RCN (a separate series/site, r-c-n.com) was scoped out of this pass —
+different organization, different PDF layout, needs its own parser.
+
+**The PDF layout changed once, between the 2021 and 2022 seasons.** The
+2022+ sheets put the vehicle model right after the class (what the deployed
+parser already expected); 2010-2021 sheets put the team and every driver's
+"Name, City" first and the vehicle model *after* all of that. Spot-checked
+against real PDFs from 2010, 2011, 2013, 2016, 2019 and 2021 (node + `unpdf`,
+same library the edge function uses) before writing `parseResultsLegacy()` —
+a second parser for that field order, sharing the same `pos_class` ranking
+and DB schema as the existing one. `ingestRace()` tries the modern parser
+first and only falls back to the legacy one when it yields implausibly few
+rows, so there's no hardcoded year cutoff — a future layout change would
+degrade the same way instead of silently losing a season.
+
+**Backfill runs one season per call.** `POST nls-driver-scrape
+{"backfillYear": 2015}` discovers that year's rounds from the archive page
+(same incremental skip-already-ingested + newest-first logic as the normal
+run) and ingests them. A full season still risks `WORKER_RESOURCE_LIMIT`
+mid-run exactly like the normal run does — the fix is the same: re-POST the
+same `backfillYear`, which picks up wherever it left off. 16 years (2010-2025;
+2026 was already covered) took a handful of retries each.
+
+**One real bug found and fixed along the way:** two rounds (2014-10-25,
+2020-08-29) had the same `(car_no, driver_key)` appear twice in the source
+PDF — a rejected duplicate would otherwise sink the whole race's insert.
+`ingestRace()` now dedupes by that key before writing, keeping the first
+occurrence, rather than losing an otherwise-good race over one row.
+
+**Two categories of round are correctly skipped, not broken:** the 2020
+COVID-era virtual/esports rounds (`2020-04-04`, `2020-04-18`) use a wholly
+different report table and parse to zero rows; and any "ADAC 24h Nürburgring
+Qualifiers" round that happens to share an NLS weekend (e.g. `2024-04-13`/`14`,
+`2025-05-24`/`25`) uses the same 24h template the sanity gate already
+rejected for the 24hQ2 case (§22) — different organizer, different event,
+correctly excluded rather than mis-parsed.
+
+**Result:** 151 rounds, 49,435 driver rows, 2010-2026 (`series` is `'VLN'`
+before 2020-01-01, `'NLS'` from then on — `driver.html` already rendered any
+non-`'NLS'` series as a label suffix, so no frontend change was needed there).
+
+**`driver.html`'s own fetch was the last blocker.** It requested
+`stint9_nls_results` with a flat `?limit=20000` — fine for one season, but
+Supabase's PostgREST caps what a single request actually returns well under
+that regardless of the requested limit, so the fetch was silently truncating
+once the table passed a few thousand rows and would have kept doing so
+forever as more seasons landed. Replaced with `fetchAllRows()`, which pages
+through with the `Range` header until a page comes back short — verified
+directly against the live endpoint (`Range: 0-999` → exactly 1000 rows,
+`Range: 49000-49999` → the real final partial page of 435, confirming the
+loop's stop condition fires at the true end rather than an assumed one).
