@@ -262,6 +262,22 @@ var state={scope:'__all__',sort:'races',dir:'desc',q:''};
 var carState={season:null,q:''};
 var CURTAB='drivers';
 
+// Cache-first paint: the full stint9_nls_results fetch takes a few seconds
+// even parallelized (49k+ rows since the 2010 backfill). Instead of a blank
+// table for that whole window, remember the last-rendered "overall" driver
+// table + heatmap (small — one row per driver, not per result) and repaint
+// from it immediately on load; aggregate() below falls back to this only
+// while RESULTS is still empty, so it's automatically replaced the instant
+// the real fetch resolves. Raw RESULTS itself (~16MB as JSON) is too big for
+// localStorage, which is why this caches the aggregated view, not the rows.
+var AGG_CACHE_KEY='stint9_driver_agg_cache_v1';
+function loadAggCache(){
+  try{ var s=localStorage.getItem(AGG_CACHE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; }
+}
+function saveAggCache(data){
+  try{ localStorage.setItem(AGG_CACHE_KEY, JSON.stringify({at:Date.now(),data:data})); }catch(e){ /* quota/private-mode — skip */ }
+}
+
 // normalize a team name into the same key convention stint9_teams.team_key
 // uses, so hand-entered links join onto whatever the scrapers wrote.
 function teamKey(s){
@@ -277,6 +293,10 @@ function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; 
 // aggregate RESULTS into per-driver rows within the current class scope
 function aggregate(){
   var overall = state.scope==='__all__';
+  if(!RESULTS.length){
+    var cached=overall?loadAggCache():null;
+    if(cached&&cached.data&&cached.data.length) return cached.data;
+  }
   var rows = overall ? RESULTS : RESULTS.filter(function(r){return r.class===state.scope;});
   var by={};
   rows.forEach(function(r){
@@ -715,22 +735,28 @@ document.getElementById('updateEntries').onclick=function(){
 // PostgREST caps a single request's rows (Supabase project default 1000,
 // regardless of a bigger ?limit=), and the historical backfill (2010-now)
 // pushed stint9_nls_results past 49k rows — a single fetch silently
-// truncates instead of erroring, so page through with Range until a page
-// comes back short.
+// truncates instead of erroring, so page through with Range. The first page
+// asks for an exact count (Prefer: count=exact -> Content-Range: 0-999/49435)
+// so every remaining page can be requested in parallel instead of one round
+// trip at a time — ~11s sequential down to ~3.5s against the live table.
+function fetchPage(path,offset,pageSize){
+  return fetch(SB+'/rest/v1/'+path,{headers:Object.assign({Range:offset+'-'+(offset+pageSize-1),Prefer:'count=exact'},H)})
+    .then(function(r){
+      var cr=r.headers.get('content-range')||'';
+      var total=+(cr.split('/')[1]||0);
+      return r.json().then(function(j){ return {rows:Array.isArray(j)?j:[], total:total}; });
+    });
+}
 function fetchAllRows(path){
-  var PAGE=1000, out=[], offset=0;
-  function next(){
-    return fetch(SB+'/rest/v1/'+path,{headers:Object.assign({Range:offset+'-'+(offset+PAGE-1)},H)})
-      .then(function(r){return r.json();})
-      .then(function(j){
-        var rows=Array.isArray(j)?j:[];
-        out=out.concat(rows);
-        if(rows.length<PAGE) return out;
-        offset+=PAGE;
-        return next();
-      });
-  }
-  return next();
+  var PAGE=1000;
+  return fetchPage(path,0,PAGE).then(function(first){
+    var rows=first.rows.slice();
+    if(!first.total||first.total<=rows.length) return rows;
+    var offsets=[];
+    for(var o=rows.length;o<first.total;o+=PAGE) offsets.push(o);
+    return Promise.all(offsets.map(function(o){return fetchPage(path,o,PAGE);}))
+      .then(function(pages){ pages.forEach(function(p){ rows=rows.concat(p.rows); }); return rows; });
+  });
 }
 
 function load(){
@@ -746,6 +772,7 @@ function load(){
     .then(function(rows){
       RESULTS=rows;
       buildScope(); render(); loadMeta();
+      if(state.scope==='__all__') saveAggCache(aggregate());
     }).catch(function(e){
       document.querySelector('#tbl tbody').innerHTML='<tr><td class="empty">Failed to load: '+esc(e)+'</td></tr>';
     });
@@ -753,6 +780,19 @@ function load(){
     buildSeasons(); renderCars(); loadEntriesMeta();
   });
 }
+
+// Paint instantly from the cached aggregate (if any) before the network
+// fetch even starts — aggregate() falls back to it while RESULTS is empty,
+// so this is a plain render(), just called early. load() below replaces it
+// with the real thing the moment the fetch resolves (a few seconds either
+// way, cache or not — this only removes the blank-table wait in between).
+(function paintFromCacheIfAny(){
+  var cached=loadAggCache();
+  if(!cached||!cached.data||!cached.data.length) return;
+  buildScope(); render();
+  var d=new Date(cached.at);
+  document.getElementById('scrapeMeta').textContent='showing cached results from '+d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+' — refreshing…';
+})();
 
 // wire controls
 document.getElementById('sort').value=state.sort; // keep the dropdown in sync with the initial sort
