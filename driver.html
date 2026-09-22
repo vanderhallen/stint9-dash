@@ -384,14 +384,26 @@ function render(){
   drawHeat(data);
 }
 
-// races × points matrix; cell value = races*points, colour green(low)->red(high)
+// races × points matrix; rows are 10-wide race-count buckets (1-10, 11-20, …)
+// so a season range spanning 100+ distinct race counts doesn't produce one row
+// per value. cell value = sum of races*points over the drivers landing in that
+// (bucket, points) cell, colour green(low)->red(high).
 var HEATDATA=[];
+var RACE_BUCKET_SIZE=10;
+function raceBucket(races){ return Math.max(1, Math.ceil(races/RACE_BUCKET_SIZE)); }
+function raceBucketLabel(b){ return ((b-1)*RACE_BUCKET_SIZE+1)+'-'+(b*RACE_BUCKET_SIZE); }
 function drawHeat(data){
   data=data||aggregate();
   HEATDATA=data;
   var el=document.getElementById('heat');
-  var raceVals={}, ptVals={}, bucket={};
-  data.forEach(function(d){ raceVals[d.races]=1; ptVals[d.points]=1; var kk=d.races+'|'+d.points; bucket[kk]=(bucket[kk]||0)+1; });
+  var raceVals={}, ptVals={}, bucket={}, prodSum={};
+  data.forEach(function(d){
+    var rb=raceBucket(d.races);
+    raceVals[rb]=1; ptVals[d.points]=1;
+    var kk=rb+'|'+d.points;
+    bucket[kk]=(bucket[kk]||0)+1;
+    prodSum[kk]=(prodSum[kk]||0)+d.races*d.points;
+  });
   var rs=Object.keys(raceVals).map(Number).sort(function(a,b){return b-a;}); // most races on top
   var cs=Object.keys(ptVals).map(Number).sort(function(a,b){return a-b;});   // low points left
   if(!rs.length||!cs.length){ el.innerHTML='<div class="empty">No data.</div>'; document.getElementById('heatRange').textContent=''; return; }
@@ -400,7 +412,7 @@ function drawHeat(data){
   // value scale looks washed-out for wide ranges. Ranking spreads pure green→red evenly
   // across the buckets in EVERY view: lowest product = pure green, highest = pure red.
   var prodSet={};
-  rs.forEach(function(r){cs.forEach(function(c){ if(bucket[r+'|'+c]) prodSet[r*c]=1; });});
+  rs.forEach(function(r){cs.forEach(function(c){ var kk=r+'|'+c; if(bucket[kk]) prodSet[prodSum[kk]]=1; });});
   var sorted=Object.keys(prodSet).map(Number).sort(function(a,b){return a-b;});
   var rank={}; sorted.forEach(function(v,i){ rank[v]=sorted.length>1?i/(sorted.length-1):0; });
   document.getElementById('heatRange').textContent=sorted.length?('product '+sorted[0]+'–'+sorted[sorted.length-1]):'';
@@ -408,9 +420,9 @@ function drawHeat(data){
   var html='<table class="hm"><thead><tr><th class="corner">races ↓ / pts →</th>'+
     cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rs.forEach(function(r){
-    html+='<tr><td class="rowlab">'+r+'</td>'+cs.map(function(c){
-      var v=r*c, n=bucket[r+'|'+c]||0;
-      return '<td><div class="cell'+(n?' clk':' none')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+(n?col(v):'transparent')+'" title="'+r+' races × '+c+' pts = '+v+(n?(' · '+n+' driver'+(n>1?'s':'')+' — click to list'):' · no drivers')+'">'+(n?v+'<span class="cnt">'+n+'</span>':'')+'</div></td>';
+    html+='<tr><td class="rowlab">'+raceBucketLabel(r)+'</td>'+cs.map(function(c){
+      var kk=r+'|'+c, n=bucket[kk]||0, v=prodSum[kk]||0;
+      return '<td><div class="cell'+(n?' clk':' none')+'" data-r="'+r+'" data-p="'+c+'" style="background:'+(n?col(v):'transparent')+'" title="'+raceBucketLabel(r)+' races × '+c+' pts'+(n?(' = '+v+' · '+n+' driver'+(n>1?'s':'')+' — click to list'):' · no drivers')+'">'+(n?v+'<span class="cnt">'+n+'</span>':'')+'</div></td>';
     }).join('')+'</tr>';
   });
   html+='</tbody></table>';
@@ -496,7 +508,7 @@ document.querySelector('#tbl tbody').addEventListener('mouseover',function(e){
   var td=e.target.closest('td.nm'); if(!td||!td.dataset.key) return;
   var d=HEATDATA.filter(function(x){return x.key===td.dataset.key;})[0]; if(!d) return;
   clearHeatHL();
-  var cell=document.querySelector('.hm .cell[data-r="'+d.races+'"][data-p="'+d.points+'"]');
+  var cell=document.querySelector('.hm .cell[data-r="'+raceBucket(d.races)+'"][data-p="'+d.points+'"]');
   if(cell) cell.classList.add('hl');
 });
 document.querySelector('#tbl tbody').addEventListener('mouseout',function(e){
@@ -508,13 +520,13 @@ document.getElementById('modal').addEventListener('click',function(e){ if(e.targ
 // ---- heatmap-bucket popup: drivers in a (races × points) square ----
 function closeBucket(){ document.getElementById('bucket').classList.remove('show'); }
 function openBucket(r,p){
-  var list=HEATDATA.filter(function(d){return d.races===r&&d.points===p;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+  var list=HEATDATA.filter(function(d){return raceBucket(d.races)===r&&d.points===p;}).sort(function(a,b){return a.name.localeCompare(b.name);});
   if(!list.length) return;
   var scopeLbl=state.scope==='__all__'?'overall':state.scope;
-  document.getElementById('bTitle').textContent=r+' race'+(r!==1?'s':'')+' × '+p+' pts in class';
-  document.getElementById('bSub').textContent='product '+(r*p)+' · '+list.length+' driver'+(list.length!==1?'s':'')+' · '+scopeLbl;
+  document.getElementById('bTitle').textContent=raceBucketLabel(r)+' races × '+p+' pts in class';
+  document.getElementById('bSub').textContent=list.length+' driver'+(list.length!==1?'s':'')+' · '+scopeLbl;
   document.getElementById('bList').innerHTML=list.map(function(d){
-    var meta=(d.bestFinish!=null?'best P'+d.bestFinish:'')+(d.podiums?' · '+d.podiums+' pod':'')+(d.lastCar!=null?' · #'+d.lastCar:'');
+    var meta=d.races+' race'+(d.races!==1?'s':'')+(d.bestFinish!=null?' · best P'+d.bestFinish:'')+(d.podiums?' · '+d.podiums+' pod':'')+(d.lastCar!=null?' · #'+d.lastCar:'');
     return '<div class="brow" data-key="'+esc(d.key)+'">'+
       '<span class="bfl">'+flag(d.nat)+'</span>'+
       '<span class="bnat">'+esc(d.nat||'')+'</span>'+
