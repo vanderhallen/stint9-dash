@@ -53,7 +53,7 @@
   table.hm .cell .cnt{position:absolute;top:0;right:2px;font-size:7px;font-weight:400;opacity:.85}
   table.hm .rowlab{font-weight:700;color:var(--ink);padding-right:10px;text-align:right;white-space:nowrap}
   .legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px}
-  .legend .grad{height:12px;width:150px;border-radius:6px;background:linear-gradient(90deg,hsl(120,70%,45%),hsl(60,70%,45%),hsl(0,70%,45%))}
+  .legend .grad{height:12px;width:150px;border-radius:6px;background:linear-gradient(90deg,hsl(0,70%,45%),hsl(60,70%,45%),hsl(120,70%,45%))}
   .note{font-size:11px;color:var(--muted);letter-spacing:.3px;line-height:1.6}
   .note b{color:var(--ink)}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:12px;letter-spacing:1px;padding:11px 18px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -409,14 +409,14 @@ function drawHeat(data){
   if(!rs.length||!cs.length){ el.innerHTML='<div class="empty">No data.</div>'; document.getElementById('heatRange').textContent=''; return; }
   // Colour by RANK of the distinct populated products, not by raw value. race×points
   // is heavily skewed and its span varies wildly per class (e.g. 18–86 vs 0–315), so a
-  // value scale looks washed-out for wide ranges. Ranking spreads pure green→red evenly
-  // across the buckets in EVERY view: lowest product = pure green, highest = pure red.
+  // value scale looks washed-out for wide ranges. Ranking spreads pure red→green evenly
+  // across the buckets in EVERY view: lowest product = pure red, highest = pure green.
   var prodSet={};
   rs.forEach(function(r){cs.forEach(function(c){ var kk=r+'|'+c; if(bucket[kk]) prodSet[prodSum[kk]]=1; });});
   var sorted=Object.keys(prodSet).map(Number).sort(function(a,b){return a-b;});
   var rank={}; sorted.forEach(function(v,i){ rank[v]=sorted.length>1?i/(sorted.length-1):0; });
   document.getElementById('heatRange').textContent=sorted.length?('product '+sorted[0]+'–'+sorted[sorted.length-1]):'';
-  function col(v){ var t=rank[v]!=null?rank[v]:0; var h=120*(1-t); return 'hsl('+h.toFixed(0)+',70%,45%)'; }
+  function col(v){ var t=rank[v]!=null?rank[v]:0; var h=120*t; return 'hsl('+h.toFixed(0)+',70%,45%)'; }
   var html='<table class="hm"><thead><tr><th class="corner">races ↓ / pts →</th>'+
     cs.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rs.forEach(function(r){
