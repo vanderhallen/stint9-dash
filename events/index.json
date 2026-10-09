@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-09-13T16:33:22.972281+00:00",
+  "generated_at": "2026-10-09T18:07:00.104912+00:00",
   "events": [
+    {
+      "slug": "NLS10-practice",
+      "name": "practice NLS10",
+      "label": "practice",
+      "date": "2026-10-09",
+      "end": null,
+      "car_count": 107,
+      "archived_at": "2026-10-09T18:07:00.104912+00:00",
+      "file": "events/NLS10-practice.json",
+      "notes": "events/NLS10-practice_notes.json"
+    },
     {
       "slug": "NLS9-quali",
       "name": "66. ADAC ACAS Cup (4h) — Qualifying",
