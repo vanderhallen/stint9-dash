@@ -3821,11 +3821,13 @@ function renderH2H(T){
   });
   h+='<div style="padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:11px">';
   h+='<div style="color:#6b7480;margin-bottom:4px">THEORETICAL BEST (sum of own fastest sectors) &middot; colour = fastest/slowest sector within the selected group</div>';
-  h+='<table style="border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:2px 8px">Driver</th><th style="padding:2px 8px">S1</th><th style="padding:2px 8px">S2</th><th style="padding:2px 8px">S3</th><th style="padding:2px 8px">S4</th><th style="padding:2px 8px">S5</th><th style="padding:2px 8px">Ideal lap</th><th style="padding:2px 8px">Best lap</th></tr></thead><tbody>';
+  h+='<table style="border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:2px 8px">Driver</th><th style="padding:2px 8px">Ideal lap</th><th style="padding:2px 8px">Best lap</th><th style="padding:2px 8px">S1</th><th style="padding:2px 8px">S2</th><th style="padding:2px 8px">S3</th><th style="padding:2px 8px">S4</th><th style="padding:2px 8px">S5</th></tr></thead><tbody>';
   groupSorted.forEach(c=>{
     const isRef=c===String(selCar),{best,theo}=theoData[c];
     const bestLap=h2hPersonalBest(c,T,null);
     h+='<tr'+(isRef?' style="background:#f3f4f6"':'')+'><td style="padding:2px 8px;font-weight:700;color:'+(isRef?'#16202b':(DB.carcol[c]||'#16202b'))+'">'+(isRef?'#'+c+' (ref)':'#'+c)+'  '+curDrv(c,T)+'</td>';
+    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(theo!=null?fmtLap(theo):'—')+'</td>';
+    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(bestLap!=null?fmtLap(bestLap):'—')+'</td>';
     for(let k=0;k<5;k++){
       const v=best[k];let col='#16202b';
       if(isFinite(v)&&group.length>1){
@@ -3833,8 +3835,7 @@ function renderH2H(T){
       }
       h+='<td style="padding:2px 8px;text-align:right;color:'+col+';font-weight:700">'+fmtSec(isFinite(v)?v:null)+'</td>';
     }
-    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(theo!=null?fmtLap(theo):'—')+'</td>';
-    h+='<td style="padding:2px 8px;text-align:right;font-weight:700">'+(bestLap!=null?fmtLap(bestLap):'—')+'</td></tr>';
+    h+='</tr>';
   });
   h+='</tbody></table></div>';
 
