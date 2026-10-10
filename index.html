@@ -8549,6 +8549,10 @@ applyWxReel(false);
      (it didn't for NLS9-quali, which made both entries render identically). */
   const SESSION_SUFFIX={quali:'Qualifying',practice:'Practice',zeittraining:'Zeittraining',
     training:'Training',warm:'Warm-up',pitwalk:'Pitwalk'};
+  // Button face only. The control is uppercased and letter-spaced, so
+  // "Qualifying" paints as "NLS10 QUALIFYING" and shoves the class/car
+  // selects. "quali" paints as "NLS10 QUALI". The race list keeps the full word.
+  const SESSION_BTN={quali:'quali'};
   // Button face, both layouts. Short on purpose: the iPhone header shares a row
   // with class and car. "Select race" until the cold-load slug is known.
   function sessionKey(slug, label){
@@ -8562,7 +8566,8 @@ applyWxReel(false);
     const rx=/NLS\s*(\d+)/i;
     const from=rx.exec(slug||'')||rx.exec(meta.name||'');
     let s=from?('NLS'+from[1]):(String(meta.event_date||meta.date||'').slice(0,10)||slug||'Select race');
-    const suf=SESSION_SUFFIX[sessionKey(slug, meta.label)];
+    const key=sessionKey(slug, meta.label);
+    const suf=SESSION_BTN[key]||SESSION_SUFFIX[key];
     if(suf)s+=' '+suf;
     return s;
   }
