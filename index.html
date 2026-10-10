@@ -4754,8 +4754,16 @@ function __applyMobileView(){var mob=Math.min(window.innerWidth,window.innerHeig
   document.body.classList.toggle('m',mob);
   if(mob!==was)__mobEnable(mob); else if(mob)__placeMini(mobIdx===0);}
 function __mirrorSel(mid,did){var m=document.getElementById(mid),d=document.getElementById(did);if(!m||!d)return;
-  if(m.__sig!==d.innerHTML){m.innerHTML=d.innerHTML;m.__sig=d.innerHTML;}
-  if(m.value!==d.value)m.value=d.value;}
+  // iOS Safari fires a real 'change' when a <select>'s innerHTML is replaced
+  // (selectedIndex snaps to 0 = ALL CLASSES). The m_class onchange would then
+  // write ALL CLASSES back onto classsel and the dashboard jumps. Mute it for
+  // this copy and one macrotask so a queued change can't sneak through either.
+  m.__mirroring=true;
+  try{
+    if(m.__sig!==d.innerHTML){m.innerHTML=d.innerHTML;m.__sig=d.innerHTML;}
+    if(m.value!==d.value)m.value=d.value;
+  }finally{setTimeout(function(){m.__mirroring=false;},0);}
+}
 function renderMobile(){
   /* First mount happens here, not at load: #mobileview's markup is parsed AFTER
      this script, so the bootstrap __applyMobileView() call below runs while the
@@ -4766,7 +4774,9 @@ function renderMobile(){
   if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
   __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
   if(!renderMobile.__wired){renderMobile.__wired=true;
-    [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(!d)return;d.value=this.value;
+    [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){
+      if(this.__mirroring)return;
+      var d=document.getElementById(p[1]);if(!d)return;d.value=this.value;
       // Call the handler directly: iOS Safari does not run .onchange for an
       // untrusted dispatchEvent('change'), which is why picking a class closed
       // the phone sheet but left the dashboard on the previous class.
@@ -5923,9 +5933,19 @@ function dropDown(sel,opts){
     close();
     if(touch){swallowUntil=Date.now()+400;document.addEventListener('click',swallowClick,true);
       setTimeout(()=>document.removeEventListener('click',swallowClick,true),400);}
-    if(sel.value===o.value)return;
-    sel.value=o.value;
-    fireChange(sel);
+    // Phone #m_class/#m_car are mirrors. Activate the desktop select — that is
+    // what buildClass/selCar actually read. Setting only the mirror made the
+    // closed box flash the new class, then __mirrorSel copied ALL CLASSES back.
+    const deskId=({m_class:'classsel',m_car:'carsel',m_speed:'speed'})[sel.id];
+    const desk=deskId?document.getElementById(deskId):null;
+    const target=desk||sel;
+    if(target.value===o.value&&sel.value===o.value)return;
+    const setVal=(el,v)=>{if(!el)return;el.value=v;if(el.value!==v){for(let i=0;i<el.options.length;i++)el.options[i].selected=(el.options[i].value===v);}};
+    sel.__mirroring=true;
+    setVal(sel,o.value);
+    setTimeout(function(){sel.__mirroring=false;},0);
+    setVal(target,o.value);
+    fireChange(target);
   }
   function open(){
     const r=sel.getBoundingClientRect();
@@ -6494,10 +6514,12 @@ buildStartGrid();
     return _staleS;
   }
   function fillClassDropdown(){const cur=clsSel.value;fillClassSelect(clsSel);
-    // In LIVE, a saved class (from a prior selection) wins so it survives refresh;
-    // otherwise keep the current pick, else fall back to the first class.
+    // Keep the class currently on the select. Saved liveclass is only a fallback
+    // for when cur is empty (LIVE rebuild / clearLiveDB) — preferring saved used
+    // to snap a just-picked class back to ALL CLASSES still sitting in
+    // localStorage from the previous choice.
     let saved=null;if(window.dataMode==='LIVE')try{saved=localStorage.getItem('stint9_liveclass');}catch(_){}
-    const pick=(saved&&clsExists(saved))?saved:((cur&&clsExists(cur))?cur:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
+    const pick=(cur&&clsExists(cur))?cur:((saved&&clsExists(saved))?saved:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}
     // clearLiveDB()/startLive() (README §15.3) now blanks the starting grid too —
