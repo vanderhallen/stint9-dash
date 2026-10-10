@@ -4766,7 +4766,12 @@ function renderMobile(){
   if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
   __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
   if(!renderMobile.__wired){renderMobile.__wired=true;
-    [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(d){d.value=this.value;d.dispatchEvent(new Event('change'));}};});
+    [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){var d=document.getElementById(p[1]);if(!d)return;d.value=this.value;
+      // Call the handler directly: iOS Safari does not run .onchange for an
+      // untrusted dispatchEvent('change'), which is why picking a class closed
+      // the phone sheet but left the dashboard on the previous class.
+      if(typeof d.onchange==='function')d.onchange({target:d,type:'change'});
+      else d.dispatchEvent(new Event('change',{bubbles:true}));};});
     var clickMode=function(mode){var b=document.querySelector('.modebtn[data-mode="'+mode+'"]');if(b)b.click();};
     var ms=document.getElementById('m_sim');if(ms)ms.onclick=function(){clickMode('SIM');};
     var ml=document.getElementById('m_live');if(ml)ml.onclick=function(){clickMode('LIVE');};
@@ -5896,26 +5901,58 @@ function dropDown(sel,opts){
   const wrap=document.createElement('span');wrap.className='ddwrap';
   sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(sel);
   const hit=document.createElement('span');hit.className='ddhit';wrap.appendChild(hit);
-  let panel=null;
+  let panel=null,swallowUntil=0,applied=false;
+  const fireChange=el=>{
+    if(!el)return;
+    // iOS Safari skips .onchange for untrusted Events from dispatchEvent.
+    if(typeof el.onchange==='function')el.onchange({target:el,type:'change'});
+    else el.dispatchEvent(new Event('change',{bubbles:true}));
+  };
   const close=()=>{if(!panel)return;panel.remove();panel=null;
     window.removeEventListener('scroll',onscroll,true);window.removeEventListener('resize',close);
-    document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',onkey,true);};
+    document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',onkey,true);
+    document.removeEventListener('click',swallowClick,true);};
   // A long list (the car picker) scrolls INSIDE the panel, and a capture
   // listener on window sees that non-bubbling scroll too — so ignore our own.
   const onscroll=e=>{if(panel&&(e.target===panel||panel.contains(e.target)))return;close();};
   const outside=e=>{if(panel&&!panel.contains(e.target)&&e.target!==sel&&e.target!==hit)close();};
   const onkey=e=>{if(e.key==='Escape')close();};
+  const swallowClick=e=>{if(Date.now()<swallowUntil){e.stopPropagation();e.preventDefault();}};
+  function applyPick(o){
+    if(applied)return;applied=true;
+    close();
+    if(touch){swallowUntil=Date.now()+400;document.addEventListener('click',swallowClick,true);
+      setTimeout(()=>document.removeEventListener('click',swallowClick,true),400);}
+    if(sel.value===o.value)return;
+    sel.value=o.value;
+    fireChange(sel);
+  }
   function open(){
     const r=sel.getBoundingClientRect();
     panel=document.createElement('div');panel.className='dropdn'+(touch?' touch':'');
+    applied=false;
     let onRow=null;
     Array.from(sel.options).forEach((o,i)=>{
       const row=document.createElement('div');row.textContent=o.textContent;
       if(i===sel.selectedIndex){row.className='on';onRow=row;}
       // preventDefault on mousedown keeps focus on the select (desktop). On
       // iOS it can swallow the following click, so skip it for the touch list.
-      if(!touch)row.onmousedown=ev=>ev.preventDefault();
-      row.onclick=()=>{close();if(sel.value!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}};
+      if(!touch){
+        row.onmousedown=ev=>ev.preventDefault();
+        row.onclick=()=>applyPick(o);
+      }else{
+        // pointerup + slop, not click: a scrollable sheet (ALL CLASSES, or the
+        // class list itself on a short landscape screen) makes iOS treat the
+        // tap as a pan and never fire click — the sheet then closes on the
+        // window scroll/outside path with no change applied.
+        let x0=0,y0=0;
+        row.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;},{passive:true});
+        row.addEventListener('pointerup',e=>{
+          if(Math.abs(e.clientX-x0)>12||Math.abs(e.clientY-y0)>12)return;
+          applyPick(o);
+        });
+        row.addEventListener('click',()=>applyPick(o));
+      }
       panel.appendChild(row);
     });
     if(touch){
@@ -5946,10 +5983,17 @@ function dropDown(sel,opts){
     // capped list: bring the current pick into view without scrolling the page
     if(onRow&&panel.scrollHeight>panel.clientHeight)
       panel.scrollTop=Math.max(0,onRow.offsetTop-panel.clientHeight/2+onRow.offsetHeight/2);
-    window.addEventListener('scroll',onscroll,true);window.addEventListener('resize',close);
+    // Phone: a tap on a row in a scrollable sheet often emits a window scroll
+    // (iOS chrome / overflow bounce). That used to close the list with no pick.
+    if(!touch)window.addEventListener('scroll',onscroll,true);
+    window.addEventListener('resize',close);
     document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',onkey,true);
   }
-  hit.addEventListener('click',()=>{if(sel.disabled)return;panel?close():open();});
+  hit.addEventListener('click',()=>{
+    if(sel.disabled)return;
+    if(touch&&Date.now()<swallowUntil)return;
+    panel?close():open();
+  });
   sel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();panel?close():open();}});
   /* The car list's option labels carry the CURRENT driver and get rewritten
      every second in LIVE (refreshCarDropdown) — repaint an open panel so it
