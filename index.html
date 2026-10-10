@@ -751,11 +751,18 @@
   .mbox{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;padding:7px 13px;border-radius:8px;background:var(--ink);color:#fff}
   .mbox.soon{background:#e8871e}.mbox.now{background:var(--accent);animation:mboxp 1s ease-in-out infinite}
   @keyframes mboxp{50%{opacity:.55}}
+  /* Two lines in .g (last lap above gap) must fit the same row height as the
+     old single 14px + 8px-pad line (~33px). Drop td pad to 5px and stack 12/11px
+     at line-height 1 so 12+11+10 ≈ 33. Always both lines, so every row matches. */
   .mstand{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:14px}
-  .mstand td{padding:8px 4px;border-top:1px solid var(--border)}
+  .mstand td{padding:5px 4px;border-top:1px solid var(--border);vertical-align:middle}
   .mstand tr:first-child td{border-top:none}
-  .mstand .p{color:var(--muted);width:40px}.mstand .g{text-align:right;color:var(--muted);white-space:nowrap}
+  .mstand .p{color:var(--muted);width:40px}
+  .mstand .g{text-align:right;color:var(--muted);white-space:nowrap;line-height:1}
+  .mstand .lt{display:block;font-size:12px;color:var(--ink);font-weight:700;line-height:1}
+  .mstand .gt{display:block;font-size:11px;line-height:1}
   .mstand tr.sel td{color:var(--accent);font-weight:700}
+  .mstand tr.sel .lt{color:var(--accent)}
   /* Sector-times table: two rows (latest lap, previous lap) x five sectors.
      15px value font, not the 21px the last-lap/fastest/lap row uses — that
      size overflows a phone-width column here (a 4-minute S3/S4 like "4:39.5"
@@ -5088,7 +5095,8 @@ function renderMobile(){
   // scrolls, so its length now tracks the class size instead of a constant.
   var order=Object.keys(lp).sort(function(a,b){return lp[a]-lp[b];}),leader=order[0],rows='';
   order.forEach(function(st){var gt='—';if(st!==leader){var d=commonGap(st,leader,T);gt=(d==null)?'—':('+'+Math.abs(d).toFixed(1)+'s');}
-    rows+='<tr class="'+(st===selCar?'sel':'')+'"><td class="p">P'+lp[st]+'</td><td>#'+st+' '+curDrv(st,T)+'</td><td class="g">'+gt+'</td></tr>';});
+    var last=carStats(st,T).last,lt=(last!=null)?fmt(last):'—';
+    rows+='<tr class="'+(st===selCar?'sel':'')+'"><td class="p">P'+lp[st]+'</td><td>#'+st+' '+curDrv(st,T)+'</td><td class="g"><span class="lt">'+lt+'</span><span class="gt">'+gt+'</span></td></tr>';});
   // Guard, not just cosmetics: an unconditional innerHTML write on every tick
   // (this runs every renderMobile() call) replaces the table's DOM nodes even
   // when the standings haven't actually changed, which can snap the whole
