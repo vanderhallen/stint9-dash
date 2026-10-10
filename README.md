@@ -1944,8 +1944,8 @@ delta** in `code60Sectors()`:
 
 - Compare the sector just finished, and elapsed time in the sector being driven
   now, against **that same car's previous clean time** for that sector.
-- Flag when the stretch is **>1.18×** and **at least +15 s**, but **<4×** (a
-  stop, not 60 km/h). A sector lights when **≥3** cars do that at once.
+- Flag when the stretch is **>1.22×** and **at least +20 s**, but **<4×** (a
+  stop, not 60 km/h). A sector lights when **≥4** cars do that at once.
 - A car that has **already left** a slow sector only keeps counting toward it
   for **30 s** (`CODE60_LAST_TTL_S`). Cars still inside the sector count for as
   long as they are crawling. Without the TTL, three slightly-slow S3s kept S3
@@ -1955,10 +1955,11 @@ delta** in `code60Sectors()`:
   out-laps look like a slow zone and drown real Code 60s further around the lap.
 
 Raising the floor alone did not fix the cry-wolf: +15 s with no TTL still held
-the banner ~30 % of NLS 8. Current ship is **1.18× / +15 s / ≥3 cars / 30 s TTL
-on completed splits**, S1 skipped. Replay against NLS 8/9 drops on-time from
-~37–46 % to ~12 %, and still covers the race-control “longer lasting Code 60”
-notes (Aremberg/Hatzenbach/Fuchsröhre, Flugplatz).
+the banner ~30 % of NLS 8. After NLS10 still lighting too early, ship is
+**1.22× / +20 s / ≥4 cars / 30 s TTL on completed splits**, S1 skipped. Earlier
+1.18× / +15 s / ≥3 replay against NLS 8/9 dropped on-time from ~37–46 % to
+~12 %, and still covered the race-control “longer lasting Code 60” notes
+(Aremberg/Hatzenbach/Fuchsröhre, Flugplatz).
 
 **Check next race:** sit with the WIGE live-timing app and this dashboard side by
 side. Every time WIGE / race control calls a Code 60, note whether STINT9 lights

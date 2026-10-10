@@ -1706,7 +1706,7 @@ function pitWhatIf(st,T,saved,pool){
 // For each car, compare (a) the sector it just finished and (b) how long it has
 // already been in the sector it is driving now, against that same car's previous
 // clean time for that sector. A large stretch (ratio and extra seconds) means
-// the car is crawling. A sector flags when ≥3 cars do that at once.
+// the car is crawling. A sector flags when ≥4 cars do that at once.
 //
 // Skip lap 1 (rolling start) and pit laps. Drop a car that has been silent more
 // than 2× its own expected transit of the current sector (crashed / parked),
@@ -1719,7 +1719,7 @@ function pitWhatIf(st,T,saved,pool){
 // each complete S4 (~3 min) — on NLS 8/9 that held the banner up for ~40 % of
 // the race. In-progress cars still light the sector while they are in it.
 const SECTOR_KM=[3.3,3.3,6.0,9.4,2.4]; // NLS 5-sector lengths (also feeds the TYRE board below)
-const CODE60_RATIO=1.18,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=15,CODE60_MIN_CARS=3,CODE60_LAST_TTL_S=30;
+const CODE60_RATIO=1.22,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=20,CODE60_MIN_CARS=4,CODE60_LAST_TTL_S=30;
 // UTC, not local — code60Sectors() diffs this against lg[3] (a WIGE lap_end_tod,
 // itself UTC per the clockOffsetS() comment above). getHours()/getMinutes()/
 // getSeconds() here used to return the BROWSER's local wall clock instead, so
