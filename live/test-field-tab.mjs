@@ -26,7 +26,9 @@ check('NAMES[2] is TIMES', list[2] === 'TIMES', list[2]);
 check('NAMES[3] is FIELD', list[3] === 'FIELD', list[3]);
 check('NAMES[4] is PACE', list[4] === 'PACE', list[4]);
 check('REELLBL maps fieldtabwrap to FIELD', /fieldtabwrap:'FIELD'/.test(html), true);
-check('caption says purple is class best', html.includes('Purple = class best'), true);
+check('caption says purple is class best of all laps', html.includes('Purple = class best (all laps)'), true);
+check('caption says green is fastest this lap', html.includes('green = fastest this lap'), true);
+check('caption says red is slowest this lap', html.includes('red = slowest this lap'), true);
 
 const a = html.indexOf('function predFromPrev(cells,laps){');
 const b = html.indexOf('\nfunction renderSecTab(T){', a);
@@ -42,7 +44,7 @@ function api(T, { cars, pos, legs, sectimes, bx }) {
   const lastStartedLeg = (st) => legs[st] && legs[st].last;
   const curDrv = (st) => ({ 667: 'Mulready', 670: 'Reinhard' }[st] || '');
   const fn = new Function('DB', 'BX', 'maxN', 'livePos', 'activeLeg', 'lastStartedLeg', 'curDrv',
-    `${src}; return {fieldTabData, fieldClassBest};`);
+    `${src}; return {fieldTabData, fieldClassBest, fieldPaint};`);
   return fn(DB, BX, maxN, livePos, activeLeg, lastStartedLeg, curDrv);
 }
 function run(T, fx) { return api(T, fx).fieldTabData(T); }
@@ -120,6 +122,19 @@ function bxFor(L, n) {
         Math.abs(cls.cb[0] - 76.0) < 0.01 && Math.abs(p2.pb[0] - cls.cb[0]) > 0.05, cls.cb);
   check('class-best lap is #667\'s completed L3, not an in-progress totPred',
         Math.abs(cls.lap - (76.8+75.4+155.8+224.3+57)) < 0.05, cls.lap);
+
+  const { fieldPaint } = api(2000, fx);
+  const s1min = 76.0, s1max = 76.6, s1cls = cls.cb[0];
+  check('this-lap fastest that is also class best is purple',
+        fieldPaint(76.0, s1cls, s1min, s1max).kind === 'purple', fieldPaint(76.0, s1cls, s1min, s1max));
+  check('this-lap fastest that is not class best is green',
+        fieldPaint(76.0, 75.0, 76.0, 80.0).kind === 'green', fieldPaint(76.0, 75.0, 76.0, 80.0));
+  check('this-lap slowest is red',
+        fieldPaint(80.0, 75.0, 76.0, 80.0).kind === 'red', fieldPaint(80.0, 75.0, 76.0, 80.0));
+  check('a time in between is heat',
+        fieldPaint(78.0, 75.0, 76.0, 80.0).kind === 'heat', fieldPaint(78.0, 75.0, 76.0, 80.0));
+  check('a lone value is green, not red',
+        fieldPaint(90.0, 80.0, 90.0, 90.0).kind === 'green', fieldPaint(90.0, 80.0, 90.0, 90.0));
 }
 
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — FIELD reel is P1→Px current-lap sector times');

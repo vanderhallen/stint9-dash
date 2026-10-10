@@ -3335,6 +3335,17 @@ function fieldClassBest(rows){
   });
   return {cb:cb,lap:lap};
 }
+// Per-section colour for the FIELD reel. `classBest` is the all-laps class
+// record; `min`/`max` are this column on the current lap (fastest/slowest
+// driver). Purple wins when this-lap fastest is also the class record.
+function fieldPaint(v,classBest,min,max){
+  if(v==null||!isFinite(v))return {kind:null};
+  const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
+  if(eq(v,classBest))return {kind:'purple'};
+  if(min!=null&&eq(v,min))return {kind:'green'};
+  if(max!=null&&eq(v,max)&&!(min!=null&&eq(min,max)))return {kind:'red'};
+  return {kind:'heat'};
+}
 function renderSecTab(T){
   const wrap=document.getElementById('sectabwrap');if(!wrap)return;
   const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
@@ -3444,7 +3455,6 @@ function renderFieldTab(T){
   const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
   const rows=fieldTabData(T);
   if(!rows.length){ph('select a class');return;}
-  const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
   const heatBg=(v,min,max)=>{
     if(v==null||min==null||max==null||!isFinite(min)||!isFinite(max)||max<=min)return'';
     const t=Math.max(0,Math.min(1,(v-min)/(max-min)));
@@ -3461,18 +3471,22 @@ function renderFieldTab(T){
   const clsBest=fieldClassBest(rows);
   const th='position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 8px;text-align:right;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
   const th0='position:sticky;left:0;top:0;z-index:3;background:#f2f3f6;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec;border-right:1px solid #d5d9df;color:#6b7480;font-weight:700';
-  const num=(v,pb,range)=>{
+  const num=(v,classBest,range)=>{
     if(v==null)return '<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
-    const bestHit=eq(v,pb)&&isFinite(pb);
-    const dv=isFinite(pb)?v-pb:null;
+    const p=fieldPaint(v,classBest,range[0],range[1]);
+    const dv=isFinite(classBest)?v-classBest:null;
     let txt=fmt(v);
-    if(bestHit)txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.667em">▲0.0</span>';
+    if(p.kind==='purple')txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.667em">▲0.0</span>';
     else if(dv!=null&&Math.abs(dv)>=0.05){
       const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
       txt+='<br><span style="color:'+col+';font-weight:700;font-size:0.667em">'+tri+Math.abs(dv).toFixed(1)+'</span>';
     }
-    const bg=bestHit?'background:#f3ecfb':heatBg(v,range[0],range[1]);
-    return '<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;':'color:#16202b')+(bg?';'+bg:'')+'">'+txt+'</td>';
+    let bg='',col='#16202b',wt='';
+    if(p.kind==='purple'){bg='background:#f3ecfb';col='#7b2fbe';wt='font-weight:700';}
+    else if(p.kind==='green'){bg='background:#d4edda';col='#1e8f3a';wt='font-weight:700';}
+    else if(p.kind==='red'){bg='background:#f8d7da';col='#c0392b';wt='font-weight:700';}
+    else bg=heatBg(v,range[0],range[1]);
+    return '<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:'+col+(wt?';'+wt:'')+(bg?';'+bg:'')+'">'+txt+'</td>';
   };
   let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
   h+='<thead><tr><th style="'+th0+'">P</th>';
@@ -3490,14 +3504,18 @@ function renderFieldTab(T){
     if(r.totPred!=null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:#8a929b;background:#fff">'+fmt(r.totPred)+'</td>';
     else if(r.tot==null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
     else{
-      const isBest=eq(r.tot,clsBest.lap);
-      const bg=isBest?'background:#f3ecfb':heatBg(r.tot,lapMin,lapMax);
-      h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(bg?';'+bg:'')+'">'+fmt(r.tot)+'</td>';
+      const p=fieldPaint(r.tot,clsBest.lap,lapMin,lapMax);
+      let bg='',col='#16202b';
+      if(p.kind==='purple'){bg='background:#f3ecfb';col='#7b2fbe';}
+      else if(p.kind==='green'){bg='background:#d4edda';col='#1e8f3a';}
+      else if(p.kind==='red'){bg='background:#f8d7da';col='#c0392b';}
+      else bg=heatBg(r.tot,lapMin,lapMax);
+      h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:'+col+(bg?';'+bg:'')+'">'+fmt(r.tot)+'</td>';
     }
     h+='</tr>';
   });
   h+='</tbody></table>';
-  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">FIELD &middot; current lap for every car in the class, P1 at the top. Purple = class best; heat is vs the field this lap. Grey lap total = predicted.</div>';
+  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">FIELD &middot; current lap for every car in the class, P1 at the top. Purple = class best (all laps); green = fastest this lap; red = slowest this lap; heat in between. Grey lap total = predicted.</div>';
   const html=caption+h;
   if(wrap.__sig===html)return;
   wrap.__sig=html;wrap.innerHTML=html;
