@@ -39,13 +39,30 @@ const cases = [
 ];
 for (const [input, expected] of cases) check(`ytId(${JSON.stringify(input)}) -> ${expected}`, ytId(input) === expected, ytId(input));
 
-const wxn = html.match(/const WXN=(\d+);/);
-check('WXN includes the new YOUTUBE panel (7 panels total)', wxn && wxn[1] === '7', wxn && wxn[1]);
+check('right strip uses the same REELN as the left (YOUTUBE is in that list)', /const WXN=REELN/.test(html), (html.match(/const WXN=\w+/)||[])[0]);
 
-// index 3, not the original 6: the YouTube panel was later moved to sit
-// right after the timetable panel (a placement request, not a bug fix).
-const gate = html.includes("if(wxReelIdx!==3&&typeof stopYtPlayer==='function')stopYtPlayer();");
-check('scrolling away from the YouTube panel stops playback', gate, gate);
+const names = html.match(/var NAMES=\[([^\]]+)\]/);
+const list = names ? names[1].split(',').map(s => s.replace(/['"]/g, '').trim()) : [];
+check('YOUTUBE is reel 17 (reelShown\'s stop index)', list[17] === 'YOUTUBE', list[17]);
+
+check('reelShown stops only this block\'s YouTube player',
+  /if\(i!==17\)\{const f=SIDEFN\[side\]&&SIDEFN\[side\]\.stopYt;if\(f\)f\(\);\}/.test(html), true);
+check('reelShown does not call the global stopYtPlayer (that would kill the other block)',
+  !/if\(i!==17&&typeof stopYtPlayer/.test(html), true);
+check('initRightBlock assigns onto SIDEFN instead of replacing it (keeps stopYt)',
+  /SIDEFN\[''\]\.syncWx=window\.__syncWx/.test(html) && !/SIDEFN\[''\]=\{syncWx:/.test(html), true);
+
+// Changing the LEFT reel (TIMES, idx 2) must not stop the RIGHT player.
+{
+  const stopped = { left: 0, right: 0 };
+  const SIDEFN = { '': { stopYt: () => stopped.left++ }, _r: { stopYt: () => stopped.right++ } };
+  const hide = (i, side) => { if (i !== 17) { const f = SIDEFN[side] && SIDEFN[side].stopYt; if (f) f(); } };
+  hide(2, '');     // left TIMES
+  hide(17, '_r');  // right stays on YOUTUBE
+  check('left TIMES switch does not stop the right YouTube player', stopped.right === 0 && stopped.left === 1, stopped);
+  hide(16, '_r');  // right leaves YOUTUBE
+  check('leaving YOUTUBE on the right does stop the right player', stopped.right === 1 && stopped.left === 1, stopped);
+}
 
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — YouTube reel parses every common link shape and wires into the strip correctly');
 process.exit(failures ? 1 : 0);

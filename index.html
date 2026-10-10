@@ -1356,8 +1356,9 @@ function reelShown(i,side){
     if(i===18&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
-    // scrolling away. Stop this block's player the moment it is not shown.
-    if(i!==17&&typeof stopYtPlayer==='function')stopYtPlayer();
+    // scrolling away. Stop ONLY this block's player: the other block can still
+    // be on YOUTUBE (typical: TIMES left, stream right) and must keep playing.
+    if(i!==17){const f=SIDEFN[side]&&SIDEFN[side].stopYt;if(f)f();}
   });
 }
 // Height/width ratio for the reel viewport. Un-zoomed, reels inherit the
@@ -3235,6 +3236,28 @@ function fitZoomTable(){
     wrap.style.setProperty('--zt',k.toFixed(4));
   }
 }
+// In-progress TIMES column: sum this lap's actual sectors plus the previous
+// lap's time for each sector not in yet → totPred (grey until the lap is
+// complete, then the real tot takes over). laps is chronological.
+function predFromPrev(cells,laps){
+  for(let i=0;i<laps.length;i++){
+    const c=cells[laps[i]];if(!c||!c.vals)continue;
+    if(c.vals.every(function(v){return v!=null;}))continue;
+    let prev=null;
+    for(let j=i-1;j>=0;j--){if(cells[laps[j]]&&cells[laps[j]].vals){prev=cells[laps[j]];break;}}
+    if(!prev)continue;
+    const pred=[null,null,null,null,null];
+    let tot=0,can=true,any=false;
+    for(let k=0;k<5;k++){
+      if(c.vals[k]!=null)tot+=c.vals[k];
+      else if(prev.vals[k]!=null){pred[k]=prev.vals[k];tot+=prev.vals[k];any=true;}
+      else can=false;
+    }
+    if(any)c.pred=pred;
+    if(any&&can)c.totPred=tot;
+  }
+  return cells;
+}
 function renderSecTab(T){
   const wrap=document.getElementById('sectabwrap');if(!wrap)return;
   const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
@@ -3257,13 +3280,14 @@ function renderSecTab(T){
     laps.push(L);cells[L]={vals:vals};drvs[L]=dl[L]||'';
     if(full){const tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];cells[L].tot=tot;if(tot<bestLap)bestLap=tot;}
     else{
-      // LASTLAPTIME lives on the NEXT WIGE row; prepLiveRaw copies it to this
-      // lap's rt so we can show LAP even when S1 (and thus S5) is still blank.
+      // LASTLAPTIME lives on the NEXT WIGE row; fallback only when we cannot
+      // build a predicted total from the previous lap's missing sectors.
       const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];
-      if(rt!=null){cells[L].tot=rt;if(rt<bestLap)bestLap=rt;}
+      if(rt!=null)cells[L].tot=rt;
     }
   }
   if(!laps.length){ph('no completed sectors yet');return;}
+  predFromPrev(cells,laps);
   laps.reverse();   // newest/last lap leftmost, first lap rightmost
   const activeD=curDrv(selCar,T);
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
@@ -3324,8 +3348,10 @@ function renderSecTab(T){
   });
   // final row — LAP total
   h+='<tr><td style="'+rowLbl+';color:#16202b;border-top:1px solid #d5d9df">LAP</td>';
-  const [lmin,lmax]=rowRange(laps.map(L=>cells[L].tot));
-  laps.forEach(L=>{const t=cells[L].tot;
+  const [lmin,lmax]=rowRange(laps.map(L=>cells[L].totPred!=null?null:cells[L].tot));
+  laps.forEach(L=>{
+    if(cells[L].totPred!=null){h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:#8a929b;background:#fff">'+fmt(cells[L].totPred)+'</td>';return;}
+    const t=cells[L].tot;
     if(t==null){h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;color:#c9ced4">&mdash;</td>';}
     else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 10px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
@@ -3333,7 +3359,7 @@ function renderSecTab(T){
   // The explainer caption is skippable on phone — the table below it takes
   // the caption's own real estate too, and on a phone that space is a bigger
   // trade than on desktop. Desktop keeps it exactly as before.
-  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best.</div>';
+  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best. Grey lap total = predicted (this lap\'s sectors + previous lap for the rest).</div>';
   wrap.innerHTML=caption+h;
 }
 /* H2H reel: pick 1+ other drivers in the SAME class as the reference (the
@@ -3751,9 +3777,10 @@ function renderMobSect(T){
     if(!any)continue;
     laps.push(L);cells[L]={vals};
     if(full){const tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];cells[L].tot=tot;if(tot<bestLap)bestLap=tot;}
-    else{const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];if(rt!=null){cells[L].tot=rt;if(rt<bestLap)bestLap=rt;}}
+    else{const rt=window.__ownRt&&window.__ownRt[selCar+'|'+L];if(rt!=null)cells[L].tot=rt;}
   }
   if(!laps.length){ph('no completed sectors yet');return;}
+  predFromPrev(cells,laps);
   // newest leftmost — same order as the desktop TIMES reel (see comment above)
   const MAXCOLS=12,shown=laps.slice(-MAXCOLS).reverse();
   const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
@@ -3784,8 +3811,10 @@ function renderMobSect(T){
     h+='</tr>';
   });
   h+='<tr><td style="'+rowLbl+';border-top:1px solid #d5d9df">LAP</td>';
-  const [lmin,lmax]=rowRange(shown.map(L=>cells[L].tot));
-  shown.forEach(L=>{const t=cells[L].tot;
+  const [lmin,lmax]=rowRange(shown.map(L=>cells[L].totPred!=null?null:cells[L].tot));
+  shown.forEach(L=>{
+    if(cells[L].totPred!=null){h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:#8a929b;background:#fff">'+fmt(cells[L].totPred)+'</td>';return;}
+    const t=cells[L].tot;
     if(t==null){h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;color:#c9ced4">&mdash;</td>';}
     else{const isBest=eq(t,bestLap),bg=isBest?'':heatBg(t,lmin,lmax);h+='<td style="padding:3px 6px;text-align:right;border-top:1px solid #d5d9df;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(isBest?';background:#f3ecfb':(bg?';'+bg:''))+'">'+fmt(t)+'</td>';}
   });
@@ -7756,14 +7785,16 @@ applyWxReel(false);
       'title="YouTube video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
     reel.classList.add('playing');   // hand the whole reel to the video — see the .playing CSS above
   }
-  // Stops playback AND drops back to the link-entry form. Used by the close
-  // button and by scrolling away from this panel (applyWxReel's gate above) —
-  // either way there is no half-state where the video is gone but the form is
-  // still hidden, or vice versa.
-  window.stopYtPlayer=function(){box.innerHTML='';reel.classList.remove('playing');};
+  // Stops playback AND drops back to the link-entry form. Per-side: each
+  // block has its own iframe, and reelShown() only stops the block that
+  // actually left the YOUTUBE panel.
+  function stop(){box.innerHTML='';reel.classList.remove('playing');}
+  const side=RSIDE||'';
+  if(SIDEFN[side])SIDEFN[side].stopYt=stop;
+  window.stopYtPlayer=function(){['',RSUF].forEach(s=>{const f=SIDEFN[s]&&SIDEFN[s].stopYt;if(f)f();});};
   btn.onclick=start;
   url.addEventListener('keydown',e=>{if(e.key==='Enter')start();});
-  if(close)close.onclick=()=>window.stopYtPlayer();
+  if(close)close.onclick=stop;
 })();
 
 /* ---- feedback widget (Supabase table public.stint9_feedback, RLS: anon insert + anon select + anon delete) ---- */
@@ -8200,8 +8231,9 @@ applyWxReel(false);
    map onto the LEFT block's div. By the time L is loaded the re-run is safe. */
 (function initRightBlock(){
   if(typeof L==='undefined')return setTimeout(initRightBlock,300);
-  // what the canonical pass registered, before the re-run overwrites the globals
-  SIDEFN['']={syncWx:window.__syncWx,resizeWx:window.__resizeWx,fitPit:window.__fitPit};
+  // Assign onto the existing SIDEFN objects — do not replace them. initYtReel
+  // (and other RINIT inits) already hung per-side stop/wake handles on them.
+  SIDEFN[''].syncWx=window.__syncWx;SIDEFN[''].resizeWx=window.__resizeWx;SIDEFN[''].fitPit=window.__fitPit;
   withSide(RSUF,()=>{
     Object.keys(RINIT).forEach(n=>{try{RINIT[n]();}catch(e){console.error('right-block init '+n,e);}});
     if(typeof rnWire==='function')try{rnWire();}catch(e){}
@@ -8209,7 +8241,7 @@ applyWxReel(false);
     if(typeof renderChampionship==='function')try{renderChampionship();}catch(e){}
     if(typeof renderVideoReel==='function')try{renderVideoReel();}catch(e){}
   });
-  SIDEFN[RSUF]={syncWx:window.__syncWx,resizeWx:window.__resizeWx,fitPit:window.__fitPit};
+  SIDEFN[RSUF].syncWx=window.__syncWx;SIDEFN[RSUF].resizeWx=window.__resizeWx;SIDEFN[RSUF].fitPit=window.__fitPit;
   /* There are two of each of these now. reelShown() picks the one belonging to
      the block that just scrolled; these globals stay as the "both blocks"
      form, which is what the outside callers (syncReel, the zoom modal, the
