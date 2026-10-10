@@ -65,6 +65,16 @@
   .dropdn div{padding:8px 10px;border-radius:6px;white-space:nowrap;cursor:pointer}
   .dropdn div:hover{background:var(--bg)}
   .dropdn div.on{color:var(--accent);font-weight:600}
+  /* Phone class/car list: native <select> popover is clipped by #mobileview's
+     overflow:hidden, and with ALL CLASSES (~150 cars) that leftover sliver is
+     the "too small to tap" list. Same custom panel as desktop, but full-width,
+     44px rows, above the phone overlay (z 9999). body.m{touch-action:none}
+     would also freeze scrolling this list (it lives on <body>, not #mobileview),
+     so pan-y is set here. */
+  .dropdn.touch{z-index:10050;font-size:16px;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+    padding:6px;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.28);
+    overscroll-behavior:contain}
+  .dropdn.touch div{padding:12px 16px;min-height:44px;display:flex;align-items:center;border-radius:8px}
   .split{display:flex;gap:22px;align-items:flex-start;margin-top:9px}
   /* Track map and detail map split the row equally — same flex:1 1 0 pattern
      as the reel row below, filling the full row width edge-to-edge with no
@@ -554,7 +564,7 @@
      touch-action:auto scoped to the controls themselves restores that,
      without reopening the pinch-zoom hole body.m{touch-action:none} exists
      for: it stays none on everything else, including the reel/stage content. */
-  body.m select,body.m button{touch-action:auto}
+  body.m select,body.m button,body.m .ddhit{touch-action:auto}
   /* --- fixed header: pinned, never repainted by paging ---
      Safe-area insets everywhere: with viewport-fit=cover the page paints edge to
      edge, INCLUDING under the notch and the home indicator. In landscape the
@@ -705,7 +715,15 @@
   .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:11px 18px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;flex:0 0 auto}
   .mplay.hide,.mctrl.hide{display:none}
   .mselrow{display:flex;gap:8px}
-  .mselrow select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
+  /* .ddwrap is the flex item once dropDown() lids the <select>; without this
+     the wrap shrinks to the widest option (ALL CLASSES driver names) and the
+     select's own flex:1 never reaches the row. */
+  .mselrow .ddwrap{flex:1 1 0;min-width:0}
+  /* height:44px explicitly — same trap as .mspeed: this rule is more specific
+     than select{height:44px}, and without redeclaring it the closed box falls
+     to content size, well under a finger. 16px so iOS does not auto-zoom if
+     the native picker ever opens as a fallback. */
+  .mselrow select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink);height:44px}
   .mcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
   .mlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
   .mtop{display:flex;align-items:center;gap:12px}
@@ -1688,8 +1706,13 @@ function pitWhatIf(st,T,saved,pool){
 // and ignore stretches beyond ×4 (a stop, not a 60 km/h zone). S1 is ignored:
 // the pit exit sits in S1, so out-laps look like a slow zone and drown real
 // Code 60s further around the lap.
+//
+// A finished slow sector only counts for CODE60_LAST_TTL_S after the beacon.
+// Without that, three cars that were +15 s through S3 keep S3 lit until they
+// each complete S4 (~3 min) — on NLS 8/9 that held the banner up for ~40 % of
+// the race. In-progress cars still light the sector while they are in it.
 const SECTOR_KM=[3.3,3.3,6.0,9.4,2.4]; // NLS 5-sector lengths (also feeds the TYRE board below)
-const CODE60_RATIO=1.12,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=10,CODE60_MIN_CARS=3;
+const CODE60_RATIO=1.18,CODE60_MAX_RATIO=4,CODE60_EXTRA_S=15,CODE60_MIN_CARS=3,CODE60_LAST_TTL_S=30;
 // UTC, not local — code60Sectors() diffs this against lg[3] (a WIGE lap_end_tod,
 // itself UTC per the clockOffsetS() comment above). getHours()/getMinutes()/
 // getSeconds() here used to return the BROWSER's local wall clock instead, so
@@ -1738,7 +1761,7 @@ function code60Sectors(){
       const expected=prevCur>0?prevCur:180;
       const since=now-lg[3];
       if(since<0||since>expected*2)continue;   // stuck / crashed / retired
-      if(lastSector!==1&&code60Slow(dur,prevSectorDur(st,lastSector,lap)))counts[lastSector-1]++;
+      if(lastSector!==1&&since<=CODE60_LAST_TTL_S&&code60Slow(dur,prevSectorDur(st,lastSector,lap)))counts[lastSector-1]++;
       if(curSector!==1&&code60Slow(since,prevCur))counts[curSector-1]++;
     }
   }
@@ -4304,7 +4327,12 @@ function liveEtaSF(st,T){
   for(const sec of remaining){const d=liveRefDuration(st,sec);if(!(d>0))return null;cum+=d;}
   return {sec:Math.max(0,li[3]+cum-T),lap:(li[1]>=5)?li[0]+1:li[0]};
 }
-function render(){clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
+function render(){
+  // Phone class/car sheet is open: skip the ALL CLASSES map/leaderboard pass so
+  // the list can scroll. Clock and LIVE ingest keep running; the next tick
+  // after close catches up.
+  if(document.body.classList.contains('m')&&document.querySelector('.dropdn.touch'))return;
+  clock.textContent=hmsClock(T);let on=0;const lp=livePos(T);refreshCarDropdown(T);
   // before the per-car loop: liveCarXY's pit inference must not fire on a sector
   // that is legitimately crawling under Code 60.
   _c60=(typeof code60Sectors==='function')?code60Sectors():[];
@@ -4742,6 +4770,21 @@ function renderMobile(){
     var clickMode=function(mode){var b=document.querySelector('.modebtn[data-mode="'+mode+'"]');if(b)b.click();};
     var ms=document.getElementById('m_sim');if(ms)ms.onclick=function(){clickMode('SIM');};
     var ml=document.getElementById('m_live');if(ml)ml.onclick=function(){clickMode('LIVE');};
+  }
+  // Idempotent (dropDown no-ops once wrapped). Markup lives below this script,
+  // so the first ticks can miss #m_class/#m_car; keep trying. {touch:true}
+  // skips the desktop hover:hover gate.
+  if(typeof dropDown==='function'){
+    dropDown(document.getElementById('m_class'),{touch:true});
+    dropDown(document.getElementById('m_car'),{touch:true});
+  }
+  // ALL CLASSES standings/map work is the expensive bit on a phone. Freeze it
+  // (and skip innerHTML-mirroring the car list) while the class/car sheet is
+  // open so the list itself stays scrollable and its options aren't rebuilt
+  // under the finger.
+  if(document.querySelector('.dropdn.touch')){
+    ['m_class','m_car'].forEach(function(id){var m=document.getElementById(id);if(m&&typeof m.__ddsync==='function')m.__ddsync();});
+    return;
   }
   __mirrorSel('m_class','classsel');__mirrorSel('m_car','carsel');__mirrorSel('m_speed','speed');
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
@@ -5835,10 +5878,15 @@ fillClassSelect(clsSel);
    The <select> stays the source of truth (value + 'change') and still paints
    the closed box, so prefs, the mobile mirror and every reader of
    classsel.value / carsel.value are untouched.
-   Mouse/trackpad only — a touch device gets its own native picker, which
-   doesn't have this problem. */
-function dropDown(sel){
-  if(!sel||!window.matchMedia('(hover:hover) and (pointer:fine)').matches)return;
+   Desktop (hover:hover + pointer:fine) always uses this. Phone passes {touch:true}
+   for the class/car pickers: iOS's in-page <select> popover is clipped by
+   #mobileview {overflow:hidden}, and with ALL CLASSES (~150 cars) the leftover
+   tappable sliver is unusable — a short class like M240 still fit, which is
+   why it only showed up on the long list. */
+function dropDown(sel,opts){
+  const touch=!!(opts&&opts.touch);
+  if(!sel||sel.closest('.ddwrap'))return;
+  if(!touch&&!window.matchMedia('(hover:hover) and (pointer:fine)').matches)return;
   /* Cover the closed box with a transparent lid instead of cancelling the
      mousedown: Safari opens its popup ON mousedown and ignores preventDefault(),
      so the only reliable way to not get a native popup in every browser is to
@@ -5851,7 +5899,7 @@ function dropDown(sel){
   let panel=null;
   const close=()=>{if(!panel)return;panel.remove();panel=null;
     window.removeEventListener('scroll',onscroll,true);window.removeEventListener('resize',close);
-    document.removeEventListener('mousedown',outside,true);document.removeEventListener('keydown',onkey,true);};
+    document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',onkey,true);};
   // A long list (the car picker) scrolls INSIDE the panel, and a capture
   // listener on window sees that non-bubbling scroll too — so ignore our own.
   const onscroll=e=>{if(panel&&(e.target===panel||panel.contains(e.target)))return;close();};
@@ -5859,34 +5907,59 @@ function dropDown(sel){
   const onkey=e=>{if(e.key==='Escape')close();};
   function open(){
     const r=sel.getBoundingClientRect();
-    panel=document.createElement('div');panel.className='dropdn';
+    panel=document.createElement('div');panel.className='dropdn'+(touch?' touch':'');
     let onRow=null;
     Array.from(sel.options).forEach((o,i)=>{
       const row=document.createElement('div');row.textContent=o.textContent;
       if(i===sel.selectedIndex){row.className='on';onRow=row;}
-      row.onmousedown=ev=>ev.preventDefault();   // keep focus on the select
+      // preventDefault on mousedown keeps focus on the select (desktop). On
+      // iOS it can swallow the following click, so skip it for the touch list.
+      if(!touch)row.onmousedown=ev=>ev.preventDefault();
       row.onclick=()=>{close();if(sel.value!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}};
       panel.appendChild(row);
     });
-    panel.style.left=r.left+'px';panel.style.top=(r.bottom+4)+'px';
-    panel.style.minWidth=r.width+'px';
-    panel.style.maxHeight=Math.max(120,window.innerHeight-r.bottom-14)+'px';
+    if(touch){
+      // Full-width sheet under the header, not a popover as narrow as the
+      // squeezed flex <select>. max() keeps it off the landscape notch.
+      const below=Math.max(160,window.innerHeight-r.bottom-12);
+      const above=Math.max(160,r.top-12);
+      panel.style.left='max(12px, env(safe-area-inset-left))';
+      panel.style.right='max(12px, env(safe-area-inset-right))';
+      panel.style.minWidth='0';
+      if(below>=180||below>=above){
+        panel.style.top=(r.bottom+4)+'px';
+        panel.style.maxHeight=below+'px';
+      }else{
+        panel.style.bottom=(window.innerHeight-r.top+4)+'px';
+        panel.style.maxHeight=above+'px';
+      }
+    }else{
+      panel.style.left=r.left+'px';panel.style.top=(r.bottom+4)+'px';
+      panel.style.minWidth=r.width+'px';
+      panel.style.maxHeight=Math.max(120,window.innerHeight-r.bottom-14)+'px';
+    }
     document.body.appendChild(panel);
-    const pr=panel.getBoundingClientRect();   // pull back in when the box sits near the right edge
-    if(pr.right>window.innerWidth-6)panel.style.left=Math.max(6,window.innerWidth-6-pr.width)+'px';
+    if(!touch){
+      const pr=panel.getBoundingClientRect();   // pull back in when the box sits near the right edge
+      if(pr.right>window.innerWidth-6)panel.style.left=Math.max(6,window.innerWidth-6-pr.width)+'px';
+    }
     // capped list: bring the current pick into view without scrolling the page
     if(onRow&&panel.scrollHeight>panel.clientHeight)
       panel.scrollTop=Math.max(0,onRow.offsetTop-panel.clientHeight/2+onRow.offsetHeight/2);
     window.addEventListener('scroll',onscroll,true);window.addEventListener('resize',close);
-    document.addEventListener('mousedown',outside,true);document.addEventListener('keydown',onkey,true);
+    document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',onkey,true);
   }
   hit.addEventListener('click',()=>{if(sel.disabled)return;panel?close():open();});
   sel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();panel?close():open();}});
   /* The car list's option labels carry the CURRENT driver and get rewritten
      every second in LIVE (refreshCarDropdown) — repaint an open panel so it
-     doesn't show the driver who was at the wheel when it was opened. */
+     doesn't show the driver who was at the wheel when it was opened. If the
+     option count changed (class switch / ALL CLASSES rebuild), close rather
+     than leave stale rows that no longer match. */
   sel.__ddsync=()=>{if(!panel)return;
-    Array.from(sel.options).forEach((o,i)=>{const row=panel.children[i];if(row)row.textContent=o.textContent;});};
+    const opts=Array.from(sel.options);
+    if(opts.length!==panel.childElementCount){close();return;}
+    opts.forEach((o,i)=>{const row=panel.children[i];if(row)row.textContent=o.textContent;});};
 }
 dropDown(clsSel);
 dropDown(document.getElementById('carsel'));

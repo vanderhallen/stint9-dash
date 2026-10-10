@@ -1944,19 +1944,27 @@ delta** in `code60Sectors()`:
 
 - Compare the sector just finished, and elapsed time in the sector being driven
   now, against **that same car's previous clean time** for that sector.
-- Flag when the stretch is **>1.12×** and **at least +10 s**, but **<4×** (a
+- Flag when the stretch is **>1.18×** and **at least +15 s**, but **<4×** (a
   stop, not 60 km/h). A sector lights when **≥3** cars do that at once.
+- A car that has **already left** a slow sector only keeps counting toward it
+  for **30 s** (`CODE60_LAST_TTL_S`). Cars still inside the sector count for as
+  long as they are crawling. Without the TTL, three slightly-slow S3s kept S3
+  red until those cars finished S4 (~3 min) — on NLS 8/9 that was ~37–46 % of
+  the race with no Code 60 on track.
 - Skip lap 1 and pit laps. **S1 is ignored** — the pit exit sits in S1, so
   out-laps look like a slow zone and drown real Code 60s further around the lap.
 
-On NLS 8 (2026-09-12) a +15 s floor caught only 2 moments. Current ship is
-**1.12× / +10 s / ≥3 cars**, S1 skipped. Judge this against WIGE next race.
+Raising the floor alone did not fix the cry-wolf: +15 s with no TTL still held
+the banner ~30 % of NLS 8. Current ship is **1.18× / +15 s / ≥3 cars / 30 s TTL
+on completed splits**, S1 skipped. Replay against NLS 8/9 drops on-time from
+~37–46 % to ~12 %, and still covers the race-control “longer lasting Code 60”
+notes (Aremberg/Hatzenbach/Fuchsröhre, Flugplatz).
 
 **Check next race:** sit with the WIGE live-timing app and this dashboard side by
 side. Every time WIGE / race control calls a Code 60, note whether STINT9 lights
 the matching sector (and the reverse: STINT9 on, WIGE off). If we miss real
-zones, lower `CODE60_EXTRA_S` (or `CODE60_RATIO`); if we cry wolf, raise them.
-Record the verdict in this section.
+zones, lower `CODE60_EXTRA_S` (or `CODE60_RATIO`) or raise `CODE60_LAST_TTL_S`;
+if we cry wolf, raise the extras or drop the TTL. Record the verdict here.
 
 ## 15.4c Qualifying is a time sheet, not a race — SHIPPED 2026-09-12
 
