@@ -101,6 +101,8 @@
   .carbadge .gaps{display:inline-flex;flex-direction:column;justify-content:center;height:29px;line-height:1;font-family:'IBM Plex Mono',monospace;font-weight:600}
   .carbadge .ga{font-size:14px;color:#c0392b}.carbadge .gb{font-size:14px;color:#1e8f3a}
   .carbadge .drv{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-top:4px}
+  .carbadge .veh,.carbadge .cls{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.4px;color:var(--muted);margin-top:1px;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+  .carbadge .veh{margin-top:2px}
   .code60poly{fill:none;stroke:#ff3b30;stroke-width:30px;stroke-linecap:round;stroke-linejoin:round;opacity:0;pointer-events:none}
   .code60poly.on{animation:code60pulse 1.1s ease-in-out infinite}
   /* Thicker base (was 22px) plus a stroke-width swing on top of the opacity
@@ -724,6 +726,10 @@
   .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:11px 18px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;flex:0 0 auto}
   .mplay.hide,.mctrl.hide{display:none}
   .mselrow{display:flex;gap:8px}
+  /* Same closed-box metrics as the class/car selects next to it. flex 0 so a
+     short label (NLS10) doesn't steal half the row; ellipsis if a session
+     suffix (NLS10 QUALI) is wider than the phone has room for. */
+  .mracbtn{flex:0 1 auto;min-width:0;max-width:42%;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:0 12px;border:1px solid var(--ink);border-radius:10px;background:var(--ink);color:#fff;height:44px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* .ddwrap is the flex item once dropDown() lids the <select>; without this
      the wrap shrinks to the widest option (ALL CLASSES driver names) and the
      select's own flex:1 never reaches the row. */
@@ -828,7 +834,9 @@
   .loginLogoff.on{display:block}
   .loginLogoff:hover{background:var(--bg);color:var(--ink)}
   /* ---- SIM race picker (choose an archived event to replay) ---- */
-  #simEventModal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  /* Above #mobileview (z-index 9999) so Select race works from the iPhone layout
+     too. The login modal stays at 9000 — a phone signs in via the note, not this. */
+  #simEventModal{position:fixed;inset:0;z-index:10020;display:none;align-items:center;justify-content:center;background:rgba(16,32,43,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #simEventModal.on{display:flex}
   .simevCard{position:relative;width:min(380px,92vw);background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:30px 26px 24px;font-family:'Space Grotesk',system-ui,sans-serif}
   #simevClose{position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
@@ -1964,6 +1972,15 @@ function curDrv(st,T){
   if(L==null){const bx=BX[st]||{};let mxk=-Infinity;for(const k in bx){if(bx[k]<=T&&+k>mxk)mxk=+k;}L=isFinite(mxk)?Math.ceil(mxk/5):1;}
   const dl=DB.drvlap&&DB.drvlap[st];
   return (dl&&dl[L])||DB.name[st]||'';
+}
+function badgeEsc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function carVeh(st){const v=DB.veh&&DB.veh[st];return v?String(v):'';}
+function carClsName(st){
+  const classes=DB.classes||{};
+  for(const k of Object.keys(classes)){
+    if((classes[k]||[]).some(c=>String(c)===String(st)))return k;
+  }
+  return '';
 }
 const BX={},BKEYS={};
 function commonGap(ref,other,T){const ks=BKEYS[ref];for(let i=ks.length-1;i>=0;i--){const bi=ks[i],tr=BX[ref][bi];if(tr>T)continue;const to=BX[other][bi];if(to!=null&&to<=T){const g=tr-to;
@@ -3895,7 +3912,9 @@ function renderH2H(T){
     sv+='<text x="'+(xR+8)+'" y="'+(yT2-12).toFixed(1)+'" text-anchor="start" font-size="'+fz(11)+'" fill="#c9a06b" font-family="IBM Plex Mono,monospace">&Delta; vs ref</text>';
     paceGroup.forEach(c=>{
       const pts=pacePts[c];if(!pts.length)return;
-      const col=DB.carcol[c]||'#16202b',dim=(h2hHover!=null&&h2hHover!==c),op=dim?0.18:1;
+      // The (ref) row in the table above is ink (#16202b), not the car colour.
+      // Keep the laptime line and its dots the same black so the two agree.
+      const col=(String(c)===String(selCar))?'#16202b':(DB.carcol[c]||'#16202b'),dim=(h2hHover!=null&&h2hHover!==c),op=dim?0.18:1;
       const px=pts.map(([L,v])=>[X2(L),Yt(v)]);
       sv+='<path d="'+smoothPath(px)+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" opacity="'+op+'"/>';
       pts.forEach(([L,v])=>{sv+='<circle cx="'+X2(L).toFixed(1)+'" cy="'+Yt(v).toFixed(1)+'" r="3.6" fill="'+col+'" opacity="'+op+'"/>';});
@@ -3910,7 +3929,7 @@ function renderH2H(T){
     sv+='</svg>';
     let leg='<div style="display:flex;flex-wrap:wrap;gap:4px 14px;padding:2px 10px 8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;align-items:center">';
     leg+='<span style="color:#6b7480">solid = laptime (left) &nbsp; dashed = &Delta; vs ref trend (right)</span>';
-    paceGroup.forEach(c=>{leg+='<span class="h2hleg" data-car="'+c+'" style="cursor:pointer;color:'+(DB.carcol[c]||'#16202b')+';font-weight:700">&#9632; #'+c+' '+curDrv(c,T)+(String(c)===String(selCar)?' (ref)':'')+'</span>';});
+    paceGroup.forEach(c=>{const isRef=String(c)===String(selCar);leg+='<span class="h2hleg" data-car="'+c+'" style="cursor:pointer;color:'+(isRef?'#16202b':(DB.carcol[c]||'#16202b'))+';font-weight:700">&#9632; #'+c+' '+curDrv(c,T)+(isRef?' (ref)':'')+'</span>';});
     leg+='</div>';
     h+='<div style="color:#6b7480;margin:10px 10px 2px;font-family:\'IBM Plex Mono\',monospace;font-size:11px">LAP TIMES</div>';
     h+='<div style="flex:1 1 auto;min-height:0">'+sv+'</div>'+leg;
@@ -4714,7 +4733,8 @@ function render(){
     let yb=(nR?boxTop:lastY+26)-32;
     for(let k=preds.length-1;k>=0;k--){mkT((BX0+BX1)/2,yb,'middle',preds[k][0],preds[k][1],fs);yb-=rowH;}
     if(slg&&slg[1]===5){const fr='⛽ request fuel update?';mkT((BX0+BX1)/2,yb-16,'middle',fr,'#e8871e',48);if(selXY)mkT(selXY[0],selXY[1]-54,'middle',fr,'#e8871e',48);}
-    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(selPit?'<span class="pos" style="color:#e0301e">PIT</span>':(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>'))+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+curDrv(selCar,T)+'</span>';badge.style.display='flex';}
+    const _veh=carVeh(selCar),_cls=carClsName(selCar);
+    badge.className='carbadge sel';badge.innerHTML='<span class="num">#'+selCar+'</span><div class="row">'+(selPit?'<span class="pos" style="color:#e0301e">PIT</span>':(p?'<span class="pos">P'+p+'</span>':'<span class="pos">— pit</span>'))+'<span class="lap">L'+ld+'</span>'+gh+'</div><span class="drv">'+badgeEsc(curDrv(selCar,T))+'</span>'+(_veh?'<span class="veh">'+badgeEsc(_veh)+'</span>':'')+(_cls?'<span class="cls">'+badgeEsc(_cls)+'</span>':'');badge.style.display='flex';}
   else {badge.style.display='none';while(predsvg.firstChild)predsvg.removeChild(predsvg.firstChild);}
   if(typeof updateRacenote==='function')updateRacenote(T);}
 /* Render-rate cap. render() repaints the whole 1722px layout; at 60fps that
@@ -5029,6 +5049,8 @@ function renderMobile(){
   if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
   __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
   if(!renderMobile.__wired){renderMobile.__wired=true;
+    var mrb=document.getElementById('m_simEventBtn');
+    if(mrb&&!mrb.__wired){mrb.__wired=true;mrb.onclick=function(){if(typeof window.openSimEventPicker==='function')window.openSimEventPicker();};}
     [['m_class','classsel'],['m_car','carsel'],['m_speed','speed']].forEach(function(p){var m=document.getElementById(p[0]);if(m)m.onchange=function(){
       if(this.__mirroring)return;
       var d=document.getElementById(p[1]);if(!d)return;d.value=this.value;
@@ -5060,6 +5082,9 @@ function renderMobile(){
   if(ms)ms.classList.toggle('active',mode==='SIM');
   if(ml)ml.classList.toggle('active',mode==='LIVE');
   var msp=document.getElementById('m_speed');if(msp)msp.style.display=(mode==='LIVE')?'none':'';
+  // Select race is a SIM control (same as #simControls on the laptop). LIVE has
+  // no archived event to pick — today's feed is the event.
+  var mrb=document.getElementById('m_simEventBtn');if(mrb)mrb.style.display=(mode==='LIVE')?'none':'';
   var vc=document.getElementById('viewerCount'),mv=document.getElementById('m_viewerCount');
   if(vc&&mv&&mv.textContent!==vc.textContent)mv.textContent=vc.textContent;
   // Header time slot: the sim clock in SIM, the live-feed status in LIVE
@@ -6288,9 +6313,11 @@ dropDown(document.getElementById('carsel'));
    pinned to the old height, so .maincol's stretched flex size doesn't change.
    fitPage does the reset AND the grow in one pass. */
 clsSel.onchange=e=>{buildClass(e.target.value);fillStints(selCar);render();fitPage();savePrefs();
-  // LIVE: remember the chosen class so a refresh restores it instead of snapping
-  // back to the first class (see fillClassDropdown()).
-  if(window.dataMode==='LIVE')try{localStorage.setItem('stint9_liveclass',e.target.value);}catch(_){}
+  // A pick during this LIVE session, including ALL CLASSES if they open it on
+  // purpose, must survive the next poll. Entering LIVE itself always starts
+  // on the first real class (see fillClassDropdown()).
+  if(window.dataMode==='LIVE'){try{localStorage.setItem('stint9_liveclass',e.target.value);}catch(_){}
+    if(typeof window.__liveClassUserPick==='function')window.__liveClassUserPick();}
   if(typeof buildStartGrid==='function')buildStartGrid();if(typeof renderMessages==='function')renderMessages();if(typeof applyAuthGate==='function')applyAuthGate();};
 const startClass=(PREFS.cls&&clsExists(PREFS.cls))?PREFS.cls:Object.keys(DB.classes)[0];
 // wantCar is the car the USER asked for; selCar is merely what is selectable
@@ -6776,13 +6803,23 @@ buildStartGrid();
     }
     return _staleS;
   }
+  // Set when the user changes the class while LIVE. Until then, ALL CLASSES is
+  // not a choice we keep: clearLiveDB() rebuilds the select with only that
+  // option, and the next poll used to treat it as the current class and paint
+  // every car. Reset on each entry to LIVE.
+  let liveClassChosen=false;
+  window.__liveClassUserPick=function(){liveClassChosen=true;};
+  function firstRealClass(){return Object.keys(DB.classes||{})[0]||'';}
   function fillClassDropdown(){const cur=clsSel.value;fillClassSelect(clsSel);
-    // Keep the class currently on the select. Saved liveclass is only a fallback
-    // for when cur is empty (LIVE rebuild / clearLiveDB) — preferring saved used
-    // to snap a just-picked class back to ALL CLASSES still sitting in
-    // localStorage from the previous choice.
-    let saved=null;if(window.dataMode==='LIVE')try{saved=localStorage.getItem('stint9_liveclass');}catch(_){}
-    const pick=(cur&&clsExists(cur))?cur:((saved&&clsExists(saved))?saved:Object.keys(DB.classes)[0]);if(pick)clsSel.value=pick;return pick;}
+    // Entering LIVE used to stick on ALL CLASSES: clearLiveDB() leaves that as
+    // the only option, and the next poll treated it as the current class.
+    // Until the user picks one this session, LIVE starts on the first real
+    // class in the list. SIM still keeps whatever is already selected.
+    let pick;
+    if(window.dataMode==='LIVE'&&!liveClassChosen)pick=firstRealClass();
+    else if(cur&&clsExists(cur))pick=cur;
+    else pick=firstRealClass();
+    if(pick)clsSel.value=pick;return pick;}
   function restoreSim(){if(!simSnap)return;RAW_FIELDS.forEach(k=>{if(k in simSnap)DB[k]=simSnap[k];});simSnap=null;
     const pick=fillClassDropdown();if(pick){buildClass(pick);fillStints(selCar);try{fitPage();}catch(e){}}
     // clearLiveDB()/startLive() (README §15.3) now blanks the starting grid too —
@@ -7063,6 +7100,7 @@ buildStartGrid();
     render();
   }
   function startLive(){
+    liveClassChosen=false;
     snapSim();
     clearLiveDB();                                              // README §15.3: LIVE starts from a genuinely empty DB, every time
     liveSeen=false;liveHasData=false;liveFrontier=null;
@@ -7131,7 +7169,16 @@ buildStartGrid();
   // throw during load (which would abort the remaining top-level script).
   try{
     if(localStorage.getItem('stint9_datamode')==='LIVE')
-      setTimeout(function(){try{setMode('LIVE');}catch(e){console.error('LIVE restore failed',e);}},0);
+      // Wait for the cold-load archive (initArchiveEvent, below) before snapping
+      // SIM aside. A timeout(0) used to snapshot the baked dataset, then the
+      // archive landed on top of the already-cleared LIVE db — switching back
+      // to SIM showed June's file instead of the last documented event.
+      setTimeout(function(){
+        var start=function(){try{setMode('LIVE');}catch(e){console.error('LIVE restore failed',e);}};
+        var boot=window.__archiveBoot;
+        if(boot&&typeof boot.then==='function')boot.then(start,start);
+        else start();
+      },0);
   }catch(e){}
 })();
 
@@ -8229,19 +8276,26 @@ applyWxReel(false);
 (function initArchiveEvent(){
   var params=new URLSearchParams(location.search);
   var slug=params.get('event');
-  // No ?event= → replay the most recent archived RACE instead of the baked
-  // dataset. SIM has no start button (playback auto-starts on load), so opening
-  // the dashboard cold should land on the latest race rather than a fixed one.
-  // "Latest archived event" is not the same thing: practice/qualifying snapshots
-  // (label 'practice', slug EVT-<date>) are archived too and are newer than the
-  // race they belong to, so a plain date sort lands on Sunday practice instead of
-  // Saturday's race. Resolved below; a failed lookup leaves the baked dataset.
+  // No ?event= → replay the last DOCUMENTED event (newest archived_at in
+  // stint9_events / events/index.json) instead of the baked dataset. SIM has
+  // no start button, so a cold load on laptop or iPhone should already be that
+  // event — the same one Select race shows as its current choice. A failed
+  // lookup leaves the baked dataset, which is today's previous behaviour.
   var AUTO=!slug;
   var overlay=(params.get('overlay')==='1'||params.get('overlay')==='true');
   window.archiveSlug=slug;window.archiveOverlay=overlay;   // slug is re-set below when AUTO resolves it
+  // Tell Select race (laptop button + iPhone button) which event is on screen.
+  // The picker IIFE defines the hook; a bundle can resolve before or after it.
+  function publishSlug(s, meta){
+    if(!s)return;
+    slug=s;window.archiveSlug=s;
+    if(meta)window.__archiveMeta=meta;
+    try{if(typeof window.__syncSimEventLabel==='function')window.__syncSimEventLabel(s, window.__archiveMeta||meta||null);}catch(e){}
+  }
 
   var RAW=['classes','classMaxN','classAvg','legs','chart','sectimes','lappos','pits','pitinfo','name','drvlap','carcol','veh'];
   function applyDB(built,meta){
+    publishSlug(slug, meta);
     RAW.forEach(function(k){if(k in built)DB[k]=built[k];});
     DB.event={name:meta.name||slug,date:meta.event_date||''};
     window.archiveEventDate=DB.event.date;
@@ -8327,32 +8381,29 @@ applyWxReel(false);
       .then(buildFromBundle).catch(function(){});
   }
 
-  if(!AUTO){load(slug);return;}
-  // A race is label 'race' or, for events archived before the label was filled
-  // in (NLS6), no label at all — anything else (practice, qualifying) is a
-  // session snapshot and never the cold-load default.
-  function isRace(e){return !!e&&(!e.label||e.label==='race');}
-  // Newest archived race by date, from the DB; the committed events/index.json is
-  // the offline/error fallback (same rows, written by tools/archive_event.mjs
-  // --sync-files). Neither one resolving simply leaves the baked-in dataset
-  // showing — exactly today's behaviour.
+  if(!AUTO){publishSlug(slug);window.__archiveBoot=Promise.resolve(load(slug));return;}
+  // Last documented event = newest archived_at. event_date alone ties a race
+  // with its quali (both 2026-10-10) and PostgREST then returns quali first.
+  // The committed events/index.json is the offline/error fallback (same rows,
+  // written by tools/archive_event.mjs --sync-files). Neither one resolving
+  // leaves the baked-in dataset showing.
+  function byArchived(a,b){return String(b.archived_at||b.date||b.event_date||'').localeCompare(String(a.archived_at||a.date||a.event_date||''));}
   function autoFromIndex(){
     return fetch('events/index.json',{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null;})
       .then(function(j){
-        var e=((j&&j.events)||[]).filter(isRace)
-          .sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));})[0];
+        var e=((j&&j.events)||[]).slice().sort(byArchived)[0];
         if(!e||!e.slug)return;
-        slug=e.slug;window.archiveSlug=slug;
-        return load(slug);
+        publishSlug(e.slug,{slug:e.slug,name:e.name,label:e.label,event_date:e.date,archived_at:e.archived_at});
+        return load(e.slug);
       }).catch(function(){});
   }
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label&or=(label.eq.race,label.is.null)&order=event_date.desc&limit=1',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+  window.__archiveBoot=fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label,name,archived_at&order=archived_at.desc.nullslast&limit=1',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(a){
       if(!a||!a[0]||!a[0].slug)return autoFromIndex();
-      slug=a[0].slug;window.archiveSlug=slug;
-      return load(slug);
+      publishSlug(a[0].slug,a[0]);
+      return load(a[0].slug);
     }).catch(autoFromIndex);
 })();
 
@@ -8371,10 +8422,21 @@ applyWxReel(false);
   const yearSel=document.getElementById('simevYear'),raceSel=document.getElementById('simevRace');
   const fields=document.getElementById('simevFields'),empty=document.getElementById('simevEmpty');
   const goBtn=document.getElementById('simevGo');
-  let events=null;   // [{slug,event_date,label,name,year}] — fetched once, cached for the page session
+  let events=null;   // [{slug,event_date,label,name,year,archived_at}] — fetched once, cached for the page session
   function openModal(){modal.classList.add('on');if(!events)loadEvents();else selectCurrent();}
+  window.openSimEventPicker=openModal;
   function closeModal(){modal.classList.remove('on');}
   if(openBtn)openBtn.onclick=openModal;
+  // #m_simEventBtn is parsed later (it lives in #mobileview, below this script).
+  // renderMobile wires it; this covers a laptop-width window that never enters
+  // phone mode and a phone that opens the modal before the first tick.
+  function wireMobBtn(){
+    var b=document.getElementById('m_simEventBtn');
+    if(!b||b.__wired)return;
+    b.__wired=true;b.onclick=openModal;
+  }
+  wireMobBtn();
+  document.addEventListener('DOMContentLoaded',wireMobBtn);
   if(closeBtn)closeBtn.onclick=closeModal;
   modal.onclick=e=>{if(e.target===modal)closeModal();};
   /* Option text: "2026-08-01 — NLS7 — 6h ADAC Ruhr-Pokal-Rennen" — date first so
@@ -8389,6 +8451,37 @@ applyWxReel(false);
      (it didn't for NLS9-quali, which made both entries render identically). */
   const SESSION_SUFFIX={quali:'Qualifying',practice:'Practice',zeittraining:'Zeittraining',
     training:'Training',warm:'Warm-up',pitwalk:'Pitwalk'};
+  // Button face, both layouts. Short on purpose: the iPhone header shares a row
+  // with class and car. "Select race" until the cold-load slug is known.
+  function sessionKey(slug, label){
+    const l=String(label||'').toLowerCase();
+    if(l&&l!=='race')return l;
+    const m=/-([a-z]+)$/i.exec(slug||'');
+    return m?m[1].toLowerCase():'';
+  }
+  function shortEventLabel(slug, meta){
+    meta=meta||{};
+    const rx=/NLS\s*(\d+)/i;
+    const from=rx.exec(slug||'')||rx.exec(meta.name||'');
+    let s=from?('NLS'+from[1]):(String(meta.event_date||meta.date||'').slice(0,10)||slug||'Select race');
+    const suf=SESSION_SUFFIX[sessionKey(slug, meta.label)];
+    if(suf)s+=' '+suf;
+    return s;
+  }
+  function paintEventButtons(slug, meta){
+    wireMobBtn();
+    const text=shortEventLabel(slug, meta);
+    const tip=(meta&&(meta.name||meta.event_date))?((meta.name||'')+' '+(meta.event_date||'')).trim():'Choose an archived race to simulate';
+    [openBtn, document.getElementById('m_simEventBtn')].forEach(function(b){
+      if(!b)return;b.textContent=text;b.title=tip;
+    });
+  }
+  window.__syncSimEventLabel=function(slug, meta){
+    if(!slug)return;
+    paintEventButtons(slug, meta);
+    if(events&&!modal.classList.contains('on'))selectCurrent();
+  };
+  if(window.archiveSlug)paintEventButtons(window.archiveSlug, window.__archiveMeta||null);
   function raceLabel(e){
     const date=String(e.event_date||'').slice(0,10);
     const rx=/NLS\s*(\d+)/i;
@@ -8407,20 +8500,26 @@ applyWxReel(false);
       .forEach(e=>{const o=document.createElement('option');o.value=e.slug;o.textContent=raceLabel(e);raceSel.appendChild(o);});
   }
   yearSel.onchange=fillRaces;
-  /* Open on the race that is actually on screen, not the newest one. The loader
-     above puts the resolved slug (?event=<slug>, or the AUTO latest) in
-     window.archiveSlug, so preselect its year + race — including on a re-open,
-     where the cached list would otherwise still show the previous pick. No slug
-     (baked dataset) or one that isn't in the list → first option, as before. */
+  /* Open on the event on screen (window.archiveSlug: ?event= or the cold-load
+     last documented event). No slug, or one missing from the list → the newest
+     archived_at, not whatever PostgREST put first for that date. */
+  function newestDocumented(){
+    return (events||[]).slice().sort(function(a,b){
+      return String(b.archived_at||b.event_date||'').localeCompare(String(a.archived_at||a.event_date||''));
+    })[0]||null;
+  }
   function selectCurrent(){
-    const cur=window.archiveSlug,e=cur&&(events||[]).find(x=>x.slug===cur);
+    const cur=window.archiveSlug;
+    let e=cur&&(events||[]).find(x=>x.slug===cur);
+    if(!e)e=newestDocumented();
     if(e)yearSel.value=String(e.year);
     fillRaces();
-    if(e)raceSel.value=cur;
+    if(e)raceSel.value=e.slug;
+    if(e)paintEventButtons(e.slug, e);
   }
   function loadEvents(){
     goBtn.disabled=true;
-    fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label,name&order=event_date.desc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+    fetch(FUEL_SB_URL+'/rest/v1/stint9_events?select=slug,event_date,label,name,archived_at&order=archived_at.desc.nullslast',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
       .then(r=>r.ok?r.json():[])
       .then(rows=>{
         events=(rows||[]).map(r=>({...r,year:new Date(r.event_date).getFullYear()}));
@@ -8582,7 +8681,7 @@ applyWxReel(false);
       <div class="mmode"><button type="button" class="mmodebtn" id="m_sim">SIM</button><button type="button" class="mmodebtn" id="m_live">LIVE</button></div>
     </div>
   </div>
-  <div class="mselrow"><select id="m_class"></select><select id="m_car"></select></div>
+  <div class="mselrow"><button type="button" class="mracbtn" id="m_simEventBtn" title="Choose an archived race to simulate">Select race</button><select id="m_class"></select><select id="m_car"></select></div>
   </div>
   <!-- Stage: exactly one slide shown at a time, driven by .mnav (see __mobSlides).
        The slots below are empty on purpose — the desktop's own cards are MOVED

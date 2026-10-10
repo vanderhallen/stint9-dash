@@ -105,7 +105,8 @@
         }
         st[String(L)] = s.map(x => (x != null ? r3(x) : null));
         if (r.inpit) pit.push(L);
-        dl[String(L)] = r.drv; carclass[c] = r.klass; veh[c] = r.veh;
+        dl[String(L)] = r.drv; carclass[c] = r.klass;
+        if (r.veh) veh[c] = r.veh;   // a later blank row must not wipe a known model
       }
       legs[c] = lg; sectimes[c] = st; pits[c] = pit.slice().sort((a, b) => a - b); drvlap[c] = dl;
       name[c] = bycar[c].length ? bycar[c][0].drv : '';
@@ -176,7 +177,7 @@
       W: geom.W, H: geom.H, poly: geom.poly, cx: geom.cx, cy: geom.cy, gps: geom.gps,
       event: eventMeta || { name: '', date: '' },
       classes, classMaxN, classAvg,
-      name, carcol, drvtable: {}, drvlap,
+      name, carcol, veh, drvtable: {}, drvlap,
       legs, chart, sectimes, lappos, pits,
       // The WIGE socket carries no pit-in time or stop duration (README open
       // question #4), so this stays empty on a live-derived event -- but it MUST
