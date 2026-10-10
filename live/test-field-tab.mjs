@@ -29,6 +29,7 @@ check('REELLBL maps fieldtabwrap to FIELD', /fieldtabwrap:'FIELD'/.test(html), t
 check('caption says purple is class best of all laps', html.includes('Purple = class best (all laps)'), true);
 check('caption says green is fastest this lap', html.includes('green = fastest this lap'), true);
 check('caption says red is slowest this lap', html.includes('red = slowest this lap'), true);
+check('caption says heat is all-time pace', html.includes('heat = all-time pace in between'), true);
 
 const a = html.indexOf('function predFromPrev(cells,laps){');
 const b = html.indexOf('\nfunction renderSecTab(T){', a);
@@ -135,6 +136,10 @@ function bxFor(L, n) {
         fieldPaint(78.0, 75.0, 76.0, 80.0).kind === 'heat', fieldPaint(78.0, 75.0, 76.0, 80.0));
   check('a lone value is green, not red',
         fieldPaint(90.0, 80.0, 90.0, 90.0).kind === 'green', fieldPaint(90.0, 80.0, 90.0, 90.0));
+  check('all-time slowest S1 is #670\'s 88, not this-lap 76.6',
+        Math.abs(cls.cw[0] - 88) < 0.01, cls.cw);
+  check('all-time heat range is wider than this lap',
+        cls.cw[0] > 76.6 && cls.cb[0] < cls.cw[0], { cb: cls.cb[0], cw: cls.cw[0] });
 }
 
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — FIELD reel is P1→Px current-lap sector times');
