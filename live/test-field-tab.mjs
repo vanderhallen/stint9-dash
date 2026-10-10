@@ -17,18 +17,23 @@ const nPanels = (html.match(/<div class="reelpanel"/g) || []).length;
 const reeln = html.match(/const REELN=(\d+);/);
 check('REELN matches the number of .reelpanel nodes', reeln && +reeln[1] === nPanels, { REELN: reeln && reeln[1], nPanels });
 check('FIELD panel markup exists', html.includes('id="fieldtabwrap"'), true);
-check('paintReel draws FIELD at index 23', html.includes('if(idx===23||all)renderFieldTab(T);'), true);
+check('paintReel draws FIELD at index 3', html.includes('if(idx===3||all)renderFieldTab(T);'), true);
+check('FIELD sits in the strip immediately after TIMES',
+  /id="sectabwrap"[\s\S]*?<\/div><\/div>\s*<div class="reelpanel"><div id="fieldtabwrap"/.test(html), true);
 const names = html.match(/var NAMES=\[([^\]]+)\]/);
 const list = names ? names[1].split(',').map(s => s.replace(/['"]/g, '').trim()) : [];
-check('NAMES[23] is FIELD', list[23] === 'FIELD', list[23]);
+check('NAMES[2] is TIMES', list[2] === 'TIMES', list[2]);
+check('NAMES[3] is FIELD', list[3] === 'FIELD', list[3]);
+check('NAMES[4] is PACE', list[4] === 'PACE', list[4]);
 check('REELLBL maps fieldtabwrap to FIELD', /fieldtabwrap:'FIELD'/.test(html), true);
+check('caption says purple is class best', html.includes('Purple = class best'), true);
 
 const a = html.indexOf('function predFromPrev(cells,laps){');
 const b = html.indexOf('\nfunction renderSecTab(T){', a);
 if (a < 0 || b < 0) { console.error('FAIL — could not find fieldTabData'); process.exit(1); }
 const src = html.slice(a, b);
 
-function run(T, { cars, pos, legs, sectimes, bx }) {
+function api(T, { cars, pos, legs, sectimes, bx }) {
   const DB = { cars, sectimes };
   const BX = bx;
   const maxN = 10;
@@ -37,9 +42,10 @@ function run(T, { cars, pos, legs, sectimes, bx }) {
   const lastStartedLeg = (st) => legs[st] && legs[st].last;
   const curDrv = (st) => ({ 667: 'Mulready', 670: 'Reinhard' }[st] || '');
   const fn = new Function('DB', 'BX', 'maxN', 'livePos', 'activeLeg', 'lastStartedLeg', 'curDrv',
-    `${src}; return fieldTabData;`);
-  return fn(DB, BX, maxN, livePos, activeLeg, lastStartedLeg, curDrv)(T);
+    `${src}; return {fieldTabData, fieldClassBest};`);
+  return fn(DB, BX, maxN, livePos, activeLeg, lastStartedLeg, curDrv);
 }
+function run(T, fx) { return api(T, fx).fieldTabData(T); }
 
 const L3 = [76.8, 75.4, 155.8, 224.3, 57.0];
 const L4part = [76.0, 73.5, 137.7, null, null];
@@ -84,6 +90,36 @@ function bxFor(L, n) {
     bx: { 667: Object.assign(bxFor(4, 5), bxFor(5, 1)) }
   });
   check('starting the next lap refreshes the table onto that lap', rows[0].L === 5 && rows[0].vals[0] === 70 && rows[0].vals[1] == null, rows[0]);
+}
+
+{
+  const fx = {
+    cars: ['670', '667'],
+    pos: { 667: 1, 670: 2 },
+    legs: {
+      667: { active: [4, 3, 0, 2000], last: [4, 3, 0, 2000] },
+      670: { active: [4, 3, 0, 2000], last: [4, 3, 0, 2000] }
+    },
+    sectimes: {
+      667: { 3: L3, 4: L4part },
+      670: { 3: [88, 82, 164, 224, 57], 4: [76.6, 74.1, 161.4, null, null] }
+    },
+    bx: {
+      667: Object.assign(bxFor(3, 5), bxFor(4, 3)),
+      670: Object.assign(bxFor(3, 5), bxFor(4, 3))
+    }
+  };
+  const { fieldTabData, fieldClassBest } = api(2000, fx);
+  const rows = fieldTabData(2000);
+  const cls = fieldClassBest(rows);
+  const p1 = rows.find(r => r.st === '667'), p2 = rows.find(r => r.st === '670');
+  check('#667 S1 PB is 76.0 (this lap), #670 S1 PB is 76.6 (this lap)',
+        Math.abs(p1.pb[0] - 76.0) < 0.01 && Math.abs(p2.pb[0] - 76.6) < 0.01,
+        { a: p1.pb[0], b: p2.pb[0] });
+  check('class-best S1 is 76.0 — #670\'s own-best 76.6 is not purple',
+        Math.abs(cls.cb[0] - 76.0) < 0.01 && Math.abs(p2.pb[0] - cls.cb[0]) > 0.05, cls.cb);
+  check('class-best lap is #667\'s completed L3, not an in-progress totPred',
+        Math.abs(cls.lap - (76.8+75.4+155.8+224.3+57)) < 0.05, cls.lap);
 }
 
 console.log(failures ? `\n❌ ${failures} FAILED` : '\n✅ PASS — FIELD reel is P1→Px current-lap sector times');

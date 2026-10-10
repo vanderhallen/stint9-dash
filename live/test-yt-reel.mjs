@@ -43,12 +43,12 @@ check('right strip uses the same REELN as the left (YOUTUBE is in that list)', /
 
 const names = html.match(/var NAMES=\[([^\]]+)\]/);
 const list = names ? names[1].split(',').map(s => s.replace(/['"]/g, '').trim()) : [];
-check('YOUTUBE is reel 17 (reelShown\'s stop index)', list[17] === 'YOUTUBE', list[17]);
+check('YOUTUBE is reel 18 (reelShown\'s stop index)', list[18] === 'YOUTUBE', list[18]);
 
 check('reelShown stops only this block\'s YouTube player',
-  /if\(i!==17\)\{const f=SIDEFN\[side\]&&SIDEFN\[side\]\.stopYt;if\(f\)f\(\);\}/.test(html), true);
+  /if\(i!==18\)\{const f=SIDEFN\[side\]&&SIDEFN\[side\]\.stopYt;if\(f\)f\(\);\}/.test(html), true);
 check('reelShown does not call the global stopYtPlayer (that would kill the other block)',
-  !/if\(i!==17&&typeof stopYtPlayer/.test(html), true);
+  !/if\(i!==18&&typeof stopYtPlayer/.test(html), true);
 check('initRightBlock assigns onto SIDEFN instead of replacing it (keeps stopYt)',
   /SIDEFN\[''\]\.syncWx=window\.__syncWx/.test(html) && !/SIDEFN\[''\]=\{syncWx:/.test(html), true);
 
@@ -56,11 +56,11 @@ check('initRightBlock assigns onto SIDEFN instead of replacing it (keeps stopYt)
 {
   const stopped = { left: 0, right: 0 };
   const SIDEFN = { '': { stopYt: () => stopped.left++ }, _r: { stopYt: () => stopped.right++ } };
-  const hide = (i, side) => { if (i !== 17) { const f = SIDEFN[side] && SIDEFN[side].stopYt; if (f) f(); } };
+  const hide = (i, side) => { if (i !== 18) { const f = SIDEFN[side] && SIDEFN[side].stopYt; if (f) f(); } };
   hide(2, '');     // left TIMES
-  hide(17, '_r');  // right stays on YOUTUBE
+  hide(18, '_r');  // right stays on YOUTUBE
   check('left TIMES switch does not stop the right YouTube player', stopped.right === 0 && stopped.left === 1, stopped);
-  hide(16, '_r');  // right leaves YOUTUBE
+  hide(17, '_r');  // right leaves YOUTUBE
   check('leaving YOUTUBE on the right does stop the right player', stopped.right === 1 && stopped.left === 1, stopped);
 }
 

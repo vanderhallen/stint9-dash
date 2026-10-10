@@ -987,6 +987,7 @@
           <div class="reelpanel"><svg id="lapchart"></svg></div>
           <div class="reelpanel"><svg id="stintsvg"></svg></div>
           <div class="reelpanel"><div id="sectabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
+          <div class="reelpanel"><div id="fieldtabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
           <div class="reelpanel" style="position:relative"><svg id="ltgraph" data-fit></svg><div class="selstint" id="selstint" style="display:none"></div></div>
           <div class="reelpanel"><svg id="sectorsvg" data-fit></svg></div>
           <div class="reelpanel"><div style="width:100%;height:100%;display:flex;flex-direction:column">
@@ -1053,7 +1054,6 @@
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div id="ptimePrivlock" class="privlock"><span class="lk">&#128274;</span><span class="lt">P-TIME (pit-stop arming) is private to the team.<br>Sign in on any team car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="ptimewrap"></div></div>
-          <div class="reelpanel"><div id="fieldtabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
         </div>
       </div>
     </div>
@@ -1117,12 +1117,10 @@ let selCar='',wantCar='',paceThr=0.2;
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
 let reelIdx=0;const REELN=24;
-// 2026-09-20: H2H moved before FLOW and P-TIME moved to the end (index=old,
-// value=new below). Without this, a returning visitor's saved reelIdx/reelR
-// (localStorage stint9_prefs) would silently land them on whatever OTHER reel
-// now sits at that number instead of the one they actually had open.
-const REEL_REMAP_20260920=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,22,17,18,19,20,21,10];
-const remapReelIdx=i=>{const r=REEL_REMAP_20260920[i];return r!=null?r:i;};
+// 2026-10-10: FIELD moved from 23 to 3 (just below TIMES). Saved reelIdx/reelR
+// from the previous order (PACE at 3 … FIELD at 23) must land on the same reel.
+const REEL_REMAP_20261010=[0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,3];
+const remapReelIdx=i=>{const r=REEL_REMAP_20261010[i];return r!=null?r:i;};
 /* Which block the keyboard's Up/Down drives. Claimed by clicking a block's own
    on-screen arrows, so the hardware keys carry on where you last pointed:
    nudge the right block's arrows and Up/Down keep stepping the right block,
@@ -1132,10 +1130,10 @@ let keyReelSide='';
    The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
    both carry the SAME full list of all 24 reels, each with its own selection —
    so any reel can be put in either block, including the same reel in both at
-   once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 PACE, 4 SECT,
-   5 COMP, 6 GRID, 7 DRV, 8 NIEK, 9 BARS, 10 H2H, 11 FLOW, 12 WEATHER, 13 TEMP,
-   14 TIMETABLE, 15 CHAMP, 16 PIT, 17 YOUTUBE, 18 VIDEO, 19 FUEL, 20 TYRE,
-   21 SERVICE, 22 P-TIME, 23 FIELD. The panels themselves are the source of truth: they
+   once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 FIELD, 4 PACE,
+   5 SECT, 6 COMP, 7 GRID, 8 DRV, 9 NIEK, 10 BARS, 11 H2H, 12 FLOW, 13 WEATHER,
+   14 TEMP, 15 TIMETABLE, 16 CHAMP, 17 PIT, 18 YOUTUBE, 19 VIDEO, 20 FUEL,
+   21 TYRE, 22 SERVICE, 23 P-TIME. The panels themselves are the source of truth: they
    sit in #reelstrip in exactly this order, and every index below follows it.
 
    #reelstrip holds the ONE canonical copy of the panel markup, keeping the
@@ -1318,24 +1316,24 @@ function paintReel(T,idx,all,side){
     if(idx===0||all)renderChart(T);
     if(idx===1||all)renderStints(T);
     if(idx===2||all)renderSecTab(T);
-    if(idx===3||all)renderLapTrace(T);
-    if(idx===4||all)renderSectors(T);
-    if(idx===5||all)renderComp(T);
-    if(idx===6||all)renderSectGrid(T);
-    if(idx===7||all)renderDrvGrid(T);
-    if(idx===8||all)renderNiekGrid(T);
-    if(idx===9||all)renderP1Bar(T);
-    if(idx===11||all)renderFlow(T);
-    if(idx===22||all)renderPTime(T);
-    if(idx===19||all)renderFuel(T);
-    // 12 WEATHER / 13 TEMP own their own fetch+draw loop (initWeather), 14
-    // TIMETABLE redraws off the schedule, and 16 PIT is an iframe — they are
+    if(idx===3||all)renderFieldTab(T);
+    if(idx===4||all)renderLapTrace(T);
+    if(idx===5||all)renderSectors(T);
+    if(idx===6||all)renderComp(T);
+    if(idx===7||all)renderSectGrid(T);
+    if(idx===8||all)renderDrvGrid(T);
+    if(idx===9||all)renderNiekGrid(T);
+    if(idx===10||all)renderP1Bar(T);
+    if(idx===12||all)renderFlow(T);
+    if(idx===23||all)renderPTime(T);
+    if(idx===20||all)renderFuel(T);
+    // 13 WEATHER / 14 TEMP own their own fetch+draw loop (initWeather), 15
+    // TIMETABLE redraws off the schedule, and 17 PIT is an iframe — they are
     // driven by reelShown() and their own timers, not by the frame loop.
-    if(idx===14&&typeof renderTimetable==='function')renderTimetable();
-    if(idx===15&&typeof renderChampionship==='function')renderChampionship();
-    if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
-    if(idx===10||all)renderH2H(T);
-    if(idx===23||all)renderFieldTab(T);
+    if(idx===15&&typeof renderTimetable==='function')renderTimetable();
+    if(idx===16&&typeof renderChampionship==='function')renderChampionship();
+    if(idx===19&&typeof renderVideoReel==='function')renderVideoReel();
+    if(idx===11||all)renderH2H(T);
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -1346,21 +1344,21 @@ function paintReel(T,idx,all,side){
    resize and must not re-poke the iframes each time. */
 function reelShown(i,side){
   withSide(side,()=>{
-    if(i===20&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
-    if(i===21&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
-    if(i===12){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
-    if(i===16&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
+    if(i===21&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
+    if(i===22&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
+    if(i===13){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
+    if(i===17&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
       if(typeof pitH==='function')pitH(0);
     }
-    if(i===15&&typeof renderChampionship==='function')renderChampionship();
-    if(i===18&&typeof renderVideoReel==='function')renderVideoReel();
+    if(i===16&&typeof renderChampionship==='function')renderChampionship();
+    if(i===19&&typeof renderVideoReel==='function')renderVideoReel();
     // YOUTUBE: the strip TRANSLATES pages rather than removing them from the
     // DOM, so a playing embed would keep running — and making noise — after
     // scrolling away. Stop ONLY this block's player: the other block can still
     // be on YOUTUBE (typical: TIMES left, stream right) and must keep playing.
-    if(i!==17){const f=SIDEFN[side]&&SIDEFN[side].stopYt;if(f)f();}
+    if(i!==18){const f=SIDEFN[side]&&SIDEFN[side].stopYt;if(f)f();}
   });
 }
 // Height/width ratio for the reel viewport. Un-zoomed, reels inherit the
@@ -1498,6 +1496,11 @@ const LEG={};
 //    mid-track at its last split). Kept comfortably above the longest real sector
 //    (~280s) so a car genuinely circulating a long sector is never mistaken for parked.
 const LIVE_RUNNING_WINDOW_S=360;
+// LIVE rAF dt. Zero only after a real pause (tab sleep / background). A 0.5s
+// hitch used to zero dt too, which froze the track maps on iPad (Low Power /
+// rAF coalescing at ~1fps, or one expensive render) while liveTick still
+// updated the LIVE clock and gap chart off the 5s poll.
+function liveClockDt(dt){return (dt>0&&dt<=2)?dt:0;}
 // How many times its own S2 reference a car may be silent, after clearing S1,
 // before we read it as having taken the second pit entry (the GP-to-Nordschleife
 // transition, just past the S1 beacon) rather than as a slow S2.
@@ -3274,14 +3277,18 @@ function fieldTabData(T){
   return cars.map(function(st){
     const stm=DB.sectimes[st]||{},bx=BX[st]||{};
     const pb=[Infinity,Infinity,Infinity,Infinity,Infinity];
+    let bestLap=Infinity;
     const maxL=(typeof maxN==='number')?maxN:40;
     for(let L=0;L<=maxL;L++){
       const s=stm[L];if(!s)continue;
+      let full=true,sum=0;
       for(let k=0;k<5;k++){
         const b=bx[(L-1)*5+(k+1)];
-        if(b==null||b>T||s[k]==null)continue;
+        if(b==null||b>T||s[k]==null){full=false;continue;}
         if(s[k]<pb[k])pb[k]=s[k];
+        sum+=s[k];
       }
+      if(full&&sum<bestLap)bestLap=sum;
     }
     const slg=typeof activeLeg==='function'?activeLeg(st,T):null;
     const last=typeof lastStartedLeg==='function'?lastStartedLeg(st,T):null;
@@ -3314,8 +3321,19 @@ function fieldTabData(T){
       }
     }
     const drv=typeof curDrv==='function'?curDrv(st,T):'';
-    return {st:st,pos:lp[st],L:L,drv:drv,vals:vals,tot:tot,totPred:totPred,pb:pb};
+    return {st:st,pos:lp[st],L:L,drv:drv,vals:vals,tot:tot,totPred:totPred,pb:pb,bestLap:isFinite(bestLap)?bestLap:null};
   });
+}
+// Fastest sector / completed lap anyone in the (selected) class has done.
+// FIELD paints purple against this, not each car's own best.
+function fieldClassBest(rows){
+  const cb=[null,null,null,null,null];let lap=null;
+  (rows||[]).forEach(function(r){
+    const pb=r.pb||[];
+    for(let k=0;k<5;k++){const v=pb[k];if(v!=null&&isFinite(v)&&(cb[k]==null||v<cb[k]))cb[k]=v;}
+    if(r.bestLap!=null&&isFinite(r.bestLap)&&(lap==null||r.bestLap<lap))lap=r.bestLap;
+  });
+  return {cb:cb,lap:lap};
 }
 function renderSecTab(T){
   const wrap=document.getElementById('sectabwrap');if(!wrap)return;
@@ -3440,6 +3458,7 @@ function renderFieldTab(T){
   const lapVals=rows.map(r=>r.tot).filter(v=>v!=null&&isFinite(v));
   const lapMin=lapVals.length?Math.min.apply(null,lapVals):null;
   const lapMax=lapVals.length?Math.max.apply(null,lapVals):null;
+  const clsBest=fieldClassBest(rows);
   const th='position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 8px;text-align:right;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
   const th0='position:sticky;left:0;top:0;z-index:3;background:#f2f3f6;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec;border-right:1px solid #d5d9df;color:#6b7480;font-weight:700';
   const num=(v,pb,range)=>{
@@ -3467,18 +3486,18 @@ function renderFieldTab(T){
     h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6;border-right:1px solid #d5d9df">'+(r.pos!=null?('P'+r.pos):'—')+'</td>';
     h+='<td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;font-weight:700">#'+r.st+(r.drv?(' '+r.drv):'')+'</td>';
     h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#6b7480">'+(r.L!=null?lapLabel(r.L):'—')+'</td>';
-    for(let k=0;k<5;k++)h+=num(r.vals[k],r.pb[k],ranges[k]);
+    for(let k=0;k<5;k++)h+=num(r.vals[k],clsBest.cb[k],ranges[k]);
     if(r.totPred!=null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:#8a929b;background:#fff">'+fmt(r.totPred)+'</td>';
     else if(r.tot==null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
     else{
-      const isBest=eq(r.tot,Math.min.apply(null,lapVals.length?lapVals:[r.tot]));
+      const isBest=eq(r.tot,clsBest.lap);
       const bg=isBest?'background:#f3ecfb':heatBg(r.tot,lapMin,lapMax);
       h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(bg?';'+bg:'')+'">'+fmt(r.tot)+'</td>';
     }
     h+='</tr>';
   });
   h+='</tbody></table>';
-  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">FIELD &middot; current lap for every car in the class, P1 at the top. Purple = that car\'s best; heat is vs the field this lap. Grey lap total = predicted.</div>';
+  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">FIELD &middot; current lap for every car in the class, P1 at the top. Purple = class best; heat is vs the field this lap. Grey lap total = predicted.</div>';
   const html=caption+h;
   if(wrap.__sig===html)return;
   wrap.__sig=html;wrap.innerHTML=html;
@@ -5186,11 +5205,11 @@ document.querySelectorAll('.sug').forEach(b=>b.onclick=()=>{document.getElementB
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
     // Left/Right flip the TYRE board's horizontal sub-reel (STINT|BOARD|STOCK)
     if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
-      if(cur.id==='reelcard'&&reelIdx===20){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
-      else if(cur.id==='reelcard'&&reelIdx===21){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
+      if(cur.id==='reelcard'&&reelIdx===21){e.preventDefault();boardH(e.key==='ArrowRight'?1:-1);}
+      else if(cur.id==='reelcard'&&reelIdx===22){e.preventDefault();svcH(e.key==='ArrowRight'?1:-1);}
       // PIT lives in the weather reel, so its Left/Right keys are gated on that
       // reel being focused and on PIT being its current panel
-      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===16){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
+      else if(cur.querySelector&&cur.querySelector('#wxview')&&wxReelIdx===17){e.preventDefault();withSide(RSUF,()=>pitH(e.key==='ArrowRight'?1:-1));}
       return;
     }
     // while a reel is zoomed/focused, Up/Down arrows step through its reels
@@ -5307,7 +5326,7 @@ function pushPit(force){
   // The FIELD page walks every car, so it is only worth building while PIT is the
   // visible right-reel panel, and then no faster than once a second.
   let field=window.__pitField||null;
-  if((wxReelIdx===16||reelIdx===16)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
+  if((wxReelIdx===17||reelIdx===17)&&(force||Date.now()-(window.__pitFieldT||0)>1000)){
     window.__pitFieldT=Date.now();
     field=[];
     try{
@@ -5387,7 +5406,7 @@ document.addEventListener('keydown',e=>{
      block has no use for them its partner still gets them — the old "left reel
      keeps precedence, PIT picks up the rest" rule, now symmetric. */
   const act=keyReelSide?wxReelIdx:reelIdx,oth=keyReelSide?reelIdx:wxReelIdx,oSide=keyReelSide?'':RSUF;
-  const hKey={20:boardH,21:svcH,14:pitH};
+  const hKey={21:boardH,22:svcH,17:pitH};
   if(hKey[act]){e.preventDefault();withSide(keyReelSide,()=>hKey[act](dir));}
   else if(hKey[oth]){e.preventDefault();withSide(oSide,()=>hKey[oth](dir));}
 });
@@ -6950,7 +6969,7 @@ buildStartGrid();
     // until liveHasData is true. Nothing to render yet just means nothing renders.
     if(!liveHasData||liveFrontier==null){liveDispLast=ts;return;}
     const frontier=liveFrontier;
-    if(!liveDispLast)liveDispLast=ts;let dt=(ts-liveDispLast)/1000;liveDispLast=ts;if(dt>0.5)dt=0;
+    if(!liveDispLast)liveDispLast=ts;let dt=(ts-liveDispLast)/1000;liveDispLast=ts;dt=liveClockDt(dt);
     if(liveDispT==null||!isFinite(liveDispT))liveDispT=frontier-LIVE_BUFFER_S;
     liveDispT+=dt;                                              // 1x real-time (same clock units as SIM's T)
     if(liveDispT>frontier)liveDispT=frontier;                  // never run past the newest data
@@ -7852,10 +7871,8 @@ setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule ta
    of this script block: no fitPage (page unscaled/unfitted), no message board,
    no SIM event picker. var hoists as undefined, so the read is simply !==3. */
 /* The right block runs the SAME 24-reel list as the left one (see the reel
-   order note by REELN), so its bounds are REELN too. It opens on WEATHER,
-   which is index 15 now that the seven former weather-side reels sit at the
-   end of the shared list. */
-var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,remapReelIdx(+PREFS.reelR))):12;const WXN=REELN;
+   order note by REELN), so its bounds are REELN too. It opens on WEATHER. */
+var wxReelIdx=(typeof PREFS!=='undefined'&&PREFS&&PREFS.reelR!=null)?Math.max(0,Math.min(REELN-1,remapReelIdx(+PREFS.reelR))):13;const WXN=REELN;
 function applyWxReel(anim){
   const strip=document.getElementById('wxstrip'),up=document.getElementById('wxup'),dn=document.getElementById('wxdn');
   if(!strip)return;
@@ -8427,8 +8444,8 @@ applyWxReel(false);
   /* reel-usage monitoring — accumulate on-screen seconds per reel, upsert the
      running per-session total (unique session_id+reel+event_date -> merge). */
   // Order here MUST match the physical order of .reelpanel divs in #reelstrip
-  // (see buildRightStrip's comment) — H2H sits before FLOW and P-TIME is last.
-  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','H2H','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','P-TIME','FIELD'];
+  // (see the reel-order note by REELN) — FIELD sits just below TIMES, P-TIME last.
+  var NAMES=['POS','STINT','TIMES','FIELD','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','H2H','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','P-TIME'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
