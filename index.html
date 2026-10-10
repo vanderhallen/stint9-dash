@@ -630,6 +630,11 @@
   /* The reel's viewport is given an explicit px height by syncReel()/growMaps()
      for the desktop grid; in a slide it just fills the card. */
   .mslide #reelview{height:100%!important}
+  /* Leaflet inits on the desktop strip (often 0×0 behind this overlay). After
+     the card is moved here the container must have a real box or the map stays
+     blank; TEMP's 100%-high SVG has the same trap. */
+  .mslide #weather,.mslide #weather.leaflet-container{width:100%;height:100%!important;min-height:220px}
+  .mslide #tempoverlay{min-height:180px}
   /* Inner scrollers opt back into panning — body.m killed touch-action globally. */
   .mslide .cmpwrap,.mslide .msglist,.mslide .fblist,.mslide #rn-feed,
   .mslide #reelview .reelpanel.tall{touch-action:pan-y}
@@ -1347,6 +1352,7 @@ function reelShown(i,side){
     if(i===21&&typeof boardCenter==='function')boardCenter();   // TYRE: centre on BOARD
     if(i===22&&typeof svcH==='function')svcH(-1);               // SERVICE: land on SERVICE, not ARCHIVE
     if(i===13){const f=SIDEFN[side]&&SIDEFN[side].syncWx;if(f)setTimeout(()=>withSide(side,f),520);}
+    if(i===14){const f=SIDEFN[side]&&SIDEFN[side].drawTemp;if(f)setTimeout(()=>withSide(side,f),80);}
     if(i===17&&typeof pushPit==='function'){                    // PIT: refit + land on STOPS
       pushPit(true);
       const f=SIDEFN[side]&&SIDEFN[side].fitPit;if(f)setTimeout(()=>withSide(side,f),520);
@@ -4859,7 +4865,9 @@ function setMob(i,force){
   if(def.el)__mMove(def.el(),def.k,__mobSlot(def.k));
   document.querySelectorAll('#mstage>.mslide').forEach(s=>s.classList.toggle('on',s.dataset.slide===def.k));
   if(def.reel!=null){
-    keyReelSide='';setReel(def.reel);   // claim the left block for the keys too
+    keyReelSide='';
+    const same=reelIdx===def.reel;
+    setReel(def.reel);   // claim the left block for the keys too
     // setReel() only pages/wakes the reel — it never repaints it, so the chart
     // just shown would keep whatever geometry it last measured back in the
     // DESKTOP layout (the __mMove above just moved it here) until the next
@@ -4867,6 +4875,16 @@ function setMob(i,force){
     // a while. paintReel() right after the move re-measures against the panel
     // it is actually sitting in now.
     try{paintReel(T,def.reel,false,'');}catch(e){}
+    // setReel is a no-op when this reel was already selected, so WEATHER/TEMP
+    // never got invalidateSize/redraw after the card landed in the slide —
+    // iPhone showed a blank map. Always wake them once the slide is on.
+    if(same)try{reelShown(def.reel,'');}catch(e){}
+    const wakeWx=()=>{
+      if(def.reel===13&&typeof window.__syncWx==='function')try{window.__syncWx();}catch(e){}
+      if(def.reel===14&&typeof window.__drawTemp==='function')try{window.__drawTemp();}catch(e){}
+      if(typeof window.__resizeWx==='function')try{window.__resizeWx();}catch(e){}
+    };
+    requestAnimationFrame(function(){requestAnimationFrame(function(){wakeWx();setTimeout(wakeWx,400);});});
   }
   const lb=document.getElementById('m_slidelbl');
   if(lb)lb.innerHTML=(i+1)+' / '+n+' &nbsp;<b>'+def.lbl+'</b>';
@@ -5655,7 +5673,7 @@ function wxFetchShared(url,ttlMs){
   // timelapse played (reported 2026-09-13).
   function resizeWx(){const wd=wxEl('weather');if(wd)map.invalidateSize({pan:false});}
   function syncWx(){const wd=wxEl('weather');if(wd){map.invalidateSize();frame();}}
-  window.__syncWx=syncWx;window.__resizeWx=resizeWx;syncWx();setTimeout(syncWx,150);
+  window.__syncWx=syncWx;window.__resizeWx=resizeWx;window.__drawTemp=renderTempOverlay;syncWx();setTimeout(syncWx,150);
   const Rc=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button','wx-rc');b.type='button';b.innerHTML='&#9678; center';b.title='Re-center on circuit';b.style.cssText='background:#fff;border:1px solid #cfd4da;border-radius:8px;padding:6px 10px;font:600 12px "IBM Plex Mono",monospace;color:#16202b;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)';L.DomEvent.on(b,'click',function(e){L.DomEvent.stop(e);syncWx();});return b;}});map.addControl(new Rc());
   /* animated rain radar: RainViewer past + our own forecast rain field for the
      next 2h. RainViewer's nowcast array has been coming back EMPTY (0 frames,
@@ -8416,7 +8434,7 @@ applyWxReel(false);
   if(typeof L==='undefined')return setTimeout(initRightBlock,300);
   // Assign onto the existing SIDEFN objects — do not replace them. initYtReel
   // (and other RINIT inits) already hung per-side stop/wake handles on them.
-  SIDEFN[''].syncWx=window.__syncWx;SIDEFN[''].resizeWx=window.__resizeWx;SIDEFN[''].fitPit=window.__fitPit;
+  SIDEFN[''].syncWx=window.__syncWx;SIDEFN[''].resizeWx=window.__resizeWx;SIDEFN[''].drawTemp=window.__drawTemp;SIDEFN[''].fitPit=window.__fitPit;
   withSide(RSUF,()=>{
     Object.keys(RINIT).forEach(n=>{try{RINIT[n]();}catch(e){console.error('right-block init '+n,e);}});
     if(typeof rnWire==='function')try{rnWire();}catch(e){}
@@ -8424,13 +8442,13 @@ applyWxReel(false);
     if(typeof renderChampionship==='function')try{renderChampionship();}catch(e){}
     if(typeof renderVideoReel==='function')try{renderVideoReel();}catch(e){}
   });
-  SIDEFN[RSUF].syncWx=window.__syncWx;SIDEFN[RSUF].resizeWx=window.__resizeWx;SIDEFN[RSUF].fitPit=window.__fitPit;
+  SIDEFN[RSUF].syncWx=window.__syncWx;SIDEFN[RSUF].resizeWx=window.__resizeWx;SIDEFN[RSUF].drawTemp=window.__drawTemp;SIDEFN[RSUF].fitPit=window.__fitPit;
   /* There are two of each of these now. reelShown() picks the one belonging to
      the block that just scrolled; these globals stay as the "both blocks"
      form, which is what the outside callers (syncReel, the zoom modal, the
      resize handler) actually mean. */
   const fan=k=>function(){['',RSUF].forEach(s=>{const f=SIDEFN[s]&&SIDEFN[s][k];if(f)withSide(s,f);});};
-  window.__syncWx=fan('syncWx');window.__resizeWx=fan('resizeWx');window.__fitPit=fan('fitPit');
+  window.__syncWx=fan('syncWx');window.__resizeWx=fan('resizeWx');window.__drawTemp=fan('drawTemp');window.__fitPit=fan('fitPit');
   // both blocks land on their stored reel and wake whatever lives there
   reelShown(reelIdx,'');reelShown(wxReelIdx,RSUF);
   if(typeof syncReelPanels==='function')syncReelPanels();
