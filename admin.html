@@ -66,6 +66,12 @@
   .ev.live .slug{background:#e0301e;display:flex;align-items:center;gap:6px}
   .ev.live .livedot{width:7px;height:7px;border-radius:50%;background:#fff;animation:evlivepulse 1.4s ease-in-out infinite}
   @keyframes evlivepulse{0%,100%{opacity:1}50%{opacity:.25}}
+  /* Scheduled-open card: a timing window is current or starts within 20 min,
+     but stint9_live_status.live is still false (scrape hasn't flipped yet —
+     typical in the quali→race gap). Round slug (NLS10) rather than LIVE. */
+  .ev.soon{border-color:#1e8f3a}
+  .ev.soon .evhead{cursor:default}
+  .ev.soon .slug{background:#1e8f3a}
   .evsec{margin-top:12px}
   .evsec h3{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
   .chip{display:inline-block;font-size:11px;background:#eef1f4;border-radius:5px;padding:3px 8px;margin:0 5px 5px 0}
@@ -299,6 +305,7 @@ function loadEvents(){
   // the list — otherwise an open tab keeps showing a pre-cleanup snapshot.
   evDetailCache={};evBundleCache={};
   document.getElementById('events').innerHTML='<div class="empty">Loading…</div>';
+  var fromUtc=new Date(Date.now()-86400000).toISOString().slice(0,10);
   Promise.all([
     // event_date ties (a round's quali and race bundles share the same start
     // date) break on archived_at DESC, so the race — archived later, once its
@@ -306,49 +313,70 @@ function loadEvents(){
     // the other way round.
     fetch(SB+'/rest/v1/stint9_events?select=slug,event_date,event_end,label,name,car_count,archived_at&order=event_date.desc,archived_at.desc',{headers:H})
       .then(function(r){return r.ok?r.json():[];}),
-    // Most recent live status row, regardless of date — used ONLY to show a
+    // Most recent live status row, regardless of date — used to show a
     // "session running now" placeholder (see renderEvents), so a live event
     // doesn't read as "the system hasn't noticed it" during the ~2h grace
     // window before it's actually archived into stint9_events.
     fetch(SB+'/rest/v1/stint9_live_status?select=event_date,live,heat,session,cars,updated_at&order=updated_at.desc&limit=1',{headers:H})
       .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+    // Today's (and yesterday's) schedule windows — needed even when live is
+    // false, so a race that's about to start still gets an NLS10 open card.
+    fetch(SB+'/rest/v1/stint9_schedule_windows?select=event_date,label,start_ts,end_ts&event_date=gte.'+fromUtc+'&order=event_date.asc,start_ts.asc',{headers:H})
+      .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
   ]).then(function(res){
-    var rows=res[0],ls=res[1]&&res[1][0],liveNow=null;
+    var rows=res[0],ls=res[1]&&res[1][0],windows=res[2]||[],liveNow=null,now=Date.now();
     // Live AND fresh — a stale row (feed stopped, no session today) must not
     // claim one is still running. 300s mirrors index.html's own STALE/
     // FEED-STOPPED margins (LIVE_STALE_S=120/LIVE_STOPPED_S=180) with headroom
     // for admin's slower, manually-refreshed polling.
-    if(ls&&ls.live&&ls.updated_at&&(Date.now()-Date.parse(ls.updated_at))<300000)liveNow=ls;
-    if(!liveNow){renderEvents(rows);return;}
-    fetch(SB+'/rest/v1/stint9_schedule_windows?select=end_ts&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
-      .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
-      .then(function(windows){
-        // Third close condition: more than 30 min past whichever scheduled
-        // window most recently ended, regardless of what heat/updated_at say.
-        // heat is trusted for RANKING (sessionKind() in index.html — a session
-        // legitimately overrunning by a few minutes is common and must stay
-        // ranked correctly), but this admin card is a status display, not a
-        // ranking decision: past a point, an "overrun" reads more like heat is
-        // stuck than like a real session, and the card should stop claiming
-        // LIVE rather than sit there indefinitely.
-        //
-        // Only applies once EVERY window for the day has actually ended --
-        // otherwise a still-open later window (e.g. the race, 08:00-09:40's
-        // quali/practice already long done but the 14:00 race window still in
-        // progress) got compared against an earlier, unrelated window's end
-        // time instead, nulling out a genuinely live race that still had
-        // nearly an hour left to run.
-        var now=Date.now();
-        var stillOpen=(windows||[]).some(function(w){var e=Date.parse(w.end_ts);return !isNaN(e)&&e>now;});
-        if(!stillOpen){
-          var ended=(windows||[]).map(function(w){return Date.parse(w.end_ts);}).filter(function(t){return !isNaN(t);});
-          if(ended.length){var lastEnd=Math.max.apply(null,ended);if(now-lastEnd>30*60*1000)liveNow=null;}
-        }
-        if(!liveNow){renderEvents(rows);return;}
-        fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
-          .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
-          .then(function(rr){renderEvents(rows,liveNow,rr&&rr[0]);});
+    if(ls&&ls.live&&ls.updated_at&&(now-Date.parse(ls.updated_at))<300000)liveNow=ls;
+    if(liveNow){
+      // Third close condition: more than 30 min past whichever scheduled
+      // window most recently ended, regardless of what heat/updated_at say.
+      // heat is trusted for RANKING (sessionKind() in index.html — a session
+      // legitimately overrunning by a few minutes is common and must stay
+      // ranked correctly), but this admin card is a status display, not a
+      // ranking decision: past a point, an "overrun" reads more like heat is
+      // stuck than like a real session, and the card should stop claiming
+      // LIVE rather than sit there indefinitely.
+      //
+      // Only applies once EVERY window for the day has actually ended --
+      // otherwise a still-open later window (e.g. the race, 08:00-09:40's
+      // quali/practice already long done but the 14:00 race window still in
+      // progress) got compared against an earlier, unrelated window's end
+      // time instead, nulling out a genuinely live race that still had
+      // nearly an hour left to run.
+      var dateWindows=(windows||[]).filter(function(w){return w.event_date===liveNow.event_date;});
+      var stillOpen=dateWindows.some(function(w){var e=Date.parse(w.end_ts);return !isNaN(e)&&e>now;});
+      if(!stillOpen){
+        var ended=dateWindows.map(function(w){return Date.parse(w.end_ts);}).filter(function(t){return !isNaN(t);});
+        if(ended.length){var lastEnd=Math.max.apply(null,ended);if(now-lastEnd>30*60*1000)liveNow=null;}
+      }
+    }
+    // Just before / during a timing window (race preferred), even if the
+    // scraper hasn't set live=true yet. Skip labels already snapshotted
+    // (NLS10-quali sits in stint9_events while the race window is still open).
+    if(!liveNow){
+      function isTiming(w){var l=String(w.label||'').toLowerCase();return l==='race'||l==='quali'||l==='qualifying'||l==='practice';}
+      function archived(w){return (rows||[]).some(function(e){return e.event_date===w.event_date&&String(e.label||'').toLowerCase()===String(w.label||'').toLowerCase();});}
+      var cands=(windows||[]).filter(function(w){
+        if(!isTiming(w)||archived(w))return false;
+        var s=Date.parse(w.start_ts),e=Date.parse(w.end_ts);
+        return !isNaN(s)&&!isNaN(e)&&(s-20*60*1000)<=now&&now<=e;
       });
+      cands.sort(function(a,b){
+        var pr=function(w){return String(w.label).toLowerCase()==='race'?0:1;};
+        return pr(a)-pr(b)||Date.parse(a.start_ts)-Date.parse(b.start_ts);
+      });
+      if(cands.length){
+        var w=cands[0];
+        liveNow={event_date:w.event_date,live:false,scheduled:true,heat:w.label,start_ts:w.start_ts,end_ts:w.end_ts};
+      }
+    }
+    if(!liveNow){renderEvents(rows);return;}
+    fetch(SB+'/rest/v1/stint9_event_rounds?select=slug,name&event_date=eq.'+encodeURIComponent(liveNow.event_date),{headers:H})
+      .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+      .then(function(rr){renderEvents(rows,liveNow,rr&&rr[0]);});
   }).catch(function(){document.getElementById('events').innerHTML='<div class="empty">Could not load events.</div>';});
 }
 // "3h ago" / "2d ago" — surfaces how fresh each archive is, so a just-finished
@@ -370,26 +398,40 @@ function absTime(iso){
   var p=function(n){return String(n).padStart(2,'0');};
   return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+' UTC';
 }
-// liveNow = the stint9_live_status row for a currently-running session (or
-// undefined); roundInfo = its {slug,name} from stint9_event_rounds, if the
-// schedule scraper has already named this round. Renders a status-only card
-// ABOVE the archived list — no caret/body/SIM links, since there is no
-// snapshot to open yet — just confirmation that the system sees it running.
+// liveNow = the stint9_live_status row for a currently-running session, OR a
+// synthesized {scheduled:true} row for a timing window that's current / starts
+// within 20 min (live still false). roundInfo = {slug,name} from
+// stint9_event_rounds. Status-only card ABOVE the archived list — no
+// caret/body/SIM links, since there is no snapshot to open yet.
 function renderEvents(rows,liveNow,roundInfo){
   var box=document.getElementById('events');
   var liveHtml='';
+  var liveBit='';
   if(liveNow){
     var name=(roundInfo&&roundInfo.name)||('EVT-'+liveNow.event_date);
-    var sub=[liveNow.event_date,(liveNow.cars!=null?liveNow.cars+' cars':''),(liveNow.heat||''),'updated '+relTime(liveNow.updated_at)].filter(Boolean).join(' · ');
-    liveHtml='<div class="ev live">'+
+    var isLive=!!liveNow.live&&!liveNow.scheduled;
+    var slug=(roundInfo&&roundInfo.slug)||(isLive?'LIVE':(liveNow.heat||'OPEN'));
+    var sub;
+    if(isLive){
+      sub=[liveNow.event_date,(liveNow.cars!=null?liveNow.cars+' cars':''),(liveNow.heat||''),'updated '+relTime(liveNow.updated_at)].filter(Boolean).join(' · ');
+      liveBit=' · 1 running now';
+    }else{
+      var start=Date.parse(liveNow.start_ts);
+      var when=!isNaN(start)&&start>Date.now()
+        ?('opens in '+Math.max(1,Math.round((start-Date.now())/60000))+'m')
+        :((liveNow.heat||'session')+' open');
+      sub=[liveNow.event_date,liveNow.heat,when,liveNow.start_ts?absTime(liveNow.start_ts):''].filter(Boolean).join(' · ');
+      liveBit=' · 1 open';
+    }
+    liveHtml='<div class="ev '+(isLive?'live':'soon')+'">'+
       '<div class="evhead">'+
-        '<span class="slug"><span class="livedot"></span>LIVE</span>'+
+        '<span class="slug">'+(isLive?'<span class="livedot"></span>':'')+esc(slug)+'</span>'+
         '<span class="evinfo"><span class="evname">'+esc(name)+'</span><br><span class="evsub">'+esc(sub)+'</span></span>'+
         '<span class="evacts"><a class="prim" href="index.html" target="_blank" rel="noopener">Open LIVE →</a></span>'+
       '</div>'+
     '</div>';
   }
-  if(!rows||!rows.length){box.innerHTML=liveHtml+'<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent=liveNow?'1 session running now':'';return;}
+  if(!rows||!rows.length){box.innerHTML=liveHtml+'<div class="empty">No events archived yet. A finished NLS event is snapshotted automatically, but only ~2h after its last session ends (grace window) — so a race that just finished won\'t appear immediately. Force it early with <code>node tools/archive_event.mjs --date=YYYY-MM-DD</code>.</div>';document.getElementById('eventsMeta').textContent=liveBit?liveBit.replace(/^ · /,''):'';return;}
   box.innerHTML=liveHtml+rows.map(function(e){
     var span=e.event_date+(e.event_end?(' → '+e.event_end):'');
     var archived=e.archived_at?('archived '+relTime(e.archived_at)+' · '+absTime(e.archived_at)):'';
@@ -415,7 +457,7 @@ function renderEvents(rows,liveNow,roundInfo){
       '<div class="evbody" id="evbody-'+esc(e.slug)+'"><div class="empty">…</div></div>'+
     '</div>';
   }).join('');
-  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived'+(liveNow?' · 1 running now':'');
+  document.getElementById('eventsMeta').textContent=rows.length+' event'+(rows.length!==1?'s':'')+' archived'+liveBit;
 }
 function toggleEvent(slug){
   var el=document.getElementById('ev-'+slug);if(!el)return;

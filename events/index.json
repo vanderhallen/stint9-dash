@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-10-09T18:07:00.104912+00:00",
+  "generated_at": "2026-10-10T09:54:16.654545+00:00",
   "events": [
+    {
+      "slug": "NLS10-quali",
+      "name": "2. NLS Sportwarte-Trophy (4h) — Qualifying",
+      "label": "quali",
+      "date": "2026-10-10",
+      "end": null,
+      "car_count": 116,
+      "archived_at": "2026-10-10T09:54:16.654545+00:00",
+      "file": "events/NLS10-quali.json",
+      "notes": "events/NLS10-quali_notes.json"
+    },
     {
       "slug": "NLS10-practice",
       "name": "practice NLS10",
