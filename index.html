@@ -716,6 +716,9 @@
   .mmode{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
   .mmodebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:9px 14px;cursor:pointer;min-height:44px}
   .mmodebtn.active{background:var(--ink);color:#fff}
+  /* Same stacked eye+count as desktop #viewerBadge, 44px to match .mmodebtn. */
+  .mviewers{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:0 0 auto;height:44px;padding:0 8px;border-radius:9px;background:rgba(127,127,127,.12);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1;color:var(--muted);white-space:nowrap}
+  .mviewers svg{display:block;flex:0 0 auto}
   .mctrl{display:flex;gap:8px;align-items:center}
   .mctrl select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
   .mplay{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;padding:11px 18px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;flex:0 0 auto}
@@ -5057,6 +5060,8 @@ function renderMobile(){
   if(ms)ms.classList.toggle('active',mode==='SIM');
   if(ml)ml.classList.toggle('active',mode==='LIVE');
   var msp=document.getElementById('m_speed');if(msp)msp.style.display=(mode==='LIVE')?'none':'';
+  var vc=document.getElementById('viewerCount'),mv=document.getElementById('m_viewerCount');
+  if(vc&&mv&&mv.textContent!==vc.textContent)mv.textContent=vc.textContent;
   // Header time slot: the sim clock in SIM, the live-feed status in LIVE
   var mcl=document.getElementById('m_clock');
   if(mcl){
@@ -6654,10 +6659,18 @@ buildStartGrid();
       clientId=sessionStorage.getItem('s9_viewer_id');
       if(!clientId){clientId=crypto.randomUUID();sessionStorage.setItem('s9_viewer_id',clientId);}
     }catch(e){clientId=crypto.randomUUID();}
+    // #m_viewerCount lives in #mobileview, which is parsed AFTER this script,
+    // so the first heartbeat can only paint the desktop badge. Re-query the
+    // phone node each time; renderMobile also copies the count as a fallback.
+    function paint(n){
+      badge.textContent=n;
+      const m=document.getElementById('m_viewerCount');
+      if(m)m.textContent=n;
+    }
     function heartbeat(){
       fetch(FUEL_SB_URL+'/rest/v1/rpc/stint9_presence_heartbeat',{method:'POST',headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_client_id:clientId})})
         .then(r=>r.ok?r.json():null)
-        .then(n=>{if(typeof n==='number')badge.textContent=n;})
+        .then(n=>{if(typeof n==='number')paint(n);})
         .catch(()=>{});
     }
     heartbeat();
@@ -8565,6 +8578,7 @@ applyWxReel(false);
     <div class="mhdrright">
       <select id="m_speed" class="mspeed"></select>
       <div class="mclock" id="m_clock">--:--:--</div>
+      <span class="mviewers" id="m_viewers" title="People with this page open right now"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg><span id="m_viewerCount">&mdash;</span></span>
       <div class="mmode"><button type="button" class="mmodebtn" id="m_sim">SIM</button><button type="button" class="mmodebtn" id="m_live">LIVE</button></div>
     </div>
   </div>
