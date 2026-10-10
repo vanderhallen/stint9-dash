@@ -157,7 +157,7 @@
   .reelbtn:hover:not(:disabled){background:#6b7480}
   .reelbtn:disabled{opacity:.3;cursor:default;box-shadow:none}
   #reelview .reelpanel,#wxview .reelpanel{flex:0 0 100%;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  /* Both blocks run the same 22-reel list, so every panel rule has to name
+  /* Both blocks run the same 24-reel list, so every panel rule has to name
      #wxview as well — the right block holds the chart reels too now. */
   #reelview .reelpanel svg,#wxview .reelpanel svg{display:block;width:100%;height:100%}
   /* …but never Leaflet's OWN svgs. The rule above is a descendant selector, and
@@ -311,9 +311,9 @@
      ever drops below 1 to pull a table that would overflow back inside the modal,
      font and padding shrinking together so the proportions hold. These stay the
      intended MAXIMUM; see fitZoomTable() for why measuring beats guessing. */
-  .card.zoomed #gridtablewrap table,.card.zoomed #niektablewrap table,.card.zoomed #drvtablewrap table,.card.zoomed #ptimewrap table{font-size:calc(19px*var(--zt,1))!important}
-  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child,.card.zoomed #ptimewrap>div:first-child{font-size:calc(16px*var(--zt,1))!important;padding:0 4px calc(16px*var(--zt,1))!important}
-  .card.zoomed #gridtablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #ptimewrap th,.card.zoomed #gridtablewrap td,.card.zoomed #drvtablewrap td,.card.zoomed #ptimewrap td{padding:calc(6px*var(--zt,1)) calc(10px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap table,.card.zoomed #niektablewrap table,.card.zoomed #drvtablewrap table,.card.zoomed #ptimewrap table,.card.zoomed #fieldtabwrap table{font-size:calc(19px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap>div:first-child,.card.zoomed #drvtablewrap>div:first-child,.card.zoomed #sectabwrap>div:first-child,.card.zoomed #ptimewrap>div:first-child,.card.zoomed #fieldtabwrap>div:first-child{font-size:calc(16px*var(--zt,1))!important;padding:0 4px calc(16px*var(--zt,1))!important}
+  .card.zoomed #gridtablewrap th,.card.zoomed #drvtablewrap th,.card.zoomed #ptimewrap th,.card.zoomed #fieldtabwrap th,.card.zoomed #gridtablewrap td,.card.zoomed #drvtablewrap td,.card.zoomed #ptimewrap td,.card.zoomed #fieldtabwrap td{padding:calc(6px*var(--zt,1)) calc(10px*var(--zt,1))!important}
   /* TIMES is only 8 rows, so at its inline size it leaves the modal mostly
      empty. Scale it harder than the other tables and let the rows breathe —
      but keep the table content-width: stretching it to 100% blows the row-label
@@ -1053,6 +1053,7 @@
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Tyres are private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="boardframe" src="tyre.html?v=20260801a" title="Tyre (ISO board)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div class="privlock"><span class="lk">&#128274;</span><span class="lt">Service log is private to the team.<br>Sign in on this car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><iframe id="svcframe" src="service.html?v=20260804a" title="Service (component km)" style="width:100%;height:100%;border:0;display:block"></iframe></div>
           <div class="reelpanel" style="position:relative"><div id="ptimePrivlock" class="privlock"><span class="lk">&#128274;</span><span class="lt">P-TIME (pit-stop arming) is private to the team.<br>Sign in on any team car to view &amp; edit.</span><button type="button" class="lb" data-login>TEAM LOGIN</button></div><div id="ptimewrap"></div></div>
+          <div class="reelpanel"><div id="fieldtabwrap" style="width:100%;height:100%;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start"></div></div>
         </div>
       </div>
     </div>
@@ -1115,7 +1116,7 @@ let selCar='',wantCar='',paceThr=0.2;
   // so nothing changes once a car is past lap 0.
   function keySec(k){return (((k-1)%5+5)%5)+1;}
    // wantCar: the user's choice, survives an empty/rebuilding DB (see buildClass)
-let reelIdx=0;const REELN=23;
+let reelIdx=0;const REELN=24;
 // 2026-09-20: H2H moved before FLOW and P-TIME moved to the end (index=old,
 // value=new below). Without this, a returning visitor's saved reelIdx/reelR
 // (localStorage stint9_prefs) would silently land them on whatever OTHER reel
@@ -1129,12 +1130,12 @@ const remapReelIdx=i=>{const r=REEL_REMAP_20260920[i];return r!=null?r:i;};
 let keyReelSide='';
 /* ---- TWO INDEPENDENT REEL BLOCKS -----------------------------------------
    The left block (#reelview/#reelstrip) and the right one (#wxview/#wxstrip)
-   both carry the SAME full list of all 23 reels, each with its own selection —
+   both carry the SAME full list of all 24 reels, each with its own selection —
    so any reel can be put in either block, including the same reel in both at
    once. Reel order (both blocks): 0 POS, 1 STINT, 2 TIMES, 3 PACE, 4 SECT,
-   5 COMP, 6 GRID, 7 DRV, 8 NIEK, 9 BARS, 10 FLOW, 11 WEATHER, 12 TEMP,
-   13 TIMETABLE, 14 CHAMP, 15 PIT, 16 P-TIME, 17 YOUTUBE, 18 VIDEO, 19 FUEL,
-   20 TYRE, 21 SERVICE, 22 H2H. The panels themselves are the source of truth: they
+   5 COMP, 6 GRID, 7 DRV, 8 NIEK, 9 BARS, 10 H2H, 11 FLOW, 12 WEATHER, 13 TEMP,
+   14 TIMETABLE, 15 CHAMP, 16 PIT, 17 YOUTUBE, 18 VIDEO, 19 FUEL, 20 TYRE,
+   21 SERVICE, 22 P-TIME, 23 FIELD. The panels themselves are the source of truth: they
    sit in #reelstrip in exactly this order, and every index below follows it.
 
    #reelstrip holds the ONE canonical copy of the panel markup, keeping the
@@ -1334,6 +1335,7 @@ function paintReel(T,idx,all,side){
     if(idx===15&&typeof renderChampionship==='function')renderChampionship();
     if(idx===18&&typeof renderVideoReel==='function')renderVideoReel();
     if(idx===10||all)renderH2H(T);
+    if(idx===23||all)renderFieldTab(T);
   });
 }
 /* Per-reel "it just became the visible one" work, for whichever block scrolled
@@ -3209,7 +3211,7 @@ let _fitZoomSig=null;
 function fitZoomTable(){
   const card=document.querySelector('.card.zoomed');
   if(!card){_fitZoomSig=null;return;}
-  const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#drvtablewrap,#ptimewrap');
+  const wrap=card.querySelector('#sectabwrap,#gridtablewrap,#drvtablewrap,#ptimewrap,#fieldtabwrap');
   const table=wrap&&wrap.querySelector('table');
   if(!wrap||!table){_fitZoomSig=null;return;}
   // render() calls this every frame (~20-30x/s) so a new lap's row is caught
@@ -3257,6 +3259,63 @@ function predFromPrev(cells,laps){
     if(any&&can)c.totPred=tot;
   }
   return cells;
+}
+// FIELD reel: one row per class car, P1 at the top, current-lap S1–S5 across.
+// Refreshes as sectors land and again when the car starts the next lap.
+function fieldTabData(T){
+  const lp=typeof livePos==='function'?livePos(T):{};
+  const cars=(DB.cars||[]).slice().sort(function(a,b){
+    const pa=lp[a],pb=lp[b];
+    if(pa==null&&pb==null)return 0;
+    if(pa==null)return 1;
+    if(pb==null)return -1;
+    return pa-pb;
+  });
+  return cars.map(function(st){
+    const stm=DB.sectimes[st]||{},bx=BX[st]||{};
+    const pb=[Infinity,Infinity,Infinity,Infinity,Infinity];
+    const maxL=(typeof maxN==='number')?maxN:40;
+    for(let L=0;L<=maxL;L++){
+      const s=stm[L];if(!s)continue;
+      for(let k=0;k<5;k++){
+        const b=bx[(L-1)*5+(k+1)];
+        if(b==null||b>T||s[k]==null)continue;
+        if(s[k]<pb[k])pb[k]=s[k];
+      }
+    }
+    const slg=typeof activeLeg==='function'?activeLeg(st,T):null;
+    const last=typeof lastStartedLeg==='function'?lastStartedLeg(st,T):null;
+    const L=slg?slg[0]:(last?last[0]:null);
+    const vals=[null,null,null,null,null];
+    let tot=null,totPred=null;
+    if(L!=null){
+      const s=stm[L]||[];
+      let full=true;
+      for(let k=0;k<5;k++){
+        const b=bx[(L-1)*5+(k+1)];
+        if(b==null||b>T||s[k]==null){full=false;continue;}
+        vals[k]=s[k];
+      }
+      if(full)tot=vals[0]+vals[1]+vals[2]+vals[3]+vals[4];
+      else{
+        const prevL=L-1,cells={};
+        if(stm[prevL]){
+          const pv=[null,null,null,null,null];
+          for(let k=0;k<5;k++){
+            const b=bx[(prevL-1)*5+(k+1)];
+            if(b!=null&&b<=T&&stm[prevL][k]!=null)pv[k]=stm[prevL][k];
+          }
+          cells[prevL]={vals:pv};
+        }
+        cells[L]={vals:vals.slice()};
+        const laps=[];if(cells[prevL])laps.push(prevL);laps.push(L);
+        predFromPrev(cells,laps);
+        totPred=cells[L].totPred||null;
+      }
+    }
+    const drv=typeof curDrv==='function'?curDrv(st,T):'';
+    return {st:st,pos:lp[st],L:L,drv:drv,vals:vals,tot:tot,totPred:totPred,pb:pb};
+  });
 }
 function renderSecTab(T){
   const wrap=document.getElementById('sectabwrap');if(!wrap)return;
@@ -3361,6 +3420,68 @@ function renderSecTab(T){
   // trade than on desktop. Desktop keeps it exactly as before.
   const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">TIMES &middot; every completed sector for #'+selCar+' &mdash; laps in columns, sectors in rows. Purple = car best; red &#9660; = Δ vs that sector\'s own best. Grey lap total = predicted (this lap\'s sectors + previous lap for the rest).</div>';
   wrap.innerHTML=caption+h;
+}
+function renderFieldTab(T){
+  const wrap=document.getElementById('fieldtabwrap');if(!wrap)return;
+  const ph=t=>{wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#b5bcc4;font-family:\'IBM Plex Mono\',monospace;font-size:20px">'+t+'</div>';};
+  const rows=fieldTabData(T);
+  if(!rows.length){ph('select a class');return;}
+  const eq=(a,b)=>a!=null&&b!=null&&isFinite(b)&&Math.abs(a-b)<0.01;
+  const heatBg=(v,min,max)=>{
+    if(v==null||min==null||max==null||!isFinite(min)||!isFinite(max)||max<=min)return'';
+    const t=Math.max(0,Math.min(1,(v-min)/(max-min)));
+    return 'background:hsl('+(120*(1-t)).toFixed(0)+',65%,86%)';
+  };
+  const colRange=k=>{
+    const f=rows.map(r=>r.vals[k]).filter(v=>v!=null&&isFinite(v));
+    return f.length?[Math.min.apply(null,f),Math.max.apply(null,f)]:[null,null];
+  };
+  const ranges=[0,1,2,3,4].map(colRange);
+  const lapVals=rows.map(r=>r.tot).filter(v=>v!=null&&isFinite(v));
+  const lapMin=lapVals.length?Math.min.apply(null,lapVals):null;
+  const lapMax=lapVals.length?Math.max.apply(null,lapVals):null;
+  const th='position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 8px;text-align:right;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700';
+  const th0='position:sticky;left:0;top:0;z-index:3;background:#f2f3f6;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec;border-right:1px solid #d5d9df;color:#6b7480;font-weight:700';
+  const num=(v,pb,range)=>{
+    if(v==null)return '<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
+    const bestHit=eq(v,pb)&&isFinite(pb);
+    const dv=isFinite(pb)?v-pb:null;
+    let txt=fmt(v);
+    if(bestHit)txt+='<br><span style="color:#1e8f3a;font-weight:700;font-size:0.667em">▲0.0</span>';
+    else if(dv!=null&&Math.abs(dv)>=0.05){
+      const col=dv<0?'#1e8f3a':'#c0392b',tri=dv<0?'▲':'▼';
+      txt+='<br><span style="color:'+col+';font-weight:700;font-size:0.667em">'+tri+Math.abs(dv).toFixed(1)+'</span>';
+    }
+    const bg=bestHit?'background:#f3ecfb':heatBg(v,range[0],range[1]);
+    return '<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;'+(bestHit?'color:#7b2fbe;font-weight:700;':'color:#16202b')+(bg?';'+bg:'')+'">'+txt+'</td>';
+  };
+  let h='<table style="border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:12px;white-space:nowrap">';
+  h+='<thead><tr><th style="'+th0+'">P</th>';
+  h+='<th style="position:sticky;top:0;z-index:2;background:#f2f3f6;padding:4px 8px;text-align:left;border-bottom:1px solid #e6e8ec;color:#6b7480;font-weight:700">CAR</th>';
+  h+='<th style="'+th+'">L</th>';
+  ['S1','S2','S3','S4','S5'].forEach(lbl=>{h+='<th style="'+th+'">'+lbl+'</th>';});
+  h+='<th style="'+th+'">LAP</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const isSel=String(r.st)===String(selCar),rowBg=isSel?'#d5d9de':'#fff';
+    h+='<tr'+(isSel?' style="background:#d5d9de"':'')+'>';
+    h+='<td style="position:sticky;left:0;z-index:1;background:'+rowBg+';padding:3px 8px;font-weight:700;border-bottom:1px solid #f3f4f6;border-right:1px solid #d5d9df">'+(r.pos!=null?('P'+r.pos):'—')+'</td>';
+    h+='<td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;font-weight:700">#'+r.st+(r.drv?(' '+r.drv):'')+'</td>';
+    h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#6b7480">'+(r.L!=null?lapLabel(r.L):'—')+'</td>';
+    for(let k=0;k<5;k++)h+=num(r.vals[k],r.pb[k],ranges[k]);
+    if(r.totPred!=null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:#8a929b;background:#fff">'+fmt(r.totPred)+'</td>';
+    else if(r.tot==null)h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#c9ced4">&mdash;</td>';
+    else{
+      const isBest=eq(r.tot,Math.min.apply(null,lapVals.length?lapVals:[r.tot]));
+      const bg=isBest?'background:#f3ecfb':heatBg(r.tot,lapMin,lapMax);
+      h+='<td style="padding:3px 8px;text-align:right;border-bottom:1px solid #f3f4f6;font-weight:700;color:'+(isBest?'#7b2fbe':'#16202b')+(bg?';'+bg:'')+'">'+fmt(r.tot)+'</td>';
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  const caption=document.body.classList.contains('m')?'':'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:#6b7480;padding:4px 6px 7px;line-height:1.4">FIELD &middot; current lap for every car in the class, P1 at the top. Purple = that car\'s best; heat is vs the field this lap. Grey lap total = predicted.</div>';
+  const html=caption+h;
+  if(wrap.__sig===html)return;
+  wrap.__sig=html;wrap.innerHTML=html;
 }
 /* H2H reel: pick 1+ other drivers in the SAME class as the reference (the
    globally-selected #carsel/selCar) and compare lap/sector times directly.
@@ -4435,7 +4556,7 @@ function render(){
   // Reel dispatch, once per block — see the reel order note by REELN. The LEFT
   // block keeps the long-standing behaviour of sweeping every reel on the _tk
   // tick; the RIGHT block paints only the one reel it is actually showing, so
-  // running a second full 22-reel list costs one extra renderer per tick
+  // running a second full 24-reel list costs one extra renderer per tick
   // instead of another thirteen. wxReelIdx is `var` and assigned far below, so
   // on the boot render it is still undefined here — every === is then false and
   // this is a no-op for the right block, which is exactly what we want.
@@ -4628,7 +4749,7 @@ const REELLBL={lapchart:'POS',stintsvg:'STINT',sectabwrap:'TIMES',ltgraph:'PACE'
   compmetric:'COMP',gridtablewrap:'GRID',drvtablewrap:'DRV',niektablewrap:'NIEK',p1barsvg:'BARS',
   flowsvg:'FLOW',weather:'WEATHER',tempoverlay:'TEMP',timetable:'TIMETABLE',pitframe:'PIT',
   ptimewrap:'P-TIME',champreel:'CHAMP',ytreel:'YOUTUBE',videoreel:'VIDEO',fuelpanel:'FUEL',
-  boardframe:'TYRE',svcframe:'SERVICE',h2hwrap:'H2H'};
+  boardframe:'TYRE',svcframe:'SERVICE',h2hwrap:'H2H',fieldtabwrap:'FIELD'};
 function __reelLabel(i){
   const p=document.querySelectorAll('#reelstrip>.reelpanel')[i];
   if(p)for(const id in REELLBL){if(p.querySelector('#'+id))return REELLBL[id];}
@@ -7730,7 +7851,7 @@ setInterval(loadSchedule,5*60*1000); // periodic refresh in case the schedule ta
    that read hit the temporal dead zone and threw, aborting the ENTIRE remainder
    of this script block: no fitPage (page unscaled/unfitted), no message board,
    no SIM event picker. var hoists as undefined, so the read is simply !==3. */
-/* The right block runs the SAME 22-reel list as the left one (see the reel
+/* The right block runs the SAME 24-reel list as the left one (see the reel
    order note by REELN), so its bounds are REELN too. It opens on WEATHER,
    which is index 15 now that the seven former weather-side reels sit at the
    end of the shared list. */
@@ -8307,7 +8428,7 @@ applyWxReel(false);
      running per-session total (unique session_id+reel+event_date -> merge). */
   // Order here MUST match the physical order of .reelpanel divs in #reelstrip
   // (see buildRightStrip's comment) — H2H sits before FLOW and P-TIME is last.
-  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','H2H','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','P-TIME'];
+  var NAMES=['POS','STINT','TIMES','PACE','SECT','COMP','GRID','DRV','NIEK','BARS','H2H','FLOW','WEATHER','TEMP','TIMETABLE','CHAMP','PIT','YOUTUBE','VIDEO','FUEL','TYRE','SERVICE','P-TIME','FIELD'];
   var sess;try{sess=sessionStorage.getItem('stint9_sess');}catch(e){}
   if(!sess){sess='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);try{sessionStorage.setItem('stint9_sess',sess);}catch(e){}}
   /* visitor log — one row per browser session that opens the dashboard, with the
