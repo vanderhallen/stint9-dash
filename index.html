@@ -443,12 +443,24 @@
   #agentModal .mok{display:block;margin-left:auto;font-family:'IBM Plex Mono',monospace;background:var(--ink);border:1px solid var(--ink);color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:9px 24px;border-radius:8px;cursor:pointer}
   #agentModal .mok:hover{background:var(--accent);border-color:var(--accent)}
   /* ---- racenote panel (replaces the starting grid after formation lap L0) ---- */
-  #racenotebox{display:none;flex:1 1 auto;min-height:0;flex-direction:column;font-family:'IBM Plex Mono',monospace}
+  #racenotebox{display:none;flex:1 1 auto;min-height:0;overflow:hidden;flex-direction:column;font-family:'IBM Plex Mono',monospace}
   #racenotebox .rnhd{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:12px;letter-spacing:2px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin:2px 0 5px}
   #racenotebox .rnhd .rncar{color:var(--ink)}
-  #rn-summary{font-size:9px;line-height:1.45;color:var(--ink);background:#f7f8fa;border:1px solid #eceef1;border-radius:6px;padding:5px 6px;margin-bottom:5px;white-space:pre-wrap}
-  #rn-feed{flex:1 1 auto;min-height:60px;overflow:auto;display:flex;flex-direction:column;gap:3px;padding-right:2px}
-  #rn-feed .rn{font-size:9px;line-height:1.35;border-left:4.5px solid #c2c8d0;padding:3px 5px;background:#fbfbfc;border-radius:0 5px 5px 0}
+  #rn-summary{font-size:9px;line-height:1.45;color:var(--ink);background:#f7f8fa;border:1px solid #eceef1;border-radius:6px;padding:5px 6px;margin-bottom:5px;white-space:pre-wrap;flex:0 0 auto}
+  /* The feed is the scroller. Notes must not shrink (a column flex item's
+     default min-height:auto lets the last row paint past the scrollport,
+     where the card's corner clips it). Bottom padding keeps that last row
+     fully inside the view. The scrollbar is classic, not the overlay one:
+     overlay bars hide until you scroll and draw thick; this one stays up,
+     4px wide, whenever the list actually overflows. */
+  #rn-feed{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding:0 2px 8px 0;scrollbar-width:thin;scrollbar-color:#8a929b #e7eaee}
+  /* -webkit-appearance:none is what opts macOS out of the overlay scrollbar
+     (the thick one that fades away). Without it the width rule is ignored
+     and the bar never stays on screen. */
+  #rn-feed::-webkit-scrollbar{-webkit-appearance:none;width:4px}
+  #rn-feed::-webkit-scrollbar-track{background:#e7eaee;border-radius:4px}
+  #rn-feed::-webkit-scrollbar-thumb{background:#8a929b;border-radius:4px;min-height:24px}
+  #rn-feed .rn{flex:0 0 auto;font-size:9px;line-height:1.35;border-left:4.5px solid #c2c8d0;padding:3px 5px;background:#fbfbfc;border-radius:0 5px 5px 0}
   #rn-feed .rn .rnt{color:var(--muted);font-size:8px;letter-spacing:.3px}
   #rn-feed .rn .rnclip{color:var(--accent);text-decoration:none;font-weight:700;font-size:8px;white-space:nowrap}
   #rn-feed .rn .rnclip:hover{text-decoration:underline}
@@ -464,6 +476,11 @@
   #champreel{width:100%;height:100%;box-sizing:border-box;padding:12px 14px;display:flex;flex-direction:column;font-family:'IBM Plex Mono',monospace;overflow:auto}
   #champreel .chd{font-weight:700;font-size:13px;letter-spacing:1px;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:7px;margin-bottom:8px}
   #champreel .chd .chsub{font-weight:400;font-size:10px;color:var(--muted);letter-spacing:.5px}
+  /* year control in the header. Native select so it stays a real control after
+     the 300ms reel repaint — renderChampionship keeps this node and only
+     replaces .champbody. appearance:none drops the macOS control's ~40px
+     min-height, which otherwise blows the 13px header open. */
+  #champreel .chseason{font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--ink);background:transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M1 2.5 L4 5.5 L7 2.5' fill='none' stroke='%236b7480' stroke-width='1.2'/></svg>") no-repeat right center;background-size:8px 8px;border:0;border-bottom:1px solid var(--muted);height:13px;line-height:13px;padding:0 12px 0 1px;margin:0;cursor:pointer;vertical-align:baseline;appearance:none;-webkit-appearance:none}
   #champreel table{border-collapse:collapse;width:100%;font-size:11px}
   #champreel th,#champreel td{padding:3px 5px;text-align:center;white-space:nowrap}
   #champreel thead th{position:sticky;top:0;background:#f2f3f6;color:var(--muted);font-weight:700;font-size:9px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #d5d9df}
@@ -7423,7 +7440,19 @@ function rnRenderFeed(){
   feed.innerHTML=ns.map(n=>{const loss=(n.meta&&n.meta.gain===false)?' loss':'';const t=(n.tod!=null)?hmsClock(n.tod):'';
     const ls=(n.lap!=null?('L'+n.lap):'')+(n.sector!=null?(' · S'+n.sector):'');
     return '<div class="rn '+n.kind+loss+'"><span class="rnt">'+t+' · '+ls+'</span><br>'+rnEsc(n.body)+'</div>';}).join('');
-  feed.scrollTop=feed.scrollHeight;
+  rnPinFeed(true);
+}
+// Keep the newest note fully inside #rn-feed. force=true on a new note (the
+// list follows the race). Otherwise only if the reader is already at the end,
+// so a summary reflow can't push that last row under the card edge, and a
+// scroll up through older notes is left alone.
+function rnPinFeed(force){
+  const feed=document.getElementById('rn-feed');if(!feed)return;
+  const slack=()=>feed.scrollHeight-feed.clientHeight-feed.scrollTop;
+  if(!force&&slack()>40)return;
+  const pin=()=>{feed.scrollTop=feed.scrollHeight;};
+  pin();
+  requestAnimationFrame(()=>{if(force||slack()<80)pin();});
 }
 function rnRenderSummary(T){
   const el=document.getElementById('rn-summary');if(!el)return;
@@ -7433,8 +7462,11 @@ function rnRenderSummary(T){
   let maxIdx=-Infinity;for(const k in bx){if(bx[k]<=T&&+k>maxIdx)maxIdx=+k;}const laps=isFinite(maxIdx)?Math.max(0,Math.floor(maxIdx/5)):0;   // clamp: mid-lap-0 (maxIdx<0) is 0 completed laps, not -1
   let best=Infinity;for(let L=1;L<=laps;L++){const t=rnFullLap(rnCar,L);if(t!=null&&t<best)best=t;}
   const start=rnQualiPos(),net=(start!=null&&cur!=null)?(start-cur):null;
-  el.textContent='#'+rnCar+'  '+(rnClass||'')+'\nP'+(start!=null?start:'?')+' → P'+(cur!=null?cur:'?')+(net?(net>0?('   +'+net):('   '+net)):'')
+  const next='#'+rnCar+'  '+(rnClass||'')+'\nP'+(start!=null?start:'?')+' → P'+(cur!=null?cur:'?')+(net?(net>0?('   +'+net):('   '+net)):'')
     +'\nL'+laps+' done · best '+(best<Infinity?fmt(best):'—');
+  if(el.textContent===next)return;
+  el.textContent=next;
+  rnPinFeed(false);
 }
 function rnParseTod(str){str=(str||'').trim();if(!str)return NaN;if(str.indexOf(':')>=0){const p=str.split(':').map(parseFloat);if(p.some(isNaN))return NaN;let s=0;for(const v of p)s=s*60+v;return s;}const v=parseFloat(str);return isNaN(v)?NaN:v;}
 /* ---- in-browser clipping (ffmpeg.wasm) --------------------------------------
@@ -7708,7 +7740,8 @@ function updateRacenote(T){
 rnWire();   // attach the Analyse handler now (reel is in the DOM already)
 
 /* ============================================================
-   CHAMPIONSHIP reel — NLS 2026 class standings for EVERY class.
+   CHAMPIONSHIP reel — NLS class standings for EVERY class, one season
+   at a time (2026 by default, 2025 selectable in the header).
    Class results (finishing order per round) with the NLS class
    scoring applied as a running total. Sorted by total points
    (leader first); the selected car's row is highlighted. Shows
@@ -7729,11 +7762,19 @@ rnWire();   // attach the Analyse handler now (reel is in the DOM already)
    script down via wxReelIdx (see the note there). null = not fetched yet. */
 var CHAMP_ROWS=null;
 function loadChampRounds(){
-  fetch(FUEL_SB_URL+'/rest/v1/stint9_champ_rounds?select=event_date,round_no,title,series,class,class_key,cars&order=event_date.asc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
+  // 2025 onward only. The view also holds 2010–2024 (~3,000 class-rows); the
+  // reel only offers 2026 and 2025, and a year-less fetch would let 2025-09-13
+  // satisfy the 2026 NLS9 column (both are month-day 09-13).
+  fetch(FUEL_SB_URL+'/rest/v1/stint9_champ_rounds?select=event_date,round_no,title,series,class,class_key,cars&event_date=gte.2025-01-01&order=event_date.asc',{headers:{apikey:FUEL_SB_KEY,Authorization:'Bearer '+FUEL_SB_KEY}})
     .then(r=>r.ok?r.json():[])
     .then(rows=>{CHAMP_ROWS=Array.isArray(rows)?rows:[];try{renderChampionship();}catch(e){}})
     .catch(()=>{CHAMP_ROWS=[];});   // [] = fetched-and-empty -> fall back to the static table
 }
+/* Header year. 2026 keeps the hand skeleton below (cancelled rounds, the
+   24h-Qualifier the scraper cannot read). 2025 is scraped rounds only. */
+var CHAMP_YEARS=['2026','2025'];
+var CHAMP_SEASON='2026';
+try{const _cs=localStorage.getItem('stint9_champ_season');if(CHAMP_YEARS.indexOf(_cs)>=0)CHAMP_SEASON=_cs;}catch(e){}
 const NLS_CHAMP={
   rounds:[
     {lbl:'NLS1', date:'03-14', h:4, cxl:true},        // cancelled (snow)
@@ -7801,25 +7842,77 @@ const NLS_CHAMP={
     'VT2-RWD':{2:{'503':'DNF'},4:{'524':'DNF'},5:{'55':'DNF','500':'DNF','505':'DNF'}}
   }
 };
+/* 2025 season skeleton. Race dates are the official calendar (NLS1 22 Mar …
+   NLS10 11 Oct). 24hQ1/24hQ2 counted for the championship but their PDFs use
+   the 24h template, which the scraper rejects — shown, not scored (`nodata`).
+   NLS-Light (5 Jul) is a separate event and is not a championship round, so
+   it is absent here on purpose. NLS6 is the only 6h. */
+const CHAMP_2025={
+  rounds:[
+    {lbl:'NLS1', date:'2025-03-22', h:4},
+    {lbl:'NLS2', date:'2025-04-26', h:4},
+    {lbl:'NLS3', date:'2025-05-10', h:4},
+    {lbl:'24hQ1',date:'2025-05-24', h:4, q:true, nodata:true},
+    {lbl:'24hQ2',date:'2025-05-25', h:4, q:true, nodata:true},
+    {lbl:'NLS6', date:'2025-08-16', h:6},
+    {lbl:'NLS7', date:'2025-09-13', h:4},
+    {lbl:'NLS8', date:'2025-09-14', h:4},
+    {lbl:'NLS9', date:'2025-09-27', h:4},
+    {lbl:'NLS10',date:'2025-10-11', h:4}
+  ]
+};
 function rnPoints(pos,hours){if(pos==null||pos<1)return 0;const T=[15,11,8,6,4,3,2];let p=pos<=7?T[pos-1]:1;if(hours>=6)p=Math.round(p*1.25);return p;}
 function renderChampionship(){
  try{
   const el=document.getElementById('champreel');if(!el)return;
+  // Keep the <select> across the 300ms reel repaint. Rebuilding the whole
+  // reel would close the dropdown under the pointer.
+  let sel=el.querySelector('select.chseason');
+  if(!sel){
+    el.innerHTML='<div class="chd">CHAMPIONSHIP <span class="chsub"><span class="chcls"></span>NLS <select class="chseason" aria-label="Season">'+
+      CHAMP_YEARS.map(y=>'<option value="'+y+'">'+y+'</option>').join('')+'</select></span></div><div class="champbody"></div>';
+    sel=el.querySelector('select.chseason');
+    sel.addEventListener('change',function(){
+      if(CHAMP_YEARS.indexOf(this.value)<0)return;
+      CHAMP_SEASON=this.value;
+      try{localStorage.setItem('stint9_champ_season',CHAMP_SEASON);}catch(e){}
+      try{withSide('',renderChampionship);}catch(e){}
+      try{withSide(RSUF,renderChampionship);}catch(e){}
+    });
+  }
+  if(document.activeElement!==sel)sel.value=CHAMP_SEASON;
+  const body=el.querySelector('.champbody');
+  const year=CHAMP_SEASON==='2025'?'2025':'2026';
   const carClass={};Object.keys(DB.classes||{}).forEach(cl=>DB.classes[cl].forEach(c=>{carClass[String(c)]=cl;}));
   const cls=carClass[String(selCar)]||null;
+  const clsEl=el.querySelector('.chcls');
+  if(clsEl)clsEl.textContent=cls?('· '+cls+' · '):'· ';
   // The LIVE feed's WIGE class names differ slightly from the offline/championship
   // naming (built from the CSV): "BMW M240i"->"BMW M240", "VT2-F+4WD"->"VT2-F+4W",
   // "SP9 PRO-AM"->"SP9 PRO-". Alias for the NLS_CHAMP lookup; display still uses cls.
   const CHAMP_ALIAS={'BMW M240i':'BMW M240','VT2-F+4WD':'VT2-F+4W','SP9 PRO-AM':'SP9 PRO-'};
   const ck=cls?(CHAMP_ALIAS[cls]||cls):null;
-  const R=NLS_CHAMP.rounds,res=(NLS_CHAMP.res||{})[ck],dnf=(NLS_CHAMP.dnf||{})[ck]||{};
+  const R=year==='2025'?CHAMP_2025.rounds:NLS_CHAMP.rounds;
+  // Hand table is 2026-only. A 2025 round with no scrape stays empty rather
+  // than inheriting a 2026 result that happens to share a month-day.
+  const res=year==='2026'?(NLS_CHAMP.res||{})[ck]:null;
+  const dnf=year==='2026'?((NLS_CHAMP.dnf||{})[ck]||{}):{};
+  const fold=s=>String(s||'').replace(/\s+/g,'').toUpperCase();
+  const sameClass=row=>row&&ck&&(row.class_key===ck||row.class===ck||row.class===cls||fold(row.class_key)===fold(ck)||fold(row.class)===fold(ck)||fold(row.class)===fold(cls));
   /* Per round: {order:[cars, in finishing order], dnf:{car:'DNF'|'DSQ'}} — scraped
      if stint9_champ_rounds has that date+class, else the static fallback. Position
      in class = index in `order`, so the two sources are interchangeable from here
-     on and the rest of this function never has to know which one it got. */
+     on and the rest of this function never has to know which one it got.
+     Match the YEAR as well as the month-day: 2025-09-13 and the 2026 NLS9
+     skeleton are both 09-13. */
   const scraped=(rd)=>{
     if(!CHAMP_ROWS||!CHAMP_ROWS.length||!ck)return null;
-    const row=CHAMP_ROWS.find(r=>String(r.event_date||'').slice(5)===rd.date&&(r.class_key===ck||r.class===ck||r.class===cls));
+    const row=CHAMP_ROWS.find(r=>{
+      const ed=String(r.event_date||'');
+      if(ed.slice(0,4)!==year)return false;
+      if(rd.date.length===10?ed!==rd.date:ed.slice(5)!==rd.date)return false;
+      return sameClass(r);
+    });
     if(!row||!Array.isArray(row.cars)||!row.cars.length)return null;
     const order=[],dq={};
     row.cars.forEach(x=>{const car=String(x.c);
@@ -7829,9 +7922,12 @@ function renderChampionship(){
   };
   /* cxl rounds are never scored, whatever either source happens to hold for that
      date (the 24hQ1 qualifying PDF is on the scraper's radar) — force them empty so
-     the header and every cell agree on ✕ instead of quietly paying out points. */
-  const RD=R.map((rd,i)=>rd.cxl?null:(scraped(rd)||(res&&res[i]?{order:res[i],dnf:(dnf[i]||{})}:null)));
-  if(!RD.some(Boolean)){el.innerHTML='<div class="chd">CHAMPIONSHIP</div><div class="chempty">'+(cls?('No championship data for '+rnEsc(cls)+'.'):'Select a car.')+'</div>';return;}
+     the header and every cell agree on ✕ instead of quietly paying out points.
+     nodata rounds (2025 24h Qualifiers) are the same shape: a column, no points. */
+  const RD=R.map((rd,i)=>(rd.cxl||rd.nodata)?null:(scraped(rd)||(res&&res[i]?{order:res[i],dnf:(dnf[i]||{})}:null)));
+  if(!cls){body.innerHTML='<div class="chempty">Select a car.</div>';return;}
+  if(year==='2025'&&CHAMP_ROWS===null){body.innerHTML='<div class="chempty">Loading 2025…</div>';return;}
+  if(!RD.some(Boolean)){body.innerHTML='<div class="chempty">No championship data for '+rnEsc(cls)+'.</div>';return;}
   const cars={};RD.forEach(d=>{if(!d)return;d.order.forEach(c=>{cars[c]=true;});Object.keys(d.dnf).forEach(c=>{cars[c]=true;});});
   const rows=Object.keys(cars).map(car=>{
     const per=R.map((rd,i)=>{const d=RD[i];if(!d)return null;const idx=d.order.indexOf(car);
@@ -7841,26 +7937,28 @@ function renderChampionship(){
     return {car:car,per:per,total:total,wins:wins};
   });
   rows.sort((a,b)=>b.total-a.total||b.wins-a.wins||(a.car>b.car?1:-1));
-  let h='<div class="chd">CHAMPIONSHIP <span class="chsub">· '+rnEsc(cls)+' · NLS 2026</span></div>';
-  h+='<table><thead><tr><th>Pos</th><th>Pts</th><th class="chcar">Car</th>';
+  let h='<table><thead><tr><th>Pos</th><th>Pts</th><th class="chcar">Car</th>';
   // a round counts as "upcoming" only until it has results — the scraper flipping
   // NLS8/9/10 live needs no edit here
   const futR=R.map((rd,i)=>!!rd.fut&&!RD[i]);
-  R.forEach((rd,i)=>{h+='<th class="'+(rd.cxl?'chcxl':(futR[i]?'chfut':''))+'" title="'+rd.date+(rd.h>=6?' · 6h':'')+'">'+rd.lbl+'</th>';});
+  R.forEach((rd,i)=>{
+    const tip=rd.nodata?'24h Qualifiers PDF is not in this feed':((rd.date.length===10?rd.date.slice(5):rd.date)+(rd.h>=6?' · 6h':''));
+    h+='<th class="'+(rd.cxl?'chcxl':((futR[i]||rd.nodata)?'chfut':''))+'" title="'+tip+'">'+rd.lbl+'</th>';
+  });
   h+='</tr></thead><tbody>';
   rows.forEach((r,ri)=>{
     const me=String(r.car)===String(selCar);
     h+='<tr class="'+(me?'chme':'')+'"><td class="chpos">P'+(ri+1)+'</td><td class="chtot">'+r.total+'</td><td class="chcar">#'+r.car+'</td>';
     r.per.forEach((x,i)=>{const rd=R[i];
-      if(!x){h+='<td class="chp">'+(rd.cxl?'✕':(futR[i]?'·':'–'))+'</td>';}
+      if(!x){h+='<td class="chp" title="'+(rd.nodata?'not in this feed':'')+'">'+(rd.cxl?'✕':((futR[i]||rd.nodata)?'·':'–'))+'</td>';}
       else if(x.dnf){h+='<td><span class="chdnf" title="started, not classified">'+x.dnf+'</span></td>';}
       else{h+='<td>'+(x.pos===1?'<span class="chwin">P1</span>':('P'+x.pos))+'<span class="chp"> ·'+x.pts+'</span></td>';}
     });
     h+='</tr>';
   });
   h+='</tbody></table>';
-  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25</div>';
-  el.innerHTML=h;
+  h+='<div class="chnote">Points: P1–7 = 15·11·8·6·4·3·2, then 1/place; 6h ×1.25'+(year==='2025'?'. 24hQ counts but is not in this feed. NLS-Light (5 Jul) is not a championship round.':'')+'</div>';
+  body.innerHTML=h;
  }catch(e){/* e.g. called from render() before NLS_CHAMP initialises — never break the render loop */}
 }
 
