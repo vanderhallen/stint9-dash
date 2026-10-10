@@ -709,7 +709,7 @@
   .mhdr .mclock{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px}
   .mhdr .mclock.mstatus{font-size:12px;font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mmode{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
-  .mmodebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:9px 14px;cursor:pointer}
+  .mmodebtn{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;border:none;background:var(--card);color:var(--muted);padding:9px 14px;cursor:pointer;min-height:44px}
   .mmodebtn.active{background:var(--ink);color:#fff}
   .mctrl{display:flex;gap:8px;align-items:center}
   .mctrl select{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:14px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--ink)}
@@ -4936,6 +4936,23 @@ function __a2hsSync(){
 /* Wired lazily, NOT in an IIFE: this script runs far above #mobileview's markup,
    so at parse time the arrows don't exist yet and the handlers would land on
    null. Same reason renderMobile() defers its own wiring behind __wired. */
+function __wireMobMode(){
+  if(__wireMobMode.done)return;
+  const ms=document.getElementById('m_sim'),ml=document.getElementById('m_live');
+  if(!ms||!ml)return;
+  __wireMobMode.done=true;
+  // Call setMode directly. A synthetic .click() on the desktop #modetoggle
+  // button (under #mobileview, z-index 9999) is swallowed on iOS Safari, so
+  // tapping SIM on the phone left LIVE running. Laptop taps the real button.
+  let lock=0;
+  const go=mode=>e=>{
+    if(e.type==='pointerup'&&e.pointerType==='mouse')return;
+    const t=Date.now();if(t-lock<400)return;lock=t;
+    if(typeof window.setDataMode==='function')window.setDataMode(mode);
+    else{const b=document.querySelector('#modetoggle .modebtn[data-mode="'+mode+'"]');if(b)b.click();}
+  };
+  ['pointerup','click'].forEach(ev=>{ms.addEventListener(ev,go('SIM'));ml.addEventListener(ev,go('LIVE'));});
+}
 function __wireMobNav(){
   if(__wireMobNav.done)return;
   const u=document.getElementById('m_up'),d=document.getElementById('m_dn'),st=document.getElementById('mstage');
@@ -4978,6 +4995,7 @@ function renderMobile(){
      stage and arrows still don't exist. This tick (250ms, phone mode only) mounts
      as soon as they do — and re-mounts if a slide ever loses its card. */
   __wireMobNav();
+  __wireMobMode();
   __initA2HS();
   if(!document.querySelector('#mstage>.mslide.on'))setMob(mobIdx,true);
   __placeMini(mobIdx===0);   // #mini sits in the ESSENTIALS card, or back in its own DETAIL MAP card
@@ -4990,9 +5008,6 @@ function renderMobile(){
       // the phone sheet but left the dashboard on the previous class.
       if(typeof d.onchange==='function')d.onchange({target:d,type:'change'});
       else d.dispatchEvent(new Event('change',{bubbles:true}));};});
-    var clickMode=function(mode){var b=document.querySelector('.modebtn[data-mode="'+mode+'"]');if(b)b.click();};
-    var ms=document.getElementById('m_sim');if(ms)ms.onclick=function(){clickMode('SIM');};
-    var ml=document.getElementById('m_live');if(ml)ml.onclick=function(){clickMode('LIVE');};
   }
   // Idempotent (dropDown no-ops once wrapped). Markup lives below this script,
   // so the first ticks can miss #m_class/#m_car; keep trying. {touch:true}
@@ -7066,6 +7081,7 @@ buildStartGrid();
     // re-render so switching modes updates it immediately, not on the next poll.
     if(typeof renderMessages==='function')renderMessages();
   }
+  window.setDataMode=setMode;
   toggle.querySelectorAll('.modebtn').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
   window.dataMode='SIM';
   // Restore the last-used mode on refresh: a page reload while watching LIVE
