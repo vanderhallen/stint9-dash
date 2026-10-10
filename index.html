@@ -447,19 +447,19 @@
   #racenotebox .rnhd{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:12px;letter-spacing:2px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin:2px 0 5px}
   #racenotebox .rnhd .rncar{color:var(--ink)}
   #rn-summary{font-size:9px;line-height:1.45;color:var(--ink);background:#f7f8fa;border:1px solid #eceef1;border-radius:6px;padding:5px 6px;margin-bottom:5px;white-space:pre-wrap;flex:0 0 auto}
-  /* The feed is the scroller. Notes must not shrink (a column flex item's
-     default min-height:auto lets the last row paint past the scrollport,
-     where the card's corner clips it). Bottom padding keeps that last row
-     fully inside the view. The scrollbar is classic, not the overlay one:
-     overlay bars hide until you scroll and draw thick; this one stays up,
-     4px wide, whenever the list actually overflows. */
-  #rn-feed{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding:0 2px 8px 0;scrollbar-width:thin;scrollbar-color:#8a929b #e7eaee}
-  /* -webkit-appearance:none is what opts macOS out of the overlay scrollbar
-     (the thick one that fades away). Without it the width rule is ignored
-     and the bar never stays on screen. */
-  #rn-feed::-webkit-scrollbar{-webkit-appearance:none;width:4px}
-  #rn-feed::-webkit-scrollbar-track{background:#e7eaee;border-radius:4px}
-  #rn-feed::-webkit-scrollbar-thumb{background:#8a929b;border-radius:4px;min-height:24px}
+  /* The feed scrolls. Notes must not shrink (a column flex item's default
+     min-height:auto lets the last row paint past the scrollport, where the
+     card corner clips it). Bottom padding keeps that last row fully inside.
+     The native bar is hidden: on macOS it is an overlay, thick, and gone
+     until you scroll. #rn-bar is the 4px bar that stays visible while the
+     list overflows. */
+  #rn-scroll{position:relative;flex:1 1 auto;min-height:0}
+  #rn-feed{height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding:0 8px 8px 0;scrollbar-width:none}
+  #rn-feed::-webkit-scrollbar{width:0;height:0;display:none}
+  #rn-bar{display:none;position:absolute;top:0;bottom:0;right:0;width:4px;border-radius:4px;background:#d5d9df;z-index:2;touch-action:none;cursor:pointer}
+  #rn-bar.on{display:block}
+  #rn-bar::before{content:'';position:absolute;top:0;bottom:0;left:-8px;right:-2px}
+  #rn-bar i{position:absolute;left:0;top:0;width:4px;border-radius:4px;background:#6b7480}
   #rn-feed .rn{flex:0 0 auto;font-size:9px;line-height:1.35;border-left:4.5px solid #c2c8d0;padding:3px 5px;background:#fbfbfc;border-radius:0 5px 5px 0}
   #rn-feed .rn .rnt{color:var(--muted);font-size:8px;letter-spacing:.3px}
   #rn-feed .rn .rnclip{color:var(--accent);text-decoration:none;font-weight:700;font-size:8px;white-space:nowrap}
@@ -938,7 +938,10 @@
     <div id="racenotebox">
       <div class="rnhd"><span>RACENOTES</span><span class="rncar">#—</span></div>
       <div id="rn-summary">waiting for race to start…</div>
-      <div id="rn-feed"></div>
+      <div id="rn-scroll">
+        <div id="rn-feed"></div>
+        <div id="rn-bar" aria-hidden="true"><i></i></div>
+      </div>
     </div>
   </div>
   <div class="maincol" style="flex:1 1 auto;min-width:0">
@@ -7433,7 +7436,7 @@ function rnRenderFeed(){
   const feed=document.getElementById('rn-feed');if(!feed)return;
   const ns=rnNotes.filter(rnVisible).sort((a,b)=>(a.tod||0)-(b.tod||0));
   rnFeedN=ns.length;
-  if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';return;}
+  if(!ns.length){feed.innerHTML='<div class="rn-empty">no notes yet — racing…</div>';rnSyncBar();return;}
   // hmsClock, not hms: n.tod is in the feed's own base, which is UTC in LIVE
   // (clockOffsetS, index.html:1252) — bare hms had these notes reading 2h behind
   // the header clock and behind the trackside clock at the Nürburgring.
@@ -7449,10 +7452,54 @@ function rnRenderFeed(){
 function rnPinFeed(force){
   const feed=document.getElementById('rn-feed');if(!feed)return;
   const slack=()=>feed.scrollHeight-feed.clientHeight-feed.scrollTop;
-  if(!force&&slack()>40)return;
-  const pin=()=>{feed.scrollTop=feed.scrollHeight;};
+  if(!force&&slack()>40){rnSyncBar();return;}
+  const pin=()=>{feed.scrollTop=feed.scrollHeight;rnSyncBar();};
   pin();
-  requestAnimationFrame(()=>{if(force||slack()<80)pin();});
+  requestAnimationFrame(()=>{if(force||slack()<80)pin();else rnSyncBar();});
+}
+// 4px bar for #rn-feed. Native overlay scrollbars on macOS hide and draw
+// thick; this one stays put whenever the list overflows. Drag math divides
+// by the page scale (fitPage's transform) so a pointer delta in viewport
+// pixels moves the thumb in layout pixels.
+function rnSyncBar(){
+  const feed=document.getElementById('rn-feed'),bar=document.getElementById('rn-bar');
+  if(!feed||!bar)return;
+  const thumb=bar.firstElementChild;if(!thumb)return;
+  const overflow=feed.scrollHeight-feed.clientHeight;
+  if(overflow<=1){bar.classList.remove('on');return;}
+  bar.classList.add('on');
+  const track=bar.clientHeight||feed.clientHeight;
+  const th=Math.min(track,Math.max(18,Math.round(track*(feed.clientHeight/feed.scrollHeight))));
+  const top=Math.round((feed.scrollTop/overflow)*Math.max(0,track-th));
+  thumb.style.height=th+'px';
+  thumb.style.transform='translateY('+top+'px)';
+}
+function rnWireBar(){
+  const feed=document.getElementById('rn-feed'),bar=document.getElementById('rn-bar');
+  if(!feed||!bar||bar.dataset.on)return;bar.dataset.on='1';
+  feed.addEventListener('scroll',rnSyncBar,{passive:true});
+  if(window.ResizeObserver)new ResizeObserver(rnSyncBar).observe(feed);
+  let drag=null;
+  bar.addEventListener('pointerdown',e=>{
+    const thumb=bar.firstElementChild;if(!thumb)return;
+    const br=bar.getBoundingClientRect(),tr=thumb.getBoundingClientRect();
+    const scale=(bar.offsetHeight&&br.height)?br.height/bar.offsetHeight:1;
+    const overflow=Math.max(1,feed.scrollHeight-feed.clientHeight);
+    const track=bar.clientHeight,th=thumb.offsetHeight;
+    if(e.clientY<tr.top||e.clientY>tr.bottom){
+      const y=(e.clientY-br.top)/scale-th/2;
+      feed.scrollTop=(y/Math.max(1,track-th))*overflow;
+    }
+    drag={y:e.clientY,top:feed.scrollTop,overflow,track,th,scale};
+    bar.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  bar.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    feed.scrollTop=drag.top+((e.clientY-drag.y)/drag.scale)/Math.max(1,drag.track-drag.th)*drag.overflow;
+  });
+  bar.addEventListener('pointerup',()=>{drag=null;});
+  bar.addEventListener('pointercancel',()=>{drag=null;});
 }
 function rnRenderSummary(T){
   const el=document.getElementById('rn-summary');if(!el)return;
@@ -7738,6 +7785,7 @@ function updateRacenote(T){
  }catch(e){/* never let the racenote break the main render loop */}
 }
 rnWire();   // attach the Analyse handler now (reel is in the DOM already)
+rnWireBar();
 
 /* ============================================================
    CHAMPIONSHIP reel — NLS class standings for EVERY class, one season
